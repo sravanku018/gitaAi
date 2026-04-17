@@ -135,7 +135,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                             if (fullSoFar.contains("<channel|>")) {
                                 val answerPart = fullSoFar.substringAfter("<channel|>")
 
-                                val cleanText = answerPart
+                                val cleanText = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(answerPart)
                                     .replace("\n", " ")
                                     .replace("\\s+".toRegex(), " ")
                                     .replace(" ,", ",")
@@ -158,8 +158,10 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
 
             // Fallback: If thinking never formally closed (rare), strip it via regex
             if (response.isNotEmpty() && !response.contains("<channel|>")) {
-                val fallbackText = response.toString()
-                    .replace(Regex("<\\|channel>thought.*?<channel\\|>", RegexOption.DOT_MATCHES_ALL), "")
+                val fallbackText = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(
+                    response.toString()
+                        .replace(Regex("<\\|channel>thought.*?<channel\\|>", RegexOption.DOT_MATCHES_ALL), "")
+                )
                     .replace("\n", " ")
                     .replace("\\s+".toRegex(), " ")
                     .replace(" ,", ",")
@@ -177,7 +179,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
             val finalAnswer = rawFinal.substringAfter("<channel|>", rawFinal)
             
             // Basic cleanup for the synchronous return
-            val basicCleaned = finalAnswer
+            val basicCleaned = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(finalAnswer)
                 .replace("\n", " ")
                 .replace("\\s+".toRegex(), " ")
                 .replace(" ,", ",")

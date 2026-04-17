@@ -4,7 +4,7 @@ import java.util.Locale
 
 /**
  * Language mode for voice interactions.
- * Defines input language → output language pairs.
+ * AUTO mode: reply in the same language the user speaks.
  */
 enum class LanguageMode(
     val displayName: String,
@@ -15,46 +15,19 @@ enum class LanguageMode(
     val ttsLocale: String,
     val sttLocale: String
 ) {
-    ENG_TO_TEL(
-        displayName = "English → తెలుగు",
-        displayShort = "EN→TE",
-        inputLocale = Locale.US,
-        outputLocale = Locale.forLanguageTag("te-IN"),
-        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in English. Reply ONLY in Telugu (తెలుగు). Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
-        ttsLocale = "te-IN",
-        sttLocale = "en-US"
-    ),
-    TEL_TO_TEL(
-        displayName = "తెలుగు → తెలుగు",
-        displayShort = "TE→TE",
-        inputLocale = Locale.forLanguageTag("te-IN"),
-        outputLocale = Locale.forLanguageTag("te-IN"),
-        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in Telugu (తెలుగు). Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
-        ttsLocale = "te-IN",
-        sttLocale = "te-IN"
-    ),
-    TEL_TO_ENG(
-        displayName = "తెలుగు → English",
-        displayShort = "TE→EN",
-        inputLocale = Locale.forLanguageTag("te-IN"),
-        outputLocale = Locale.US,
-        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in Telugu. Reply ONLY in English. Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
-        ttsLocale = "en-US",
-        sttLocale = "te-IN"
-    ),
-    ENG_TO_ENG(
-        displayName = "English → English",
-        displayShort = "EN→EN",
+    AUTO(
+        displayName = "Auto",
+        displayShort = "Auto",
         inputLocale = Locale.US,
         outputLocale = Locale.US,
-        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in English. Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply in the SAME language the user speaks. If the user asks in English, reply in English. If the user asks in Telugu, reply in Telugu. Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
         ttsLocale = "en-US",
         sttLocale = "en-US"
     );
 
     companion object {
         fun fromString(value: String): LanguageMode {
-            return entries.find { it.name == value } ?: TEL_TO_TEL
+            return entries.find { it.name == value } ?: AUTO
         }
     }
 }

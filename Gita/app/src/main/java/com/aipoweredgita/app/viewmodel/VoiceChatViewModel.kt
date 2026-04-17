@@ -310,7 +310,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     // ─── Language Mode ────────────────────────────────────────────────────────
 
     private var currentLanguageMode: com.aipoweredgita.app.utils.LanguageMode =
-        com.aipoweredgita.app.utils.LanguageMode.ENG_TO_TEL
+        com.aipoweredgita.app.utils.LanguageMode.AUTO
 
     fun setLanguageMode(mode: com.aipoweredgita.app.utils.LanguageMode) {
         currentLanguageMode = mode
