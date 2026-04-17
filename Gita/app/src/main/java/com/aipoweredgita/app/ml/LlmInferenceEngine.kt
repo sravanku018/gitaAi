@@ -261,7 +261,7 @@ class LlmInferenceEngine(private val context: Context) {
 
             try {
                 // FIX ISSUE 4: Timeout calls stopGeneration() to cancel native inference
-                withTimeoutOrNull(60_000) {
+                withTimeoutOrNull(180_000) {
                     freshConv.sendMessageAsync(formattedPrompt)
                         .catch { throwable ->
                             Log.e(TAG, "LLM Flow error", throwable)
@@ -366,25 +366,33 @@ class LlmInferenceEngine(private val context: Context) {
 
             return@withLock try {
                 val start = System.currentTimeMillis()
-                val formattedPrompt = "<|turn>user\n$prompt<turn|>\n<|turn>model\n<|channel>thought"
-                val message = freshConv.sendMessage(formattedPrompt)
+                val formattedPrompt = "<|turn>system\n<|think|><turn|>\n<|turn>user\n$prompt<turn|>\n<|turn>model"
+                val result = withTimeoutOrNull(120_000) {
+                    freshConv.sendMessage(formattedPrompt)
+                }
                 Log.d(TAG, "LLM sync response: ${System.currentTimeMillis() - start}ms")
-                
-                // 1. Strip the hidden thinking block so UI only sees the answer
-                val cleanOutput = message.toString().replace(thinkingRegex, "").trim()
 
-                // 2. Fix spacing: collapse whitespace, strip space-before-punctuation
-                val fixedSpacing = cleanOutput
-                    .replace("\n", " ")
-                    .replace("\\s+".toRegex(), " ")
-                    .replace(" ,", ",")
-                    .replace(" .", ".")
-                    .replace(" ?", "?")
-                    .replace(" !", "!")
-                    .trim()
+                if (result == null) {
+                    Log.w(TAG, "LLM sync generation timed out — forcing stop")
+                    stopGeneration()
+                    "Error: LLM timed out"
+                } else {
+                    // 1. Strip the hidden thinking block so UI only sees the answer
+                    val cleanOutput = result.toString().replace(thinkingRegex, "").trim()
 
-                // FINAL CLEANUP using "Background" process logic
-                com.aipoweredgita.app.util.TextUtils.deepClean(fixedSpacing)
+                    // 2. Fix spacing: collapse whitespace, strip space-before-punctuation
+                    val fixedSpacing = cleanOutput
+                        .replace("\n", " ")
+                        .replace("\\s+".toRegex(), " ")
+                        .replace(" ,", ",")
+                        .replace(" .", ".")
+                        .replace(" ?", "?")
+                        .replace(" !", "!")
+                        .trim()
+
+                    // FINAL CLEANUP using "Background" process logic
+                    com.aipoweredgita.app.util.TextUtils.deepClean(fixedSpacing)
+                }
             } catch (e: Exception) {
                 "Error: ${e.message}"
             }

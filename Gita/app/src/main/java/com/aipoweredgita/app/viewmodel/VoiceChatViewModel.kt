@@ -86,6 +86,8 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             .replace(" .", ".")
             .replace(" ?", "?")
             .replace(" !", "!")
+            // Fix camelCase tokens by inserting spaces between lowercase->uppercase
+            .replace(Regex("([a-z])([A-Z])"), "$1 $2")
             .trim()
     }
 

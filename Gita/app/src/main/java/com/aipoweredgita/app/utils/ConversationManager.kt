@@ -3,7 +3,7 @@ package com.aipoweredgita.app.utils
 import android.util.Log
 import com.aipoweredgita.app.ml.LlmInferenceEngine
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.buffer
 
 /**
  * Coordinator for LLM and Voice operations to ensure sequential execution
@@ -64,7 +64,7 @@ class ConversationManager(
 
                     val tokenJob = launch {
                         LlmInferenceEngine.tokenFlow
-                            .conflate()
+                            .buffer(kotlinx.coroutines.channels.Channel.BUFFERED)
                             .collect { event ->
                                 // FIX: Filter by generationId — ignore stale tokens
                                 if (event.genId != currentGenId) return@collect
