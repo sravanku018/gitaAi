@@ -73,7 +73,7 @@ fun VoiceStudioScreen(
     var selectedLanguageMode by remember {
         mutableStateOf(
             com.aipoweredgita.app.utils.LanguageMode.fromString(
-                prefs.getString("language_mode", com.aipoweredgita.app.utils.LanguageMode.ENG_TO_TEL.name) ?: "ENG_TO_TEL"
+                prefs.getString("language_mode", com.aipoweredgita.app.utils.LanguageMode.AUTO.name) ?: "AUTO"
             )
         )
     }

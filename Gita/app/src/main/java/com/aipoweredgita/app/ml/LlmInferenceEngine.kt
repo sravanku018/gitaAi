@@ -280,7 +280,7 @@ class LlmInferenceEngine(private val context: Context) {
                             if (fullSoFar.contains("<channel|>")) {
                                 val answerPart = fullSoFar.substringAfter("<channel|>")
 
-                                val cleanText = answerPart
+                                val cleanText = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(answerPart)
                                     .replace("\n", " ")
                                     .replace("\\s+".toRegex(), " ")
                                     .replace(" ,", ",")
@@ -302,8 +302,10 @@ class LlmInferenceEngine(private val context: Context) {
                     if (myGenId == currentGenerationId && isGenerating.get()) {
                         // Fallback: If thinking never formally closed (rare), strip it via regex
                         if (response.isNotEmpty() && !response.contains("<channel|>")) {
-                            val fallback = response.toString()
-                                .replace(Regex("<\\|channel>thought.*?<channel\\|>", RegexOption.DOT_MATCHES_ALL), "")
+                            val fallback = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(
+                                response.toString()
+                                    .replace(Regex("<\\|channel>thought.*?<channel\\|>", RegexOption.DOT_MATCHES_ALL), "")
+                            )
                                 .replace("\n", " ")
                                 .replace("\\s+".toRegex(), " ")
                                 .replace(" ,", ",")
