@@ -1,0 +1,202 @@
+[
+  {
+    "question": "Who is the charioteer of Arjuna in the Bhagavad Gita?",
+    "options": ["Krishna", "Bhishma", "Drona", "Sanjaya"],
+    "correctAnswerIndex": 0,
+    "explanation": "Lord Krishna serves as Arjuna's charioteer and spiritual guide on the battlefield of Kurukshetra.",
+    "chapter": 1,
+    "verse": 21,
+    "difficulty": 2,
+    "topic": "characters"
+  },
+  {
+    "question": "What is the primary teaching of Chapter 2, Verse 47?",
+    "options": ["Focus on action, not the results", "Always seek rewards for work", "Avoid action to stay pure", "Worry constantly about outcomes"],
+    "correctAnswerIndex": 0,
+    "explanation": "Krishna teaches that one has the right to perform duty but not to claim the fruits of action.",
+    "chapter": 2,
+    "verse": 47,
+    "difficulty": 3,
+    "topic": "karma"
+  },
+  {
+    "question": "According to the Gita, what happens to the soul after death?",
+    "options": ["It takes on a new body", "It ceases to exist", "It merges with nothingness", "It becomes a ghost"],
+    "correctAnswerIndex": 0,
+    "explanation": "The Gita teaches that the soul is eternal and takes on new bodies, just as a person changes clothes.",
+    "chapter": 2,
+    "verse": 22,
+    "difficulty": 3,
+    "topic": "soul"
+  },
+  {
+    "question": "What does 'Bhagavad Gita' literally mean?",
+    "options": ["Song of God", "Book of Laws", "Path of Peace", "War of Kings"],
+    "correctAnswerIndex": 0,
+    "explanation": "Bhagavad means 'of God' and Gita means 'song' — the Song of God.",
+    "chapter": 1,
+    "verse": 1,
+    "difficulty": 1,
+    "topic": "general"
+  },
+  {
+    "question": "What quality does Krishna say leads to self-realization?",
+    "options": ["Equanimity of mind", "Accumulating wealth", "Seeking fame", "Avoiding all people"],
+    "correctAnswerIndex": 0,
+    "explanation": "Equanimity — maintaining balance in success and failure — is essential for spiritual growth.",
+    "chapter": 2,
+    "verse": 48,
+    "difficulty": 4,
+    "topic": "yoga"
+  },
+  {
+    "question": "On which battlefield does the Bhagavad Gita take place?",
+    "options": ["Kurukshetra", "Hastinapura", "Ayodhya", "Dwarka"],
+    "correctAnswerIndex": 0,
+    "explanation": "The Gita is spoken on the battlefield of Kurukshetra before the great war begins.",
+    "chapter": 1,
+    "verse": 1,
+    "difficulty": 1,
+    "topic": "setting"
+  },
+  {
+    "question": "What are the three modes of material nature called?",
+    "options": ["Sattva, Rajas, Tamas", "Dharma, Artha, Kama", "Bhakti, Jnana, Karma", "Manas, Buddhi, Ahankara"],
+    "correctAnswerIndex": 0,
+    "explanation": "The three gunas are Sattva (goodness), Rajas (passion), and Tamas (ignorance).",
+    "chapter": 14,
+    "verse": 5,
+    "difficulty": 5,
+    "topic": "philosophy"
+  },
+  {
+    "question": "According to Krishna, what is the highest form of yoga?",
+    "options": ["Bhakti Yoga (devotion)", "Hatha Yoga (postures)", "Karma Yoga (action only)", "Jnana Yoga (knowledge only)"],
+    "correctAnswerIndex": 0,
+    "explanation": "Krishna declares Bhakti Yoga — loving devotion — as the highest path to reach Him.",
+    "chapter": 6,
+    "verse": 47,
+    "difficulty": 4,
+    "topic": "bhakti"
+  },
+  {
+    "question": "What does Krishna say about a person who is wise?",
+    "options": ["They remain steady in joy and sorrow", "They seek only pleasure", "They avoid all responsibilities", "They always argue with others"],
+    "correctAnswerIndex": 0,
+    "explanation": "A wise person (sthita-prajna) maintains equanimity in both happiness and distress.",
+    "chapter": 2,
+    "verse": 56,
+    "difficulty": 4,
+    "topic": "wisdom"
+  },
+  {
+    "question": "Who narrates the battlefield events to King Dhritarashtra?",
+    "options": ["Sanjaya", "Bhishma", "Arjuna", "Vyasa"],
+    "correctAnswerIndex": 0,
+    "explanation": "Sanjaya, gifted with divine vision, narrates the events of the battlefield to the blind king.",
+    "chapter": 1,
+    "verse": 2,
+    "difficulty": 2,
+    "topic": "characters"
+  },
+  {
+    "question": "What is the ultimate goal of the Gita's teachings?",
+    "options": ["Liberation (moksha)", "Material prosperity", "Political power", "Physical strength"],
+    "correctAnswerIndex": 0,
+    "explanation": "The Gita's ultimate teaching is liberation from the cycle of birth and death through devotion and knowledge.",
+    "chapter": 18,
+    "verse": 66,
+    "difficulty": 3,
+    "topic": "liberation"
+  },
+  {
+    "question": "What does Krishna advise Arjuna to do when he refuses to fight?",
+    "options": ["Rise and perform his duty as a warrior", "Leave the battlefield peacefully", "Become a hermit in the forest", "Negotiate with the enemy"],
+    "correctAnswerIndex": 0,
+    "explanation": "Krishna urges Arjuna to rise and fulfill his dharma as a warrior, fighting righteously.",
+    "chapter": 2,
+    "verse": 3,
+    "difficulty": 3,
+    "topic": "dharma"
+  },
+  {
+    "question": "How many chapters are in the Bhagavad Gita?",
+    "options": ["18", "12", "21", "10"],
+    "correctAnswerIndex": 0,
+    "explanation": "The Bhagavad Gita consists of 18 chapters and 700 verses.",
+    "chapter": 1,
+    "verse": 1,
+    "difficulty": 1,
+    "topic": "general"
+  },
+  {
+    "question": "What is the nature of the soul according to the Gita?",
+    "options": ["Eternal and indestructible", "Temporary and perishable", "Created at birth only", "Dependent on the body"],
+    "correctAnswerIndex": 0,
+    "explanation": "The soul is eternal, unborn, and indestructible — it cannot be cut, burned, wetted, or dried.",
+    "chapter": 2,
+    "verse": 23,
+    "difficulty": 3,
+    "topic": "soul"
+  },
+  {
+    "question": "What type of worship does Krishna consider most dear?",
+    "options": ["Worship with love and devotion", "Elaborate rituals", "Expensive offerings", "Public display of piety"],
+    "correctAnswerIndex": 0,
+    "explanation": "Krishna values sincere devotion and love over elaborate rituals or expensive offerings.",
+    "chapter": 9,
+    "verse": 26,
+    "difficulty": 4,
+    "topic": "bhakti"
+  },
+  {
+    "question": "What happens to someone who performs selfless action?",
+    "options": ["They attain peace and liberation", "They become wealthy", "They gain political power", "They become famous"],
+    "correctAnswerIndex": 0,
+    "explanation": "Selfless action (nishkama karma) leads to inner peace and ultimately liberation.",
+    "chapter": 3,
+    "verse": 19,
+    "difficulty": 4,
+    "topic": "karma"
+  },
+  {
+    "question": "What does Krishna say about anger?",
+    "options": ["It leads to delusion and destruction", "It helps in battle", "It shows strength", "It is necessary for justice"],
+    "correctAnswerIndex": 0,
+    "explanation": "From anger comes delusion, from delusion loss of memory, and from loss of memory the destruction of intelligence.",
+    "chapter": 2,
+    "verse": 63,
+    "difficulty": 4,
+    "topic": "emotions"
+  },
+  {
+    "question": "Which yoga path emphasizes action without attachment?",
+    "options": ["Karma Yoga", "Bhakti Yoga", "Jnana Yoga", "Raja Yoga"],
+    "correctAnswerIndex": 0,
+    "explanation": "Karma Yoga is the path of selfless action performed without attachment to results.",
+    "chapter": 3,
+    "verse": 7,
+    "difficulty": 3,
+    "topic": "karma"
+  },
+  {
+    "question": "What does Krishna reveal to Arjuna in Chapter 11?",
+    "options": ["His cosmic universal form", "A map of heaven", "The future of India", "The secrets of warfare"],
+    "correctAnswerIndex": 0,
+    "explanation": "Krishna reveals His Vishvarupa — the cosmic form containing all of creation.",
+    "chapter": 11,
+    "verse": 10,
+    "difficulty": 5,
+    "topic": "vision"
+  },
+  {
+    "question": "What is the final instruction Krishna gives to Arjuna?",
+    "options": ["Surrender completely to Me", "Fight for personal glory", "Seek revenge on enemies", "Retire to the forest"],
+    "correctAnswerIndex": 0,
+    "explanation": "In the final verse, Krishna asks Arjuna to abandon all dharmas and surrender completely to Him.",
+    "chapter": 18,
+    "verse": 66,
+    "difficulty": 5,
+    "topic": "liberation"
+  }
+]

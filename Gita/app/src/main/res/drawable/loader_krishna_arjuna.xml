@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:pathData="M100,100 m-90,0 a90,90 0,1,1 180,0 a90,90 0,1,1 -180,0"
+        android:fillColor="#FFF3E0"/>
+
+    <!-- Chariot base -->
+    <path
+        android:pathData="M50,120 L150,120 L140,140 L60,140 Z"
+        android:fillColor="#8B4513"/>
+
+    <!-- Chariot wheel left -->
+    <path
+        android:pathData="M70,140 m-15,0 a15,15 0,1,1 30,0 a15,15 0,1,1 -30,0"
+        android:fillColor="#654321"/>
+    <path
+        android:pathData="M70,140 m-8,0 a8,8 0,1,1 16,0 a8,8 0,1,1 -16,0"
+        android:fillColor="#D2691E"/>
+
+    <!-- Chariot wheel right -->
+    <path
+        android:pathData="M130,140 m-15,0 a15,15 0,1,1 30,0 a15,15 0,1,1 -30,0"
+        android:fillColor="#654321"/>
+    <path
+        android:pathData="M130,140 m-8,0 a8,8 0,1,1 16,0 a8,8 0,1,1 -16,0"
+        android:fillColor="#D2691E"/>
+
+    <!-- Krishna (left figure - blue) -->
+    <path
+        android:pathData="M70,100 m-12,0 a12,12 0,1,1 24,0 a12,12 0,1,1 -24,0"
+        android:fillColor="#1E88E5"/>
+    <path
+        android:pathData="M70,110 L70,95"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M60,70 Q70,60 80,70"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="2.5"/>
+
+    <!-- Arjuna (right figure - golden) -->
+    <path
+        android:pathData="M110,100 m-12,0 a12,12 0,1,1 24,0 a12,12 0,1,1 -24,0"
+        android:fillColor="#F4A460"/>
+    <path
+        android:pathData="M110,110 L110,95"
+        android:strokeColor="#8B4513"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,65 Q110,55 120,65"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="2.5"/>
+
+    <!-- Bow -->
+    <path
+        android:pathData="M120,85 Q135,90 120,95"
+        android:strokeColor="#8B4513"
+        android:strokeWidth="2.5"/>
+
+    <!-- Sacred fire/aura -->
+    <path
+        android:pathData="M100,40 L95,50 L100,45 L105,50 Z"
+        android:fillColor="#FF6B35"/>
+
+    <!-- OM symbol -->
+    <path
+        android:pathData="M100,25 Q110,20 115,25 Q110,30 100,25"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+</vector>

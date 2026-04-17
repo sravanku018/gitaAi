@@ -1,0 +1,83 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:pathData="M100,100 m-90,0 a90,90 0,1,1 180,0 a90,90 0,1,1 -180,0"
+        android:fillColor="#FFF3E0"/>
+
+    <!-- Radiant rays -->
+    <path
+        android:pathData="M100,20 L100,50"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M135,30 L120,55"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M160,50 L135,65"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M170,85 L140,85"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M65,30 L80,55"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M40,50 L65,65"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M30,85 L60,85"
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"/>
+
+    <!-- OM symbol (stylized) -->
+    <!-- Main curve -->
+    <path
+        android:pathData="M60,100 Q70,80 90,85 Q95,88 95,95 Q95,105 85,110"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="6"/>
+
+    <!-- Upper curl -->
+    <path
+        android:pathData="M90,85 Q100,75 110,80 Q115,85 110,95"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="5"/>
+
+    <!-- Number 3 shape -->
+    <path
+        android:pathData="M100,95 Q120,95 120,105 Q120,110 115,112 Q120,114 120,120 Q120,130 100,130"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="5"/>
+
+    <!-- Bottom curve -->
+    <path
+        android:pathData="M85,110 Q90,120 100,120"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="5"/>
+
+    <!-- Top dot (bindu) -->
+    <path
+        android:pathData="M105,70 m-5,0 a5,5 0,1,1 10,0 a5,5 0,1,1 -10,0"
+        android:fillColor="#FF6B35"/>
+
+    <!-- Crescent moon below dot -->
+    <path
+        android:pathData="M95,73 Q105,68 115,73"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="3"/>
+
+    <!-- Decorative circle -->
+    <path
+        android:pathData="M100,100 m-55,0 a55,55 0,1,1 110,0 a55,55 0,1,1 -110,0"
+        android:strokeColor="#FFAB00"
+        android:strokeWidth="2"/>
+</vector>

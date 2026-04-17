@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find ~/Downloads/16-10-2025/Gita/app/src -name \"*.kt\" -type f -exec grep -l \"listOf(5, 10, 20, 30)\" {} ;)",
+      "Bash(find ~/Downloads/16-10-2025/Gita/app/src -name \"*.kt\" -type f -exec grep -l \"Quiz\\|quiz\" {})",
+      "Bash(cat -n)",
+      "Bash(git checkout app/src/main/java/com/aipoweredgita/app/viewmodel/QuizViewModel.kt)",
+      "Bash(./gradlew :app:kspDebugKotlin --no-daemon)",
+      "Bash(./gradlew :app:compileDebugKotlin --no-daemon)",
+      "Bash(awk 'NR>=610 && NR<=625' ~/Downloads/16-10-2025/Gita/app/src/main/java/com/aipoweredgita/app/viewmodel/QuizViewModel.kt)",
+      "Bash(awk 'NR>=575 && NR<=620' ~/Downloads/16-10-2025/Gita/app/src/main/java/com/aipoweredgita/app/viewmodel/QuizViewModel.kt)",
+      "Bash(awk 'NR>=587 && /^    }$/ && NR!=587 {print NR-1; exit}' ~/Downloads/16-10-2025/Gita/app/src/main/java/com/aipoweredgita/app/viewmodel/QuizViewModel.kt)",
+      "Read(//c//**)",
+      "Bash(awk 'NR>=36 {print}')",
+      "Bash(tee /tmp/compile.log)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

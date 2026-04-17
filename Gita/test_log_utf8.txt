@@ -1,0 +1,63 @@
+﻿
+> Configure project :app
+.\gradlew : e: file:///C:
+/Users/srath/Downloads/16
+-10-2025/Gita/app/build.g
+radle.kts:50:17: 
+Unresolved reference: 
+systemProperty
+At line:1 char:1
++ .\gradlew 
+:app:testDebugUnitTest 
+--tests "com.aipoweredgit
+a.app.notif ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (e: file:///C:/U...    
+ systemProperty:Strin    
+g) [], RemoteExcepti    
+on
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+
+FAILURE: Build failed 
+with an exception.
+
+* Where:
+Build file 'C:\Users\srat
+h\Downloads\16-10-2025\Gi
+ta\app\build.gradle.kts' 
+line: 50
+
+* What went wrong:
+Script compilation error:
+
+  Line 50:               
+  systemProperty("robolec
+tric.sqliteMode", 
+"NATIVE")
+                         
+  ^ Unresolved 
+reference: systemProperty
+
+1 error
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 1s
+

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.GitaLearning" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.GitaLearning.NoFullscreen" parent="Theme.GitaLearning">
+        <item name="android:windowFullscreen">false</item>
+    </style>
+</resources>

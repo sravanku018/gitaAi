@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Gita Verse"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:paddingBottom="4dp" />
+
+    <TextView
+        android:id="@+id/widget_chapter_verse"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Chapter 2:47"
+        android:textSize="10sp"
+        android:textColor="#E0E0E0"
+        android:gravity="center"
+        android:paddingBottom="6dp" />
+
+    <TextView
+        android:id="@+id/widget_verse_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Your verse text will appear here..."
+        android:textSize="11sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:maxLines="4"
+        android:ellipsize="end"
+        android:lineSpacingMultiplier="1.2" />
+
+    <TextView
+        android:id="@+id/widget_refresh"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="↻"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:paddingTop="6dp" />
+
+</LinearLayout>

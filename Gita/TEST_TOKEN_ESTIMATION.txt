@@ -1,0 +1,361 @@
+================================================================================
+COMPREHENSIVE TEST SUITE - TOKEN ESTIMATION REPORT
+Gita Learning Android App
+Generated: October 10, 2025
+================================================================================
+
+CODEBASE OVERVIEW
+================================================================================
+Total Kotlin Files: 49
+Total Lines of Code: ~8,135 lines
+
+Components Breakdown:
+- Database (Entities/DAOs): 9 files
+- ViewModels: 8 files
+- UI Screens (Compose): 17 files
+- Repositories: 3 files
+- Data Models: 3 files
+- Network Services: 1 file
+- Utilities: 6 files
+- Widget: 1 file
+- MainActivity: 1 file
+
+================================================================================
+TOKEN BREAKDOWN BY COMPONENT TYPE
+================================================================================
+
+1. UNIT TESTS (Repositories, ViewModels, Utilities)
+--------------------------------------------------------------------------------
+Components: 17 files (3 repositories + 8 ViewModels + 6 utilities)
+
+Estimated Token Usage Per File:
+- Context reading (2-3 related files): ~3,000 tokens
+- Writing test file with assertions: ~2,000 tokens
+- Mock setup and explanations: ~500 tokens
+- Total per file: ~5,500 tokens
+
+TOTAL FOR UNIT TESTS: 17 × 5,500 = ~93,500 tokens
+
+Files to Test:
+- OfflineCacheRepository.kt
+- FavoriteRepository.kt
+- StatsRepository.kt
+- QuizViewModel.kt
+- QuizStatsViewModel.kt
+- OfflineDownloadViewModel.kt
+- NormalModeViewModel.kt
+- QAModeViewModel.kt
+- FavoritesViewModel.kt
+- ProfileViewModel.kt
+- ScreenConfigViewModel.kt
+- NetworkUtils.kt
+- TimeTracker.kt
+- QuizPreferences.kt
+- ThemePreferences.kt
+- WindowSizeUtils.kt
+
+================================================================================
+
+2. DATABASE TESTS (Room DAOs & Entities)
+--------------------------------------------------------------------------------
+Components: 9 database files
+
+Estimated Token Usage Per File:
+- Context reading: ~2,000 tokens
+- Writing DAO tests with in-memory DB: ~3,000 tokens
+- Entity validation tests: ~1,000 tokens
+- Total per file: ~6,000 tokens
+
+TOTAL FOR DATABASE TESTS: 9 × 6,000 = ~54,000 tokens
+
+Files to Test:
+- CachedVerseDao.kt + CachedVerse.kt
+- FavoriteVerseDao.kt + FavoriteVerse.kt
+- QuizAttemptDao.kt + QuizAttempt.kt
+- UserStatsDao.kt + UserStats.kt
+- GitaDatabase.kt
+
+Test Coverage:
+- CRUD operations for all DAOs
+- Query validation
+- Flow emissions
+- Database migrations
+- Constraint validations
+
+================================================================================
+
+3. UI/COMPOSE TESTS
+--------------------------------------------------------------------------------
+Components: 17 UI screens
+
+Estimated Token Usage Per File:
+- Context reading (larger files): ~4,000 tokens
+- Writing Compose UI tests: ~3,500 tokens
+- Screenshot/snapshot tests: ~1,000 tokens
+- User interaction tests: ~1,500 tokens
+- Total per file: ~10,000 tokens
+
+TOTAL FOR UI TESTS: 17 × 10,000 = ~170,000 tokens
+
+Files to Test:
+- QuizScreen.kt
+- QuizStatsScreen.kt
+- QuizConfigScreen.kt
+- NormalModeScreen.kt
+- QAModeScreen.kt
+- OfflineDownloadScreen.kt
+- DashboardScreen.kt
+- HomeScreen.kt
+- MainScreen.kt
+- ProfileScreen.kt
+- FavoritesScreen.kt
+- WidgetSettingsScreen.kt
+- SplashScreen.kt
+- LoadingScreen.kt
+- Theme.kt (UI theme tests)
+- Color.kt
+- Type.kt
+
+Test Coverage:
+- Component rendering
+- State changes
+- User interactions (clicks, swipes)
+- Navigation flows
+- Error states
+- Loading states
+- Empty states
+
+================================================================================
+
+4. INTEGRATION TESTS
+--------------------------------------------------------------------------------
+Components: Network + Repository + ViewModel integration flows
+
+Estimated Token Usage:
+- API integration tests: ~8,000 tokens
+- End-to-end quiz flow: ~8,000 tokens
+- Offline mode download/cache flow: ~6,000 tokens
+- Stats tracking flow: ~6,000 tokens
+- Favorite management flow: ~6,000 tokens
+
+TOTAL FOR INTEGRATION TESTS: ~34,000 tokens
+
+Test Scenarios:
+- Complete quiz flow (start → answer → submit → save stats)
+- Offline download (trigger → progress → completion → verification)
+- API error handling and fallback to cache
+- Verse favoriting and unfavoriting
+- Stats calculation and persistence
+- Widget update flow
+
+================================================================================
+
+5. WIDGET & MAINACTIVITY TESTS
+--------------------------------------------------------------------------------
+Components: 1 widget + 1 MainActivity
+
+Estimated Token Usage:
+- GitaVerseWidget.kt tests: ~7,000 tokens
+  - Widget creation
+  - Daily verse rotation
+  - Click handling
+  - Network fallback
+- MainActivity.kt tests: ~5,000 tokens
+  - Activity lifecycle
+  - Navigation setup
+  - Deep links
+  - State restoration
+
+TOTAL: ~12,000 tokens
+
+================================================================================
+
+6. TEST INFRASTRUCTURE SETUP
+--------------------------------------------------------------------------------
+Initial setup required for all tests
+
+Estimated Token Usage:
+- Test dependencies in build.gradle: ~2,000 tokens
+- Test rules and utilities: ~3,000 tokens
+- Mock factories and test data: ~2,000 tokens
+- Hilt/DI test setup: ~3,000 tokens
+
+TOTAL: ~10,000 tokens
+
+Setup Includes:
+- JUnit 5
+- Mockito/MockK
+- Compose test framework
+- Room in-memory database
+- Coroutine test dispatcher
+- Turbine for Flow testing
+- Hilt test modules
+
+================================================================================
+
+GRAND TOTAL ESTIMATION
+================================================================================
+
+Category                        | Files | Token Estimate
+--------------------------------|-------|---------------
+Unit Tests                      |   17  |     93,500
+Database Tests                  |    9  |     54,000
+UI Tests                        |   17  |    170,000
+Integration Tests               |    -  |     34,000
+Widget + MainActivity           |    2  |     12,000
+Test Infrastructure             |    -  |     10,000
+--------------------------------|-------|---------------
+TOTAL                           |   45+ |    373,500 tokens
+
+================================================================================
+
+REALISTIC IMPLEMENTATION PLAN (WITH 200K TOKEN LIMIT)
+================================================================================
+
+APPROACH 1: TWO SESSIONS
+--------------------------------------------------------------------------------
+
+SESSION 1 (~198,000 tokens):
+  ✓ Test infrastructure setup (10,000)
+  ✓ Database tests - all 9 files (54,000)
+  ✓ Unit tests - repositories + utilities (40,000)
+  ✓ ViewModel tests - 5 critical ViewModels (30,000)
+  ✓ Integration tests - API & offline (14,000)
+  ✓ Simple UI tests - 5-6 screens (50,000)
+
+SESSION 2 (~175,000 tokens):
+  ✓ Remaining ViewModel tests - 3 files (16,500)
+  ✓ UI tests - 11-12 remaining screens (110,000)
+  ✓ Widget + MainActivity tests (12,000)
+  ✓ End-to-end integration tests (20,000)
+  ✓ Test documentation & coverage report (10,000)
+  ✓ CI/CD pipeline setup (6,500)
+
+================================================================================
+
+APPROACH 2: SINGLE SESSION PRIORITY TESTING (~188,000 tokens)
+--------------------------------------------------------------------------------
+
+If limited to 1 session, focus on CRITICAL components:
+
+1. CRITICAL UNIT TESTS (50,000 tokens)
+   ✓ All 3 repositories (OfflineCache, Favorite, Stats)
+   ✓ QuizViewModel (most complex logic)
+   ✓ QuizStatsViewModel (data aggregation)
+   ✓ OfflineDownloadViewModel (background work)
+   ✓ NetworkUtils (connectivity checks)
+
+2. DATABASE TESTS (54,000 tokens) - COMPLETE COVERAGE
+   ✓ All 9 database files
+   ✓ Critical for data integrity
+   ✓ Tests CRUD operations, queries, flows
+
+3. INTEGRATION TESTS (34,000 tokens)
+   ✓ Offline download complete flow
+   ✓ Quiz completion → stats saving flow
+   ✓ API → cache fallback flow
+   ✓ Stats tracking accuracy
+
+4. CORE UI TESTS (50,000 tokens)
+   ✓ QuizScreen (main feature)
+   ✓ QuizStatsScreen (analytics)
+   ✓ OfflineDownloadScreen (user engagement)
+   ✓ DashboardScreen (overview)
+   ✓ HomeScreen (navigation hub)
+
+TOTAL: ~188,000 tokens (12k buffer for adjustments)
+
+Coverage: ~60% of app, but 90% of critical business logic
+
+================================================================================
+
+PRIORITY MATRIX
+================================================================================
+
+CRITICAL (Must Test):
+  1. QuizViewModel + QuizScreen (quiz functionality)
+  2. OfflineCacheRepository + OfflineDownloadViewModel (core feature)
+  3. All Database DAOs (data integrity)
+  4. QuizStatsViewModel + QuizStatsScreen (analytics)
+  5. Integration: Quiz flow end-to-end
+
+HIGH (Should Test):
+  6. FavoriteRepository + FavoritesViewModel
+  7. StatsRepository + ProfileViewModel
+  8. NormalModeViewModel + NormalModeScreen
+  9. NetworkUtils
+  10. GitaApiService integration
+
+MEDIUM (Nice to Test):
+  11. Widget tests
+  12. Theme/UI component tests
+  13. MainActivity tests
+  14. QAModeViewModel
+  15. Navigation tests
+
+LOW (Optional):
+  16. SplashScreen
+  17. LoadingScreen
+  18. Color/Type theme tests
+  19. WindowSizeUtils
+  20. TimeTracker
+
+================================================================================
+
+RECOMMENDED TESTING TOOLS & FRAMEWORKS
+================================================================================
+
+Core Testing:
+- JUnit 5 (test runner)
+- Mockito or MockK (mocking)
+- Truth (assertions)
+- Turbine (Flow testing)
+
+Android Specific:
+- AndroidX Test (core Android testing)
+- Compose Test (UI testing)
+- Room Testing (in-memory DB)
+- WorkManager Testing (background tasks)
+- Espresso (UI interactions)
+
+Utilities:
+- Robolectric (fast Android tests)
+- Kotlinx Coroutines Test (coroutine testing)
+- Hilt Testing (DI testing)
+
+Coverage & Reporting:
+- JaCoCo (code coverage)
+- Detekt (static analysis)
+
+================================================================================
+
+ESTIMATED TEST COVERAGE AFTER COMPLETION
+================================================================================
+
+Full Test Suite (2 sessions):
+- Line Coverage: ~85-90%
+- Branch Coverage: ~80-85%
+- Critical Path Coverage: ~95%
+
+Priority Tests Only (1 session):
+- Line Coverage: ~50-60%
+- Branch Coverage: ~55-65%
+- Critical Path Coverage: ~90%
+
+================================================================================
+
+NEXT STEPS
+================================================================================
+
+1. Confirm testing approach (1 session vs 2 sessions)
+2. Set up test infrastructure (Gradle dependencies)
+3. Start with database tests (foundation)
+4. Progress to unit tests (business logic)
+5. Add integration tests (workflows)
+6. Complete with UI tests (user experience)
+7. Generate coverage reports
+8. Set up CI/CD for automated testing
+
+================================================================================
+END OF REPORT
+================================================================================

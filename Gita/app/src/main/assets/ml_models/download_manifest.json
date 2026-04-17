@@ -1,0 +1,6 @@
+{
+  "urls": {
+    "qwen3-0.6b-int4.litertlm": "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm?download=true",
+    "gemma-4-E2B-it.litertlm": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm?download=true"
+  }
+}
