@@ -1,0 +1,77 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:pathData="M100,100 m-90,0 a90,90 0,1,1 180,0 a90,90 0,1,1 -180,0"
+        android:fillColor="#FFF8E1"/>
+
+    <!-- Sacred book/manuscript -->
+    <path
+        android:pathData="M60,60 L140,60 L140,140 L60,140 Z"
+        android:fillColor="#FF6B35"/>
+
+    <!-- Book pages -->
+    <path
+        android:pathData="M65,65 L135,65 L135,135 L65,135 Z"
+        android:fillColor="#FFF3E0"/>
+
+    <!-- Page lines (text) -->
+    <path
+        android:pathData="M75,75 L125,75"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+    <path
+        android:pathData="M75,85 L125,85"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+    <path
+        android:pathData="M75,95 L125,95"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+    <path
+        android:pathData="M75,105 L115,105"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+
+    <!-- OM symbol in center -->
+    <path
+        android:pathData="M100,115 m-12,0 a12,12 0,1,1 24,0 a12,12 0,1,1 -24,0"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2.5"/>
+    <path
+        android:pathData="M88,115 L112,115 M100,103 L100,127"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+    <path
+        android:pathData="M95,110 Q100,108 105,110"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+
+    <!-- Decorative corner embellishments -->
+    <path
+        android:pathData="M62,62 L68,62 L62,68 Z"
+        android:fillColor="#FFD700"/>
+    <path
+        android:pathData="M138,62 L132,62 L138,68 Z"
+        android:fillColor="#FFD700"/>
+    <path
+        android:pathData="M62,138 L68,138 L62,132 Z"
+        android:fillColor="#FFD700"/>
+    <path
+        android:pathData="M138,138 L132,138 L138,132 Z"
+        android:fillColor="#FFD700"/>
+
+    <!-- Bookmark ribbon -->
+    <path
+        android:pathData="M100,60 L100,145 L95,140 L100,145 L105,140 Z"
+        android:fillColor="#E91E63"/>
+
+    <!-- Flame/light above book -->
+    <path
+        android:pathData="M100,45 L95,55 L100,50 L105,55 Z"
+        android:fillColor="#FFEB3B"/>
+</vector>

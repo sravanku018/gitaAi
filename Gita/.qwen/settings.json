@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.\\gradlew.bat *)",
+      "Bash(select-string *)",
+      "Bash(select-object *)"
+    ]
+  },
+  "$version": 3
+}
