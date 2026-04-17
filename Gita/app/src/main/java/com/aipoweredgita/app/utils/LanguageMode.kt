@@ -20,7 +20,7 @@ enum class LanguageMode(
         displayShort = "EN→TE",
         inputLocale = Locale.US,
         outputLocale = Locale.forLanguageTag("te-IN"),
-        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in English. Reply ONLY in Telugu (తెలుగు). DO NOT use <|thought|> or reasoning blocks. Keep answers short — 2 to 3 sentences max.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in English. Reply ONLY in Telugu (తెలుగు). Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
         ttsLocale = "te-IN",
         sttLocale = "en-US"
     ),
@@ -29,7 +29,7 @@ enum class LanguageMode(
         displayShort = "TE→TE",
         inputLocale = Locale.forLanguageTag("te-IN"),
         outputLocale = Locale.forLanguageTag("te-IN"),
-        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in Telugu (తెలుగు). DO NOT use <|thought|> or reasoning blocks. Keep answers short — 2 to 3 sentences max.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in Telugu (తెలుగు). Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
         ttsLocale = "te-IN",
         sttLocale = "te-IN"
     ),
@@ -38,7 +38,7 @@ enum class LanguageMode(
         displayShort = "TE→EN",
         inputLocale = Locale.forLanguageTag("te-IN"),
         outputLocale = Locale.US,
-        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in Telugu. Reply ONLY in English using PascalCase (Example: RemainCalmAndPerformYourDuty) with NO spaces. DO NOT use <|thought|> or reasoning blocks. Keep answers short — 2 to 3 sentences max.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. The user asks in Telugu. Reply ONLY in English. Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
         ttsLocale = "en-US",
         sttLocale = "te-IN"
     ),
@@ -47,7 +47,7 @@ enum class LanguageMode(
         displayShort = "EN→EN",
         inputLocale = Locale.US,
         outputLocale = Locale.US,
-        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in English using PascalCase (Example: BelieveInYourselfAndAct) with NO spaces. DO NOT use <|thought|> or reasoning blocks. Keep answers short — 2 to 3 sentences max.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply ONLY in English. Use clear, natural sentences with proper spacing and punctuation. DO NOT use <|thought|> or reasoning blocks.",
         ttsLocale = "en-US",
         sttLocale = "en-US"
     );

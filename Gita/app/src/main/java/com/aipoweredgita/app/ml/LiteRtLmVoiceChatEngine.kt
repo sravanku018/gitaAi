@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
@@ -45,15 +46,12 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         // Needs headroom for system instruction + conversation history + response
         private const val MAX_TOKENS = 8192
 
-        // FIX 2: prompt కి reasonable limit — 1200
-        private const val MAX_PROMPT_CHARS = 1200
+        // FIX 2: prompt కి reasonable limit — 3000
+        private const val MAX_PROMPT_CHARS = 3000
 
         private const val DEFAULT_INSTRUCTION =
             "<|think|>\nYou are Krishna from the Bhagavad Gita. " +
-                    "Speak in short, clear, human-like sentences. " +
-                    "Always use proper spaces between words. " +
-                    "Never join words together or use camelCase. " +
-                    "Use correct punctuation and spacing. " +
+                    "Speak in clear, human-like sentences with proper spacing and punctuation. " +
                     "If Telugu mode, use Telugu. If English mode, use English."
 
         private val thinkingRegex = Regex("<\\|channel>thought.*<channel\\|>", RegexOption.DOT_MATCHES_ALL)
@@ -124,31 +122,39 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         val response = StringBuilder()
 
         return@withLock try {
-            conversation!!.sendMessageAsync(formattedPrompt)
-                .catch { throw it }
-                .collect { message ->
-                    val chunk = message.toString()
-                    if (chunk.isNotEmpty()) {
-                        response.append(chunk)
-                        val fullSoFar = response.toString()
-                        
-                        // NEW: Only start showing text AFTER thinking block is closed
-                        if (fullSoFar.contains("<channel|>")) {
-                            val answerPart = fullSoFar.substringAfter("<channel|>")
-                            
-                            val cleanText = answerPart
-                                .replace("\n", " ")
-                                .replace("\\s+".toRegex(), " ")
-                                .replace(" ,", ",")
-                                .replace(" .", ".")
-                                .replace(" ?", "?")
-                                .replace(" !", "!")
-                                .trim()
-                                
-                            onPartial?.invoke(cleanText)
+            val completed = withTimeoutOrNull(120_000) {
+                conversation!!.sendMessageAsync(formattedPrompt)
+                    .catch { throw it }
+                    .collect { message ->
+                        val chunk = message.toString()
+                        if (chunk.isNotEmpty()) {
+                            response.append(chunk)
+                            val fullSoFar = response.toString()
+
+                            // Only start showing text AFTER thinking block is closed
+                            if (fullSoFar.contains("<channel|>")) {
+                                val answerPart = fullSoFar.substringAfter("<channel|>")
+
+                                val cleanText = answerPart
+                                    .replace("\n", " ")
+                                    .replace("\\s+".toRegex(), " ")
+                                    .replace(" ,", ",")
+                                    .replace(" .", ".")
+                                    .replace(" ?", "?")
+                                    .replace(" !", "!")
+                                    .trim()
+
+                                onPartial?.invoke(cleanText)
+                            }
                         }
                     }
-                }
+            }
+
+            if (completed == null) {
+                Log.w(TAG, "Voice chat generation timed out — forcing stop")
+                stopResponse()
+                onPartial?.invoke(" (response was cut short)")
+            }
 
             // Fallback: If thinking never formally closed (rare), strip it via regex
             if (response.isNotEmpty() && !response.contains("<channel|>")) {
@@ -161,15 +167,11 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                     .replace(" ?", "?")
                     .replace(" !", "!")
                     .trim()
-                
+
                 if (fallbackText.isNotEmpty()) {
                     onPartial?.invoke(fallbackText)
                 }
             }
-
-            // PROACTIVE CLEANUP: Immediately stop any lingering model processing 
-            // once we have our raw accumulated text.
-            stopResponse()
 
             val rawFinal = response.toString()
             val finalAnswer = rawFinal.substringAfter("<channel|>", rawFinal)
