@@ -62,7 +62,7 @@ fun MainScreen(
                     },
                     onNavigateToRead = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.NormalMode.route)
+                        navController.navigate(Screen.ChapterSelection.route)
                     },
                     onNavigateToQuiz = {
                         scope.launch { drawerState.close() }
@@ -176,8 +176,8 @@ fun BottomNavigationBar(
             label = { Text("Home") }
         )
         NavigationBarItem(
-            selected = currentRoute == Screen.NormalMode.route,
-            onClick = { onNavigate(Screen.NormalMode.route) },
+            selected = currentRoute == Screen.ChapterSelection.route || currentRoute?.startsWith("normal_mode") == true,
+            onClick = { onNavigate(Screen.ChapterSelection.route) },
             icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
             label = { Text("Read") }
         )

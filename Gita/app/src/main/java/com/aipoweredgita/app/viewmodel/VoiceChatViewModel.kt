@@ -102,17 +102,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     // ─── Text Spacing Fix ──────────────────────────────────────────────────────
     private fun fixSpacing(text: String): String {
-        if (text.isBlank()) return text
-        return text
-            .replace("\n", " ")
-            .replace("\\s+".toRegex(), " ")
-            .replace(" ,", ",")
-            .replace(" .", ".")
-            .replace(" ?", "?")
-            .replace(" !", "!")
-            // Fix camelCase tokens by inserting spaces between lowercase->uppercase
-            .replace(Regex("([a-z])([A-Z])"), "$1 $2")
-            .trim()
+        return com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(text)
     }
 
     // ─── Init & Model ──────────────────────────────────────────────────────────
@@ -194,13 +184,15 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(userInput = input) }
     }
 
+    private var lastUpdate = 0L
+
     fun sendMessage(text: String? = null) {
         val messageText = text ?: _state.value.userInput
         if (messageText.isBlank()) return
 
         // Crash loop protection
-        val now = System.currentTimeMillis()
-        if (now - lastCrashTime > 60_000) crashCount = 0 // Reset after 60s of stability
+        val nowTime = System.currentTimeMillis()
+        if (nowTime - lastCrashTime > 60_000) crashCount = 0 // Reset after 60s of stability
         if (crashCount >= MAX_CRASHES) {
             _state.update { it.copy(
                 error = "Voice chat crashed too many times. Please restart the app.",
@@ -221,37 +213,45 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
         aiScope.launch {
             try {
+                // Batch setup outside the time-critical locked section
+                val aiMessageId = UUID.randomUUID().toString()
+                withContext(Dispatchers.Main) {
+                    _state.update { s ->
+                        s.copy(messages = s.messages + ChatMessage(id = aiMessageId, text = "", isUser = false))
+                    }
+                }
+
                 AiTurnManager.mutex.withLock {
                     stopAll()
-
-                    val aiMessageId = UUID.randomUUID().toString()
-
-                    withContext(Dispatchers.Main) {
-                        _state.update { s ->
-                            s.copy(messages = s.messages + ChatMessage(id = aiMessageId, text = "", isUser = false))
-                        }
-                    }
-
+                    
+                    // Throttled streaming to prevent Main Thread choking
                     voiceChatEngine.sendMessage(
                         prompt = messageText,
                         onPartial = { partial ->
-                            viewModelScope.launch(Dispatchers.Main) {
-                                _state.update { s ->
-                                    val updated = s.messages.map { m ->
-                                        if (m.id == aiMessageId) m.copy(text = fixSpacing(partial)) else m
+                            val now = System.currentTimeMillis()
+                            if (now - lastUpdate > 64) { // Update ~15fps for smooth UI without choking
+                                lastUpdate = now
+                                viewModelScope.launch(Dispatchers.Main) {
+                                    _state.update { s ->
+                                        val updated = s.messages.map { m ->
+                                            if (m.id == aiMessageId) m.copy(text = partial) else m
+                                        }
+                                        s.copy(messages = updated)
                                     }
-                                    s.copy(messages = updated)
                                 }
                             }
                         },
                         onCleaned = { deepCleaned ->
                             viewModelScope.launch(Dispatchers.Main) {
-                                _state.update { it.copy(isThinking = false) }
+                                // Batch final state updates
                                 _state.update { s ->
                                     val updated = s.messages.map { m ->
                                         if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
                                     }
-                                    s.copy(messages = updated)
+                                    s.copy(
+                                        messages = updated,
+                                        isThinking = false
+                                    )
                                 }
 
                                 saveMessage(ChatMessage(id = aiMessageId, text = deepCleaned, isUser = false))

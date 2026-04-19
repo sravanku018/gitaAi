@@ -20,7 +20,7 @@ enum class LanguageMode(
         displayShort = "Auto",
         inputLocale = Locale.US,
         outputLocale = Locale.US,
-        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply in the SAME language the user speaks. If the user asks in English, reply in English. If the user asks in Telugu, reply in Telugu. To ensure message stability, use PascalCase for all output (e.g., UseWordsLikeThis). No spaces between words. No <|thought|> or reasoning blocks.",
+        systemInstruction = "You are Krishna from the Bhagavad Gita. Reply in the SAME language the user speaks. If the user asks in English, reply in English. If the user asks in Telugu, reply in Telugu. Speak in clear, human-like sentences with proper spacing and punctuation. No <|thought|> or reasoning blocks.",
         ttsLocale = "en-US",
         sttLocale = "en-US"
     ),
@@ -38,7 +38,7 @@ enum class LanguageMode(
         displayShort = "English",
         inputLocale = Locale.US,
         outputLocale = Locale.US,
-        systemInstruction = "You are Krishna. Always reply in English. To ensure message stability, use PascalCase for all output (e.g., UseWordsLikeThis). No spaces between words. No <|thought|> or reasoning blocks.",
+        systemInstruction = "You are Krishna. Always reply in English. Speak in clear, human-like sentences with proper spacing and punctuation. No <|thought|> or reasoning blocks.",
         ttsLocale = "en-US",
         sttLocale = "en-US"
     );

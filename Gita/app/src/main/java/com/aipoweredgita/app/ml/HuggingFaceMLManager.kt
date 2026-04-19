@@ -16,7 +16,7 @@ class HuggingFaceMLManager(private val context: Context) {
     private val TAG = "HuggingFaceML"
     private val gson = Gson()
     private val engine by lazy { ModelInferenceEngine(context) }
-    private val llmEngine by lazy { LlmInferenceEngine(context) }
+    private val voiceChatEngine by lazy { LiteRtLmVoiceChatEngine(context) }
     private var isLlmReady = false
     
     /** Public accessor for LLM readiness */
@@ -25,7 +25,7 @@ class HuggingFaceMLManager(private val context: Context) {
     /** Release ML resources */
     fun close() {
         engine.close()
-        llmEngine.close()
+        voiceChatEngine.close()
     }
 
 
@@ -193,7 +193,7 @@ class HuggingFaceMLManager(private val context: Context) {
 
             if (modelPath != null) {
                 Log.d(TAG, "Attempting to initialize LLM...")
-                isLlmReady = llmEngine.initialize(modelPath)
+                isLlmReady = voiceChatEngine.initialize(modelPath)
                 Log.d(TAG, "LLM initialization result: $isLlmReady")
             } else {
                 Log.w(TAG, "No models found. Please download from Settings > Manage AI Models")
@@ -584,7 +584,7 @@ class HuggingFaceMLManager(private val context: Context) {
             translation = verseTranslation
         )
 
-        val response = llmEngine.generateResponse(prompt)
+        val response = voiceChatEngine.sendMessage(prompt)
         Log.d(TAG, "LLM quiz response: ${response.take(200)}...")
         
         // Try strict JSON parse first
