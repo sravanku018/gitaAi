@@ -51,12 +51,19 @@
 -keep class kotlinx.coroutines.** { *; }
 -dontwarn kotlinx.coroutines.**
 
+# LiteRT / TensorFlow Lite
+-keep class com.google.ai.edge.litertlm.** { *; }
+-keep interface com.google.ai.edge.litertlm.** { *; }
+-keepclassmembers class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
+
 # App specific models and entities
 -keep class com.aipoweredgita.app.data.** { *; }
 -keep class com.aipoweredgita.app.database.** { *; }
 -keep class com.aipoweredgita.app.ml.** { *; }
 -keep class com.aipoweredgita.app.network.** { *; }
 -keep class com.aipoweredgita.app.repository.** { *; }
+-keep class com.aipoweredgita.app.util.TextUtils { *; }
 
 # Keep ViewModels
 -keep class com.aipoweredgita.app.viewmodel.** extends androidx.lifecycle.ViewModel { *; }

@@ -273,7 +273,7 @@ fun DashboardScreen(
                             when (nextStep) {
                                 "Read" -> Button(onClick = onNavigateToNormalMode) { Text("Start Reading") }
                                 "Quiz" -> Button(onClick = onNavigateToQuizMode) { Text("Start Quiz") }
-                                "Studio" -> Button(onClick = onNavigateToVoiceStudio) { Text("Voice Studio") }
+                                "Studio" -> Button(onClick = onNavigateToVoiceStudio) { Text("ప్రశ్న సమాధానం") }
                             }
                         }
                     }
@@ -482,7 +482,7 @@ fun DashboardScreen(
         item {
             AnimatedItem(index = 8) {
                 PremiumDashboardCard(
-                    title = "Voice Studio",
+                    title = "ప్రశ్న సమాధానం",
                     description = "Chat & Quiz with AI Wisdom",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Mic, contentDescription = "Voice Studio", tint = Color.White) },
                     gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
