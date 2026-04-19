@@ -44,10 +44,10 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         private const val TAG = "LiteRtLmVoiceChat"
 
         // Needs headroom for system instruction + conversation history + response
-        private const val MAX_TOKENS = 8192
+        private const val MAX_TOKENS =  8500
 
-        // FIX 2: prompt కి reasonable limit — 3000
-        private const val MAX_PROMPT_CHARS = 3000
+        // FIX 2: prompt కి reasonable limit — 4000
+        private const val MAX_PROMPT_CHARS = 3200
 
         private const val DEFAULT_INSTRUCTION =
             "<|think|>\nYou are Krishna from the Bhagavad Gita. " +
@@ -79,16 +79,16 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
             conversation = newEngine.createConversation(
                 ConversationConfig(
                     samplerConfig = SamplerConfig(
-                        topK = 64,
-                        topP = 0.95,
-                        temperature = 1.0 // REQUIRED for Gemma 4
+                        topK = 30,
+                        topP = 0.9,
+                        temperature = 0.9//REQUIRED for Gemma 4
                     )
                 )
             )
 
             isInitialized = true
             modelPath = path
-            Log.d(TAG, "LiteRT-LM initialized successfully (8192 tokens)")
+            Log.d(TAG, "LiteRT-LM initialized successfully ($maxTokens tokens)")
             true
         } catch (e: Exception) {
             Log.e(TAG, "LiteRT-LM init failed", e)
@@ -122,7 +122,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         val response = StringBuilder()
 
         return@withLock try {
-            val completed = withTimeoutOrNull(120_000) {
+            val completed = withTimeoutOrNull(240_000) {
                 conversation!!.sendMessageAsync(formattedPrompt)
                     .catch { throw it }
                     .collect { message ->
