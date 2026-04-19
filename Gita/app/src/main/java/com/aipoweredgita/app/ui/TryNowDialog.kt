@@ -45,7 +45,6 @@ import kotlinx.coroutines.withContext
 // Premium color palette
 private val GradientSaffron = Color(0xFFFF8F00)
 private val GradientAmber = Color(0xFFFFC107)
-private val DeepBrown = Color(0xFF3E2723)
 
 @Composable
 fun TryNowDialog(
@@ -112,7 +111,7 @@ fun TryNowDialog(
                     "Download AI Engine",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = DeepBrown
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
@@ -121,7 +120,7 @@ fun TryNowDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isOnWiFi) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                    color = if (isOnWiFi) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -131,14 +130,15 @@ fun TryNowDialog(
                         Icon(
                             imageVector = if (isOnWiFi) Icons.Default.NetworkWifi else Icons.Default.NetworkCell,
                             contentDescription = null,
-                            tint = if (isOnWiFi) Color(0xFF2E7D32) else GradientSaffron,
+                            tint = if (isOnWiFi) MaterialTheme.colorScheme.primary else GradientSaffron,
                             modifier = Modifier.size(20.dp)
                         )
+                        val sizeText = if (remainingBytes > 0) " (${remainingBytes / (1024 * 1024)} MB)" else ""
                         Text(
-                            text = if (isOnWiFi) "Connected to WiFi" else "Using Mobile Data (${remainingBytes / (1024 * 1024)} MB)",
+                            text = if (isOnWiFi) "Connected to WiFi" else "Using Mobile Data$sizeText",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isOnWiFi) Color(0xFF2E7D32) else DeepBrown
+                            color = if (isOnWiFi) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -149,7 +149,7 @@ fun TryNowDialog(
                             "Download Progress: $overallProgress%",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = DeepBrown
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         LinearProgressIndicator(
                             progress = { overallProgress / 100f },
@@ -158,12 +158,12 @@ fun TryNowDialog(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = GradientSaffron,
-                            trackColor = Color(0xFFFFECB3)
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         Text(
                             "Remaining: ${remainingBytes / (1024 * 1024)} MB",
                             style = MaterialTheme.typography.bodySmall,
-                            color = DeepBrown.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                         if (currentModel.isNotEmpty()) {
                             Row(
@@ -181,20 +181,20 @@ fun TryNowDialog(
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
                                 color = GradientSaffron,
-                                trackColor = Color(0xFFFFECB3)
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
                         if (isDownloadingInBackground) {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                color = Color(0xFFE3F2FD),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
                                     "✓ Downloading in background. You can minimize the app and continue using other features.",
                                     modifier = Modifier.padding(12.dp),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF1565C0)
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
@@ -205,28 +205,28 @@ fun TryNowDialog(
                             "Gemma 4 2B - Voice AI Engine (2.58 GB)",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = DeepBrown
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
-                            Text("✓ Voice Chat — ask questions in Telugu/English", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                            Text("✓ Studio Quiz — hands-free quiz in your language", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                            Text("✓ Smart context-aware questions", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                            Text("✓ 100% offline & private", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
+                            Text("✓ Voice Chat — ask questions in Telugu/English", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                            Text("✓ Studio Quiz — hands-free quiz in your language", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                            Text("✓ Smart context-aware questions", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                            Text("✓ 100% offline & private", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         }
                         if (isOnMobileData) {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                color = Color(0xFFFFF3E0),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    "⚠️ You're on mobile data. Download will continue in background even if you minimize the app.",
+                                    "You're on mobile data. Download will continue in background even if you minimize the app.",
                                     modifier = Modifier.padding(12.dp),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFFE65100)
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
                         }
@@ -262,7 +262,7 @@ fun TryNowDialog(
                         onDismiss()
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
                 ) {
                     Text("Continue in Background", fontWeight = FontWeight.Medium)
@@ -272,11 +272,11 @@ fun TryNowDialog(
         dismissButton = {
             if (!isDownloading) {
                 TextButton(onClick = onDismiss) {
-                    Text("Not Now", color = DeepBrown.copy(alpha = 0.6f))
+                    Text("Not Now", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
         },
-        containerColor = Color.White.copy(alpha = 0.95f),
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
 }
@@ -292,26 +292,26 @@ private fun MobileDataConfirmationDialog(
     AlertDialog(
         onDismissRequest = onCancel,
         icon = {
-            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFF9800))
+            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
         },
         title = {
-            Text("Mobile Data Download", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = DeepBrown)
+            Text("Mobile Data Download", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "You're about to download the AI engine (${2580 / 1024} GB) on mobile data.",
+                    "You're about to download the AI engine (2.58 GB) on mobile data.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = DeepBrown
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (cellularGen != null) {
-                    Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)) {
                         Text(
                             "Network: ${if (cellularGen == NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1565C0)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -319,10 +319,10 @@ private fun MobileDataConfirmationDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
-                    Text("✓ Download continues in background", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                    Text("✓ Works even if you minimize the app", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                    Text("✓ Persistent notification shows progress", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
-                    Text("✓ Resumes automatically if interrupted", fontSize = 13.sp, color = DeepBrown.copy(alpha = 0.7f))
+                    Text("✓ Download continues in background", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("✓ Works even if you minimize the app", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("✓ Persistent notification shows progress", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    Text("✓ Resumes automatically if interrupted", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 }
             }
         },
@@ -332,9 +332,9 @@ private fun MobileDataConfirmationDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) { Text("Cancel", color = DeepBrown.copy(alpha = 0.6f)) }
+            TextButton(onClick = onCancel) { Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
         },
-        containerColor = Color.White.copy(alpha = 0.95f),
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
 }

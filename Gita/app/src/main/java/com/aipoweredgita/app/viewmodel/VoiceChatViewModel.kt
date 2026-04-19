@@ -47,8 +47,18 @@ data class VoiceChatState(
     val liveTranscript: String = "",
     val userInput: String = "",
     val isLlmReady: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val errorType: VoiceChatErrorType? = null
 )
+
+enum class VoiceChatErrorType {
+    MODEL_INIT,
+    LLM_INFERENCE,
+    STT,
+    TTS,
+    NETWORK,
+    CRASH_RECOVERY
+}
 
 class VoiceChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -70,10 +80,24 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     private var startTime: Long = 0
 
+    /** Crash recovery counter — prevents infinite crash loops */
+    private var crashCount = 0
+    private val MAX_CRASHES = 3
+    private var lastCrashTime = 0L
+
     init {
+        setupVoiceManagerErrorForwarding()
         loadMessages()
         observeModelChanges()
         refreshModelStatus()
+    }
+
+    private fun setupVoiceManagerErrorForwarding() {
+        voiceManager.onError = { errorMsg ->
+            viewModelScope.launch(Dispatchers.Main) {
+                _state.update { it.copy(error = errorMsg, errorType = VoiceChatErrorType.TTS) }
+            }
+        }
     }
 
     // ─── Text Spacing Fix ──────────────────────────────────────────────────────
@@ -117,28 +141,50 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun refreshModelStatus() {
         val context = getApplication<Application>()
-        val ma = ModelAvailability.getInstance(context)
-        val modelPath = ma.getResolvedModelPath(AppFeature.VOICE)
+        try {
+            val ma = ModelAvailability.getInstance(context)
+            val modelPath = ma.getResolvedModelPath(AppFeature.VOICE)
 
-        if (modelPath != null) {
-            aiScope.launch {
-                initMutex.withLock {
-                    val success = voiceChatEngine.initialize(modelPath)
-                    if (success) {
-                        voiceChatEngine.updateSystemInstruction(currentLanguageMode.systemInstruction)
-                    }
-                    withContext(Dispatchers.Main) {
-                        _state.update {
-                            it.copy(
-                                isLlmReady = success,
-                                error = if (!success) "Failed to initialize AI model" else null
-                            )
+            if (modelPath != null) {
+                aiScope.launch {
+                    initMutex.withLock {
+                        try {
+                            val success = voiceChatEngine.initialize(modelPath)
+                            if (success) {
+                                voiceChatEngine.updateSystemInstruction(currentLanguageMode.systemInstruction)
+                                crashCount = 0 // Reset on successful init
+                            }
+                            withContext(Dispatchers.Main) {
+                                _state.update {
+                                    it.copy(
+                                        isLlmReady = success,
+                                        error = if (!success) "Failed to initialize AI model" else null,
+                                        errorType = if (!success) VoiceChatErrorType.MODEL_INIT else null
+                                    )
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Model init crashed", e)
+                            withContext(Dispatchers.Main) {
+                                _state.update { it.copy(
+                                    isLlmReady = false,
+                                    error = "Model initialization failed: ${e.message ?: "Unknown"}",
+                                    errorType = VoiceChatErrorType.MODEL_INIT
+                                )}
+                            }
                         }
                     }
                 }
+            } else {
+                _state.update { it.copy(isLlmReady = false) }
             }
-        } else {
-            _state.update { it.copy(isLlmReady = false) }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to check model status", e)
+            _state.update { it.copy(
+                isLlmReady = false,
+                error = "Could not check model status",
+                errorType = VoiceChatErrorType.MODEL_INIT
+            )}
         }
     }
 
@@ -152,61 +198,95 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         val messageText = text ?: _state.value.userInput
         if (messageText.isBlank()) return
 
+        // Crash loop protection
+        val now = System.currentTimeMillis()
+        if (now - lastCrashTime > 60_000) crashCount = 0 // Reset after 60s of stability
+        if (crashCount >= MAX_CRASHES) {
+            _state.update { it.copy(
+                error = "Voice chat crashed too many times. Please restart the app.",
+                errorType = VoiceChatErrorType.CRASH_RECOVERY,
+                isThinking = false
+            )}
+            return
+        }
+
         if (text == null) {
-            _state.update { it.copy(userInput = "") }
+            _state.update { it.copy(userInput = "", error = null, errorType = null) }
         }
 
         val userMessage = ChatMessage(text = messageText, isUser = true)
-        _state.update { it.copy(messages = it.messages + userMessage) }
+        _state.update { it.copy(messages = it.messages + userMessage, error = null, errorType = null) }
         saveMessage(userMessage)
         _state.update { it.copy(isThinking = true) }
 
         aiScope.launch {
-            AiTurnManager.mutex.withLock {
-                stopAll()
+            try {
+                AiTurnManager.mutex.withLock {
+                    stopAll()
 
-                val aiMessageId = UUID.randomUUID().toString()
+                    val aiMessageId = UUID.randomUUID().toString()
 
-                withContext(Dispatchers.Main) {
-                    _state.update { s ->
-                        s.copy(messages = s.messages + ChatMessage(id = aiMessageId, text = "", isUser = false))
+                    withContext(Dispatchers.Main) {
+                        _state.update { s ->
+                            s.copy(messages = s.messages + ChatMessage(id = aiMessageId, text = "", isUser = false))
+                        }
                     }
+
+                    voiceChatEngine.sendMessage(
+                        prompt = messageText,
+                        onPartial = { partial ->
+                            viewModelScope.launch(Dispatchers.Main) {
+                                _state.update { s ->
+                                    val updated = s.messages.map { m ->
+                                        if (m.id == aiMessageId) m.copy(text = fixSpacing(partial)) else m
+                                    }
+                                    s.copy(messages = updated)
+                                }
+                            }
+                        },
+                        onCleaned = { deepCleaned ->
+                            viewModelScope.launch(Dispatchers.Main) {
+                                _state.update { it.copy(isThinking = false) }
+                                _state.update { s ->
+                                    val updated = s.messages.map { m ->
+                                        if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
+                                    }
+                                    s.copy(messages = updated)
+                                }
+
+                                saveMessage(ChatMessage(id = aiMessageId, text = deepCleaned, isUser = false))
+
+                                try {
+                                    speakResponse(deepCleaned)
+                                } catch (e: Exception) {
+                                    Log.e(tag, "TTS failed after cleanup", e)
+                                    _state.update { it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS) }
+                                }
+                            }
+                        }
+                    )
                 }
-
-                // THE STRICT SEQUENTIAL PROCESS:
-                // 1. CATCHING (Stream raw partials to screen for speed)
-                voiceChatEngine.sendMessage(
-                    prompt = messageText,
-                    onPartial = { partial ->
-                        viewModelScope.launch(Dispatchers.Main) {
-                            _state.update { s ->
-                                val updated = s.messages.map { m ->
-                                    if (m.id == aiMessageId) m.copy(text = fixSpacing(partial)) else m
-                                }
-                                s.copy(messages = updated)
-                            }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                crashCount++
+                lastCrashTime = System.currentTimeMillis()
+                Log.e(tag, "Voice chat crash #$crashCount", e)
+                withContext(Dispatchers.Main) {
+                    _state.update { it.copy(
+                        isThinking = false,
+                        error = when (e) {
+                            is java.io.IOException -> "Network error — check connection"
+                            is IllegalStateException -> "Model error — try restarting chat"
+                            else -> "Something went wrong: ${e.message ?: "Unknown error"}"
+                        },
+                        errorType = when (e) {
+                            is java.io.IOException -> VoiceChatErrorType.NETWORK
+                            is IllegalStateException -> VoiceChatErrorType.LLM_INFERENCE
+                            else -> VoiceChatErrorType.CRASH_RECOVERY
                         }
-                    },
-                    onCleaned = { deepCleaned ->
-                        // 2. SORTING (Background Deep Clean finished)
-                        // 3. TTS (Only after sorting is done)
-                        viewModelScope.launch(Dispatchers.Main) {
-                            _state.update { it.copy(isThinking = false) }
-                            _state.update { s ->
-                                val updated = s.messages.map { m ->
-                                    if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
-                                }
-                                s.copy(messages = updated)
-                            }
-                            
-                            // Save the final cleaned version
-                            saveMessage(ChatMessage(id = aiMessageId, text = deepCleaned, isUser = false))
-                            
-                            // Step 3: TTS
-                            speakResponse(deepCleaned)
-                        }
-                    }
-                )
+                    )}
+                }
             }
         }
     }
@@ -238,20 +318,25 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun startListening() {
         stopAll()
-        _state.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "") }
+        _state.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", error = null, errorType = null) }
 
-        voiceManager.startListening(
-            onResult = { result ->
-                _state.update { it.copy(isListening = false, liveTranscript = "") }
-                if (result.isNotBlank()) sendMessage(result)
-            },
-            onPartialResult = { partial ->
-                _state.update { it.copy(liveTranscript = partial) }
-            },
-            onError = { err ->
-                _state.update { it.copy(isListening = false, error = "Speech error: $err") }
-            }
-        )
+        try {
+            voiceManager.startListening(
+                onResult = { result ->
+                    _state.update { it.copy(isListening = false, liveTranscript = "") }
+                    if (result.isNotBlank()) sendMessage(result)
+                },
+                onPartialResult = { partial ->
+                    _state.update { it.copy(liveTranscript = partial) }
+                },
+                onError = { err ->
+                    _state.update { it.copy(isListening = false, error = err, errorType = VoiceChatErrorType.STT) }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to start listening", e)
+            _state.update { it.copy(isListening = false, error = "Failed to start voice input", errorType = VoiceChatErrorType.STT) }
+        }
     }
 
     fun stopListening() {
@@ -267,10 +352,14 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun stopAll() {
-        voiceChatEngine.stopResponse()
-        voiceManager.stopSpeaking()
-        voiceManager.stopListening()
+        try { voiceChatEngine.stopResponse() } catch (_: Exception) {}
+        try { voiceManager.stopSpeaking() } catch (_: Exception) {}
+        try { voiceManager.stopListening() } catch (_: Exception) {}
         _state.update { it.copy(isSpeaking = false, isListening = false, isThinking = false) }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(error = null, errorType = null) }
     }
 
     fun stopSpeaking() {
@@ -299,12 +388,12 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override fun onCleared() {
-        onStopSession()
+        try { onStopSession() } catch (_: Exception) {}
+        try { aiScope.cancel() } catch (_: Exception) {}
+        try { stopAll() } catch (_: Exception) {}
+        try { voiceChatEngine.close() } catch (_: Exception) {}
+        try { voiceManager.destroy() } catch (_: Exception) {}
         super.onCleared()
-        aiScope.cancel()
-        stopAll()
-        voiceChatEngine.close()
-        voiceManager.destroy()
     }
 
     // ─── Language Mode ────────────────────────────────────────────────────────

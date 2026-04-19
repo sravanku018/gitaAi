@@ -370,7 +370,7 @@ fun SettingsScreen(
                     Text(datasetImportProgress, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
                 if (importSuccess == true) {
-                    Text("✓ Questions imported successfully!", style = MaterialTheme.typography.bodySmall, color = Color(0xFF10B981))
+                    Text("✓ Questions imported successfully!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     LaunchedEffect(Unit) {
                         hasQuestions = true
                     }
@@ -414,16 +414,19 @@ fun SettingsScreen(
                                     }
                                 }
                             },
-                            enabled = !isImportingDataset
+                            enabled = !isImportingDataset,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
                         ) {
                             Text(if (isImportingDataset) "Importing..." else "Import 3,500+ Questions")
                         }
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("All questions imported", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF10B981), fontWeight = FontWeight.Medium)
+                        Text("All questions imported", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -449,9 +452,9 @@ fun HardwareSpecsCard(context: android.content.Context) {
             SpecRow("OS", DeviceUtils.getAndroidVersion())
             val category = DeviceUtils.getDeviceCategory(context)
             val categoryColor = when(category) {
-                DeviceConfigCategory.HIGH -> Color(0xFF10B981)
-                DeviceConfigCategory.MEDIUM -> Color(0xFFF59E0B)
-                DeviceConfigCategory.LOW -> Color(0xFFEF4444)
+                DeviceConfigCategory.HIGH -> MaterialTheme.colorScheme.primary
+                DeviceConfigCategory.MEDIUM -> MaterialTheme.colorScheme.secondary
+                DeviceConfigCategory.LOW -> MaterialTheme.colorScheme.error
             }
             Spacer(modifier = Modifier.height(8.dp))
             Surface(color = categoryColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = androidx.compose.foundation.BorderStroke(1.dp, categoryColor.copy(alpha = 0.3f))) {

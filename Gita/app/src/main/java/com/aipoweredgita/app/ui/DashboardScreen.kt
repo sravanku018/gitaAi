@@ -82,8 +82,8 @@ fun MandalaHeroSection() {
             .background(
                 brush = Brush.horizontalGradient(
                     listOf(
-                        Color(0xFFFF6B35),
-                        Color(0xFFFF9F43)
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )
@@ -335,13 +335,13 @@ fun DashboardScreen(
                             title = "Time",
                             value = stats?.timeSpentFormatted ?: "0m",
                             icon = "⏱",
-                            color = Color(0xFFEC4899)
+                            color = MaterialTheme.colorScheme.primary
                         ),
                         StatItem(
                             title = "Streak",
                             value = "${stats?.currentStreak ?: 0} d",
                             icon = "🔥",
-                            color = Color(0xFFFF6B35)
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     )
                 )
@@ -353,23 +353,23 @@ fun DashboardScreen(
         }
 
         item {
-    AdaptiveStatRow(
-        listOf(
-            StatItem(
-                title = "Verses",
-                value = "",
-                icon = "📖",
-                color = Color(0xFF6366F1)
-            ),
-            StatItem(
-                title = "Quizzes",
-                value = "",
-                icon = "🧠",
-                color = Color(0xFF10B981)
+            AdaptiveStatRow(
+                listOf(
+                    StatItem(
+                        title = "Verses",
+                        value = "$versesToday",
+                        icon = "📖",
+                        color = MaterialTheme.colorScheme.tertiary
+                    ),
+                    StatItem(
+                        title = "Quizzes",
+                        value = "$quizzesToday",
+                        icon = "🧠",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                )
             )
-        )
-    )
-}
+        }
 
         item {
             Spacer(modifier = Modifier.height(24.dp))
@@ -446,18 +446,18 @@ fun DashboardScreen(
         }
 
         item {
-        AnimatedItem(index = 5) {
-            PremiumDashboardCard(
-                title = "Read Verses",
-                description = "Browse the sacred texts",
-                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read", tint = Color.White) },
-                gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
-                onClick = onNavigateToNormalMode,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
-        }
+            AnimatedItem(index = 5) {
+                PremiumDashboardCard(
+                    title = "Read Verses",
+                    description = "Browse the sacred texts",
+                    icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read", tint = Color.White) },
+                    gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
+                    onClick = onNavigateToNormalMode,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                )
+            }
         }
 
         item {
@@ -470,7 +470,7 @@ fun DashboardScreen(
                     title = "Take Quiz",
                     description = "Test your knowledge - Text & Voice",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz", tint = Color.White) },
-                    gradient = listOf(Color(0xFF10B981), Color(0xFF059669)),
+                    gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
                     onClick = onNavigateToQuizMode,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -485,7 +485,7 @@ fun DashboardScreen(
                     title = "Voice Studio",
                     description = "Chat & Quiz with AI Wisdom",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Mic, contentDescription = "Voice Studio", tint = Color.White) },
-                    gradient = listOf(Color(0xFFF59E0B), Color(0xFFEF4444)),
+                    gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
                     onClick = onNavigateToVoiceStudio,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -502,7 +502,7 @@ fun DashboardScreen(
                 title = "Random Sloka",
                 description = "Get inspired by a random verse",
                 icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Default.Shuffle, contentDescription = "Random", tint = Color.White) },
-                gradient = listOf(Color(0xFF8B5CF6), Color(0xFFD946EF)),
+                gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
                 onClick = onNavigateToRandomSloka,
                 modifier = Modifier.fillMaxWidth()
             )

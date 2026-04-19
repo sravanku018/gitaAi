@@ -95,42 +95,42 @@ fun HomeScreen(
             title = "Normal Mode",
             description = "Read and explore verses from the Bhagavad Gita",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
-            gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
+            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
             onClick = onNavigateToNormalMode
         ),
         ModeItem(
             title = "Daily Activity",
             description = "See where you spent time by date",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Timeline, contentDescription = "Activity") },
-            gradient = listOf(Color(0xFF3B82F6), Color(0xFF60A5FA)),
+            gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
             onClick = onNavigateToDailyActivity
         ),
         ModeItem(
             title = "Quiz Mode",
             description = "Test your knowledge with random questions",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz") },
-            gradient = listOf(Color(0xFF10B981), Color(0xFF059669)),
+            gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
             onClick = onNavigateToQuizMode
         ),
         ModeItem(
             title = "Favorites",
             description = "View and manage your saved verses",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Favorite, contentDescription = "Favorites") },
-            gradient = listOf(Color(0xFFF59E0B), Color(0xFFEF4444)),
+            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
             onClick = onNavigateToFavorites
         ),
         ModeItem(
             title = "Offline Mode",
             description = "Download all verses for offline access (~3-4 MB)",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.CloudDownload, contentDescription = "Offline") },
-            gradient = listOf(Color(0xFF8B5CF6), Color(0xFF6366F1)),
+            gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
             onClick = onNavigateToOfflineDownload
         ),
         ModeItem(
             title = "My Profile",
             description = "View your stats, achievements, and progress",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Person, contentDescription = "Profile") },
-            gradient = listOf(Color(0xFF06B6D4), Color(0xFF10B981)),
+            gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
             onClick = onNavigateToProfile
         ),
 
@@ -138,7 +138,7 @@ fun HomeScreen(
             title = "Random Sloka",
             description = "Get inspired by a random verse",
             icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Shuffle, contentDescription = "Random") },
-            gradient = listOf(Color(0xFF8B5CF6), Color(0xFFD946EF)),
+            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
             onClick = onNavigateToRandomSloka
         )
     )

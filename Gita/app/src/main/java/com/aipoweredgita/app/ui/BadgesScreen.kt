@@ -69,8 +69,8 @@ fun ProgressionHeroSection() {
             .background(
                 brush = Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF8B5CF6),
-                        Color(0xFF6366F1)
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )
@@ -81,7 +81,7 @@ fun ProgressionHeroSection() {
                 .align(Alignment.CenterEnd)
                 .size(280.dp)
                 .offset(x = 40.dp),
-            color = Color.White.copy(alpha = 0.1f)
+            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.1f)
         )
         
         MandalaBackground(
@@ -89,7 +89,7 @@ fun ProgressionHeroSection() {
                 .align(Alignment.TopStart)
                 .size(120.dp)
                 .offset(x = (-20).dp, y = (-20).dp),
-            color = Color.White.copy(alpha = 0.05f)
+            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.05f)
         )
 
         Column(
@@ -102,12 +102,12 @@ fun ProgressionHeroSection() {
                 text = "Your Journey",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onPrimary
             )
             Text(
                 text = "Ascending the steps of Yoga",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.9f)
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
             )
         }
     }
@@ -325,8 +325,8 @@ fun TimelineNode(
     }
 
     val alpha = if (status == TimelineStatus.LOCKED) 0.4f else 1f
-    // If locked, override color to gray, or just use alpha? Let's use Gray to be clear.
-    val displayColor = if (status == TimelineStatus.LOCKED) Color.Gray else color
+    // If locked, override color to gray, or just use alpha? Let's use surfaceVariant/onSurfaceVariant to be theme-aware.
+    val displayColor = if (status == TimelineStatus.LOCKED) MaterialTheme.colorScheme.outline else color
 
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
@@ -365,7 +365,7 @@ fun TimelineNode(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(Color.White)
+                            .background(MaterialTheme.colorScheme.surface)
                      )
                  }
             }
@@ -417,7 +417,9 @@ fun TimelineLevelItem(
             title = "$level. $name",
             description = if(status == TimelineStatus.LOCKED) "Locked" else description,
             icon = { Text(text = emoji, fontSize = 28.sp) },
-            gradient = if (status == TimelineStatus.LOCKED) listOf(Color.Gray, Color.DarkGray) else listOf(colorStart, colorEnd),
+            gradient = if (status == TimelineStatus.LOCKED) 
+                listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.outline) 
+                else listOf(colorStart, colorEnd),
             onClick = {},
             modifier = Modifier.fillMaxWidth()
         )
@@ -470,7 +472,7 @@ fun TimelineStepItem(
                          text = step.toString(),
                          style = MaterialTheme.typography.titleSmall,
                          fontWeight = FontWeight.Bold,
-                         color = if(status == TimelineStatus.LOCKED) Color.Gray else MaterialTheme.colorScheme.onSecondaryContainer
+                         color = if(status == TimelineStatus.LOCKED) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSecondaryContainer
                      )
                 }
                 

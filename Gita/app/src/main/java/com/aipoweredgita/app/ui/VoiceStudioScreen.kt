@@ -44,13 +44,8 @@ import com.aipoweredgita.app.viewmodel.VoiceChatViewModel
 import com.aipoweredgita.app.viewmodel.ChatMessage
 
 private val GradientSaffron = Color(0xFFFF8F00)
-private val GradientAmber = Color(0xFFFFC107)
-private val DeepBrown = Color(0xFF3E2723)
-private val WarmCreamVoice = Color(0xFFFFF8E1)
-private val SoftPeach = Color(0xFFFFECB3)
 private val UserBubbleStart = Color(0xFFFF6B35)
 private val UserBubbleEnd = Color(0xFFFF9F43)
-private val AiBubbleColor = Color(0xFFFFF3E0)
 private val ListeningRed = Color(0xFFFF5722)
 private val ThinkingPurple = Color(0xFF7C4DFF)
 
@@ -102,9 +97,7 @@ fun VoiceStudioScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().background(
-            Brush.verticalGradient(colors = listOf(WarmCreamVoice, SoftPeach, Color(0xFFFFCCBC)))
-        )
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -113,11 +106,11 @@ fun VoiceStudioScreen(
         ) {
             IconButton(
                 onClick = onExit,
-                modifier = Modifier.background(Color.White.copy(alpha = 0.5f), CircleShape).size(40.dp)
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape).size(40.dp)
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Back", tint = DeepBrown)
+                Icon(Icons.Default.Close, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
             }
-            Text("Voice Studio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = DeepBrown)
+            Text("Voice Studio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
             Spacer(modifier = Modifier.size(40.dp))
         }
 
@@ -131,11 +124,11 @@ fun VoiceStudioScreen(
                     onClick = { saveLanguageMode(mode) },
                     modifier = Modifier.weight(1f).height(36.dp),
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) GradientSaffron else Color.White.copy(alpha = 0.5f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) GradientSaffron else Color.White.copy(alpha = 0.7f))
+                    color = if (isSelected) GradientSaffron else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) GradientSaffron else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(mode.displayShort, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (isSelected) Color.White else DeepBrown)
+                        Text(mode.displayShort, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -198,17 +191,17 @@ private fun VoiceChatTab(
                 ) {
                     Text("🙏", fontSize = 64.sp)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Gita Wisdom Chat", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = DeepBrown, textAlign = TextAlign.Center)
+                    Text("Gita Wisdom Chat", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Speak or type to ask questions about the\nBhagavad Gita, karma, dharma, and life.",
-                        style = MaterialTheme.typography.bodyLarge, color = DeepBrown.copy(alpha = 0.6f), textAlign = TextAlign.Center, lineHeight = 24.sp)
+                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), textAlign = TextAlign.Center, lineHeight = 24.sp)
                     Spacer(modifier = Modifier.height(24.dp))
                     if (!state.isLlmReady) {
                         val downloadViewModel: com.aipoweredgita.app.viewmodel.ModelDownloadViewModel = viewModel()
-                        Surface(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(12.dp)) {
+                        Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp)) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("⚠️ Download the Gemma 2B model for AI-powered responses.",
-                                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = Color(0xFFE65100), textAlign = TextAlign.Center)
+                                Text("Download the Gemma 2B model for AI-powered responses.",
+                                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer, textAlign = TextAlign.Center)
                                 var showTryNow by remember { mutableStateOf(false) }
                                 Button(onClick = { showTryNow = true },
                                     colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
@@ -232,7 +225,7 @@ private fun VoiceChatTab(
                                 onClick = { if (!isBusy) voiceChatViewModel.sendMessage(suggestion) },
                                 enabled = !isBusy,
                                 label = { Text(suggestion, fontWeight = FontWeight.Medium, fontSize = 13.sp) },
-                                colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color.White.copy(alpha = 0.7f), labelColor = DeepBrown),
+                                colors = SuggestionChipDefaults.suggestionChipColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, labelColor = MaterialTheme.colorScheme.onSurfaceVariant),
                                 shape = RoundedCornerShape(20.dp)
                             )
                         }
@@ -254,41 +247,63 @@ private fun VoiceChatTab(
         }
 
         AnimatedVisibility(visible = state.error != null, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+            val errorBgColor = when (state.errorType) {
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.CRASH_RECOVERY -> MaterialTheme.colorScheme.errorContainer
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.NETWORK -> MaterialTheme.colorScheme.tertiaryContainer
+                else -> MaterialTheme.colorScheme.errorContainer
+            }
+            val errorBorderColor = when (state.errorType) {
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.CRASH_RECOVERY -> MaterialTheme.colorScheme.error
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.NETWORK -> MaterialTheme.colorScheme.tertiary
+                else -> MaterialTheme.colorScheme.error
+            }
+            val errorTint = when (state.errorType) {
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.CRASH_RECOVERY -> MaterialTheme.colorScheme.onErrorContainer
+                com.aipoweredgita.app.viewmodel.VoiceChatErrorType.NETWORK -> MaterialTheme.colorScheme.onTertiaryContainer
+                else -> MaterialTheme.colorScheme.onErrorContainer
+            }
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                color = Color(0xFFFFEBEE), shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF5350))
+                color = errorBgColor, shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, errorBorderColor)
             ) {
                 Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Error, contentDescription = "Error", tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
-                    Text(state.error ?: "", modifier = Modifier.weight(1f).padding(horizontal = 8.dp), style = MaterialTheme.typography.bodySmall, color = Color(0xFFC62828), fontWeight = FontWeight.Medium)
+                    Icon(imageVector = Icons.Default.Error, contentDescription = "Error", tint = errorTint, modifier = Modifier.size(20.dp))
+                    Text(state.error ?: "", modifier = Modifier.weight(1f).padding(horizontal = 8.dp), style = MaterialTheme.typography.bodySmall, color = errorTint, fontWeight = FontWeight.Medium)
                     val gemmaExists = com.aipoweredgita.app.ml.ModelDownloadStateManager.isGemmaDownloaded(context)
-                    // FIX: TextButtonDefaults does not exist — use color directly in Text
-                    TextButton(onClick = {
-                        if (!gemmaExists) com.aipoweredgita.app.ml.ModelDownloadStateManager.startDownload(context)
-                        else voiceChatViewModel.refreshModelStatus()
-                    }) {
-                        Text(if (!gemmaExists) "Download" else "Retry", color = if (!gemmaExists) GradientSaffron else Color(0xFF7C4DFF))
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (state.errorType == com.aipoweredgita.app.viewmodel.VoiceChatErrorType.CRASH_RECOVERY) {
+                            TextButton(onClick = { voiceChatViewModel.clearError() }) {
+                                Text("Dismiss", color = errorTint.copy(alpha = 0.6f))
+                            }
+                        }
+                        TextButton(onClick = {
+                            voiceChatViewModel.clearError()
+                            if (!gemmaExists) com.aipoweredgita.app.ml.ModelDownloadStateManager.startDownload(context)
+                            else voiceChatViewModel.refreshModelStatus()
+                        }) {
+                            Text(if (!gemmaExists) "Download" else "Retry", color = if (!gemmaExists) GradientSaffron else MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
         }
 
         AnimatedVisibility(visible = state.liveTranscript.isNotEmpty(), enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut()) {
-            Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), color = Color.White.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp)) {
-                Text("\"${state.liveTranscript}\"", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = DeepBrown.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+            Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp)) {
+                Text("\"${state.liveTranscript}\"", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), textAlign = TextAlign.Center)
             }
         }
 
-        Surface(modifier = Modifier.fillMaxWidth(), color = Color.White.copy(alpha = 0.8f), shadowElevation = 8.dp, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), shadowElevation = 8.dp, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 OutlinedTextField(
                     value = state.userInput, onValueChange = { voiceChatViewModel.updateUserInput(it) },
                     enabled = canInteractWithGemma,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    placeholder = { Text("Ask your question...", style = MaterialTheme.typography.bodyMedium, color = DeepBrown.copy(alpha = 0.4f)) },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = DeepBrown),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GradientSaffron, unfocusedBorderColor = DeepBrown.copy(alpha = 0.1f), unfocusedContainerColor = Color.White.copy(alpha = 0.5f), focusedContainerColor = Color.White),
+                    placeholder = { Text("Ask your question...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GradientSaffron, unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), focusedContainerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp), maxLines = 3
                 )
                 Text(
@@ -305,14 +320,14 @@ private fun VoiceChatTab(
                     color = when {
                         !state.isLlmReady -> GradientSaffron; state.isListening -> ListeningRed
                         state.isSpeaking -> GradientSaffron; state.isThinking -> ThinkingPurple
-                        else -> DeepBrown.copy(alpha = 0.5f)
+                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
                     IconButton(onClick = { if (canInteractWithGemma) voiceChatViewModel.clearChat() }, enabled = canInteractWithGemma,
-                        modifier = Modifier.size(48.dp).background(Color(0xFFEEEEEE), CircleShape)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Clear", tint = DeepBrown.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                        modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                     }
                     Box(contentAlignment = Alignment.Center) {
                         if (state.isListening) {
@@ -342,9 +357,9 @@ private fun VoiceChatTab(
                     IconButton(
                         onClick = { if (state.userInput.isNotBlank() && !isBusy) voiceChatViewModel.sendMessage() },
                         enabled = !isBusy && state.userInput.isNotBlank(),
-                        modifier = Modifier.size(48.dp).background(if (state.userInput.isNotBlank()) GradientSaffron.copy(alpha = 0.2f) else Color(0xFFEEEEEE), CircleShape)
+                        modifier = Modifier.size(48.dp).background(if (state.userInput.isNotBlank()) GradientSaffron.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "Send", tint = if (state.userInput.isNotBlank()) GradientSaffron else DeepBrown.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Send, contentDescription = "Send", tint = if (state.userInput.isNotBlank()) GradientSaffron else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -363,9 +378,9 @@ private fun ChatBubble(message: ChatMessage, onEdit: (String) -> Unit) {
         }
         Surface(modifier = Modifier.widthIn(max = 280.dp),
             shape = RoundedCornerShape(topStart = if (isUser) 20.dp else 4.dp, topEnd = if (isUser) 4.dp else 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
-            color = if (isUser) Color.Transparent else AiBubbleColor, shadowElevation = if (isUser) 0.dp else 2.dp) {
+            color = if (isUser) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant, shadowElevation = if (isUser) 0.dp else 2.dp) {
             Box(modifier = if (isUser) Modifier.background(Brush.linearGradient(listOf(UserBubbleStart, UserBubbleEnd))).padding(14.dp) else Modifier.padding(14.dp)) {
-                Text(text = message.text, style = MaterialTheme.typography.bodyMedium, color = if (isUser) Color.White else DeepBrown, lineHeight = 22.sp)
+                Text(text = message.text, style = MaterialTheme.typography.bodyMedium, color = if (isUser) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
             }
         }
         if (isUser) {
@@ -380,7 +395,7 @@ private fun ThinkingBubble(alpha: Float) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(modifier = Modifier.size(36.dp), shape = CircleShape, color = GradientSaffron) { Box(contentAlignment = Alignment.Center) { Text("🙏", fontSize = 18.sp) } }
         Spacer(modifier = Modifier.width(8.dp))
-        Surface(shape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp), color = AiBubbleColor, shadowElevation = 2.dp) {
+        Surface(shape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp), color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 2.dp) {
             Row(modifier = Modifier.padding(16.dp, 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 repeat(3) { i ->
                     val dotAlpha by animateFloatAsState(targetValue = alpha, animationSpec = tween(300, delayMillis = i * 200), label = "dot_$i")

@@ -31,5 +31,7 @@ data class QuizState(
     val showAnswer: Boolean = false,
     val showCorrectAnswer: Boolean = false,
     val isQuizComplete: Boolean = false,
-    val difficultyLevel: Int = 5
+    val difficultyLevel: Int = 5,
+    val questionTimeLeftSeconds: Int = 30,
+    val isTimerRunning: Boolean = false
 )
