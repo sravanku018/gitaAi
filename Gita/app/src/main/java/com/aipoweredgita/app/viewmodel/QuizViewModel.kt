@@ -92,6 +92,10 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     // Time tracking for quiz session
     private var quizStartTime: Long = 0
 
+    // 30-second per-question timer
+    private var timerJob: kotlinx.coroutines.Job? = null
+    private val QUESTION_TIME_SECONDS = 30
+
     // Per-question response time tracking
     private var questionStartMs: Long? = null
     private var answerMs: Long? = null
@@ -672,6 +676,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         super.onCleared()
+        timerJob?.cancel()
         // FINAL ISSUE 1: Log Telemetry
         android.util.Log.i("QuizViewModel", "FINAL TELEMETRY: $telemetry")
 
@@ -856,12 +861,13 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                         totalQuestions = newTotal,
                         isQuizComplete = isComplete
                     )
-                    
-                    // If quiz is complete, save results
+
                     if (isComplete) {
+                        stopQuestionTimer()
                         saveQuizResults()
                     } else {
                         persistQuizState()
+                        startQuestionTimer()
                     }
                 } else {
                     _quizState.value = _quizState.value.copy(
@@ -875,6 +881,45 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                     isLoading = false,
                     error = "Unable to load question: ${e.message}"
                 )
+            }
+        }
+    }
+
+    private fun startQuestionTimer() {
+        timerJob?.cancel()
+        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = QUESTION_TIME_SECONDS, isTimerRunning = true)
+        timerJob = viewModelScope.launch {
+            for (i in QUESTION_TIME_SECONDS downTo 0) {
+                _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = i)
+                if (i == 0) {
+                    onTimerExpired()
+                    break
+                }
+                kotlinx.coroutines.delay(1000L)
+            }
+        }
+    }
+
+    private fun stopQuestionTimer() {
+        timerJob?.cancel()
+        timerJob = null
+        _quizState.value = _quizState.value.copy(isTimerRunning = false)
+    }
+
+    private fun onTimerExpired() {
+        val currentQ = _quizState.value.currentQuestion ?: return
+        if (_quizState.value.selectedAnswerIndex == null && currentQ.options.isNotEmpty()) {
+            _quizState.value = _quizState.value.copy(
+                showAnswer = true,
+                showCorrectAnswer = false,
+                isTimerRunning = false
+            )
+            adjustDifficulty(false)
+        }
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(1500)
+            if (!_quizState.value.isQuizComplete) {
+                loadNextQuestion()
             }
         }
     }
@@ -961,6 +1006,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectAnswer(index: Int) {
+        stopQuestionTimer()
         // Only MCQ/comparison have indexed answers
         val isCorrect = index == _quizState.value.currentQuestion?.correctAnswerIndex
 
@@ -1061,6 +1107,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
 
     // For ESSAY/APPLICATION: capture open-ended input and evaluate via keyword rubric
     fun submitOpenEndedAnswer(text: String) {
+        stopQuestionTimer()
         val q = _quizState.value.currentQuestion ?: return
         _quizState.value = _quizState.value.copy(openEndedAnswer = text)
         // Simple evaluation: count rubric keywords present

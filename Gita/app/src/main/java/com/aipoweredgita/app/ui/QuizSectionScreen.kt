@@ -38,10 +38,6 @@ import com.aipoweredgita.app.viewmodel.QuizViewModel
 
 // Premium color palette
 private val GradientSaffron = Color(0xFFFF8F00)
-private val GradientAmber = Color(0xFFFFC107)
-private val DeepBrown = Color(0xFF3E2723)
-private val WarmCream = Color(0xFFFFF8E1)
-private val SoftPeach = Color(0xFFFFECB3)
 
 @Composable
 fun QuizSectionScreen(
@@ -71,11 +67,7 @@ fun QuizSectionScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(WarmCream, SoftPeach, Color(0xFFFFCCBC))
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Header
         Row(
@@ -89,17 +81,17 @@ fun QuizSectionScreen(
             IconButton(
                 onClick = onExit,
                 modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.5f), CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
                     .size(40.dp)
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Back", tint = DeepBrown)
+                Icon(Icons.Default.Close, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
             }
 
             Text(
                 "Quiz Section",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = DeepBrown
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.size(40.dp))
@@ -111,13 +103,13 @@ fun QuizSectionScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
             shadowElevation = 2.dp
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
-                contentColor = DeepBrown,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 indicator = { tabPositions ->
                     if (selectedTab < tabPositions.size) {
                         TabRowDefaults.SecondaryIndicator(
@@ -142,13 +134,13 @@ fun QuizSectionScreen(
                                     imageVector = if (index == 2) Icons.Filled.Mic else Icons.Filled.School,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
-                                    tint = if (selectedTab == index) GradientSaffron else DeepBrown.copy(alpha = 0.5f)
+                                    tint = if (selectedTab == index) GradientSaffron else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     title,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedTab == index) DeepBrown else DeepBrown.copy(alpha = 0.5f)
+                                    color = if (selectedTab == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                             }
                         }

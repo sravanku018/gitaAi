@@ -158,10 +158,17 @@ fun HistoryTab(attempts: List<QuizAttempt>, quizSize: Int?) {
 @Composable
 fun QuizAttemptCard(attempt: QuizAttempt) {
     val backgroundColor = when {
-        attempt.accuracyPercentage >= 90 -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-        attempt.accuracyPercentage >= 75 -> Color(0xFF2196F3).copy(alpha = 0.1f)
-        attempt.accuracyPercentage >= 60 -> Color(0xFFFFC107).copy(alpha = 0.1f)
-        else -> Color(0xFFFF5252).copy(alpha = 0.1f)
+        attempt.accuracyPercentage >= 90 -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        attempt.accuracyPercentage >= 75 -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        attempt.accuracyPercentage >= 60 -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+        else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+    }
+
+    val statusColor = when {
+        attempt.accuracyPercentage >= 90 -> MaterialTheme.colorScheme.primary
+        attempt.accuracyPercentage >= 75 -> MaterialTheme.colorScheme.secondary
+        attempt.accuracyPercentage >= 60 -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Card(
@@ -209,12 +216,7 @@ fun QuizAttemptCard(attempt: QuizAttempt) {
                 text = attempt.performanceLevel,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = when (attempt.performanceLevel) {
-                    "Excellent" -> Color(0xFF4CAF50)
-                    "Good" -> Color(0xFF2196F3)
-                    "Average" -> Color(0xFFFFC107)
-                    else -> Color(0xFFFF5252)
-                }
+                color = statusColor
             )
         }
     }
@@ -243,7 +245,7 @@ fun PerformanceTab(
                     title = "Avg Accuracy",
                     value = "${averageAccuracy.toInt()}%",
                     icon = "🎯",
-                    color = Color(0xFF2196F3),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -252,7 +254,7 @@ fun PerformanceTab(
                     title = "Avg Time",
                     value = avgTimeFormatted,
                     icon = "⏱️",
-                    color = Color(0xFFEC4899),
+                    color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -265,7 +267,7 @@ fun PerformanceTab(
                     title = "Total Attempts",
                     value = "${attempts.size}",
                     icon = "📝",
-                    color = Color(0xFF10B981),
+                    color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -273,7 +275,7 @@ fun PerformanceTab(
                     title = "Questions",
                     value = if (attempts.firstOrNull()?.totalQuestions != null) "${attempts.first().totalQuestions}" else "-",
                     icon = "❓",
-                    color = Color(0xFFF59E0B),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -284,7 +286,7 @@ fun PerformanceTab(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFD700).copy(alpha = 0.1f)
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                     )
                 ) {
                     Column(
@@ -379,7 +381,7 @@ fun TipsTab(averageAccuracy: Float) {
                 icon = "📖",
                 title = "Study Regularly",
                 tip = "Read verses daily to improve retention. Consistency is key to understanding the Bhagavad Gita's teachings.",
-                color = Color(0xFF6366F1)
+                color = MaterialTheme.colorScheme.primary
             )
         }
 
@@ -389,7 +391,7 @@ fun TipsTab(averageAccuracy: Float) {
                     icon = "💡",
                     title = "Focus on Understanding",
                     tip = "Don't just memorize! Try to understand the meaning and context of each verse. Use Normal Mode to read explanations before taking quizzes.",
-                    color = Color(0xFFFF5252)
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -400,7 +402,7 @@ fun TipsTab(averageAccuracy: Float) {
                     icon = "🎯",
                     title = "Practice More",
                     tip = "You're doing well! Keep practicing with different question types to improve your accuracy further.",
-                    color = Color(0xFFFFC107)
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
         }
@@ -411,7 +413,7 @@ fun TipsTab(averageAccuracy: Float) {
                     icon = "🌟",
                     title = "Excellent Work!",
                     tip = "You have a great understanding! Consider helping others learn and sharing your knowledge of the Gita.",
-                    color = Color(0xFF4CAF50)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -421,7 +423,7 @@ fun TipsTab(averageAccuracy: Float) {
                 icon = "🧘",
                 title = "Reflect on Teachings",
                 tip = "After each quiz, spend a moment reflecting on how the teachings apply to your life. The Gita is meant to be lived, not just learned.",
-                color = Color(0xFF8B5CF6)
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
 
@@ -430,7 +432,7 @@ fun TipsTab(averageAccuracy: Float) {
                 icon = "🔄",
                 title = "Review Mistakes",
                 tip = "Go back to verses you got wrong in quizzes. Understanding your mistakes is the fastest way to improve.",
-                color = Color(0xFFEC4899)
+                color = MaterialTheme.colorScheme.secondary
             )
         }
 
@@ -439,7 +441,7 @@ fun TipsTab(averageAccuracy: Float) {
                 icon = "⏰",
                 title = "Set a Goal",
                 tip = "Try to improve your accuracy by 5% each week. Small, consistent improvements lead to mastery!",
-                color = Color(0xFF10B981)
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
     }

@@ -342,7 +342,7 @@ fun QuizNotReadyScreen(
                 text = "AI Models Loading",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 textAlign = TextAlign.Center
             )
 
@@ -389,7 +389,7 @@ fun QuizNotReadyScreen(
                     Text(
                         text = "Remaining to download: ${remMb ?: 0} MB",
                         fontSize = 14.sp,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.SemiBold
                     )
 
@@ -452,15 +452,15 @@ fun QuizNotReadyScreen(
                     .fillMaxWidth()
                     .height(48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     text = "Back to Home",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -470,7 +470,7 @@ fun QuizNotReadyScreen(
             Text(
                 text = "Please wait for models to download before starting quiz.",
                 fontSize = 12.sp,
-                color = Color(0xFF90CAF9),
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold
             )
@@ -493,7 +493,7 @@ fun InfoRow(label: String, value: String) {
         Text(
             text = value,
             fontSize = 12.sp,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onPrimary,
             fontWeight = FontWeight.SemiBold
         )
     }

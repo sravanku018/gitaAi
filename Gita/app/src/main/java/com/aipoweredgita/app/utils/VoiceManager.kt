@@ -31,11 +31,28 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     @Volatile private var isDestroyed = false
     private var preferredLocale: Locale = Locale.forLanguageTag("te-IN")
 
+    /** Error callback for crash-safe reporting to the ViewModel layer */
+    var onError: ((String) -> Unit)? = null
+
+    /** Tracks consecutive STT errors for auto-recovery */
+    private var consecutiveSttErrors = 0
+    private val MAX_CONSECUTIVE_STT_ERRORS = 3
+
     init {
         mainHandler.post {
-            tts = TextToSpeech(context, this)
-            if (SpeechRecognizer.isRecognitionAvailable(context)) {
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            try {
+                tts = TextToSpeech(context, this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to init TTS", e)
+                onError?.invoke("Text-to-Speech initialization failed")
+            }
+            try {
+                if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                    speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to init SpeechRecognizer", e)
+                onError?.invoke("Speech recognition initialization failed")
             }
         }
     }
@@ -45,6 +62,10 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             setLanguage(preferredLocale)
             isTtsReady = true
             setupTtsListener()
+        } else {
+            Log.e(TAG, "TTS init failed with status $status")
+            isTtsReady = false
+            onError?.invoke("Text-to-Speech engine failed to start")
         }
     }
 
@@ -99,20 +120,26 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     fun speak(text: String, flush: Boolean = true, onComplete: (() -> Unit)? = null) {
         mainHandler.post {
             if (isDestroyed) return@post
-            if (isTtsReady) {
-                if (flush) {
-                    tts?.stop()
-                    utteranceCallbacks.clear()
-                }
-                val utteranceId = "gita_${System.currentTimeMillis()}"
-                if (onComplete != null) utteranceCallbacks[utteranceId] = onComplete
-                val params = Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
-                val result = tts?.speak(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, params, utteranceId)
-                if (result == TextToSpeech.ERROR) {
-                    utteranceCallbacks.remove(utteranceId)
+            try {
+                if (isTtsReady) {
+                    if (flush) {
+                        tts?.stop()
+                        utteranceCallbacks.clear()
+                    }
+                    val utteranceId = "gita_${System.currentTimeMillis()}"
+                    if (onComplete != null) utteranceCallbacks[utteranceId] = onComplete
+                    val params = Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
+                    val result = tts?.speak(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, params, utteranceId)
+                    if (result == TextToSpeech.ERROR) {
+                        utteranceCallbacks.remove(utteranceId)
+                        onComplete?.invoke()
+                    }
+                } else {
                     onComplete?.invoke()
                 }
-            } else {
+            } catch (e: Exception) {
+                Log.e(TAG, "TTS speak failed", e)
+                onError?.invoke("Failed to speak")
                 onComplete?.invoke()
             }
         }
@@ -127,7 +154,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     }
 
     fun startListening(
-        onResult: (String) -> Unit, 
+        onResult: (String) -> Unit,
         onError: (String) -> Unit,
         onPartialResult: (String) -> Unit = {}
     ) {
@@ -154,10 +181,28 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 override fun onEndOfSpeech() { isListeningActive = false }
                 override fun onError(error: Int) {
                     isListeningActive = false
-                    onError("Voice error ($error)")
+                    consecutiveSttErrors++
+                    val userMessage = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO -> "Microphone error — check permissions"
+                        SpeechRecognizer.ERROR_CLIENT -> "Listening cancelled"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                        SpeechRecognizer.ERROR_NETWORK -> "No network — voice needs internet"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "Could not understand — try again"
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Voice engine busy — retry in a moment"
+                        SpeechRecognizer.ERROR_SERVER -> "Voice service unavailable"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected — try again"
+                        else -> "Voice error ($error)"
+                    }
+                    if (consecutiveSttErrors >= MAX_CONSECUTIVE_STT_ERRORS) {
+                        Log.w(TAG, "Too many consecutive STT errors ($consecutiveSttErrors), recreating recognizer")
+                        recreateRecognizer()
+                        consecutiveSttErrors = 0
+                    }
+                    onError(userMessage)
                 }
                 override fun onResults(results: Bundle?) {
                     isListeningActive = false
+                    consecutiveSttErrors = 0
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) onResult(matches[0])
                     else onError("No speech recognized")
@@ -168,7 +213,30 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 }
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
-            speechRecognizer?.startListening(intent)
+
+            try {
+                speechRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start listening", e)
+                isListeningActive = false
+                onError("Failed to start voice recognition")
+            }
+        }
+    }
+
+    private fun recreateRecognizer() {
+        mainHandler.post {
+            try {
+                speechRecognizer?.destroy()
+            } catch (_: Exception) {}
+            try {
+                speechRecognizer = if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                    SpeechRecognizer.createSpeechRecognizer(context)
+                } else null
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to recreate recognizer", e)
+                speechRecognizer = null
+            }
         }
     }
 

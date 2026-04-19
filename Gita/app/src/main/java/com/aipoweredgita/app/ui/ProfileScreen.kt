@@ -205,7 +205,7 @@ fun ProfileScreen(
             title = "Total Time Spent",
             value = stats?.timeSpentFormatted ?: "0m",
             icon = "⏱️",
-            color = Color(0xFFEC4899)
+            color = MaterialTheme.colorScheme.primary
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -218,21 +218,21 @@ fun ProfileScreen(
             SmallStatCard(
                 title = "Normal",
                 value = stats?.normalModeTimeFormatted ?: "0m",
-                color = Color(0xFF6366F1),
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
 
             SmallStatCard(
                 title = "Quiz",
                 value = stats?.quizModeTimeFormatted ?: "0m",
-                color = Color(0xFF10B981),
+                color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
 
             SmallStatCard(
                 title = "Studio",
                 value = stats?.voiceStudioTimeFormatted ?: "0m",
-                color = Color(0xFFF59E0B),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -255,14 +255,14 @@ fun ProfileScreen(
                 title = "Quizzes",
                 value = "${stats?.totalQuizzesTaken ?: 0}",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF10B981)
+                color = MaterialTheme.colorScheme.secondary
             )
 
             SmallStatCard(
                 title = "Accuracy",
                 value = "${stats?.accuracyPercentage?.toInt() ?: 0}%",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFFF59E0B)
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
 
@@ -272,7 +272,7 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             onClick = onNavigateToQuizStats,
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF8B5CF6).copy(alpha = 0.1f)
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
             )
         ) {
             Row(
@@ -296,7 +296,7 @@ fun ProfileScreen(
                             text = "${stats?.bestScore ?: 0}/${stats?.bestScoreOutOf ?: 0}",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF8B5CF6)
+                            color = MaterialTheme.colorScheme.primary
                         )
                         if ((stats?.bestScoreOutOf ?: 0) > 0) {
                             Text(
@@ -310,7 +310,7 @@ fun ProfileScreen(
                 Text(
                     text = "→",
                     fontSize = 24.sp,
-                    color = Color(0xFF8B5CF6)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -333,14 +333,14 @@ fun ProfileScreen(
                 title = "Verses",
                 value = "${stats?.versesRead ?: 0}",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF06B6D4)
+                color = MaterialTheme.colorScheme.secondary
             )
 
             SmallStatCard(
                 title = "Favorites",
                 value = "${stats?.totalFavorites ?: 0}",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFFEF4444)
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
 
@@ -362,14 +362,14 @@ fun ProfileScreen(
                 title = "Current",
                 value = "${stats?.currentStreak ?: 0} 🔥",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFFFF6B35)
+                color = MaterialTheme.colorScheme.primary
             )
 
             SmallStatCard(
                 title = "Longest",
                 value = "${stats?.longestStreak ?: 0} 🌟",
                 modifier = Modifier.weight(1f),
-                color = Color(0xFFFFD700)
+                color = MaterialTheme.colorScheme.secondary
             )
         }
 

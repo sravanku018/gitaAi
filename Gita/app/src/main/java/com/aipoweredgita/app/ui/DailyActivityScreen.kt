@@ -126,8 +126,8 @@ fun ActivityScreen(
                     .background(
                         brush = Brush.verticalGradient(
                             listOf(
-                                Color(0xFF6366F1),
-                                Color(0xFF8B5CF6)
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
                             )
                         )
                     )

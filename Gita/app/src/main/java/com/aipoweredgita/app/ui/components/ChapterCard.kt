@@ -22,7 +22,7 @@ data class ChapterInfo(
     val sanskritTitle: String,
     val summary: String,
     val verseCount: Int,
-    val gradient: List<Color>
+    val gradient: List<Color>? = null
 )
 
 @Composable
@@ -43,7 +43,18 @@ fun ChapterCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.linearGradient(chapter.gradient))
+                .background(
+                    if (chapter.gradient != null) {
+                        Brush.linearGradient(chapter.gradient)
+                    } else {
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    }
+                )
         ) {
             // Decorative Mandala in background
             MandalaBackground(
