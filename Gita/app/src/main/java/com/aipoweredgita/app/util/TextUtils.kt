@@ -56,8 +56,11 @@ object TextUtils {
         val baseCleaned = cleanLlmOutput(text)
 
         return baseCleaned
-            // Fix Sanskrit/Telugu Shloka formatting - only add newline after actual danda
-            .replace(Regex("([।॥])\\s*"), "$1\n")
+            // Fix Sanskrit/Telugu Shloka formatting
+            .replace(Regex("।\\s*"), "।\n")
+            .replace(Regex("॥\\s*"), "॥\n\n")
+            // Normalize excessive newlines (max 2)
+            .replace(Regex("\n{3,}"), "\n\n")
             // Ensure single spaces between words (gentle check)
             .replace(Regex(" +"), " ")
             .trim()

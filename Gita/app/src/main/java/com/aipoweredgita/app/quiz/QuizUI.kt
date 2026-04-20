@@ -1,64 +1,36 @@
 package com.aipoweredgita.app.quiz
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.aipoweredgita.app.quiz.ui.AnimatedOptionCard
-import com.aipoweredgita.app.quiz.ui.CelebrationOverlay
-import com.aipoweredgita.app.quiz.ui.WrongOverlay
-import com.aipoweredgita.app.quiz.ui.OptionVisualState
-import com.aipoweredgita.app.quiz.ui.QuizResultDialog
-import kotlinx.coroutines.delay
-import com.aipoweredgita.app.viewmodel.QuizViewModel
+import com.aipoweredgita.app.R
 import com.aipoweredgita.app.data.QuestionType
+import com.aipoweredgita.app.quiz.ui.*
+import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.util.TextUtils
+import com.aipoweredgita.app.viewmodel.QuizViewModel
+import kotlinx.coroutines.delay
 
 private val TimerGreen = Color(0xFF4CAF50)
 private val TimerYellow = Color(0xFFFFC107)
@@ -108,13 +80,25 @@ fun QuizContent(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(BgDark)) {
+        // Ambient background image
+        Image(
+            painter = painterResource(id = R.drawable.krishna), // Using Krishna as background
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(alpha = 0.05f),
+            contentScale = ContentScale.Crop
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(contentScroll)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Pill-shaped quiz header with timer
             QuizTimerHeader(
@@ -126,16 +110,35 @@ fun QuizContent(
                 score = quizState?.value?.score ?: 0
             )
 
-            Text(text = TextUtils.sanitizeText(question), style = MaterialTheme.typography.titleLarge)
+            // Ornamental separator
+            OrnamentRule()
+
+            Text(
+                text = TextUtils.sanitizeText(question),
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextWhite,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 28.sp
+            )
 
             if (isOpenEnded) {
                 OutlinedTextField(
                     value = userAnswer,
                     onValueChange = { userAnswer = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Type your answer here...") },
+                    placeholder = { Text("Type your answer here...", color = TextDim) },
                     minLines = 6,
-                    maxLines = 10
+                    maxLines = 10,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        cursorColor = GoldSpark,
+                        focusedBorderColor = GoldSpark,
+                        unfocusedBorderColor = Surface2,
+                        focusedContainerColor = Surface1,
+                        unfocusedContainerColor = Surface1
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(Modifier.size(8.dp))
@@ -148,9 +151,16 @@ fun QuizContent(
                         showResult = correct
                     },
                     enabled = userAnswer.trim().isNotEmpty() && selectedIndex == null,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Saffron,
+                        disabledContainerColor = Surface2
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Submit Answer")
+                    Text("Submit Answer", fontWeight = FontWeight.Bold)
                 }
             } else {
                 options.forEachIndexed { index, option ->
@@ -181,21 +191,26 @@ fun QuizContent(
                 }
             }
 
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(24.dp))
         }
 
         if (showResultDialog) {
             Dialog(onDismissRequest = {
                 showResultDialog = false
             }) {
-                Card(colors = CardDefaults.cardColors()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Surface1),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, GoldSpark.copy(0.2f))
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp)
-                            .heightIn(max = 420.dp)
+                            .padding(24.dp)
+                            .heightIn(max = 500.dp)
                             .verticalScroll(dialogScroll),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val isCorrect = if (isOpenEnded) {
                             showResult == true
@@ -203,42 +218,58 @@ fun QuizContent(
                             selectedIndex == correctIndex
                         }
 
-                        if (isCorrect) {
+                        // Icon/Visual feedback
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(if (isCorrect) Forest.copy(0.2f) else CrimsonDeep.copy(0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = "Excellent!",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary
+                                text = if (isCorrect) "✓" else "✕",
+                                color = if (isCorrect) GoldSpark else Color.Red,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
                             )
-                            Text(text = if (isOpenEnded) "Great explanation! Well thought out." else "You nailed it! Keep up the great work.")
-                            Button(
-                                onClick = {
-                                    showResultDialog = false
-                                    onProceed(true)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Continue")
-                            }
-                        } else {
-                            Text(
-                                text = if (isOpenEnded) "Thanks for sharing!" else "Don't worry!",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Text(text = "Keep learning and you'll master this!")
+                        }
+
+                        Text(
+                            text = if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = if (isCorrect) GoldSpark else Saffron,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.",
+                            textAlign = TextAlign.Center,
+                            color = TextWhite
+                        )
+
+                        if (!isCorrect || isOpenEnded) {
+                            HorizontalDivider(color = Surface2, thickness = 1.dp)
                             Text(
                                 text = TextUtils.sanitizeText(answer),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Button(
-                                onClick = {
-                                    showResultDialog = false
-                                    onProceed(false)
-                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = TextWhite.copy(0.8f),
+                                textAlign = TextAlign.Start,
                                 modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Continue")
-                            }
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                showResultDialog = false
+                                onProceed(isCorrect)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Saffron),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Continue Journey", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -247,6 +278,19 @@ fun QuizContent(
 
         CelebrationOverlay(show = showResult == true)
         WrongOverlay(show = showResult == false)
+    }
+}
+
+@Composable
+fun OrnamentRule() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, GoldSpark.copy(0.5f)))))
+        Box(modifier = Modifier.padding(horizontal = 8.dp).size(6.dp).clip(CircleShape).background(GoldSpark))
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(GoldSpark.copy(0.5f), Color.Transparent))))
     }
 }
 
@@ -275,77 +319,68 @@ private fun QuizTimerHeader(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shadowElevation = 4.dp
+        shape = RoundedCornerShape(16.dp),
+        color = Surface1,
+        border = BorderStroke(1.dp, Surface2)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Question counter pill
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                ) {
+                // Question counter
+                Column {
                     Text(
-                        text = "Q $questionNumber/$totalQuestions",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "PROGRESS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextDim,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "$questionNumber / $totalQuestions",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = GoldSpark
                     )
                 }
 
-                // Timer
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Timer,
-                        contentDescription = null,
-                        tint = animatedTimerColor,
-                        modifier = Modifier.size(18.dp)
+                // Timer - Circular
+                Box(contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.size(48.dp),
+                        color = animatedTimerColor,
+                        trackColor = Surface2,
+                        strokeWidth = 3.dp,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
                     Text(
                         text = "${timeLeft}s",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = animatedTimerColor,
-                        fontSize = 18.sp
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = animatedTimerColor
                     )
                 }
 
-                // Score pill
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
-                ) {
+                // Score
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "Score: $score",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "SCORE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextDim,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = score.toString(),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = GoldSpark
                     )
                 }
             }
-
-            // Timer progress bar
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp)),
-                color = animatedTimerColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            )
         }
     }
 }

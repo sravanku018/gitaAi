@@ -1,4 +1,6 @@
 package com.aipoweredgita.app.navigation
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,6 +32,7 @@ sealed class Screen(val route: String) {
     object QuizConfig : Screen("quiz_config")
     object QuizMode : Screen("quiz_mode")
     object QuizSection : Screen("quiz_section")
+    object KrishnaTalks : Screen("krishna_talks")
     object VoiceStudio : Screen("voice_studio")
     object Favorites : Screen("favorites")
     object OfflineDownload : Screen("offline_download")
@@ -56,7 +59,27 @@ fun NavGraph(
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            fadeIn(animationSpec = tween(300)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start, tween(300)
+            )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(300)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start, tween(300)
+            )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(300)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.End, tween(300)
+            )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(300)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.End, tween(300)
+            )
+        }
     ) {
         composable(Screen.Home.route) {
             DashboardScreen(
@@ -146,6 +169,12 @@ fun NavGraph(
             )
         }
 
+        composable(Screen.KrishnaTalks.route) {
+            com.aipoweredgita.app.ui.VoiceStudioScreen(
+                onExit = { navController.popBackStack() }
+            )
+        }
+
         composable(Screen.VoiceStudio.route) {
             com.aipoweredgita.app.ui.VoiceStudioScreen(
                 onExit = { navController.popBackStack() }
@@ -155,8 +184,7 @@ fun NavGraph(
         composable(Screen.Favorites.route) {
             FavoritesScreen(
                 onVerseClick = { chapter, verse ->
-                    // Navigate to normal mode with specific verse
-                    navController.navigate(Screen.NormalMode.route)
+                    navController.navigate("normal_mode?chapter=${chapter}&verse=${verse}")
                 }
             )
         }
@@ -181,6 +209,7 @@ fun NavGraph(
                 onThemeToggle = onThemeToggle,
                 // Add badge navigation callback
                 onNavigateToBadges = { navController.navigate(Screen.Badges.route) },
+                onNavigateToYogaLevels = { navController.navigate(Screen.DailyActivity.route) },
                 viewModel = profileViewModel
             )
         }

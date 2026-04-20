@@ -150,8 +150,8 @@ class MainActivity : ComponentActivity() {
 
             val themePreferencesState = ThemePreferences(applicationContext)
             val accent by themePreferencesState.accent.collectAsStateWithLifecycle(initialValue = "Saffron")
-            val dynamicColor by themePreferencesState.isDynamicColor.collectAsStateWithLifecycle(initialValue = true)
-            GitaLearningTheme(darkTheme = isDarkTheme, dynamicColor = dynamicColor, accentName = accent) {
+            val dynamicColor by themePreferencesState.isDynamicColor.collectAsStateWithLifecycle(initialValue = false)
+            GitaLearningTheme(darkTheme = true, dynamicColor = false, accentName = "Sacred") {
                 UiConfigProvider {
                 when {
                     showSplash -> {

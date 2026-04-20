@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,9 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.aipoweredgita.app.ui.theme.*
 import kotlin.math.roundToInt
 
 sealed class OptionVisualState {
@@ -47,19 +50,28 @@ fun AnimatedOptionCard(
     modifier: Modifier = Modifier,
 ) {
     val containerColor = when (state) {
-        OptionVisualState.Idle -> MaterialTheme.colorScheme.surface
-        OptionVisualState.Selected -> MaterialTheme.colorScheme.secondaryContainer
-        OptionVisualState.Correct -> MaterialTheme.colorScheme.primaryContainer
-        OptionVisualState.Wrong -> MaterialTheme.colorScheme.errorContainer
+        OptionVisualState.Idle -> Surface1
+        OptionVisualState.Selected -> Saffron.copy(alpha = 0.2f)
+        OptionVisualState.Correct -> Forest.copy(alpha = 0.3f)
+        OptionVisualState.Wrong -> CrimsonDeep.copy(alpha = 0.3f)
     }
+    
+    val borderColor = when (state) {
+        OptionVisualState.Idle -> Surface2
+        OptionVisualState.Selected -> Saffron
+        OptionVisualState.Correct -> GoldSpark
+        OptionVisualState.Wrong -> Color.Red
+    }
+
     val contentColor = when (state) {
-        OptionVisualState.Idle -> MaterialTheme.colorScheme.onSurface
-        OptionVisualState.Selected -> MaterialTheme.colorScheme.onSecondaryContainer
-        OptionVisualState.Correct -> MaterialTheme.colorScheme.onPrimaryContainer
-        OptionVisualState.Wrong -> MaterialTheme.colorScheme.onErrorContainer
+        OptionVisualState.Idle -> TextWhite
+        OptionVisualState.Selected -> GoldSpark
+        OptionVisualState.Correct -> GoldSpark
+        OptionVisualState.Wrong -> Color.Red
     }
 
     val animatedColor = animateColorAsState(targetValue = containerColor, label = "cardColor")
+    val animatedBorderColor = animateColorAsState(targetValue = borderColor, label = "borderColor")
 
     val scale = remember { Animatable(1f) }
     val offsetY = remember { Animatable(0f) }
@@ -69,38 +81,29 @@ fun AnimatedOptionCard(
     LaunchedEffect(state) {
         when (state) {
             OptionVisualState.Selected, OptionVisualState.Correct, OptionVisualState.Wrong -> {
-                // Bounce + scale
                 scale.snapTo(1f)
                 offsetY.snapTo(0f)
-                scale.animateTo(1.06f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
-                offsetY.animateTo(-12f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+                scale.animateTo(1.04f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+                offsetY.animateTo(-8f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
                 offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium))
-                if (state == OptionVisualState.Correct) {
-                    scale.animateTo(1.08f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
-                }
+                
                 if (state == OptionVisualState.Wrong) {
-                    // Wiggle X keyframes
                     offsetX.snapTo(0f)
                     offsetX.animateTo(0f, keyframes {
-                        durationMillis = 360
+                        durationMillis = 300
                         0f at 0
-                        12f at 60
-                        -12f at 120
-                        8f at 180
-                        -8f at 240
-                        0f at 360
+                        8f at 50
+                        -8f at 100
+                        5f at 150
+                        -5f at 200
+                        0f at 300
                     })
-                    // Flash overlay
-                    flashAlpha.snapTo(0f)
-                    flashAlpha.animateTo(0.25f, spring(dampingRatio = Spring.DampingRatioLowBouncy))
-                    flashAlpha.animateTo(0f)
                 }
             }
             else -> {
                 scale.animateTo(1f)
                 offsetX.animateTo(0f)
                 offsetY.animateTo(0f)
-                flashAlpha.animateTo(0f)
             }
         }
     }
@@ -108,10 +111,9 @@ fun AnimatedOptionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(12.dp))
             .scale(scale.value)
             .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-            .padding(vertical = 6.dp)
+            .padding(vertical = 4.dp)
             .let {
                 if (enabled) {
                     it.clickable(
@@ -121,27 +123,22 @@ fun AnimatedOptionCard(
                 } else it
             },
         colors = CardDefaults.cardColors(containerColor = animatedColor.value),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.5.dp, animatedBorderColor.value),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(18.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 color = contentColor,
+                fontWeight = if (state != OptionVisualState.Idle) FontWeight.Bold else FontWeight.Normal,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
-            if (flashAlpha.value > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = flashAlpha.value))
-                )
-            }
         }
     }
 }

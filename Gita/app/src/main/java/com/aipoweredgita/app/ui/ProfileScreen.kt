@@ -1,26 +1,46 @@
 package com.aipoweredgita.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aipoweredgita.app.quiz.OrnamentRule
+import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
+
+// ── Shared Sacred Gold Palette (imported from theme) ──────────────────────────
+private val Border        = Color(0x14FFFFFF)   // 8 % white
+private val BorderHi      = Color(0x24FFFFFF)   // 14 % white
+private val TextPrimary   = TextWhite
+private val TextSecondary = TextDim
+private val TextMuted     = Color(0x52E8E8E8)   // 32 %
 
 @Composable
 fun ProfileScreen(
@@ -29,20 +49,18 @@ fun ProfileScreen(
     onNavigateToQuizStats: () -> Unit = {},
     isDarkTheme: Boolean = false,
     onThemeToggle: (Boolean) -> Unit = {},
-    onNavigateToBadges: () -> Unit = {}
+    onNavigateToBadges: () -> Unit = {},
+    onNavigateToYogaLevels: () -> Unit = {}
 ) {
     val stats by viewModel.stats.collectAsState()
-    val yogaLevel = com.aipoweredgita.app.ui.components.LotusLevelManager.levelFor(stats)
-    val yogaStep = com.aipoweredgita.app.ui.components.LotusLevelManager.stepFor(stats)
     val yogaInfo = com.aipoweredgita.app.ui.components.LotusLevelManager.yogaLevelInfo(stats)
-    val breakdown = com.aipoweredgita.app.ui.components.LotusLevelManager.compositeBreakdown(stats)
-    val stage = com.aipoweredgita.app.ui.components.LotusLevelManager.stageFor(stats)
+    val levelProgress = com.aipoweredgita.app.ui.components.LotusLevelManager.progressInLevel(stats)
+    
     var name by remember { mutableStateOf(stats?.userName ?: "") }
     var dob by remember { mutableStateOf(stats?.dateOfBirth ?: "") }
     var isEditing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Update local state when stats change
     LaunchedEffect(stats) {
         stats?.let {
             name = it.userName
@@ -50,424 +68,347 @@ fun ProfileScreen(
         }
     }
 
-    val uiCfg = LocalUiConfig.current
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(if (uiCfg.isLandscape) 24.dp else 16.dp)
-    ) {
-        // Profile Edit Form
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Profile Information",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = {
-                        try {
-                            isEditing = !isEditing
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }) {
-                        Text(if (isEditing) "Cancel" else "Edit")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (isEditing) {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = dob,
-                        onValueChange = { dob = it },
-                        label = { Text("Date of Birth (YYYY-MM-DD)") },
-                        placeholder = { Text("2000-01-31") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            try {
-                                scope.launch {
-                                    viewModel.updateProfile(name, dob)
-                                    isEditing = false
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save Profile")
-                    }
-                } else {
-                    // Display mode
-                    Text(
-                        text = "Name: ${name.ifEmpty { "Not set" }}",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Date of Birth: ${dob.ifEmpty { "Not set" }}",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    if (stats?.age ?: 0 > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Age: ${stats?.age} years",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Theme Toggle Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (isDarkTheme) "🌙" else "☀️",
-                        fontSize = 32.sp
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "Dark Mode",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (isDarkTheme) "Enabled" else "Disabled",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Switch(
-                    checked = isDarkTheme,
-                    onCheckedChange = onThemeToggle
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Time Dashboard
-        Text(
-            text = "Time Dashboard",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        StatCard(
-            title = "Total Time Spent",
-            value = stats?.timeSpentFormatted ?: "0m",
-            icon = "⏱️",
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Mode-wise Time Breakdown
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SmallStatCard(
-                title = "Normal",
-                value = stats?.normalModeTimeFormatted ?: "0m",
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.weight(1f)
-            )
-
-            SmallStatCard(
-                title = "Quiz",
-                value = stats?.quizModeTimeFormatted ?: "0m",
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.weight(1f)
-            )
-
-            SmallStatCard(
-                title = "Studio",
-                value = stats?.voiceStudioTimeFormatted ?: "0m",
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Quiz Statistics
-        Text(
-            text = "Quiz Performance",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SmallStatCard(
-                title = "Quizzes",
-                value = "${stats?.totalQuizzesTaken ?: 0}",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.secondary
-            )
-
-            SmallStatCard(
-                title = "Accuracy",
-                value = "${stats?.accuracyPercentage?.toInt() ?: 0}%",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.tertiary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onNavigateToQuizStats,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🏆", fontSize = 40.sp)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "Best Score",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${stats?.bestScore ?: 0}/${stats?.bestScoreOutOf ?: 0}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        if ((stats?.bestScoreOutOf ?: 0) > 0) {
-                            Text(
-                                text = "${stats?.averageScorePercentage?.toInt()}% correct",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = "→",
-                    fontSize = 24.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Reading Statistics
-        Text(
-            text = "Reading Progress",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SmallStatCard(
-                title = "Verses",
-                value = "${stats?.versesRead ?: 0}",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.secondary
-            )
-
-            SmallStatCard(
-                title = "Favorites",
-                value = "${stats?.totalFavorites ?: 0}",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.tertiary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Streaks
-        Text(
-            text = "Activity Streaks",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SmallStatCard(
-                title = "Current",
-                value = "${stats?.currentStreak ?: 0} 🔥",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            SmallStatCard(
-                title = "Longest",
-                value = "${stats?.longestStreak ?: 0} 🌟",
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    icon: String,
-    color: Color,
-    subtitle: String? = null,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = icon,
-                fontSize = 40.sp
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = color
-                )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SmallStatCard(
-    title: String,
-    value: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    Box(modifier = modifier.fillMaxSize().background(BgDark)) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 32.dp)
         ) {
+            // ── Header Section ───────────────────────────────────────────────
+            ProfileHeader(name, stats?.age ?: 0, yogaInfo, levelProgress, onNavigateToYogaLevels)
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── Profile Info Card ────────────────────────────────────────────
+            CreativeCard(title = "Seeker Details", icon = Icons.Default.Person) {
+                if (isEditing) {
+                    ProfileEditForm(
+                        name = name,
+                        onNameChange = { name = it },
+                        dob = dob,
+                        onDobChange = { dob = it },
+                        onSave = {
+                            scope.launch {
+                                viewModel.updateProfile(name, dob)
+                                isEditing = false
+                            }
+                        },
+                        onCancel = { isEditing = false }
+                    )
+                } else {
+                    ProfileDisplayInfo(
+                        name = name,
+                        dob = dob,
+                        age = stats?.age ?: 0,
+                        onEdit = { isEditing = true }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Dashboard / Stats ────────────────────────────────────────────
+            OrnamentRule()
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = color,
-                textAlign = TextAlign.Center
+                text = "Sacred Journey Stats",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = GoldSpark,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.5.sp
+                ),
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SmallStatItem("Time", stats?.timeSpentFormatted ?: "0m", Icons.Default.Timer, Modifier.weight(1f))
+                SmallStatItem("Verses", "${stats?.versesRead ?: 0}", Icons.AutoMirrored.Filled.MenuBook, Modifier.weight(1f))
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SmallStatItem("Streak", "${stats?.currentStreak ?: 0} 🔥", Icons.Default.Whatshot, Modifier.weight(1f))
+                SmallStatItem("Badges", "${stats?.totalFavorites ?: 0}", Icons.Default.EmojiEvents, Modifier.weight(1f))
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── Quiz Card ────────────────────────────────────────────────────
+            CreativeCard(
+                title = "Quiz Performance",
+                icon = Icons.Default.EmojiEvents,
+                onClick = onNavigateToQuizStats
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Best Score: ${stats?.bestScore ?: 0}/${stats?.bestScoreOutOf ?: 0}",
+                            style = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary, fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Accuracy: ${stats?.accuracyPercentage?.toInt() ?: 0}%",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                        )
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GoldSpark)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Appearance ───────────────────────────────────────────────────
+            CreativeCard(title = "Appearance", icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Dark Mode", style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary))
+                    Switch(
+                        checked = isDarkTheme,
+                        onCheckedChange = onThemeToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = GoldSpark,
+                            checkedTrackColor = GoldSpark.copy(alpha = 0.3f),
+                            uncheckedThumbColor = TextMuted,
+                            uncheckedTrackColor = Surface2
+                        )
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun ProfileHeader(
+    name: String,
+    age: Int,
+    yogaInfo: com.aipoweredgita.app.ui.components.LotusLevelManager.YogaLevelInfo,
+    levelProgress: Float,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp)
+            .background(
+                Brush.verticalGradient(listOf(GoldSpark.copy(alpha = 0.15f), BgDark))
+            )
+            .clickable(onClick = onClick, indication = null, interactionSource = remember { MutableInteractionSource() }),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Avatar with Progress Ring
+            Box(contentAlignment = Alignment.Center) {
+                // Progress Arc
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(110.dp)) {
+                    drawArc(
+                        color = GoldSpark.copy(alpha = 0.2f),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(width = 4.dp.toPx())
+                    )
+                    drawArc(
+                        color = GoldSpark,
+                        startAngle = -90f,
+                        sweepAngle = 360f * levelProgress,
+                        useCenter = false,
+                        style = Stroke(width = 4.dp.toPx())
+                    )
+                }
+
+                // Core Avatar
+                Box(
+                    modifier = Modifier
+                        .size(90.dp)
+                        .background(Surface1, CircleShape)
+                        .border(1.dp, BorderHi, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = yogaInfo.emoji,
+                        fontSize = 44.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = name.ifEmpty { "Arjuna" },
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+
+            Surface(
+                color = GoldSpark.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(top = 6.dp)
+            ) {
+                Text(
+                    text = "${yogaInfo.yogaName} — Step ${yogaInfo.step}",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = GoldSpark,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
+
+            if (age > 0) {
+                Text(
+                    text = "$age Year Old Seeker",
+                    modifier = Modifier.padding(top = 4.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextMuted,
+                        fontStyle = FontStyle.Italic
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreativeCard(
+    title: String,
+    icon: ImageVector,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        shape = RoundedCornerShape(20.dp),
+        color = Surface1,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderHi)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = GoldSpark, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = TextSecondary,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.8.sp
+                    )
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SmallStatItem(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.height(85.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Surface1,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Border)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Icon(icon, contentDescription = null, tint = GoldSpark.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
+            Column {
+                Text(value, style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary, fontWeight = FontWeight.Bold))
+                Text(label, style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.sp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileDisplayInfo(name: String, dob: String, age: Int, onEdit: () -> Unit) {
+    Column {
+        ProfileInfoRow("Name", name.ifEmpty { "Not set" })
+        ProfileInfoRow("Birthday", dob.ifEmpty { "Not set" })
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = GoldSpark),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Text("Edit Profile", color = BgDark, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditForm(
+    name: String, onNameChange: (String) -> Unit,
+    dob: String, onDobChange: (String) -> Unit,
+    onSave: () -> Unit, onCancel: () -> Unit
+) {
+    Column {
+        OutlinedTextField(
+            value = name, onValueChange = onNameChange,
+            label = { Text("Spiritual Name", color = TextMuted) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = GoldSpark,
+                unfocusedBorderColor = Border,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            )
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = dob, onValueChange = onDobChange,
+            label = { Text("DOB (YYYY-MM-DD)", color = TextMuted) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = GoldSpark,
+                unfocusedBorderColor = Border,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            )
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldSpark)
+            ) { Text("Cancel") }
+            Button(
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = GoldSpark)
+            ) { Text("Save", color = BgDark, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
+        Text(value, style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold))
     }
 }
