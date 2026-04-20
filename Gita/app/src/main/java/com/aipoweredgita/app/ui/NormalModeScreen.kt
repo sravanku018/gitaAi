@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -114,7 +115,7 @@ fun NormalModeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Cream)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -254,7 +255,7 @@ private fun ChapterVerseHeroCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(InkDeep)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .drawBehind {
                 // Subtle warm glow bottom-left
                 drawCircle(
@@ -410,7 +411,13 @@ private fun IlluminatedVerseCard(text: String) {
                 shape = RoundedCornerShape(20.dp)
             )
             .background(
-                Brush.verticalGradient(listOf(Color(0xFFFFF9F0), Color(0xFFFDF3DC)))
+                Brush.verticalGradient(
+                    if (isSystemInDarkTheme()) {
+                        listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
+                    } else {
+                        listOf(Color(0xFFFFF9F0), Color(0xFFFDF3DC))
+                    }
+                )
             )
     ) {
         // Left gold accent bar
@@ -466,7 +473,7 @@ private fun IlluminatedVerseCard(text: String) {
                 fontStyle  = FontStyle.Italic,
                 fontWeight = FontWeight.Light,
                 lineHeight = 28.sp,
-                color      = InkSoft,
+                color      = MaterialTheme.colorScheme.onSurface,
                 textAlign  = TextAlign.Justify
             )
         }
@@ -482,7 +489,7 @@ private fun MeaningCard(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFFEAF3DE))
+            .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFEAF3DE))
             .border(1.dp, ForestMid.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
     ) {
         // Left stripe
@@ -515,7 +522,7 @@ private fun MeaningCard(text: String) {
                 text      = text,
                 fontSize  = 14.sp,
                 lineHeight = 24.sp,
-                color     = Color(0xFF173404),
+                color     = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSurface else Color(0xFF173404),
                 textAlign = TextAlign.Justify
             )
         }
@@ -531,7 +538,17 @@ private fun ExplanationCard(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF1A1208))
+            .background(
+                if (isSystemInDarkTheme()) 
+                    MaterialTheme.colorScheme.surface 
+                else 
+                    Color(0xFFFDF6EC) // Warm light parchment
+            )
+            .border(
+                1.dp, 
+                if (isSystemInDarkTheme()) Color.Transparent else Gold.copy(0.2f), 
+                RoundedCornerShape(18.dp)
+            )
             .padding(20.dp)
     ) {
         // Header
@@ -552,7 +569,7 @@ private fun ExplanationCard(text: String) {
                 fontSize   = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
-                color      = Gold.copy(0.8f)
+                color      = if (isSystemInDarkTheme()) Gold.copy(0.8f) else Saffron
             )
         }
 
@@ -574,7 +591,7 @@ private fun ExplanationCard(text: String) {
             text      = text,
             fontSize  = 14.sp,
             lineHeight = 24.sp,
-            color     = GoldPale.copy(alpha = 0.85f),
+            color     = if (isSystemInDarkTheme()) GoldPale.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Justify
         )
     }
@@ -589,7 +606,7 @@ private fun VerseNoteCard(note: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFFAEEDA))
+            .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFFAEEDA))
             .border(1.dp, Gold.copy(0.4f), RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.Top
@@ -656,7 +673,7 @@ private fun BottomActionBar(
 ) {
     Surface(
         shadowElevation = 8.dp,
-        color = Cream
+        color = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -720,7 +737,7 @@ private fun BottomActionBar(
                         )
                         Text(
                             text       = "Share",
-                            color      = InkSoft,
+                            color      = MaterialTheme.colorScheme.onSurface,
                             fontSize   = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -793,7 +810,7 @@ private fun NavArrowButton(
             Icon(
                 imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint               = InkSoft.copy(alpha = alpha),
+                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 modifier           = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(6.dp))

@@ -18,42 +18,44 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = DeepSaffron,
-    secondary = DarkOrange,
-    tertiary = DarkGold,
-    background = androidx.compose.ui.graphics.Color(0xFF1A1A1A),
-    surface = androidx.compose.ui.graphics.Color(0xFF2A2A2A),
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFF3A3A3A),
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    onSecondary = androidx.compose.ui.graphics.Color.White,
-    onBackground = androidx.compose.ui.graphics.Color(0xFFE8E8E8),
-    onSurface = androidx.compose.ui.graphics.Color(0xFFE8E8E8),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFFFE8D6)
+    primary = Saffron,
+    secondary = GoldSpark,
+    tertiary = GoldBright,
+    background = BgDark,
+    surface = Surface1,
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onBackground = TextWhite,
+    onSurface = TextWhite,
+    surfaceVariant = Surface2,
+    onSurfaceVariant = TextDim
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = Saffron,
-    secondary = OrangeLight,
-    tertiary = GoldLight,
-    background = androidx.compose.ui.graphics.Color(0xFFFFFBFE),
-    surface = androidx.compose.ui.graphics.Color(0xFFFFFBFE),
-    primaryContainer = androidx.compose.ui.graphics.Color(0xFFFFE8D6),
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    onSecondary = androidx.compose.ui.graphics.Color.White,
-    onBackground = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-    onSurface = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF4A2C2A)
+    secondary = GoldSpark,
+    tertiary = GoldPale,
+    background = Color(0xFFFFFBF0),
+    surface = Color.White,
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onBackground = Color(0xFF1C1B1F),
+    onSurface = Color(0xFF1C1B1F),
+    surfaceVariant = Color(0xFFF5F5F5),
+    onSurfaceVariant = Color(0xFF49454F)
 )
 
 @Composable
 fun GitaLearningTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
-    accentName: String? = null,
+    accentName: String? = "Sacred",
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    // Base scheme: system dynamic or app palettes
+    
+    // Determine the base color scheme
     val base = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -62,23 +64,27 @@ fun GitaLearningTheme(
         else -> LightColorScheme
     }
 
-    // Accent override: map preferred accent to primary/secondary/tertiary
-    val scheme = when (accentName) {
-        "Lotus" -> base.copy(
-            primary = LotusPrimary,
-            secondary = LotusSecondary,
-            tertiary = LotusTertiary,
-            onPrimary = Color.White,
-            onSecondary = Color.White
-        )
-        "Ocean" -> base.copy(
-            primary = OceanPrimary,
-            secondary = OceanSecondary,
-            tertiary = OceanTertiary,
-            onPrimary = Color(0xFF002022),
-            onSecondary = Color(0xFF00221A)
-        )
-        else -> base
+    // Apply custom accent if it's not "Sacred" (default) or if dynamic color is off
+    val scheme = if (accentName != null && accentName != "Sacred" && (!dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S)) {
+        when (accentName) {
+            "Lotus" -> base.copy(
+                primary = LotusPrimary,
+                secondary = LotusSecondary,
+                tertiary = LotusTertiary,
+                onPrimary = Color.White,
+                onSecondary = Color.White
+            )
+            "Ocean" -> base.copy(
+                primary = OceanPrimary,
+                secondary = OceanSecondary,
+                tertiary = OceanTertiary,
+                onPrimary = Color(0xFF002022),
+                onSecondary = Color(0xFF00221A)
+            )
+            else -> base
+        }
+    } else {
+        base
     }
 
     MaterialTheme(

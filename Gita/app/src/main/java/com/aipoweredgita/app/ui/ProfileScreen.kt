@@ -38,9 +38,6 @@ import kotlinx.coroutines.launch
 // ── Shared Sacred Gold Palette (imported from theme) ──────────────────────────
 private val Border        = Color(0x14FFFFFF)   // 8 % white
 private val BorderHi      = Color(0x24FFFFFF)   // 14 % white
-private val TextPrimary   = TextWhite
-private val TextSecondary = TextDim
-private val TextMuted     = Color(0x52E8E8E8)   // 32 %
 
 @Composable
 fun ProfileScreen(
@@ -68,7 +65,7 @@ fun ProfileScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(BgDark)) {
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -151,11 +148,11 @@ fun ProfileScreen(
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = "Best Score: ${stats?.bestScore ?: 0}/${stats?.bestScoreOutOf ?: 0}",
-                            style = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary, fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         )
                         Text(
                             text = "Accuracy: ${stats?.accuracyPercentage?.toInt() ?: 0}%",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                         )
                     }
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GoldSpark)
@@ -171,15 +168,15 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Dark Mode", style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary))
+                    Text("Dark Mode", style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface))
                     Switch(
                         checked = isDarkTheme,
                         onCheckedChange = onThemeToggle,
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = GoldSpark,
                             checkedTrackColor = GoldSpark.copy(alpha = 0.3f),
-                            uncheckedThumbColor = TextMuted,
-                            uncheckedTrackColor = Surface2
+                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
                 }
@@ -201,7 +198,7 @@ private fun ProfileHeader(
             .fillMaxWidth()
             .height(240.dp)
             .background(
-                Brush.verticalGradient(listOf(GoldSpark.copy(alpha = 0.15f), BgDark))
+                Brush.verticalGradient(listOf(GoldSpark.copy(alpha = 0.15f), MaterialTheme.colorScheme.background))
             )
             .clickable(onClick = onClick, indication = null, interactionSource = remember { MutableInteractionSource() }),
         contentAlignment = Alignment.Center
@@ -231,8 +228,8 @@ private fun ProfileHeader(
                 Box(
                     modifier = Modifier
                         .size(90.dp)
-                        .background(Surface1, CircleShape)
-                        .border(1.dp, BorderHi, CircleShape),
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -247,7 +244,7 @@ private fun ProfileHeader(
             Text(
                 text = name.ifEmpty { "Arjuna" },
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -272,7 +269,7 @@ private fun ProfileHeader(
                     text = "$age Year Old Seeker",
                     modifier = Modifier.padding(top = 4.dp),
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = TextMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontStyle = FontStyle.Italic
                     )
                 )
@@ -294,8 +291,8 @@ private fun CreativeCard(
             .padding(horizontal = 24.dp)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(20.dp),
-        color = Surface1,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderHi)
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -304,7 +301,7 @@ private fun CreativeCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.8.sp
                     )
@@ -321,8 +318,8 @@ private fun SmallStatItem(label: String, value: String, icon: ImageVector, modif
     Surface(
         modifier = modifier.height(85.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Surface1,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, Border)
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(12.dp),
@@ -331,8 +328,8 @@ private fun SmallStatItem(label: String, value: String, icon: ImageVector, modif
         ) {
             Icon(icon, contentDescription = null, tint = GoldSpark.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
             Column {
-                Text(value, style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary, fontWeight = FontWeight.Bold))
-                Text(label, style = MaterialTheme.typography.labelSmall.copy(color = TextMuted, fontSize = 9.sp))
+                Text(value, style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold))
+                Text(label, style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp))
             }
         }
     }
@@ -347,10 +344,10 @@ private fun ProfileDisplayInfo(name: String, dob: String, age: Int, onEdit: () -
         Button(
             onClick = onEdit,
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = GoldSpark),
+            colors = ButtonDefaults.buttonColors(containerColor = Saffron),
             shape = RoundedCornerShape(10.dp)
         ) {
-            Text("Edit Profile", color = BgDark, fontWeight = FontWeight.Bold)
+            Text("Edit Profile", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -364,25 +361,25 @@ private fun ProfileEditForm(
     Column {
         OutlinedTextField(
             value = name, onValueChange = onNameChange,
-            label = { Text("Spiritual Name", color = TextMuted) },
+            label = { Text("Spiritual Name", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = GoldSpark,
-                unfocusedBorderColor = Border,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = dob, onValueChange = onDobChange,
-            label = { Text("DOB (YYYY-MM-DD)", color = TextMuted) },
+            label = { Text("DOB (YYYY-MM-DD)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = GoldSpark,
-                unfocusedBorderColor = Border,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
         )
         Spacer(Modifier.height(16.dp))
@@ -396,8 +393,8 @@ private fun ProfileEditForm(
             Button(
                 onClick = onSave,
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = GoldSpark)
-            ) { Text("Save", color = BgDark, fontWeight = FontWeight.Bold) }
+                colors = ButtonDefaults.buttonColors(containerColor = Saffron)
+            ) { Text("Save", color = Color.White, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -408,7 +405,7 @@ private fun ProfileInfoRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary))
-        Text(value, style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold))
+        Text(label, style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+        Text(value, style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold))
     }
 }

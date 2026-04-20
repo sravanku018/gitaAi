@@ -23,7 +23,7 @@ fun ErrorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -38,21 +38,21 @@ fun ErrorScreen(
             style = MaterialTheme.typography.headlineMedium,
             fontSize = 24.sp,
             fontWeight = FontWeight.SemiBold,
-            color = GoldSpark,
+            color = MaterialTheme.colorScheme.secondary,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextWhite,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
         if (onRetry != null) {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(containerColor = Saffron)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("Retry")
             }

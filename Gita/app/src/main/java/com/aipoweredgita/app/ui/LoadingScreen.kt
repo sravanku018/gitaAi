@@ -54,7 +54,7 @@ fun LoadingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(BgDark),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -78,7 +78,7 @@ fun LoadingScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 fontSize = 18.sp,
                 textAlign = TextAlign.Center,
-                color = TextWhite
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -86,7 +86,7 @@ fun LoadingScreen(
             // Additional progress indicator
             CircularProgressIndicator(
                 modifier = Modifier.size(32.dp),
-                color = Saffron
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }

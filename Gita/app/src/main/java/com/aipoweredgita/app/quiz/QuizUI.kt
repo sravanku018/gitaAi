@@ -82,7 +82,7 @@ fun QuizContent(
 
     Box(modifier = Modifier
         .fillMaxSize()
-        .background(BgDark)) {
+        .background(MaterialTheme.colorScheme.background)) {
         // Ambient background image
         Image(
             painter = painterResource(id = R.drawable.krishna), // Using Krishna as background
@@ -116,7 +116,7 @@ fun QuizContent(
             Text(
                 text = TextUtils.sanitizeText(question),
                 style = MaterialTheme.typography.headlineSmall,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 28.sp
             )
@@ -126,17 +126,17 @@ fun QuizContent(
                     value = userAnswer,
                     onValueChange = { userAnswer = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Type your answer here...", color = TextDim) },
+                    placeholder = { Text("Type your answer here...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     minLines = 6,
                     maxLines = 10,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite,
-                        cursorColor = GoldSpark,
-                        focusedBorderColor = GoldSpark,
-                        unfocusedBorderColor = Surface2,
-                        focusedContainerColor = Surface1,
-                        unfocusedContainerColor = Surface1
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.secondary,
+                        focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -155,8 +155,8 @@ fun QuizContent(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Saffron,
-                        disabledContainerColor = Surface2
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -199,9 +199,9 @@ fun QuizContent(
                 showResultDialog = false
             }) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Surface1),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, GoldSpark.copy(0.2f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.2f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -228,7 +228,7 @@ fun QuizContent(
                         ) {
                             Text(
                                 text = if (isCorrect) "✓" else "✕",
-                                color = if (isCorrect) GoldSpark else Color.Red,
+                                color = if (isCorrect) MaterialTheme.colorScheme.secondary else Color.Red,
                                 fontSize = 32.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -237,22 +237,22 @@ fun QuizContent(
                         Text(
                             text = if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning",
                             style = MaterialTheme.typography.titleLarge,
-                            color = if (isCorrect) GoldSpark else Saffron,
+                            color = if (isCorrect) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
                             text = if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.",
                             textAlign = TextAlign.Center,
-                            color = TextWhite
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         if (!isCorrect || isOpenEnded) {
-                            HorizontalDivider(color = Surface2, thickness = 1.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
                             Text(
                                 text = TextUtils.sanitizeText(answer),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = TextWhite.copy(0.8f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(0.8f),
                                 textAlign = TextAlign.Start,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -266,7 +266,7 @@ fun QuizContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Saffron),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Continue Journey", fontWeight = FontWeight.Bold)
@@ -283,14 +283,15 @@ fun QuizContent(
 
 @Composable
 fun OrnamentRule() {
+    val ornamentColor = MaterialTheme.colorScheme.secondary
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, GoldSpark.copy(0.5f)))))
-        Box(modifier = Modifier.padding(horizontal = 8.dp).size(6.dp).clip(CircleShape).background(GoldSpark))
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(GoldSpark.copy(0.5f), Color.Transparent))))
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, ornamentColor.copy(0.5f)))))
+        Box(modifier = Modifier.padding(horizontal = 8.dp).size(6.dp).clip(CircleShape).background(ornamentColor))
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(ornamentColor.copy(0.5f), Color.Transparent))))
     }
 }
 
@@ -320,8 +321,8 @@ private fun QuizTimerHeader(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Surface1,
-        border = BorderStroke(1.dp, Surface2)
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -336,14 +337,14 @@ private fun QuizTimerHeader(
                     Text(
                         text = "PROGRESS",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextDim,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
                     )
                     Text(
                         text = "$questionNumber / $totalQuestions",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = GoldSpark
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
 
@@ -353,7 +354,7 @@ private fun QuizTimerHeader(
                         progress = { animatedProgress },
                         modifier = Modifier.size(48.dp),
                         color = animatedTimerColor,
-                        trackColor = Surface2,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         strokeWidth = 3.dp,
                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
@@ -370,14 +371,14 @@ private fun QuizTimerHeader(
                     Text(
                         text = "SCORE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextDim,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
                     )
                     Text(
                         text = score.toString(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = GoldSpark
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
             }

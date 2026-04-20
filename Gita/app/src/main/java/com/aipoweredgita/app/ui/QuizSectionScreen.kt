@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,17 +52,14 @@ fun QuizSectionScreen(
     // Hoist ViewModels to avoid re-creation on tab switches
     val quizViewModel: QuizViewModel = viewModel()
 
-    // Auto-start normal quiz when switching to a question-count tab
+    var isStarted by remember(selectedTab) { mutableStateOf(false) }
+
+    // Remove auto-start logic from LaunchedEffect to allow manual start
     LaunchedEffect(selectedTab) {
+        // Pre-configure but don't start
         when (selectedTab) {
-            0 -> {
-                quizViewModel.setQuizLimit(15)
-                quizViewModel.resetQuiz()
-            }
-            1 -> {
-                quizViewModel.setQuizLimit(25)
-                quizViewModel.resetQuiz()
-            }
+            0 -> quizViewModel.setQuizLimit(15)
+            1 -> quizViewModel.setQuizLimit(25)
         }
     }
 
@@ -153,23 +152,104 @@ fun QuizSectionScreen(
 
         // Content
         AnimatedContent(
-            targetState = selectedTab,
+            targetState = selectedTab to isStarted,
             transitionSpec = {
-                fadeIn(tween(300)) + slideInHorizontally(
-                    initialOffsetX = { if (targetState > initialState) it / 4 else -it / 4 },
-                    animationSpec = tween(300)
-                ) togetherWith fadeOut(tween(200)) + slideOutHorizontally(
-                    targetOffsetX = { if (targetState > initialState) -it / 4 else it / 4 },
-                    animationSpec = tween(200)
-                )
+                fadeIn(tween(400)) togetherWith fadeOut(tween(300))
             },
             label = "tab_content"
-        ) { tab ->
-            when (tab) {
-                0 -> QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
-                1 -> QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
+        ) { (tab, started) ->
+            if (!started) {
+                QuizStartLanding(
+                    title = if (tab == 0) "15 Question Marathon" else "25 Question Challenge",
+                    description = if (tab == 0) 
+                        "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths."
+                        else "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?",
+                    onStart = {
+                        quizViewModel.resetQuiz()
+                        isStarted = true
+                    }
+                )
+            } else {
+                QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
             }
         }
+    }
+}
+
+@Composable
+private fun QuizStartLanding(
+    title: String,
+    description: String,
+    onStart: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = CircleShape,
+            color = GradientSaffron.copy(alpha = 0.1f),
+
+            border = BorderStroke(2.dp, GradientSaffron.copy(alpha = 0.3f))
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.School,
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp),
+                    tint = GradientSaffron
+                )
+            }
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(Modifier.height(48.dp))
+
+        Button(
+            onClick = onStart,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
+            shape = RoundedCornerShape(16.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+        ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Start Quiz", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        Text(
+            text = "Every question is a step closer to self-realization.",
+            style = MaterialTheme.typography.labelSmall,
+            fontStyle = FontStyle.Italic,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
     }
 }
 
