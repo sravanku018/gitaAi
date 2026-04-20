@@ -134,7 +134,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             var showSplash by remember { mutableStateOf(true) }
             var showExitDialog by remember { mutableStateOf(false) }
-            val isDarkTheme by themePreferences.isDarkTheme.collectAsStateWithLifecycle(initialValue = false)
+            
+            // Collect theme preferences
+            val themeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = com.aipoweredgita.app.utils.ThemeMode.SYSTEM)
+            val accent by themePreferences.accent.collectAsStateWithLifecycle(initialValue = "Sacred")
+            val dynamicColor by themePreferences.isDynamicColor.collectAsStateWithLifecycle(initialValue = true)
+            
+            // Determine actual dark theme state
+            val darkTheme = when (themeMode) {
+                com.aipoweredgita.app.utils.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                com.aipoweredgita.app.utils.ThemeMode.LIGHT -> false
+                com.aipoweredgita.app.utils.ThemeMode.DARK -> true
+            }
+
             val scope = rememberCoroutineScope()
 
             LaunchedEffect(Unit) {
@@ -148,10 +160,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val themePreferencesState = ThemePreferences(applicationContext)
-            val accent by themePreferencesState.accent.collectAsStateWithLifecycle(initialValue = "Saffron")
-            val dynamicColor by themePreferencesState.isDynamicColor.collectAsStateWithLifecycle(initialValue = false)
-            GitaLearningTheme(darkTheme = true, dynamicColor = false, accentName = "Sacred") {
+            GitaLearningTheme(
+                darkTheme = darkTheme, 
+                dynamicColor = dynamicColor, 
+                accentName = accent
+            ) {
                 UiConfigProvider {
                 when {
                     showSplash -> {
@@ -169,8 +182,15 @@ class MainActivity : ComponentActivity() {
                         val launchVerse = intent.getIntExtra("VERSE", 0)
                         MainContent(
                             onRequestExit = { showExitDialog = true },
-                            isDarkTheme = isDarkTheme,
-                            onThemeToggle = { scope.launch { themePreferences.setDarkTheme(it) } },
+                            isDarkTheme = darkTheme,
+                            onThemeToggle = { isDark ->
+                                scope.launch {
+                                    themePreferences.setThemeMode(
+                                        if (isDark) com.aipoweredgita.app.utils.ThemeMode.DARK 
+                                        else com.aipoweredgita.app.utils.ThemeMode.LIGHT
+                                    )
+                                }
+                            },
                             launchRoute = launchRoute,
                             launchChapter = launchChapter,
                             launchVerse = launchVerse

@@ -35,10 +35,10 @@ fun CompletionDialog(
 
     Dialog(onDismissRequest = { }) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = Surface1),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(0.3f))
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.3f))
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -48,14 +48,14 @@ fun CompletionDialog(
                 Text(
                     text = "ॐ",
                     fontSize = 48.sp,
-                    color = GoldSpark,
+                    color = MaterialTheme.colorScheme.secondary,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
                     text = stringResource(id = R.string.quiz_complete_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
@@ -63,20 +63,20 @@ fun CompletionDialog(
                 Box(
                     modifier = Modifier
                         .size(120.dp)
-                        .background(Surface2, RoundedCornerShape(60.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(60.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "$percentage%",
                             fontSize = 32.sp,
-                            color = GoldSpark,
+                            color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = "ACCURACY",
                             fontSize = 10.sp,
-                            color = TextDim,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = 1.sp
                         )
                     }
@@ -85,14 +85,14 @@ fun CompletionDialog(
                 Text(
                     text = performanceMessage,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
                     text = stringResource(id = R.string.quiz_score, score, total),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextDim
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -100,7 +100,7 @@ fun CompletionDialog(
                 Button(
                     onClick = onExit,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Saffron),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(stringResource(id = R.string.quiz_exit), fontWeight = FontWeight.Bold)
@@ -112,7 +112,7 @@ fun CompletionDialog(
                 ) {
                     Text(
                         stringResource(id = R.string.quiz_restart),
-                        color = GoldSpark,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Medium
                     )
                 }

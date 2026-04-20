@@ -32,9 +32,9 @@ fun WelcomeDialog(
             modifier = modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
-                containerColor = Surface1
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(alpha = 0.2f))
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))
         ) {
             Column(
                 modifier = Modifier
@@ -51,7 +51,7 @@ fun WelcomeDialog(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = GoldSpark
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -61,7 +61,7 @@ fun WelcomeDialog(
                     text = "🙏 Welcome to Bhagavad Gita",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = GoldSpark,
+                    color = MaterialTheme.colorScheme.secondary,
                     textAlign = TextAlign.Center
                 )
                 
@@ -72,7 +72,7 @@ fun WelcomeDialog(
                     text = "Discover the timeless wisdom of the Bhagavad Gita in Telugu",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
-                    color = TextWhite
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -119,7 +119,7 @@ fun WelcomeDialog(
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Saffron)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Get Started")
                 }
@@ -150,12 +150,12 @@ private fun FeatureItem(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = GoldSpark
+                color = MaterialTheme.colorScheme.secondary
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextDim
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

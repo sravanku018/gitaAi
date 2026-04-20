@@ -230,7 +230,7 @@ fun DashboardScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
@@ -265,14 +265,14 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Surface1),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(alpha = 0.2f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Next best action", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GoldSpark)
-                        Text("${nextStep ?: ""} at level $nextLevel", style = MaterialTheme.typography.bodyLarge, color = TextWhite)
-                        if (!nextReason.isNullOrBlank()) Text(nextReason!!, style = MaterialTheme.typography.bodySmall, color = TextDim)
+                        Text("${nextStep ?: ""} at level $nextLevel", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                        if (!nextReason.isNullOrBlank()) Text(nextReason!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             when (nextStep) {
                                 "Read" -> Button(onClick = onNavigateToNormalMode, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("Start Reading") }
@@ -399,7 +399,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Lotus Level", style = MaterialTheme.typography.titleMedium, color = TextWhite)
+                Text(text = "Lotus Level", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                 LotusBadge(level = level, size = 32.dp)
             }
         }
@@ -410,14 +410,14 @@ fun DashboardScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Surface1),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Suggested Focus", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
-                    Text(text = "Current Level: ${advice.currentLevel}", color = TextWhite)
-                    Text(text = "Next Levels: ${advice.nextFocusLevels.joinToString(", ")}", color = TextWhite)
-                    advice.tips.forEach { tip -> Text(text = "• $tip", fontSize = 12.sp, color = TextDim) }
+                    Text(text = "Current Level: ${advice.currentLevel}", color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = "Next Levels: ${advice.nextFocusLevels.joinToString(", ")}", color = MaterialTheme.colorScheme.onSurface)
+                    advice.tips.forEach { tip -> Text(text = "• $tip", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }
@@ -433,20 +433,20 @@ fun DashboardScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Surface1),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Recommendations", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
                     recs.take(3).forEach { r ->
-                        Text(text = "• ${r.recommendationTitle}", fontSize = 12.sp, color = TextWhite)
+                        Text(text = "• ${r.recommendationTitle}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onNavigateToQuizMode, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Saffron)) {
                             Text("Start Plan")
                         }
-                        Button(onClick = onNavigateToRecommendations, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Surface2)) {
+                        Button(onClick = onNavigateToRecommendations, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                             Text("View All")
                         }
                     }
@@ -545,9 +545,9 @@ fun DashboardStatCard(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Surface1
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
             modifier = Modifier
@@ -569,7 +569,7 @@ fun DashboardStatCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextDim
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -654,20 +654,20 @@ fun TodaySummaryDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Close") } },
         title = { Text("Today’s Summary", color = GoldSpark) },
-        containerColor = Surface1,
+        containerColor = MaterialTheme.colorScheme.surface,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Verses viewed: $verses", color = TextWhite)
-                Text("Quizzes taken: $quizzes", color = TextWhite)
-                Text("Normal Mode: ${formatTime(normalTime)}", color = TextWhite)
-                Text("Quiz Mode: ${formatTime(quizTime)}", color = TextWhite)
-                Text("Voice Studio: ${formatTime(studioTime)}", color = TextWhite)
+                Text("Verses viewed: $verses", color = MaterialTheme.colorScheme.onSurface)
+                Text("Quizzes taken: $quizzes", color = MaterialTheme.colorScheme.onSurface)
+                Text("Normal Mode: ${formatTime(normalTime)}", color = MaterialTheme.colorScheme.onSurface)
+                Text("Quiz Mode: ${formatTime(quizTime)}", color = MaterialTheme.colorScheme.onSurface)
+                Text("Voice Studio: ${formatTime(studioTime)}", color = MaterialTheme.colorScheme.onSurface)
                 if (versesList.isNotEmpty()) {
-                    HorizontalDivider(color = Surface2)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Verses today:", color = GoldSpark)
                     val items = versesList.take(10).joinToString { "${it.chapterNo}:${it.verseNo}" }
-                    Text(items, color = TextWhite)
-                    if (versesList.size > 10) Text("…and ${versesList.size - 10} more", color = TextDim)
+                    Text(items, color = MaterialTheme.colorScheme.onSurface)
+                    if (versesList.size > 10) Text("…and ${versesList.size - 10} more", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

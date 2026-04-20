@@ -54,17 +54,20 @@ import com.aipoweredgita.app.viewmodel.ChatMessage
 import com.aipoweredgita.app.viewmodel.VoiceChatState
 import com.aipoweredgita.app.ui.theme.*
 
-// ── Shared Sacred Gold Palette (imported from theme) ──────────────────────────
-private val Border        = Color(0x14FFFFFF)   // 8 % white
-private val BorderHi      = Color(0x24FFFFFF)   // 14 % white
-private val TextPrimary   = TextWhite
-private val TextSecondary = TextDim
-private val TextMuted     = Color(0x52E8E8E8)   // 32 %
-private val ListenRed     = CrimsonDeep
-private val SpeakGreen    = Forest
-private val UserBubbleBg  = Forest.copy(alpha = 0.2f)
-private val UserBubbleBdr = Forest.copy(alpha = 0.3f)
-private val RevolvingYellow = GoldBright
+// ── Shared Sacred Gold Palette ──────────────────────────
+@Composable
+private fun getVoiceStudioColors() = object {
+    val Border        = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val BorderHi      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+    val TextPrimary   = MaterialTheme.colorScheme.onSurface
+    val TextSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val TextMuted     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+    val ListenRed     = CrimsonDeep
+    val SpeakGreen    = Forest
+    val UserBubbleBg  = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    val UserBubbleBdr = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val RevolvingYellow = GoldBright
+}
 
 @Composable
 fun VoiceStudioScreen(
@@ -93,7 +96,7 @@ fun VoiceStudioScreen(
         prefs.edit().putString("language_mode", mode.name).apply()
     }
 
-    Box(modifier = modifier.fillMaxSize().background(BgDark)) {
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         VoiceChatTab(
             languageMode = selectedLanguageMode,
             voiceChatViewModel = voiceChatViewModel,
@@ -155,6 +158,7 @@ private fun VoiceChatContent(
     val listState = rememberLazyListState()
     val canInteract = state.isLlmReady && !state.isThinking
     val isBusy = state.isThinking || state.isSpeaking || state.isListening || !canInteract
+    val colors = getVoiceStudioColors()
 
     LaunchedEffect(languageMode) { onSetLanguageMode(languageMode) }
 
@@ -203,58 +207,24 @@ private fun VoiceChatContent(
                 onClick = onExit,
                 modifier = Modifier
                     .size(36.dp)
-                    .background(Surface1, CircleShape)
-                    .border(0.5.dp, GoldSpark.copy(alpha = 0.3f), CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    .border(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.3f), CircleShape)
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Back",
-                    tint = GoldSpark, modifier = Modifier.size(16.dp))
+                    tint = colors.RevolvingYellow, modifier = Modifier.size(16.dp))
             }
 
             Text(
                 text = "Sacred conversations",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Normal,
-                    color = TextPrimary,
+                    color = colors.TextPrimary,
                     letterSpacing = 0.2.sp
                 ),
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
             )
         }
 
-        // ── Language chips (EN + हि — తె and Auto move to bottom row) ──────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp)
-                .padding(bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            val topModes = com.aipoweredgita.app.utils.LanguageMode.entries
-                .filter { it.displayShort != "తె" && it.displayShort != "A" }
-            topModes.forEach { mode ->
-                val selected = languageMode == mode
-                Surface(
-                    onClick = { onLanguageModeChange(mode) },
-                    modifier = Modifier.weight(1f).height(32.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (selected) GoldSpark else Color.Transparent,
-                    border = if (selected) null else
-                        androidx.compose.foundation.BorderStroke(0.5.dp, Border)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = mode.displayShort,
-                            fontSize = 12.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (selected) BgDark else GoldSpark
-                        )
-                    }
-                }
-            }
-        }
-
-        // ── Divider ───────────────────────────────────────────────────────────
-        OrnamentRule()
         Spacer(Modifier.height(8.dp))
 
         // ── Chat area ─────────────────────────────────────────────────────────
@@ -280,12 +250,12 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .offset(y = iconOffsetY.dp)
                             .size(52.dp)
-                            .background(Surface1, CircleShape)
-                            .border(0.5.dp, Border, CircleShape),
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .border(0.5.dp, colors.Border, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = null,
-                            tint = GoldSpark, modifier = Modifier.size(22.dp))
+                            tint = colors.RevolvingYellow, modifier = Modifier.size(22.dp))
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -295,7 +265,7 @@ private fun VoiceChatContent(
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Light,
                             fontStyle = FontStyle.Italic,
-                            color = TextPrimary,
+                            color = colors.TextPrimary,
                             lineHeight = 36.sp
                         ),
                         textAlign = TextAlign.Center
@@ -306,7 +276,7 @@ private fun VoiceChatContent(
                     Text(
                         text = "Speak or write your question — the Gita holds answers to every struggle of the human soul.",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary,
+                            color = colors.TextSecondary,
                             lineHeight = 22.sp
                         ),
                         textAlign = TextAlign.Center,
@@ -327,14 +297,14 @@ private fun VoiceChatContent(
                                     enabled = !isBusy,
                                     label = { Text(suggestion, fontSize = 12.sp) },
                                     colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = Surface1,
-                                        labelColor = TextSecondary,
-                                        disabledContainerColor = Surface1,
-                                        disabledLabelColor = TextMuted
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = colors.TextSecondary,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledLabelColor = colors.TextMuted
                                     ),
                                     border = SuggestionChipDefaults.suggestionChipBorder(
-                                        borderColor = Border, enabled = true,
-                                        disabledBorderColor = Border
+                                        borderColor = colors.Border, enabled = true,
+                                        disabledBorderColor = colors.Border
                                     ),
                                     shape = RoundedCornerShape(20.dp),
                                     modifier = Modifier.padding(4.dp)
@@ -383,13 +353,13 @@ private fun VoiceChatContent(
                 ) {
                     Icon(Icons.Default.Error, contentDescription = null,
                         tint = Color(0xFFE57373), modifier = Modifier.size(15.dp))
-                    Text(state.error ?: "", modifier = Modifier.weight(1f),
+                    Text(state.error ?: "An error occurred", modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2)))
                     Text(
                         text = "Retry",
                         modifier = Modifier.clickable { onClearError(); onRefreshModelStatus() },
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = GoldSpark, fontWeight = FontWeight.Medium
+                            color = colors.RevolvingYellow, fontWeight = FontWeight.Medium
                         )
                     )
                 }
@@ -399,17 +369,18 @@ private fun VoiceChatContent(
         // ── Bottom panel ──────────────────────────────────────────────────────
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = BgDark.copy(alpha = 0.96f),
+            color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
             tonalElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp)
-                    .padding(top = 14.dp, bottom = 32.dp)
-                    .navigationBarsPadding()
+                    .padding(top = 16.dp, bottom = 32.dp)
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Input row
+                // Text Input Field (Restored as per request)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -425,17 +396,17 @@ private fun VoiceChatContent(
                             .weight(1f)
                             .heightIn(min = 42.dp),
                         placeholder = {
-                            Text("Ask your question...",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted))
+                            Text("Share your search for truth...",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextMuted))
                         },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.TextPrimary),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BorderHi,
-                            unfocusedBorderColor = Border,
-                            focusedContainerColor = Surface2,
-                            unfocusedContainerColor = Surface1,
-                            disabledContainerColor = Surface1,
-                            disabledBorderColor = Border
+                            focusedBorderColor = colors.RevolvingYellow,
+                            unfocusedBorderColor = colors.Border,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledBorderColor = colors.Border
                         ),
                         shape = RoundedCornerShape(21.dp),
                         singleLine = false,
@@ -449,117 +420,60 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
-                                if (canSend) GoldSpark else Surface1,
+                                if (canSend) colors.RevolvingYellow else MaterialTheme.colorScheme.surfaceVariant,
                                 CircleShape
                             )
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
-                            tint = if (canSend) BgDark else TextMuted,
+                            tint = if (canSend) MaterialTheme.colorScheme.background else colors.TextMuted,
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                }
 
-                // Mic row — clear | orb | theme
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    // Clear
-                    SideButton(
-                        icon = { Icon(Icons.Default.Delete, contentDescription = "Clear",
-                            tint = Saffron, modifier = Modifier.size(17.dp)) },
-                        label = "Clear",
-                        onClick = { if (canInteract) onClearChat() }
-                    )
-
-                    // Central orb
-                    val orbScale by animateFloatAsState(
-                        targetValue = if (state.isListening || state.isSpeaking || state.isThinking) 1.15f else 1f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                        label = "orb_scale"
-                    )
-                    Box(modifier = Modifier.scale(orbScale)) {
-                        GeminiMicOrb(
-                            state = state,
-                            onMicClick = {
-                                when {
-                                    !canInteract        -> Unit
-                                    state.isSpeaking    -> onStopSpeaking()
-                                    state.isListening   -> onStopListening()
-                                    !hasAudioPermission -> permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                    else                -> onStartListening()
-                                }
-                            }
-                        )
-                    }
-
-                    // తె chip
-                    val teMode = com.aipoweredgita.app.utils.LanguageMode.entries
-                        .firstOrNull { it.displayShort == "తె" }
-                    if (teMode != null) {
-                        val teSelected = languageMode == teMode
-                        SideButton(
-                            icon = {
-                                Text(
-                                    text = "తె",
-                                    fontSize = 14.sp,
-                                    fontWeight = if (teSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (teSelected) BgDark else GoldSpark
-                                )
-                            },
-                            label = "Telugu",
-                            onClick = { onLanguageModeChange(teMode) },
-                            isSelected = teSelected
-                        )
-                    }
-
-                    // Auto chip
-                    val autoMode = com.aipoweredgita.app.utils.LanguageMode.entries
-                        .firstOrNull { it.displayShort == "A" }
-                    if (autoMode != null) {
-                        val autoSelected = languageMode == autoMode
-                        SideButton(
-                            icon = {
-                                Text(
-                                    text = "A",
-                                    fontSize = 14.sp,
-                                    fontWeight = if (autoSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (autoSelected) BgDark else GoldSpark
-                                )
-                            },
-                            label = "Auto",
-                            onClick = { onLanguageModeChange(autoMode) },
-                            isSelected = autoSelected
-                        )
+                    // Clear button moved here next to input
+                    IconButton(
+                        onClick = { if (canInteract) onClearChat() },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Clear",
+                            tint = colors.RevolvingYellow, modifier = Modifier.size(18.dp))
                     }
                 }
 
-                // Status line
-                Text(
-                    text = when {
-                        state.isListening -> "Listening..."
-                        state.isThinking  -> "Contemplating..."
-                        state.isSpeaking  -> "Speaking — tap to stop"
-                        else              -> "Tap the orb to speak"
-                    },
+                // Centered Language Selector
+                SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 14.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontStyle = FontStyle.Italic,
-                        color = when {
-                            state.isListening -> ListenRed
-                            state.isThinking  -> GoldSpark
-                            state.isSpeaking  -> SpeakGreen
-                            else              -> TextMuted
-                        }
-                    )
-                )
+                        .padding(bottom = 8.dp)
+                ) {
+                    com.aipoweredgita.app.utils.LanguageMode.entries.forEachIndexed { index, mode ->
+                        val selected = languageMode == mode
+                        SegmentedButton(
+                            selected = selected,
+                            onClick = { onLanguageModeChange(mode) },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = com.aipoweredgita.app.utils.LanguageMode.entries.size),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = colors.RevolvingYellow,
+                                activeContentColor = MaterialTheme.colorScheme.background,
+                                inactiveContainerColor = Color.Transparent,
+                                inactiveContentColor = colors.RevolvingYellow
+                            ),
+                            border = SegmentedButtonDefaults.borderStroke(color = colors.Border),
+                            label = {
+                                Text(
+                                    text = mode.displayName,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            icon = {}
+                        )
+                    }
+                }
             }
         }
     }
@@ -568,125 +482,8 @@ private fun VoiceChatContent(
 // ── Gemini orb ────────────────────────────────────────────────────────────────
 
 @Composable
-private fun GeminiMicOrb(state: VoiceChatState, onMicClick: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "orb_anim")
-
-    val ringRotation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
-        label = "ring_rot"
-    )
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(88.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onMicClick
-            )
-    ) {
-        // Revolving animated border
-        Canvas(modifier = Modifier.size(88.dp)) {
-            val strokeWidth = 3.dp.toPx()
-            rotate(ringRotation) {
-                if (state.isListening) {
-                    // Red and Yellow for listening (disciple icon state)
-                    drawArc(
-                        color = Color(0xFFEA4335), // Red
-                        startAngle = 0f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        style = Stroke(strokeWidth)
-                    )
-                    drawArc(
-                        color = RevolvingYellow, // Yellow
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        style = Stroke(strokeWidth)
-                    )
-                } else {
-                    // Green and Yellow for speaking/idle (Krishna icon state)
-                    drawArc(
-                        color = Color(0xFF34A853), // Green
-                        startAngle = 0f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        style = Stroke(strokeWidth)
-                    )
-                    drawArc(
-                        color = RevolvingYellow, // Yellow
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        style = Stroke(strokeWidth)
-                    )
-                }
-            }
-        }
-
-        // Core orb
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(64.dp)
-                .background(Surface1, CircleShape)
-                .border(1.5.dp, BorderHi, CircleShape)
-                .clip(CircleShape)
-        ) {
-            Crossfade(targetState = state.isListening, label = "orb_image") { isListening ->
-                if (isListening) {
-                    Image(
-                        painter = painterResource(id = com.aipoweredgita.app.R.drawable.devotee),
-                        contentDescription = "Devotee",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(id = com.aipoweredgita.app.R.drawable.krishna),
-                        contentDescription = "Krishna",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WaveBars() {
-    val infiniteTransition = rememberInfiniteTransition(label = "waves")
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.height(22.dp)
-    ) {
-        val delays = listOf(0, 120, 240, 60, 180)
-        delays.forEach { delay ->
-            val height by infiniteTransition.animateFloat(
-                initialValue = 0.3f, targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    tween(900, delayMillis = delay, easing = FastOutSlowInEasing),
-                    RepeatMode.Reverse
-                ),
-                label = "bar_$delay"
-            )
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .fillMaxHeight(height)
-                    .background(ListenRed, RoundedCornerShape(2.dp))
-            )
-        }
-    }
-}
-
-@Composable
 private fun ThinkingDots() {
+    val colors = getVoiceStudioColors()
     val infiniteTransition = rememberInfiniteTransition(label = "think_dots")
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -704,49 +501,13 @@ private fun ThinkingDots() {
             Box(
                 modifier = Modifier
                     .size(6.dp)
-                    .background(GoldSpark.copy(alpha = alpha), CircleShape)
+                    .background(colors.RevolvingYellow.copy(alpha = alpha), CircleShape)
             )
         }
     }
 }
 
-// ── Side button ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun SideButton(
-    icon: @Composable () -> Unit,
-    label: String,
-    onClick: () -> Unit,
-    isSelected: Boolean = false
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = onClick
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .background(if (isSelected) GoldSpark else Surface1, CircleShape)
-                .border(0.5.dp, if (isSelected) GoldSpark else Border, CircleShape),
-            contentAlignment = Alignment.Center
-        ) { icon() }
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = if (isSelected) GoldSpark else TextMuted,
-                letterSpacing = 0.08.sp,
-                fontSize = 10.sp
-            )
-        )
-    }
-}
-
-// ── Chat bubble ───────────────────────────────────────────────────────────────
+// ── Backing components ────────────────────────────────────────────────────────
 
 @Composable
 private fun ChatBubble(
@@ -754,56 +515,77 @@ private fun ChatBubble(
     isSpeaking: Boolean = false,
     onEdit: (String) -> Unit
 ) {
+    val colors = getVoiceStudioColors()
     val isUser = message.isUser
+    val infiniteTransition = rememberInfiniteTransition(label = "avatar_anim")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Restart),
+        label = "rotation"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isUser) Modifier.clickable { onEdit(message.text) } else Modifier)
-            .padding(vertical = 2.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
         if (!isUser) {
-            val glowDp by animateDpAsState(
-                targetValue = if (isSpeaking) 10.dp else 0.dp,
-                animationSpec = if (isSpeaking)
-                    infiniteRepeatable(tween(800), RepeatMode.Reverse)
-                else tween(300),
-                label = "speak_glow"
-            )
+            // Krishna Avatar with Revolving Line
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
-                    .size(30.dp)
-                    .shadow(glowDp, CircleShape,
-                        spotColor = GoldSpark, ambientColor = GoldSpark)
-                    .background(Surface2, CircleShape)
-                    .border(0.5.dp, Border, CircleShape),
+                    .size(38.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Mic, contentDescription = null,
-                    tint = GoldSpark, modifier = Modifier.size(14.dp))
+                Canvas(modifier = Modifier.size(38.dp)) {
+                    rotate(rotation) {
+                        drawArc(
+                            color = colors.RevolvingYellow,
+                            startAngle = 0f,
+                            sweepAngle = 180f,
+                            useCenter = false,
+                            style = Stroke(width = 1.8.dp.toPx())
+                        )
+                    }
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .size(31.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        .border(0.5.dp, colors.Border, CircleShape)
+                        .clip(CircleShape)
+                ) {
+                    Image(
+                        painter = painterResource(id = com.aipoweredgita.app.R.drawable.krishna),
+                        contentDescription = "Krishna",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
         }
 
         Surface(
-            modifier = Modifier.widthIn(max = 265.dp),
+            modifier = Modifier.widthIn(max = 260.dp),
             shape = if (isUser)
-                RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)
+                RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
             else
-                RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp),
-            color = if (isUser) UserBubbleBg else Surface1,
+                RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
+            color = if (isUser) colors.UserBubbleBg else MaterialTheme.colorScheme.surface,
             border = androidx.compose.foundation.BorderStroke(
                 0.5.dp,
-                if (isUser) UserBubbleBdr else Border
-            )
+                if (isUser) colors.UserBubbleBdr else colors.Border
+            ),
+            tonalElevation = if (isUser) 0.dp else 1.dp
         ) {
             Text(
                 text = message.text,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = TextPrimary,
+                    color = colors.TextPrimary,
                     lineHeight = 22.sp,
                     fontSize = 13.5.sp
                 ),
@@ -812,17 +594,41 @@ private fun ChatBubble(
         }
 
         if (isUser) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
+            // Devotee Avatar with Revolving Line
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
-                    .size(30.dp)
-                    .background(Color(0xFF1A2E1A), CircleShape)
-                    .border(0.5.dp, UserBubbleBdr, CircleShape),
+                    .size(38.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Mic, contentDescription = null,
-                    tint = SpeakGreen, modifier = Modifier.size(14.dp))
+                Canvas(modifier = Modifier.size(38.dp)) {
+                    rotate(-rotation)
+                    {
+                        drawArc(
+                            color = colors.UserBubbleBdr,
+                            startAngle = 180f,
+                            sweepAngle = 180f,
+                            useCenter = false,
+                            style = Stroke(width = 1.8.dp.toPx())
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(31.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        .border(0.5.dp, colors.Border, CircleShape)
+                        .clip(CircleShape)
+                ) {
+                    Image(
+                        painter = painterResource(id = com.aipoweredgita.app.R.drawable.devotee),
+                        contentDescription = "Devotee",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
     }
@@ -832,27 +638,57 @@ private fun ChatBubble(
 
 @Composable
 private fun ThinkingBubble() {
+    val colors = getVoiceStudioColors()
+    val infiniteTransition = rememberInfiniteTransition(label = "think_anim")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
+        label = "rotation"
+    )
+
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
+        // Krishna Avatar (Thinking) with Revolving Line
         Box(
             modifier = Modifier
                 .padding(top = 2.dp)
-                .size(30.dp)
-                .background(Surface2, CircleShape)
-                .border(0.5.dp, Border, CircleShape),
+                .size(38.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Mic, contentDescription = null,
-                tint = GoldSpark, modifier = Modifier.size(14.dp))
+            Canvas(modifier = Modifier.size(38.dp)) {
+                rotate(rotation) {
+                    drawArc(
+                        color = colors.RevolvingYellow,
+                        startAngle = 0f,
+                        sweepAngle = 180f,
+                        useCenter = false,
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    .border(1.dp, colors.Border, CircleShape)
+                    .clip(CircleShape)
+            ) {
+                Image(
+                    painter = painterResource(id = com.aipoweredgita.app.R.drawable.krishna),
+                    contentDescription = "Krishna",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
         Surface(
-            shape = RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp),
-            color = GoldSpark.copy(alpha = 0.10f),
-            border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.22f))
+            shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
+            color = colors.RevolvingYellow.copy(alpha = 0.10f),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.22f))
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

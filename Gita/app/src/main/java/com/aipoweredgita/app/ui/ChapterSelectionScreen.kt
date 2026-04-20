@@ -157,11 +157,11 @@ fun ChapterSelectionScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 repeat(chapters.size) { iteration ->
-                    val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else Color.LightGray
+                    val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                     Box(
                         modifier = Modifier
                             .padding(4.dp)
-                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .clip(CircleShape)
                             .background(color)
                             .size(if (pagerState.currentPage == iteration) 10.dp else 6.dp)
                     )

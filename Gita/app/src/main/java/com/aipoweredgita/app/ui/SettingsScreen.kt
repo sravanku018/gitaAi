@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.ui
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -114,7 +115,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .padding(if (uiCfg.isLandscape) 24.dp else 16.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -122,53 +123,98 @@ fun SettingsScreen(
         Text(
             "Appearance",
             style = MaterialTheme.typography.titleLarge,
-            color = GoldSpark
+            color = MaterialTheme.colorScheme.secondary
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Surface1),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Surface2)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Dark Theme", color = TextWhite)
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = { enabled -> scope.launch { themePreferences.setDarkTheme(enabled) } },
-                        colors = SwitchDefaults.colors(checkedThumbColor = GoldSpark, checkedTrackColor = Saffron)
-                    )
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Theme Mode Selection
+                Text("Theme Mode", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                
+                val currentThemeMode by themePreferences.themeMode.collectAsStateWithLifecycle(initialValue = com.aipoweredgita.app.utils.ThemeMode.SYSTEM)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    com.aipoweredgita.app.utils.ThemeMode.values().forEach { mode ->
+                        FilterChip(
+                            selected = currentThemeMode == mode,
+                            onClick = { scope.launch { themePreferences.setThemeMode(mode) } },
+                            label = { Text(mode.name.lowercase().capitalize()) },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Dynamic Color (Android 12+)", color = TextWhite)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+                // Dynamic Color Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Dynamic Color", color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "Use system wallpaper colors (Android 12+)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Switch(
                         checked = dynamicColor,
                         onCheckedChange = { enabled -> scope.launch { themePreferences.setDynamicColor(enabled) } },
-                        colors = SwitchDefaults.colors(checkedThumbColor = GoldSpark, checkedTrackColor = Saffron)
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
                     )
                 }
 
-                Text("Accent Color", style = MaterialTheme.typography.titleMedium, color = TextWhite)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Saffron", "Lotus", "Ocean").forEach { name ->
-                        FilterChip(
-                            selected = accent == name,
-                            onClick = { scope.launch { themePreferences.setAccent(name) } },
-                            label = { Text(name) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Saffron,
-                                selectedLabelColor = BgDark,
-                                labelColor = TextDim
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                borderColor = Surface2,
-                                selectedBorderColor = GoldSpark,
-                                enabled = true,
-                                selected = accent == name
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+                // Accent Color Selection (Only relevant when Dynamic Color is off)
+                Column(
+                    modifier = Modifier.graphicsLayer {
+                        alpha = if (!dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) 1f else 0.5f
+                    }
+                ) {
+                    Text("Accent Color", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Custom brand colors (Effective when Dynamic Color is off)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Sacred", "Lotus", "Ocean").forEach { name ->
+                            FilterChip(
+                                selected = accent == name,
+                                onClick = { 
+                                    if (!dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                                        scope.launch { themePreferences.setAccent(name) }
+                                    }
+                                },
+                                label = { Text(name) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -181,18 +227,18 @@ fun SettingsScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Surface1),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Surface2)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Memory, contentDescription = null, tint = GoldSpark)
+                    Icon(Icons.Default.Memory, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("AI Model Selection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextWhite)
+                    Text("AI Model Selection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Choose which AI model to use for quiz generation and analysis:", style = MaterialTheme.typography.bodySmall, color = TextDim)
+                Text("Choose which AI model to use for quiz generation and analysis:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 modelOptions.forEach { model ->
@@ -216,10 +262,10 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = model, style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isDisabled) TextDim
-                                else if (isSelected) GoldSpark
-                                else TextWhite)
-                            Text(text = modelDescription, style = MaterialTheme.typography.bodySmall, color = TextDim)
+                                color = if (isDisabled) MaterialTheme.colorScheme.onSurfaceVariant
+                                else if (isSelected) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.onSurface)
+                            Text(text = modelDescription, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (isDisabled) {
                                 Text("⚠ Requires 8GB+ RAM (your device: ${DeviceUtils.getFormattedRAM(context)})", style = MaterialTheme.typography.bodySmall, color = CrimsonDeep)
                             }
@@ -228,7 +274,7 @@ fun SettingsScreen(
                             selected = isSelected,
                             onClick = { if (!isDisabled) saveModelSelection(model) },
                             enabled = !isDisabled,
-                            colors = RadioButtonDefaults.colors(selectedColor = GoldSpark, unselectedColor = TextDim)
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.secondary, unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant)
                         )
                     }
                 }
@@ -241,10 +287,10 @@ fun SettingsScreen(
                             Text(
                                 text = if (qwenStatus.isDownloaded) "✓ Qwen3 model downloaded" else "⚠ Qwen3 model not downloaded",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (qwenStatus.isDownloaded) GoldSpark else CrimsonDeep
+                                color = if (qwenStatus.isDownloaded) MaterialTheme.colorScheme.secondary else CrimsonDeep
                             )
                             if (isQwenDownloading) {
-                                Text("Downloading: $qwenDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = GoldSpark)
+                                Text("Downloading: $qwenDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
                         if (!qwenStatus.isDownloaded) {
@@ -252,9 +298,9 @@ fun SettingsScreen(
                                 TextButton(onClick = {
                                     com.aipoweredgita.app.services.QwenDownloadWorker.cancelDownload(context)
                                     scope.launch { delay(500); refreshStats() }
-                                }, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Cancel") }
+                                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("Cancel") }
                             } else {
-                                TextButton(onClick = { com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context) }, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Download") }
+                                TextButton(onClick = { com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context) }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("Download") }
                             }
                         }
                     }
@@ -268,10 +314,10 @@ fun SettingsScreen(
                             Text(
                                 text = if (gemmaStatus.isDownloaded) "✓ Gemma model downloaded" else "⚠ Gemma model not downloaded",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (gemmaStatus.isDownloaded) GoldSpark else CrimsonDeep
+                                color = if (gemmaStatus.isDownloaded) MaterialTheme.colorScheme.secondary else CrimsonDeep
                             )
                             if (isGemmaDownloading) {
-                                Text("Downloading: $gemmaDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = GoldSpark)
+                                Text("Downloading: $gemmaDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
                         if (!gemmaStatus.isDownloaded && deviceCategory == DeviceConfigCategory.HIGH) {
@@ -279,9 +325,9 @@ fun SettingsScreen(
                                 TextButton(onClick = {
                                     com.aipoweredgita.app.services.GemmaDownloadWorker.cancelDownload(context)
                                     scope.launch { delay(500); refreshStats() }
-                                }, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Cancel") }
+                                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("Cancel") }
                             } else {
-                                TextButton(onClick = { com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context) }, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Download") }
+                                TextButton(onClick = { com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context) }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("Download") }
                             }
                         }
                     }
@@ -290,17 +336,17 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Manage AI Models", style = MaterialTheme.typography.titleLarge, color = GoldSpark)
+        Text("Manage AI Models", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Surface1),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Surface2)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (checkingModels) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = GoldSpark, trackColor = Surface2)
-                    Text("Updating status…", style = MaterialTheme.typography.bodySmall, color = TextDim)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                    Text("Updating status…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 val downloadedMb = (totalModelSize / (1024 * 1024)).toInt()
@@ -308,46 +354,46 @@ fun SettingsScreen(
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("Total size: ${measuredTotalMb ?: (downloadedMb + remainingMb)} MB", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = TextWhite)
-                        Text("Downloaded: ${downloadedMb} MB", style = MaterialTheme.typography.bodySmall, color = GoldSpark)
+                        Text("Total size: ${measuredTotalMb ?: (downloadedMb + remainingMb)} MB", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Downloaded: ${downloadedMb} MB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     }
                     Button(
                         onClick = { refreshStats() },
                         enabled = !checkingModels,
-                        colors = ButtonDefaults.buttonColors(containerColor = Saffron, disabledContainerColor = Surface2)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) { Text("Refresh") }
                 }
 
-                HorizontalDivider(color = Surface2)
-                Text("Available Models", style = MaterialTheme.typography.titleMedium, color = TextWhite)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Text("Available Models", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     modelStatuses.forEach { modelStatus ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Surface2),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(modelStatus.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextWhite)
+                                        Text(modelStatus.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                         Text(
                                             if (modelStatus.isDownloaded) "Downloaded (${modelStatus.actualSizeBytes / (1024 * 1024)} MB)"
                                             else "Not Downloaded (Size: ${modelStatus.size})",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = if (modelStatus.isDownloaded) GoldSpark else TextDim
+                                            color = if (modelStatus.isDownloaded) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     if (modelStatus.isDownloaded) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = "Ready", tint = GoldSpark)
+                                        Icon(Icons.Default.CheckCircle, contentDescription = "Ready", tint = MaterialTheme.colorScheme.secondary)
                                     } else {
                                         val isThisModelDownloading = (isGemmaDownloading && modelStatus.name.contains("Gemma", ignoreCase = true)) ||
                                                 (isQwenDownloading && modelStatus.name.contains("Qwen", ignoreCase = true))
                                         
                                         if (isThisModelDownloading) {
                                             val prog = if (modelStatus.name.contains("Qwen", ignoreCase = true)) qwenDownloadProgress else gemmaDownloadProgress
-                                            Text("$prog%", color = GoldSpark)
+                                            Text("$prog%", color = MaterialTheme.colorScheme.secondary)
                                         } else {
                                             OutlinedButton(
                                                 onClick = {
@@ -358,8 +404,8 @@ fun SettingsScreen(
                                                     }
                                                 },
                                                 enabled = !checkingModels && !isGemmaDownloading && !isQwenDownloading,
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldSpark),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark)
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
                                             ) { Text("Download") }
                                         }
                                     }
@@ -417,29 +463,29 @@ fun SettingsScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Surface1),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Surface2)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("📚", fontSize = 24.sp)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Quiz Question Bank", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextWhite)
+                    Text("Quiz Question Bank", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 }
                 OrnamentRule()
                 Text(
                     if (hasQuestions) "$importedCount questions already imported from the QA dataset."
                     else "Import 3,500+ curated Bhagavad Gita questions from the official QA dataset.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextDim
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (datasetImportProgress.isNotEmpty()) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = GoldSpark, trackColor = Surface2)
-                    Text(datasetImportProgress, style = MaterialTheme.typography.bodySmall, color = GoldSpark)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, trackColor = MaterialTheme.colorScheme.surfaceVariant)
+                    Text(datasetImportProgress, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 }
                 if (importSuccess == true) {
-                    Text("✓ Questions imported successfully!", style = MaterialTheme.typography.bodySmall, color = GoldSpark)
+                    Text("✓ Questions imported successfully!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     LaunchedEffect(Unit) {
                         hasQuestions = true
                     }
@@ -485,8 +531,8 @@ fun SettingsScreen(
                             },
                             enabled = !isImportingDataset,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Saffron,
-                                disabledContainerColor = Surface2
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -495,9 +541,9 @@ fun SettingsScreen(
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GoldSpark)
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("All questions imported", style = MaterialTheme.typography.bodyMedium, color = GoldSpark, fontWeight = FontWeight.Medium)
+                        Text("All questions imported", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -507,7 +553,7 @@ fun SettingsScreen(
         Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Saffron),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text("Back to Wisdom", fontWeight = FontWeight.Bold)
@@ -520,14 +566,14 @@ fun HardwareSpecsCard(context: android.content.Context) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Surface1),
-        border = BorderStroke(1.dp, Surface2)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Memory, contentDescription = null, tint = GoldSpark)
+                Icon(Icons.Default.Memory, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Device Specifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextWhite)
+                Text("Device Specifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.height(12.dp))
             SpecRow("Model", DeviceUtils.getModelName())
@@ -535,8 +581,8 @@ fun HardwareSpecsCard(context: android.content.Context) {
             SpecRow("OS", DeviceUtils.getAndroidVersion())
             val category = DeviceUtils.getDeviceCategory(context)
             val categoryColor = when(category) {
-                DeviceConfigCategory.HIGH -> GoldSpark
-                DeviceConfigCategory.MEDIUM -> Saffron
+                DeviceConfigCategory.HIGH -> MaterialTheme.colorScheme.secondary
+                DeviceConfigCategory.MEDIUM -> MaterialTheme.colorScheme.primary
                 DeviceConfigCategory.LOW -> CrimsonDeep
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -550,8 +596,8 @@ fun HardwareSpecsCard(context: android.content.Context) {
 @Composable
 fun SpecRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextDim)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = TextWhite)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -565,20 +611,20 @@ fun ModelRecommendationCard(context: android.content.Context) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Saffron.copy(alpha = 0.1f)),
-        border = BorderStroke(1.dp, Saffron.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, contentDescription = null, tint = GoldSpark)
+                Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Recommended for You", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextWhite)
+                Text("Recommended for You", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Based on your device hardware, we suggest using:", style = MaterialTheme.typography.bodySmall, color = TextWhite)
-            Text(recommendedModel, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.ExtraBold, color = GoldSpark)
+            Text("Based on your device hardware, we suggest using:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+            Text(recommendedModel, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.secondary)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("You can still manually select other models in the Download section if you have a stable connection.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+            Text("You can still manually select other models in the Download section if you have a stable connection.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
