@@ -14,6 +14,11 @@ import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.quiz.QuizContent
 import com.aipoweredgita.app.ui.quiz.CompletionDialog
 import com.aipoweredgita.app.ui.ErrorScreen
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
+import androidx.compose.ui.tooling.preview.Preview
+import com.aipoweredgita.app.data.QuizQuestion
+import com.aipoweredgita.app.data.QuestionType
+import com.aipoweredgita.app.data.GitaVerse
 
 @Composable
 fun QuizScreen(
@@ -50,8 +55,8 @@ fun QuizScreen(
         val question = quizState.currentQuestion ?: return
 
         // Safety check: Ensure MCQ questions have options
-        val isOpenEnded = question.type == com.aipoweredgita.app.data.QuestionType.ESSAY ||
-                question.type == com.aipoweredgita.app.data.QuestionType.APPLICATION
+        val isOpenEnded = question.type == QuestionType.ESSAY ||
+                question.type == QuestionType.APPLICATION
 
         if (!isOpenEnded && question.options.isEmpty()) {
             ErrorScreen(message = "No answer options available for this question. Please try the next question.") {
@@ -116,3 +121,27 @@ fun QuizScreen(
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF0F0F0F)
+@Composable
+fun QuizScreenContentPreview() {
+    val mockQuestion = QuizQuestion(
+        verse = GitaVerse(chapterNo = 1, verseNo = 1, translation = "Dummy"),
+        question = "Who is the speaker of the Bhagavad Gita?",
+        options = listOf("Arjuna", "Krishna", "Sanjaya", "Dhritarashtra"),
+        correctAnswerIndex = 1,
+        explanation = "Lord Krishna spoke the Gita to Arjuna on the battlefield of Kurukshetra.",
+        type = QuestionType.MCQ
+    )
+    
+    GitaLearningTheme {
+        QuizContent(
+            question = mockQuestion.question,
+            answer = "Correct Answer: Krishna\n\nExplanation: Lord Krishna spoke the Gita to Arjuna.",
+            options = mockQuestion.options,
+            correctIndex = mockQuestion.correctAnswerIndex,
+            selectedIndex = null,
+            onSelect = {},
+            onProceed = {}
+        )
+    }
+}

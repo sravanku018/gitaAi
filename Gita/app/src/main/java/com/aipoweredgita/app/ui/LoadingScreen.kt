@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.R
 import kotlin.random.Random
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import com.aipoweredgita.app.ui.theme.*
 
 @Composable
 fun LoadingScreen(
@@ -50,7 +52,9 @@ fun LoadingScreen(
     )
 
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(BgDark),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -74,7 +78,7 @@ fun LoadingScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 fontSize = 18.sp,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface
+                color = TextWhite
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -82,8 +86,14 @@ fun LoadingScreen(
             // Additional progress indicator
             CircularProgressIndicator(
                 modifier = Modifier.size(32.dp),
-                color = MaterialTheme.colorScheme.primary
+                color = Saffron
             )
         }
     }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+fun LoadingScreenPreview() {
+    LoadingScreen(message = "Seeking Divine Wisdom...")
 }

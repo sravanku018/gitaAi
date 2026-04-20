@@ -33,10 +33,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.NotificationCompat
 import com.aipoweredgita.app.MainActivity
 import com.aipoweredgita.app.ml.ModelDownloadManager
 import com.aipoweredgita.app.utils.NetworkUtils
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,6 +96,43 @@ fun TryNowDialog(
         return
     }
 
+    TryNowDialogContent(
+        isDownloading = isDownloading,
+        overallProgress = overallProgress,
+        currentModel = currentModel,
+        remainingBytes = remainingBytes,
+        isOnWiFi = isOnWiFi,
+        isOnMobileData = isOnMobileData,
+        isDownloadingInBackground = isDownloadingInBackground,
+        onDismiss = onDismiss,
+        onDownloadNow = {
+            com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context)
+            isDownloadingInBackground = true
+            onDownloadStarted()
+            if (isOnMobileData) {
+                showDownloadNotification(context, remainingBytes)
+            }
+        },
+        onContinueInBackground = {
+            isDownloadingInBackground = true
+            onDismiss()
+        }
+    )
+}
+
+@Composable
+private fun TryNowDialogContent(
+    isDownloading: Boolean,
+    overallProgress: Int,
+    currentModel: String,
+    remainingBytes: Long,
+    isOnWiFi: Boolean,
+    isOnMobileData: Boolean,
+    isDownloadingInBackground: Boolean,
+    onDismiss: () -> Unit,
+    onDownloadNow: () -> Unit,
+    onContinueInBackground: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = { if (!isDownloading) onDismiss() },
         title = {
@@ -237,15 +276,7 @@ fun TryNowDialog(
         confirmButton = {
             if (!isDownloading) {
                 Button(
-                    onClick = {
-                        // ONLY use Gemma WorkManager - survives screen navigation/app closure
-                        com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context)
-                        isDownloadingInBackground = true
-                        onDownloadStarted()
-                        if (isOnMobileData) {
-                            showDownloadNotification(context, remainingBytes)
-                        }
-                    },
+                    onClick = onDownloadNow,
                     colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
                     modifier = Modifier.height(48.dp)
                 ) {
@@ -254,13 +285,8 @@ fun TryNowDialog(
                     Text("Download Now", fontWeight = FontWeight.Bold)
                 }
             } else {
-                // FIX: OutlinedButtonDefaults.buttonColors doesn't exist
-                // Use ButtonDefaults.outlinedButtonColors instead
                 OutlinedButton(
-                    onClick = {
-                        isDownloadingInBackground = true
-                        onDismiss()
-                    },
+                    onClick = onContinueInBackground,
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
@@ -288,7 +314,19 @@ private fun MobileDataConfirmationDialog(
 ) {
     val context = LocalContext.current
     val cellularGen = NetworkUtils.getCellularGeneration(context)
+    MobileDataConfirmationDialogContent(
+        cellularGen = cellularGen,
+        onConfirm = onConfirm,
+        onCancel = onCancel
+    )
+}
 
+@Composable
+private fun MobileDataConfirmationDialogContent(
+    cellularGen: NetworkUtils.CellularGeneration?,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onCancel,
         icon = {
@@ -338,6 +376,7 @@ private fun MobileDataConfirmationDialog(
         shape = RoundedCornerShape(20.dp)
     )
 }
+
 
 private fun showDownloadNotification(context: Context, totalBytes: Long) {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -458,4 +497,54 @@ fun dismissDatasetImportNotification(context: Context) {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     notificationManager.cancel(7006)
     notificationManager.cancel(7007)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewTryNowDialogInitial() {
+    GitaLearningTheme {
+        TryNowDialogContent(
+            isDownloading = false,
+            overallProgress = 0,
+            currentModel = "",
+            remainingBytes = 2580 * 1024 * 1024L,
+            isOnWiFi = true,
+            isOnMobileData = false,
+            isDownloadingInBackground = false,
+            onDismiss = {},
+            onDownloadNow = {},
+            onContinueInBackground = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewTryNowDialogDownloading() {
+    GitaLearningTheme {
+        TryNowDialogContent(
+            isDownloading = true,
+            overallProgress = 45,
+            currentModel = "Gemma 2B",
+            remainingBytes = 1400 * 1024 * 1024L,
+            isOnWiFi = true,
+            isOnMobileData = false,
+            isDownloadingInBackground = false,
+            onDismiss = {},
+            onDownloadNow = {},
+            onContinueInBackground = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewMobileDataConfirmation() {
+    GitaLearningTheme {
+        MobileDataConfirmationDialogContent(
+            cellularGen = NetworkUtils.CellularGeneration.FIVE_G,
+            onConfirm = {},
+            onCancel = {}
+        )
+    }
 }

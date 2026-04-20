@@ -1,18 +1,21 @@
 package com.aipoweredgita.app.ui.quiz
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.aipoweredgita.app.R
+import com.aipoweredgita.app.ui.theme.*
 
 @Composable
 fun CompletionDialog(
@@ -23,25 +26,97 @@ fun CompletionDialog(
 ) {
     val percentage = if (total > 0) (score * 100) / total else 0
     val performanceMessage = when {
-        percentage >= 90 -> "\uD83C\uDF1F " + stringResource(id = R.string.quiz_performance_outstanding)
-        percentage >= 75 -> "\uD83D\uDC4F " + stringResource(id = R.string.quiz_performance_excellent)
-        percentage >= 60 -> "\uD83D\uDC4D " + stringResource(id = R.string.quiz_performance_good)
-        percentage >= 40 -> "\uD83D\uDCAA " + stringResource(id = R.string.quiz_performance_keep_practicing)
-        else -> "\uD83D\uDE4C " + stringResource(id = R.string.quiz_performance_dont_give_up)
+        percentage >= 90 -> stringResource(id = R.string.quiz_performance_outstanding)
+        percentage >= 75 -> stringResource(id = R.string.quiz_performance_excellent)
+        percentage >= 60 -> stringResource(id = R.string.quiz_performance_good)
+        percentage >= 40 -> stringResource(id = R.string.quiz_performance_keep_practicing)
+        else -> stringResource(id = R.string.quiz_performance_dont_give_up)
     }
-    AlertDialog(
-        onDismissRequest = { /* require explicit action */ },
-        confirmButton = { Button(onClick = onExit) { Text(stringResource(id = R.string.quiz_exit)) } },
-        dismissButton = { OutlinedButton(onClick = onRestart) { Text(stringResource(id = R.string.quiz_restart)) } },
-        title = { Text(stringResource(id = R.string.quiz_complete_title)) },
-        text = {
-            Column {
-                Text(text = stringResource(id = R.string.quiz_score, score, total), style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(4.dp))
-                Text(text = stringResource(id = R.string.quiz_accuracy, percentage), style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(8.dp))
-                Text(text = performanceMessage, style = MaterialTheme.typography.bodyMedium)
+
+    Dialog(onDismissRequest = { }) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Surface1),
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(0.3f))
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "ॐ",
+                    fontSize = 48.sp,
+                    color = GoldSpark,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = stringResource(id = R.string.quiz_complete_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextWhite,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .background(Surface2, RoundedCornerShape(60.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$percentage%",
+                            fontSize = 32.sp,
+                            color = GoldSpark,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "ACCURACY",
+                            fontSize = 10.sp,
+                            color = TextDim,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+
+                Text(
+                    text = performanceMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextWhite,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = stringResource(id = R.string.quiz_score, score, total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextDim
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onExit,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Saffron),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(id = R.string.quiz_exit), fontWeight = FontWeight.Bold)
+                }
+
+                TextButton(
+                    onClick = onRestart,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        stringResource(id = R.string.quiz_restart),
+                        color = GoldSpark,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
-    )
+    }
 }

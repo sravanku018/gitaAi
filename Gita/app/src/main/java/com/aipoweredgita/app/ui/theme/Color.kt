@@ -2,8 +2,23 @@ package com.aipoweredgita.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// Sacred Gold Theme Palette
+val BgDark      = Color(0xFF0F0F0F)
+val Surface1    = Color(0xFF1A1A1A)
+val Surface2    = Color(0xFF242424)
+val GoldSpark   = Color(0xFFFFD700)
+val GoldBright  = Color(0xFFFFE04D)
+val GoldPale    = Color(0xFFFFF0A3)
+val Saffron     = Color(0xFFE8600A)
+val SaffronGlow = Color(0x55E8600A)
+val TextWhite   = Color(0xFFF5F5F5)
+val TextDim     = Color(0xFF9E9E9E)
+val Forest      = Color(0xFF2D5016)
+val ForestMid   = Color(0xFF3E6B21)
+val CrimsonDeep = Color(0xFF8B1A1A)
+
 // Light theme colors - Saffron/Orange theme
-val Saffron = Color(0xFFFF6B35)
+val SaffronLegacy = Color(0xFFFF6B35)
 val OrangeLight = Color(0xFFFFA500)
 val GoldLight = Color(0xFFFFD700)
 val SaffronDark = Color(0xFFE85A25)

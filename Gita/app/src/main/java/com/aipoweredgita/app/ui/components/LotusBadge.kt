@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.aipoweredgita.app.ui.theme.*
 
 @Composable
 fun LotusBadge(
@@ -36,9 +37,9 @@ fun LotusBadge(
         label = "lotus-openness"
     )
 
-    val colorPrimary = MaterialTheme.colorScheme.primary
-    val colorSecondary = MaterialTheme.colorScheme.secondary
-    val onPrimary = MaterialTheme.colorScheme.onPrimary
+    val colorPrimary = Saffron
+    val colorSecondary = GoldSpark
+    val onPrimary = Color.White
 
     Canvas(modifier.size(size)) {
         val w = this.size.width

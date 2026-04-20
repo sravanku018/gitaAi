@@ -44,6 +44,8 @@ import com.aipoweredgita.app.ui.LocalUiConfig
 import com.aipoweredgita.app.ui.components.WelcomeDialog
 import com.aipoweredgita.app.ui.components.MandalaBackground
 import com.aipoweredgita.app.ui.components.PremiumDashboardCard
+import com.aipoweredgita.app.ui.theme.*
+import com.aipoweredgita.app.quiz.OrnamentRule
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -82,8 +84,8 @@ fun MandalaHeroSection() {
             .background(
                 brush = Brush.horizontalGradient(
                     listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.secondary
+                        Saffron,
+                        Saffron.copy(alpha = 0.7f)
                     )
                 )
             )
@@ -228,6 +230,7 @@ fun DashboardScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
+            .background(BgDark)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
@@ -242,7 +245,7 @@ fun DashboardScreen(
                 val map = mapOf(
                     "â€¢" to "•", "â€“" to "–", "â€”" to "—", "â€˜" to "‘", "â€™" to "’",
                     "â€œ" to "“", "â€" to "”", "â€¦" to "…", "Ã—" to "×", "Â" to "",
-                    "ðŸ" to "", "dY" to "", "�" to ""
+                    "ðŸ" to "", "dY" to "", "" to ""
                 )
                 for ((k, v) in map) t = t?.replace(k, v)
                 t = t?.replace(Regex("[\\u0000-\\u001F\\u007F]"), "")
@@ -262,18 +265,19 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = Surface1),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(alpha = 0.2f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Next best action", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("${nextStep ?: ""} at level $nextLevel", style = MaterialTheme.typography.bodyLarge)
-                        if (!nextReason.isNullOrBlank()) Text(nextReason!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Next best action", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GoldSpark)
+                        Text("${nextStep ?: ""} at level $nextLevel", style = MaterialTheme.typography.bodyLarge, color = TextWhite)
+                        if (!nextReason.isNullOrBlank()) Text(nextReason!!, style = MaterialTheme.typography.bodySmall, color = TextDim)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             when (nextStep) {
-                                "Read" -> Button(onClick = onNavigateToNormalMode) { Text("Start Reading") }
-                                "Quiz" -> Button(onClick = onNavigateToQuizMode) { Text("Start Quiz") }
-                                "Studio" -> Button(onClick = onNavigateToVoiceStudio) { Text("ప్రశ్న సమాధానం") }
+                                "Read" -> Button(onClick = onNavigateToNormalMode, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("Start Reading") }
+                                "Quiz" -> Button(onClick = onNavigateToQuizMode, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("Start Quiz") }
+                                "Studio" -> Button(onClick = onNavigateToVoiceStudio, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("ప్రశ్న సమాధానం") }
                             }
                         }
                     }
@@ -300,11 +304,11 @@ fun DashboardScreen(
                     Text(
                         text = "Today's Progress",
                         style = MaterialTheme.typography.headlineSmall, // Updated to use new typography
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = GoldSpark
                     )
                     var showToday by remember { mutableStateOf(false) }
                     IconButton(onClick = { showToday = true }) {
-                        Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Today, contentDescription = "Today")
+                        Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Today, contentDescription = "Today", tint = GoldSpark)
                     }
                     if (showToday) {
                         TodaySummaryDialog(
@@ -324,6 +328,7 @@ fun DashboardScreen(
         }
 
         item {
+            OrnamentRule()
             Spacer(modifier = Modifier.height(12.dp))
         }
 
@@ -335,13 +340,13 @@ fun DashboardScreen(
                             title = "Time",
                             value = stats?.timeSpentFormatted ?: "0m",
                             icon = "⏱",
-                            color = MaterialTheme.colorScheme.primary
+                            color = Saffron
                         ),
                         StatItem(
                             title = "Streak",
                             value = "${stats?.currentStreak ?: 0} d",
                             icon = "🔥",
-                            color = MaterialTheme.colorScheme.secondary
+                            color = GoldSpark
                         )
                     )
                 )
@@ -359,13 +364,13 @@ fun DashboardScreen(
                         title = "Verses",
                         value = "$versesToday",
                         icon = "📖",
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = Saffron
                     ),
                     StatItem(
                         title = "Quizzes",
                         value = "$quizzesToday",
                         icon = "🧠",
-                        color = MaterialTheme.colorScheme.primary
+                        color = GoldSpark
                     )
                 )
             )
@@ -381,7 +386,7 @@ fun DashboardScreen(
                 Text(
                     text = "Learning Modes",
                     style = MaterialTheme.typography.headlineSmall, // Updated typography
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = GoldSpark
                 )
             }
         }
@@ -394,7 +399,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Lotus Level", style = MaterialTheme.typography.titleMedium)
+                Text(text = "Lotus Level", style = MaterialTheme.typography.titleMedium, color = TextWhite)
                 LotusBadge(level = level, size = 32.dp)
             }
         }
@@ -404,13 +409,15 @@ fun DashboardScreen(
             val advice = YogaAdvisor.suggest(stats)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Surface1),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Suggested Focus", style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Current Level: ${advice.currentLevel}")
-                    Text(text = "Next Levels: ${advice.nextFocusLevels.joinToString(", ")}")
-                    advice.tips.forEach { tip -> Text(text = "• $tip", fontSize = 12.sp) }
+                    Text(text = "Suggested Focus", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
+                    Text(text = "Current Level: ${advice.currentLevel}", color = TextWhite)
+                    Text(text = "Next Levels: ${advice.nextFocusLevels.joinToString(", ")}", color = TextWhite)
+                    advice.tips.forEach { tip -> Text(text = "• $tip", fontSize = 12.sp, color = TextDim) }
                 }
             }
         }
@@ -425,19 +432,21 @@ fun DashboardScreen(
             val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Surface1),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Recommendations", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Recommendations", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
                     recs.take(3).forEach { r ->
-                        Text(text = "• ${r.recommendationTitle}", fontSize = 12.sp)
+                        Text(text = "• ${r.recommendationTitle}", fontSize = 12.sp, color = TextWhite)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = onNavigateToQuizMode, modifier = Modifier.weight(1f)) {
+                        Button(onClick = onNavigateToQuizMode, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Saffron)) {
                             Text("Start Plan")
                         }
-                        Button(onClick = onNavigateToRecommendations, modifier = Modifier.weight(1f)) {
+                        Button(onClick = onNavigateToRecommendations, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Surface2)) {
                             Text("View All")
                         }
                     }
@@ -451,7 +460,7 @@ fun DashboardScreen(
                     title = "Read Verses",
                     description = "Browse the sacred texts",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read", tint = Color.White) },
-                    gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
+                    gradient = listOf(Saffron, GoldSpark),
                     onClick = onNavigateToNormalMode,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -470,7 +479,7 @@ fun DashboardScreen(
                     title = "Take Quiz",
                     description = "Test your knowledge - Text & Voice",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz", tint = Color.White) },
-                    gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
+                    gradient = listOf(Forest, Saffron),
                     onClick = onNavigateToQuizMode,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -485,7 +494,7 @@ fun DashboardScreen(
                     title = "ప్రశ్న సమాధానం",
                     description = "Chat & Quiz with AI Wisdom",
                     icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Mic, contentDescription = "Voice Studio", tint = Color.White) },
-                    gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
+                    gradient = listOf(Saffron, CrimsonDeep),
                     onClick = onNavigateToVoiceStudio,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -502,7 +511,7 @@ fun DashboardScreen(
                 title = "Random Sloka",
                 description = "Get inspired by a random verse",
                 icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Default.Shuffle, contentDescription = "Random", tint = Color.White) },
-                gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
+                gradient = listOf(GoldSpark, Saffron),
                 onClick = onNavigateToRandomSloka,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -536,8 +545,9 @@ fun DashboardStatCard(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
+            containerColor = Surface1
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Surface2)
     ) {
         Column(
             modifier = Modifier
@@ -559,7 +569,7 @@ fun DashboardStatCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = TextDim
             )
         }
     }
@@ -642,21 +652,22 @@ fun TodaySummaryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-        title = { Text("Today’s Summary") },
+        confirmButton = { TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = GoldSpark)) { Text("Close") } },
+        title = { Text("Today’s Summary", color = GoldSpark) },
+        containerColor = Surface1,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Verses viewed: $verses")
-                Text("Quizzes taken: $quizzes")
-                Text("Normal Mode: ${formatTime(normalTime)}")
-                Text("Quiz Mode: ${formatTime(quizTime)}")
-                Text("Voice Studio: ${formatTime(studioTime)}")
+                Text("Verses viewed: $verses", color = TextWhite)
+                Text("Quizzes taken: $quizzes", color = TextWhite)
+                Text("Normal Mode: ${formatTime(normalTime)}", color = TextWhite)
+                Text("Quiz Mode: ${formatTime(quizTime)}", color = TextWhite)
+                Text("Voice Studio: ${formatTime(studioTime)}", color = TextWhite)
                 if (versesList.isNotEmpty()) {
-                    HorizontalDivider()
-                    Text("Verses today:")
+                    HorizontalDivider(color = Surface2)
+                    Text("Verses today:", color = GoldSpark)
                     val items = versesList.take(10).joinToString { "${it.chapterNo}:${it.verseNo}" }
-                    Text(items)
-                    if (versesList.size > 10) Text("…and ${versesList.size - 10} more")
+                    Text(items, color = TextWhite)
+                    if (versesList.size > 10) Text("…and ${versesList.size - 10} more", color = TextDim)
                 }
             }
         }
