@@ -550,6 +550,10 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+        
+        AboutSectionCard(context)
+
+        Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -628,3 +632,42 @@ fun ModelRecommendationCard(context: android.content.Context) {
         }
     }
 }
+
+@Composable
+fun AboutSectionCard(context: android.content.Context) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("About AI-Powered Gita", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            }
+            OrnamentRule()
+            
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Version: v1.6.0 · Build 4", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "AI-Powered Gita is a modern, premium spiritual companion that brings the eternal wisdom of the Bhagavad Gita to life through on-device AI and a serene user experience.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            
+            Text(
+                "© 2026 Bhagavad Gita Dev Team",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+

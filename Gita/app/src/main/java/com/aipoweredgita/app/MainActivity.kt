@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity() {
                     GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
                     QwenDownloadWorker.scheduleImmediateDownload(applicationContext)
                     QuestionIngestionWorker.schedule(applicationContext)
+                    com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(applicationContext)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Error initializing database: ${e.message}", e)
