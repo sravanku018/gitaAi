@@ -226,7 +226,7 @@ private fun OrnamentalHeader() {
                     .border(2.dp, Brush.linearGradient(listOf(GoldSpark, Saffron)), CircleShape)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.krishna),
+                    painter = painterResource(id = R.drawable.krishna_icon),
                     contentDescription = "Krishna",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

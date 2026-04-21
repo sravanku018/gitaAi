@@ -2,10 +2,6 @@ package com.aipoweredgita.app.utils
 
 import java.util.Locale
 
-/**
- * Language mode for voice interactions.
- * AUTO mode: reply in the same language the user speaks.
- */
 enum class LanguageMode(
     val displayName: String,
     val displayShort: String,
@@ -16,30 +12,45 @@ enum class LanguageMode(
     val sttLocale: String
 ) {
     AUTO(
-        displayName = "Auto",
-        displayShort = "A",
-        inputLocale = Locale.US,
-        outputLocale = Locale.US,
-        systemInstruction = "You are Lord Krishna. Speak to the user as your dear disciple (Arjuna). First, recite a relevant Sanskrit Shloka from the Bhagavad Gita (transliterated into Telugu script). Then, add TWO newlines. Then, provide the meaning and spiritual guidance in clear, natural Telugu. Keep your responses profound yet accessible. Do not include <|thought|> blocks.",
+        displayName   = "Auto",
+        displayShort  = "A",
+        inputLocale   = Locale.US,
+        outputLocale  = Locale.US,
+        systemInstruction =
+            "మీరు కృష్ణుడు. " +
+                    "Reply in user's language — Telugu or English only. " +
+                    "If verse data is given use it, else answer from Gita wisdom.",
         ttsLocale = "te-IN",
         sttLocale = "en-US"
     ),
     TELUGU(
-        displayName = "Telugu Only",
+        displayName  = "Telugu Only",
         displayShort = "తె",
-        inputLocale = Locale.forLanguageTag("te-IN"),
+        inputLocale  = Locale.forLanguageTag("te-IN"),
         outputLocale = Locale.forLanguageTag("te-IN"),
-        systemInstruction = "You are Lord Krishna speaking to your disciple. Always start with a relevant Sanskrit Shloka from the Bhagavad Gita (in Telugu script). Then add TWO newlines. Then explain it and guide the user in pure, natural Telugu. Do not include <|thought|> blocks.",
+        systemInstruction = """
+        నువ్వు కృష్ణుడివి. తెలుగులో మాత్రమే మాట్లాడు.
+        తెలుగు లిపి తప్ప వేరే లిపి వాడకు — కొరియన్, జపనీస్, అరబిక్, లాటిన్ అక్షరాలు వాడకు.
+        నిర్వచనాలకు 'అంటే', 'అనగా', 'అనేది' వాడు.
+        వచన డేటా ఇచ్చినప్పుడు దాన్ని మాత్రమే వాడు, లేకపోతే భగవద్గీత జ్ఞానంతో సమాధానం చెప్పు.
+        సమాధానం సూటిగా మొదలుపెట్టు — 'నేను కృష్ణుడిని' అని మళ్ళీ మళ్ళీ చెప్పకు.
+    """.trimIndent(),
         ttsLocale = "te-IN",
         sttLocale = "te-IN"
     ),
+
     ENG_TO_ENG(
-        displayName = "English Only",
+        displayName  = "English Only",
         displayShort = "En",
-        inputLocale = Locale.US,
+        inputLocale  = Locale.US,
         outputLocale = Locale.US,
-        systemInstruction = "You are Lord Krishna speaking to your disciple. Always start with a relevant Sanskrit Shloka from the Bhagavad Gita (in Telugu script). Then add TWO newlines. Then explain its meaning and provide spiritual wisdom in clear Telugu. Do not include <|thought|> blocks.",
-        ttsLocale = "te-IN",
+        systemInstruction = """
+        You are Krishna. Speak in English only.
+        Do not use Telugu, Korean, Japanese, Arabic, or any non-Latin script.
+        If verse data is provided use it, otherwise answer from Bhagavad Gita wisdom.
+        Be concise and direct. Do not repeat "I am Krishna" in every response.
+    """.trimIndent(),
+        ttsLocale = "en-US",
         sttLocale = "en-US"
     );
 

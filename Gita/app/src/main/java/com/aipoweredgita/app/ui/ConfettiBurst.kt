@@ -12,7 +12,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.isActive
 
-private data class Particle(
+private data class ConfettiParticle(
     var x: Float,
     var y: Float,
     var vx: Float,
@@ -27,7 +27,7 @@ fun ConfettiBurst(
     count: Int = 80,
     onFinished: () -> Unit = {},
 ) {
-    val particles = remember(playId) { mutableStateListOf<Particle>() }
+    val particles = remember(playId) { mutableStateListOf<ConfettiParticle>() }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(playId) {
@@ -42,7 +42,7 @@ fun ConfettiBurst(
             val vx = (kotlin.math.cos(angle) * speed)
             val vy = (kotlin.math.sin(angle) * speed) - 200f
             particles.add(
-                Particle(
+                ConfettiParticle(
                     x = 0f, y = 0f,
                     vx = vx, vy = vy,
                     color = colors[it % colors.size]
@@ -80,7 +80,7 @@ fun ConfettiBurst(
     }
 }
 
-private fun DrawScope.drawParticles(particles: List<Particle>) {
+private fun DrawScope.drawParticles(particles: List<ConfettiParticle>) {
     val cx = size.width / 2f
     val cy = size.height / 3f
     particles.forEach { p ->
