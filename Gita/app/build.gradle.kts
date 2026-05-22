@@ -15,8 +15,8 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.6"
+        versionCode = 5
+        versionName = "1.7.0"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -147,6 +147,10 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
     // Compose LiveData runtime for observeAsState on LiveData
     implementation("androidx.compose.runtime:runtime-livedata:1.7.5")
+
+    // Google ML Kit Translation for On-Device local translation
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     // Fix for InvalidFragmentVersionForActivityResult lint error
     implementation("androidx.fragment:fragment-ktx:1.8.5")

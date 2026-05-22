@@ -48,6 +48,8 @@ fun VerticalProgressRoad(
         animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
         label = "progress_animation"
     )
+
+    val dashPathEffect = remember { PathEffect.dashPathEffect(floatArrayOf(20f, 20f)) }
     
     // Pulsing animation for current level
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -124,19 +126,13 @@ fun VerticalProgressRoad(
                     )
                     
                     // Road center line (dashed)
-                    val dashPath = Path().apply {
-                        moveTo(centerX, 0f)
-                        lineTo(centerX, size.height)
-                    }
-                    
-                    drawPath(
-                        path = dashPath,
+                    drawLine(
                         color = Color.White,
-                        style = Stroke(
-                            width = 3.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f)),
-                            cap = StrokeCap.Round
-                        )
+                        start = Offset(centerX, 0f),
+                        end = Offset(centerX, size.height),
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        pathEffect = dashPathEffect
                     )
                 }
                 

@@ -31,6 +31,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
     private var downloadService: ModelDownloadService? = null
     private var isBound = false
     private val manager by lazy { ModelDownloadManager(getApplication()) }
+    private var downloadJob: kotlinx.coroutines.Job? = null
 
     private val _downloadProgress = MutableStateFlow(ModelDownloadProgress())
     val downloadProgress: StateFlow<ModelDownloadProgress> = _downloadProgress.asStateFlow()
@@ -40,6 +41,22 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
+
+    private val _modelsStatus = MutableStateFlow<List<ModelDownloadManager.ModelStatus>>(emptyList())
+    val modelsStatus: StateFlow<List<ModelDownloadManager.ModelStatus>> = _modelsStatus.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    fun refreshModelStatus() {
+        viewModelScope.launch {
+            _modelsStatus.value = manager.getModelsStatus()
+        }
+    }
 
     // Track per-file progress for all models
     private val _fileProgressMap = MutableStateFlow<Map<String, com.aipoweredgita.app.ui.ModelDownloadProgress>>(emptyMap())
@@ -65,7 +82,12 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
             if (remain > 0) remain else 0L
         }.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
-    private val totalModels = 2  // Qwen3 0.6B + Gemma 4 2B
+    private val totalModels: Int
+        get() {
+            val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(getApplication())
+            return if (tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP) 3 else 2
+        }
+
     val filesRemaining: StateFlow<Int> =
         _fileProgressMap.asStateFlow()
             .map { mp ->
@@ -73,7 +95,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                 val rem = totalModels - completed
                 if (rem >= 0) rem else 0
             }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, totalModels)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 2)
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -112,6 +134,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     init {
         bindToService()
+        refreshModelStatus()
     }
 
     private fun bindToService() {
@@ -137,11 +160,25 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     /** Start manifest-based downloads using ModelDownloadManager (shows real progress) */
     fun startManagerDownload() {
-        viewModelScope.launch {
+        if (_isDownloading.value) return
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
             try {
+                val targets = manager.models.filter { !it.name.contains("Gemma 4") }
+                val expectedTotal = targets.sumOf { it.expectedBytes }
+                if (!manager.hasEnoughSpaceForModel(expectedTotal)) {
+                    _errorMessage.value = "Insufficient disk space for automatic downloads. 1.5x of the model size is required."
+                    return@launch
+                }
+
                 _isDownloading.value = true
                 _overallProgress.value = 0
+                _errorMessage.value = null
+                refreshModelStatus()
                 val ok = manager.downloadAllModels { prog ->
+                    if (prog.status == "failed_insufficient_space") {
+                        _errorMessage.value = "Insufficient disk space for ${prog.modelName}."
+                    }
                     _downloadProgress.value = com.aipoweredgita.app.ui.ModelDownloadProgress(
                         modelName = prog.fileName,
                         percentage = prog.percent,
@@ -163,10 +200,12 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     _overallProgress.value = prog.percent
                 }
                 _isDownloading.value = false
+                refreshModelStatus()
                 if (!ok) Log.w(TAG, "Model downloads incomplete")
             } catch (e: Exception) {
                 Log.e(TAG, "Manager download failed: ${e.message}")
                 _isDownloading.value = false
+                refreshModelStatus()
             }
         }
     }
@@ -176,11 +215,23 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
      */
     fun startSingleModelDownload(modelName: String) {
         if (_isDownloading.value) return
-        viewModelScope.launch {
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
             try {
+                val targetModelInfo = manager.getModelInfo(modelName)
+                if (targetModelInfo != null && !manager.hasEnoughSpaceForModel(targetModelInfo.expectedBytes)) {
+                    _errorMessage.value = "Insufficient disk space to download ${targetModelInfo.name}. 1.5x of the model size (${targetModelInfo.size}) is required."
+                    return@launch
+                }
+
                 _isDownloading.value = true
                 _overallProgress.value = 0
+                _errorMessage.value = null
+                refreshModelStatus()
                 val ok = manager.downloadModel(modelName) { prog ->
+                    if (prog.status == "failed_insufficient_space") {
+                        _errorMessage.value = "Insufficient disk space for ${prog.modelName}."
+                    }
                     _downloadProgress.value = com.aipoweredgita.app.ui.ModelDownloadProgress(
                         modelName = prog.fileName,
                         percentage = prog.percent,
@@ -202,10 +253,12 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     _overallProgress.value = prog.percent
                 }
                 _isDownloading.value = false
+                refreshModelStatus()
                 if (!ok) Log.w(TAG, "Model $modelName download failed or incomplete")
             } catch (e: Exception) {
                 Log.e(TAG, "$modelName download failed: ${e.message}")
                 _isDownloading.value = false
+                refreshModelStatus()
             }
         }
     }
@@ -218,6 +271,10 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
             downloadService!!.cancelDownload()
             Log.d(TAG, "Download cancelled")
         }
+        downloadJob?.cancel()
+        downloadJob = null
+        _isDownloading.value = false
+        refreshModelStatus()
     }
 
     /**

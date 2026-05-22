@@ -42,7 +42,7 @@ class ModelDownloadManager(private val context: Context) {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private val models = listOf(
+    private val allModels = listOf(
         ModelInfo(
             name = "Qwen3 0.6B",
             size = "580 MB",
@@ -57,8 +57,17 @@ class ModelDownloadManager(private val context: Context) {
         )
     )
 
-    // Gemma 4 is the mandatory model for voice features
-    private val mandatoryModelFileName = "gemma-4-E2B-it.litertlm"
+    val models: List<ModelInfo>
+        get() = allModels
+
+    // Only Qwen3 is mandatory/downloaded automatically. Gemma 4 is optional on user instruction.
+    private val mandatoryModelFileName: String
+        get() = "qwen3-0.6b-int4.litertlm"
+
+    fun hasEnoughSpaceForModel(expectedBytes: Long): Boolean {
+        val freeSpace = context.filesDir.freeSpace
+        return freeSpace > (expectedBytes * 1.5)
+    }
 
     /**
      * Initialize model directories and migrate legacy models.
@@ -86,15 +95,15 @@ class ModelDownloadManager(private val context: Context) {
 
     /**
      * Check if all mandatory models are downloaded.
-     * Mandatory = Gemma 4 2B (required for voice features).
+     * High-end: requires Gemma 4. Others: requires Qwen3.
      * MUST be called from Dispatchers.IO.
      */
     suspend fun areAllModelsDownloaded(): Boolean = withContext(Dispatchers.IO) {
         initialize()
-        // FIX 2: Clearly documented — only Gemma 4 is mandatory
-        val gemma4Exists = modelExists(mandatoryModelFileName)
-        Log.d(TAG, "Mandatory model (Gemma 4 2B) present: $gemma4Exists")
-        return@withContext gemma4Exists
+        val target = mandatoryModelFileName
+        val exists = modelExists(target)
+        Log.d(TAG, "Mandatory model ($target) present: $exists")
+        return@withContext exists
     }
 
     /** Whether to show download screen. MUST be called from Dispatchers.IO */
@@ -120,6 +129,14 @@ class ModelDownloadManager(private val context: Context) {
                 val targetModelInfo = models.find { it.name.equals(targetModelName, ignoreCase = true) }
                 if (targetModelInfo == null) {
                     Log.w(TAG, "Model $targetModelName not found in registry.")
+                    return@withContext false
+                }
+
+                // Pre-flight space check
+                val neededBytes = targetModelInfo.expectedBytes
+                if (!hasEnoughSpaceForModel(neededBytes)) {
+                    Log.e(TAG, "Insufficient storage space for $targetModelName. Required: ${neededBytes * 1.5} bytes, Available: ${context.filesDir.freeSpace} bytes.")
+                    onProgress(DownloadProgress(targetModelInfo.fileName, targetModelInfo.name, 0, neededBytes, 0, "failed_insufficient_space"))
                     return@withContext false
                 }
 
@@ -169,10 +186,25 @@ class ModelDownloadManager(private val context: Context) {
                 Log.d(TAG, "Starting model download/verification...")
                 val manifest = loadManifest()
                 probeModelSizes(manifest)
-                val expectedTotal = getExpectedTotalSizeBytes()
-                var baseDownloaded = computeAlreadyDownloaded(models)
+                
+                // Only download Qwen3 automatically; do not download Gemma 4 automatically.
+                val targets = models.filter { !it.name.contains("Gemma 4") }
+                val expectedTotal = targets.sumOf { measuredSizes[it.fileName] ?: it.expectedBytes }
+                
+                // Pre-flight space check
+                if (expectedTotal > 0 && !hasEnoughSpaceForModel(expectedTotal)) {
+                    Log.e(TAG, "Insufficient storage space for automatic downloads. Required: ${expectedTotal * 1.5} bytes, Available: ${context.filesDir.freeSpace} bytes.")
+                    targets.forEach { model ->
+                        if (!modelExists(model.fileName)) {
+                            onProgress(DownloadProgress(model.fileName, model.name, 0, model.expectedBytes, 0, "failed_insufficient_space"))
+                        }
+                    }
+                    return@withContext false
+                }
+                
+                var baseDownloaded = computeAlreadyDownloaded(targets)
 
-                models.forEach { model ->
+                targets.forEach { model ->
                     val outFile = File(modelsDir, model.fileName)
                     if (!modelExists(model.fileName)) {
                         val url = manifest.urls[model.fileName]
@@ -443,7 +475,7 @@ class ModelDownloadManager(private val context: Context) {
     }
 
     fun getModelInfo(name: String): ModelInfo? {
-        return models.find { it.name == name }
+        return allModels.find { it.name == name }
     }
 
     suspend fun getModelsStatus(): List<ModelStatus> = withContext(Dispatchers.IO) {

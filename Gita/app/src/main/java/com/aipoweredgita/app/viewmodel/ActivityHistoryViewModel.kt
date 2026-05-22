@@ -3,14 +3,16 @@ package com.aipoweredgita.app.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aipoweredgita.app.database.DailyActivity
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.QuizAttempt
+import com.aipoweredgita.app.database.UserStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class QuizSizeStats(
+data class QuizSizeStatsData(
     val quizSize: Int,
     val attempts: List<QuizAttempt>,
     val totalAttempts: Int,
@@ -19,11 +21,22 @@ data class QuizSizeStats(
     val bestAttempt: QuizAttempt?
 )
 
-class QuizStatsViewModel(application: Application) : AndroidViewModel(application) {
-    private val quizAttemptDao = GitaDatabase.getDatabase(application).quizAttemptDao()
-    private val userStatsDao = GitaDatabase.getDatabase(application).userStatsDao()
-    private val readVerseDao = GitaDatabase.getDatabase(application).readVerseDao()
+class ActivityHistoryViewModel(application: Application) : AndroidViewModel(application) {
+    private val db = GitaDatabase.getDatabase(application)
+    private val userStatsDao = db.userStatsDao()
+    private val quizAttemptDao = db.quizAttemptDao()
+    private val dailyActivityDao = db.dailyActivityDao()
+    private val readVerseDao = db.readVerseDao()
 
+    // ─── User Stats (overall time tracking) ───
+    private val _userStats = MutableStateFlow<UserStats?>(null)
+    val userStats: StateFlow<UserStats?> = _userStats.asStateFlow()
+
+    // ─── Daily Activity (calendar data) ───
+    private val _allActivity = MutableStateFlow<List<DailyActivity>>(emptyList())
+    val allActivity: StateFlow<List<DailyActivity>> = _allActivity.asStateFlow()
+
+    // ─── Quiz Stats ───
     private val _attempts = MutableStateFlow<List<QuizAttempt>>(emptyList())
     val attempts: StateFlow<List<QuizAttempt>> = _attempts.asStateFlow()
 
@@ -33,22 +46,20 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
     private val _averageTime = MutableStateFlow(0L)
     val averageTime: StateFlow<Long> = _averageTime.asStateFlow()
 
-    // Statistics grouped by quiz size
-    private val _quiz10Stats = MutableStateFlow<QuizSizeStats?>(null)
-    val quiz10Stats: StateFlow<QuizSizeStats?> = _quiz10Stats.asStateFlow()
+    // Quiz size grouping
+    private val _quiz10Stats = MutableStateFlow<QuizSizeStatsData?>(null)
+    val quiz10Stats: StateFlow<QuizSizeStatsData?> = _quiz10Stats.asStateFlow()
 
-    private val _quiz20Stats = MutableStateFlow<QuizSizeStats?>(null)
-    val quiz20Stats: StateFlow<QuizSizeStats?> = _quiz20Stats.asStateFlow()
+    private val _quiz20Stats = MutableStateFlow<QuizSizeStatsData?>(null)
+    val quiz20Stats: StateFlow<QuizSizeStatsData?> = _quiz20Stats.asStateFlow()
 
-    private val _quiz30Stats = MutableStateFlow<QuizSizeStats?>(null)
-    val quiz30Stats: StateFlow<QuizSizeStats?> = _quiz30Stats.asStateFlow()
+    private val _quiz30Stats = MutableStateFlow<QuizSizeStatsData?>(null)
+    val quiz30Stats: StateFlow<QuizSizeStatsData?> = _quiz30Stats.asStateFlow()
 
     private val _selectedQuizSize = MutableStateFlow<Int?>(null)
     val selectedQuizSize: StateFlow<Int?> = _selectedQuizSize.asStateFlow()
 
-    private val _userStats = MutableStateFlow<com.aipoweredgita.app.database.UserStats?>(null)
-    val userStats: StateFlow<com.aipoweredgita.app.database.UserStats?> = _userStats.asStateFlow()
-
+    // ─── Spiritual Path ───
     private val _karmaYogaCount = MutableStateFlow(0)
     val karmaYogaCount: StateFlow<Int> = _karmaYogaCount.asStateFlow()
 
@@ -59,12 +70,18 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
     val jnanaYogaCount: StateFlow<Int> = _jnanaYogaCount.asStateFlow()
 
     init {
-        loadStats()
-        loadGroupedStats()
-        loadAdditionalStats()
+        loadUserStats()
+        loadDailyActivity()
+        loadQuizStats()
+        loadGroupedQuizStats()
+        loadSpiritualPathStats()
     }
 
-    private fun loadAdditionalStats() {
+    fun selectQuizSize(size: Int?) {
+        _selectedQuizSize.value = size
+    }
+
+    private fun loadUserStats() {
         viewModelScope.launch {
             userStatsDao.initializeStatsIfNeeded()
         }
@@ -73,45 +90,30 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
                 _userStats.value = stats
             }
         }
+    }
+
+    private fun loadDailyActivity() {
         viewModelScope.launch {
-            readVerseDao.getKarmaYogaReadCountFlow().collect { count ->
-                _karmaYogaCount.value = count
-            }
-        }
-        viewModelScope.launch {
-            readVerseDao.getBhaktiYogaReadCountFlow().collect { count ->
-                _bhaktiYogaCount.value = count
-            }
-        }
-        viewModelScope.launch {
-            readVerseDao.getJnanaYogaReadCountFlow().collect { count ->
-                _jnanaYogaCount.value = count
+            dailyActivityDao.getAllActivity().collect { activities ->
+                _allActivity.value = activities
             }
         }
     }
 
-    fun selectQuizSize(size: Int?) {
-        _selectedQuizSize.value = size
-    }
-
-    private fun loadStats() {
+    private fun loadQuizStats() {
         viewModelScope.launch {
-            // Load all attempts and update averages when data changes
             quizAttemptDao.getAllAttempts().collect { attemptsList ->
                 _attempts.value = attemptsList
-
-                // Update averages whenever attempts change
                 updateAverages()
             }
         }
     }
 
-    private fun loadGroupedStats() {
-        // Load stats for 10 question quizzes
+    private fun loadGroupedQuizStats() {
         viewModelScope.launch {
             quizAttemptDao.getAttemptsByQuizSize(10).collect { attempts10 ->
-                if (attempts10.isNotEmpty()) {
-                    _quiz10Stats.value = QuizSizeStats(
+                _quiz10Stats.value = if (attempts10.isNotEmpty()) {
+                    QuizSizeStatsData(
                         quizSize = 10,
                         attempts = attempts10,
                         totalAttempts = quizAttemptDao.getTotalAttemptsByQuizSize(10),
@@ -119,17 +121,13 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
                         averageTime = quizAttemptDao.getAverageTimeByQuizSize(10) ?: 0L,
                         bestAttempt = quizAttemptDao.getBestAttemptByQuizSize(10)
                     )
-                } else {
-                    _quiz10Stats.value = null
-                }
+                } else null
             }
         }
-
-        // Load stats for 20 question quizzes
         viewModelScope.launch {
             quizAttemptDao.getAttemptsByQuizSize(20).collect { attempts20 ->
-                if (attempts20.isNotEmpty()) {
-                    _quiz20Stats.value = QuizSizeStats(
+                _quiz20Stats.value = if (attempts20.isNotEmpty()) {
+                    QuizSizeStatsData(
                         quizSize = 20,
                         attempts = attempts20,
                         totalAttempts = quizAttemptDao.getTotalAttemptsByQuizSize(20),
@@ -137,17 +135,13 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
                         averageTime = quizAttemptDao.getAverageTimeByQuizSize(20) ?: 0L,
                         bestAttempt = quizAttemptDao.getBestAttemptByQuizSize(20)
                     )
-                } else {
-                    _quiz20Stats.value = null
-                }
+                } else null
             }
         }
-
-        // Load stats for 30 question quizzes
         viewModelScope.launch {
             quizAttemptDao.getAttemptsByQuizSize(30).collect { attempts30 ->
-                if (attempts30.isNotEmpty()) {
-                    _quiz30Stats.value = QuizSizeStats(
+                _quiz30Stats.value = if (attempts30.isNotEmpty()) {
+                    QuizSizeStatsData(
                         quizSize = 30,
                         attempts = attempts30,
                         totalAttempts = quizAttemptDao.getTotalAttemptsByQuizSize(30),
@@ -155,20 +149,25 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
                         averageTime = quizAttemptDao.getAverageTimeByQuizSize(30) ?: 0L,
                         bestAttempt = quizAttemptDao.getBestAttemptByQuizSize(30)
                     )
-                } else {
-                    _quiz30Stats.value = null
-                }
+                } else null
             }
         }
     }
 
-    private suspend fun updateAverages() {
-        // Load average accuracy
-        val avgAcc = quizAttemptDao.getAverageAccuracy() ?: 0f
-        _averageAccuracy.value = avgAcc
+    private fun loadSpiritualPathStats() {
+        viewModelScope.launch {
+            readVerseDao.getKarmaYogaReadCountFlow().collect { _karmaYogaCount.value = it }
+        }
+        viewModelScope.launch {
+            readVerseDao.getBhaktiYogaReadCountFlow().collect { _bhaktiYogaCount.value = it }
+        }
+        viewModelScope.launch {
+            readVerseDao.getJnanaYogaReadCountFlow().collect { _jnanaYogaCount.value = it }
+        }
+    }
 
-        // Load average time
-        val avgTime = quizAttemptDao.getAverageTime() ?: 0L
-        _averageTime.value = avgTime
+    private suspend fun updateAverages() {
+        _averageAccuracy.value = quizAttemptDao.getAverageAccuracy() ?: 0f
+        _averageTime.value = quizAttemptDao.getAverageTime() ?: 0L
     }
 }

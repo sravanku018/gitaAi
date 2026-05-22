@@ -14,6 +14,7 @@ import com.aipoweredgita.app.ui.FavoritesScreen
 import com.aipoweredgita.app.ui.OfflineDownloadScreen
 import com.aipoweredgita.app.ui.ProfileScreen
 import com.aipoweredgita.app.ui.QuizStatsScreen
+import com.aipoweredgita.app.ui.ActivityHistoryScreen
 import com.aipoweredgita.app.ui.WidgetSettingsScreen
 import com.aipoweredgita.app.ui.BadgesScreen
 import com.aipoweredgita.app.ui.RandomSlokaScreen
@@ -24,6 +25,8 @@ import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.viewmodel.OfflineDownloadViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
@@ -38,6 +41,7 @@ sealed class Screen(val route: String) {
     object OfflineDownload : Screen("offline_download")
     object Profile : Screen("profile")
     object QuizStats : Screen("quiz_stats")
+    object ActivityHistory : Screen("activity_history")
     object WidgetSettings : Screen("widget_settings")
     object Settings : Screen("settings")
     object Badges : Screen("badges")
@@ -126,7 +130,9 @@ fun NavGraph(
             val quizViewModel: QuizViewModel = viewModel(
                 viewModelStoreOwner = parentEntry
             )
+            val quizState by quizViewModel.quizState.collectAsState()
             ProtectedQuizConfigScreen(
+                language = quizState.language,
                 onStartQuiz = { questionCount, language ->
                     quizViewModel.setQuizLimit(questionCount)
                     quizViewModel.setQuizLanguage(language)
@@ -231,13 +237,15 @@ fun NavGraph(
         }
 
         composable(Screen.DailyActivity.route) {
-            DailyActivityScreen(
-                onNavigateToProgression = { navController.navigate(Screen.Badges.route) }
-            )
+            ActivityHistoryScreen(initialTab = 2)
         }
 
         composable(Screen.QuizStats.route) {
-            QuizStatsScreen()
+            ActivityHistoryScreen(initialTab = 1)
+        }
+
+        composable(Screen.ActivityHistory.route) {
+            ActivityHistoryScreen()
         }
 
         composable(Screen.WidgetSettings.route) {

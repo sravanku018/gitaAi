@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -33,6 +34,8 @@ fun MandalaBackground(
         label = "rotation"
     )
 
+    val cachedPath = remember { Path() }
+
     Canvas(modifier = modifier) {
         val center = center
         val radius = size.minDimension / 2.5f
@@ -55,31 +58,26 @@ fun MandalaBackground(
             val petals = 12
             val angleStep = (2 * PI / petals).toFloat()
             
-            val path = Path()
+            cachedPath.reset()
             for (i in 0 until petals) {
                 val angle = i * angleStep
                 val x = center.x + cos(angle) * (radius * 0.8f)
                 val y = center.y + sin(angle) * (radius * 0.8f)
                 
-                // Draw a curve to connecting subsequent points?
-                // Actually, let's draw distinct petal lobes
-                // Start from center
-                path.moveTo(center.x, center.y)
-                // Curve to edge
+                cachedPath.moveTo(center.x, center.y)
                 val controlAngle1 = angle - angleStep / 3
                 val cp1x = center.x + cos(controlAngle1) * (radius * 0.5f)
                 val cp1y = center.y + sin(controlAngle1) * (radius * 0.5f)
                 
-                path.quadraticBezierTo(cp1x, cp1y, x.toFloat(), y.toFloat())
+                cachedPath.quadraticBezierTo(cp1x, cp1y, x.toFloat(), y.toFloat())
                 
-                // Curve back
                 val controlAngle2 = angle + angleStep / 3
                 val cp2x = center.x + cos(controlAngle2) * (radius * 0.5f)
                 val cp2y = center.y + sin(controlAngle2) * (radius * 0.5f)
                 
-                path.quadraticBezierTo(cp2x, cp2y, center.x, center.y)
+                cachedPath.quadraticBezierTo(cp2x, cp2y, center.x, center.y)
             }
-            drawPath(path, color.copy(alpha = color.alpha * 0.5f), style = Stroke(width = 1.dp.toPx()))
+            drawPath(cachedPath, color.copy(alpha = color.alpha * 0.5f), style = Stroke(width = 1.dp.toPx()))
         }
     }
 }

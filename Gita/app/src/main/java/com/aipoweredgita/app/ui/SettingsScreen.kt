@@ -56,11 +56,11 @@ fun SettingsScreen(
     val allDownloaded = remainingBytes <= 0L
 
     val qwenWorkInfo by com.aipoweredgita.app.services.QwenDownloadWorker
-        .getDownloadStatusLive(context)
+        .getDownloadStatusLive(context, "Qwen3 0.6B")
         .observeAsState()
-    val isQwenDownloading = com.aipoweredgita.app.services.QwenDownloadWorker.isDownloading(context)
+    val isQwenDownloading = com.aipoweredgita.app.services.QwenDownloadWorker.isDownloading(context, "Qwen3 0.6B")
     val qwenDownloadProgress = qwenWorkInfo?.progress?.getInt("overallProgress", 0) ?: 0
-    
+
     val gemmaWorkInfo by com.aipoweredgita.app.services.GemmaDownloadWorker
         .getDownloadStatusLive(context)
         .observeAsState()
@@ -68,9 +68,9 @@ fun SettingsScreen(
     val gemmaDownloadProgress = gemmaWorkInfo?.progress?.getInt("overallProgress", 0) ?: 0
 
     val prefs = context.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+    val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
     var selectedModel by remember { mutableStateOf(prefs.getString("selected_ai_model", "Auto (Recommended)") ?: "Auto (Recommended)") }
-    val deviceCategory = DeviceUtils.getDeviceCategory(context)
-    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)")
+    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
 
     // FIX: declare refreshStats BEFORE LaunchedEffect that calls it
     fun refreshStats() {
@@ -112,6 +112,7 @@ fun SettingsScreen(
     }
 
     val uiCfg = LocalUiConfig.current
+    val deviceTier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -242,17 +243,18 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 modelOptions.forEach { model ->
-                    val isDeviceHighEnd = deviceCategory == DeviceConfigCategory.HIGH
+                    val isDeviceHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP
                     val isGemma4 = model.contains("Gemma 4")
                     val isDisabled = isGemma4 && !isDeviceHighEnd
                     val modelDescription = when {
-                        model.contains("Auto") -> "Automatically selects best model for your device"
+                        model.contains("Auto") -> "Dynamically select the best model based on your device specs"
                         model.contains("Qwen3") -> "Fast 580MB LLM optimized for multilingual text"
                         model.contains("Gemma 4") -> "Powerful 2.58GB LLM for voice + deep analysis (8GB+ RAM)"
+                        model.contains("Groq") -> "Cloud-based Groq model (requires internet connection, free)"
                         else -> ""
                     }
                     val isSelected = selectedModel == model ||
-                            (model == "Auto (Recommended)" && !selectedModel.contains("Qwen3") && !selectedModel.contains("Gemma"))
+                            (model == "Auto (Recommended)" && !selectedModel.contains("Qwen3") && !selectedModel.contains("Gemma") && !selectedModel.contains("Groq"))
 
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).graphicsLayer { alpha = if (isDisabled) 0.5f else 1f },
@@ -280,7 +282,7 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                val qwenStatus = modelStatuses.firstOrNull { it.name.contains("Qwen") }
+                val qwenStatus = modelStatuses.firstOrNull { it.name.contains("Qwen3") }
                 if (qwenStatus != null) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -307,12 +309,12 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                val gemmaStatus = modelStatuses.firstOrNull { it.name.contains("Gemma") }
+                val gemmaStatus = modelStatuses.firstOrNull { it.name.contains("Gemma 4") }
                 if (gemmaStatus != null) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (gemmaStatus.isDownloaded) "✓ Gemma model downloaded" else "⚠ Gemma model not downloaded",
+                                text = if (gemmaStatus.isDownloaded) "✓ Gemma 4 model downloaded" else "⚠ Gemma 4 model not downloaded",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (gemmaStatus.isDownloaded) MaterialTheme.colorScheme.secondary else CrimsonDeep
                             )
@@ -320,7 +322,7 @@ fun SettingsScreen(
                                 Text("Downloading: $gemmaDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
-                        if (!gemmaStatus.isDownloaded && deviceCategory == DeviceConfigCategory.HIGH) {
+                        if (!gemmaStatus.isDownloaded && deviceTier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP) {
                             if (isGemmaDownloading) {
                                 TextButton(onClick = {
                                     com.aipoweredgita.app.services.GemmaDownloadWorker.cancelDownload(context)
@@ -388,25 +390,35 @@ fun SettingsScreen(
                                     if (modelStatus.isDownloaded) {
                                         Icon(Icons.Default.CheckCircle, contentDescription = "Ready", tint = MaterialTheme.colorScheme.secondary)
                                     } else {
-                                        val isThisModelDownloading = (isGemmaDownloading && modelStatus.name.contains("Gemma", ignoreCase = true)) ||
-                                                (isQwenDownloading && modelStatus.name.contains("Qwen", ignoreCase = true))
+                                        val isThisModelDownloading = (isGemmaDownloading && modelStatus.name.contains("Gemma 4", ignoreCase = true)) ||
+                                                (isQwenDownloading && modelStatus.name.contains("Qwen3", ignoreCase = true))
                                         
                                         if (isThisModelDownloading) {
-                                            val prog = if (modelStatus.name.contains("Qwen", ignoreCase = true)) qwenDownloadProgress else gemmaDownloadProgress
+                                            val prog = if (modelStatus.name.contains("Qwen3", ignoreCase = true)) qwenDownloadProgress 
+                                                       else gemmaDownloadProgress
                                             Text("$prog%", color = MaterialTheme.colorScheme.secondary)
                                         } else {
+                                            val isGemma4Locked = modelStatus.name.contains("Gemma 4") && deviceTier != com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP
+                                            
                                             OutlinedButton(
                                                 onClick = {
-                                                    if (modelStatus.name.contains("Gemma", ignoreCase = true)) {
+                                                    if (modelStatus.name.contains("Gemma 4", ignoreCase = true)) {
                                                         com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context)
                                                     } else if (modelStatus.name.contains("Qwen", ignoreCase = true)) {
-                                                        com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context)
+                                                        com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context, modelStatus.name)
                                                     }
                                                 },
-                                                enabled = !checkingModels && !isGemmaDownloading && !isQwenDownloading,
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
-                                            ) { Text("Download") }
+                                                enabled = !checkingModels && !isGemmaDownloading && !isQwenDownloading && !isGemma4Locked,
+                                                colors = ButtonDefaults.outlinedButtonColors(
+                                                    contentColor = if (isGemma4Locked) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.secondary
+                                                ),
+                                                border = androidx.compose.foundation.BorderStroke(
+                                                    1.dp, 
+                                                    if (isGemma4Locked) MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) else MaterialTheme.colorScheme.secondary
+                                                )
+                                            ) { 
+                                                Text(if (isGemma4Locked) "Locked" else "Download") 
+                                            }
                                         }
                                     }
                                 }
@@ -583,16 +595,7 @@ fun HardwareSpecsCard(context: android.content.Context) {
             SpecRow("Model", DeviceUtils.getModelName())
             SpecRow("RAM", DeviceUtils.getFormattedRAM(context))
             SpecRow("OS", DeviceUtils.getAndroidVersion())
-            val category = DeviceUtils.getDeviceCategory(context)
-            val categoryColor = when(category) {
-                DeviceConfigCategory.HIGH -> MaterialTheme.colorScheme.secondary
-                DeviceConfigCategory.MEDIUM -> MaterialTheme.colorScheme.primary
-                DeviceConfigCategory.LOW -> CrimsonDeep
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(color = categoryColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.3f))) {
-                Text("Performance Tier: ${category.name}", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelLarge, color = categoryColor, fontWeight = FontWeight.Bold)
-            }
+            // Note: Performance Tier score is intentionally hidden.
         }
     }
 }
@@ -607,10 +610,10 @@ fun SpecRow(label: String, value: String) {
 
 @Composable
 fun ModelRecommendationCard(context: android.content.Context) {
-    val category = DeviceUtils.getDeviceCategory(context)
-    val recommendedModel = when(category) {
-        DeviceConfigCategory.HIGH -> "Gemma 4 2B (Advanced Insight)"
-        else -> "Qwen3 0.6B (Fast & Lightweight)"
+    val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
+    val recommendedModel = when(tier) {
+        com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP -> "Gemma 4 2B (Advanced Insight)"
+        else -> "Qwen3 0.6B (Fast Wisdom)"
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -635,6 +638,22 @@ fun ModelRecommendationCard(context: android.content.Context) {
 
 @Composable
 fun AboutSectionCard(context: android.content.Context) {
+    val versionText = remember(context) {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val name = packageInfo.versionName ?: "1.7.0"
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+            "Version: v$name · Build $code"
+        } catch (e: Exception) {
+            "Version: v1.7.0 · Build 5"
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -650,7 +669,7 @@ fun AboutSectionCard(context: android.content.Context) {
             OrnamentRule()
             
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Version: v1.6.0 · Build 4", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                Text(versionText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     "AI-Powered Gita is a modern, premium spiritual companion that brings the eternal wisdom of the Bhagavad Gita to life through on-device AI and a serene user experience.",
                     style = MaterialTheme.typography.bodySmall,

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ReadVerseDao {
@@ -24,4 +25,13 @@ interface ReadVerseDao {
 
     @Query("SELECT COUNT(DISTINCT verseNo) FROM read_verses WHERE chapterNo = :chapter")
     suspend fun getReadVersesCountByChapter(chapter: Int): Int
+
+    @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo BETWEEN 1 AND 6")
+    fun getKarmaYogaReadCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo BETWEEN 7 AND 12")
+    fun getBhaktiYogaReadCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo BETWEEN 13 AND 18")
+    fun getJnanaYogaReadCountFlow(): Flow<Int>
 }

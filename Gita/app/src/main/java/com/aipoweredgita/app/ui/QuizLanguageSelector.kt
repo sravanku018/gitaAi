@@ -39,7 +39,12 @@ fun QuizLanguageDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // English Option
-
+                LanguageOptionCard(
+                    flag = "🇺🇸",
+                    language = "English",
+                    description = "Quiz in English",
+                    onClick = { onLanguageSelected("en") }
+                )
 
                 // Telugu Option
                 LanguageOptionCard(

@@ -118,7 +118,7 @@ class AdaptiveDifficultyEngine {
      * Generate an LLM prompt for a question at the given difficulty.
      * FIX ISSUE 3: Hard constraint prompt — enforces strict JSON output.
      */
-    fun generateLLMPrompt(difficulty: Int, chapter: Int, verseNum: Int, translation: String): String {
+    fun generateLLMPrompt(difficulty: Int, chapter: Int, verseNum: Int, translation: String, user: UserState? = null): String {
         val difficultyLabel = when (difficulty) {
             1, 2 -> "Very Easy (basic recall)"
             3, 4 -> "Easy (simple understanding)"
@@ -126,6 +126,17 @@ class AdaptiveDifficultyEngine {
             7, 8 -> "Hard (analyze and reason)"
             else -> "Very Hard (deep philosophical reasoning)"
         }
+
+        val performanceContext = if (user != null) {
+            """
+            User Performance Context:
+            - Current Accuracy: ${String.format("%.0f%%", user.accuracy * 100)}
+            - Current Streak: ${user.streak} (Positive = correct, Negative = wrong)
+            - Current Skill Level: ${user.skillLevel}/10
+            
+            Instruction: Adjust the complexity and 'trickiness' of the wrong options based on this performance.
+            """.trimIndent()
+        } else ""
         
         return """
             You are generating a quiz question for the Bhagavad Gita.
@@ -133,6 +144,8 @@ class AdaptiveDifficultyEngine {
             Verse: Chapter $chapter, Verse $verseNum
             Translation: $translation
             Difficulty: $difficulty/10 ($difficultyLabel)
+            
+            $performanceContext
             
             Rules:
             - Return STRICT JSON ONLY. No text before or after JSON.

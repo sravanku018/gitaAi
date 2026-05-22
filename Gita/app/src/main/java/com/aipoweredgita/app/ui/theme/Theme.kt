@@ -23,12 +23,14 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = GoldBright,
     background = BgDark,
     surface = Surface1,
-    onPrimary = Color.White,
-    onSecondary = Color.Black,
+    onPrimary = Color.Black,
+    onSecondary = Color.White,
     onBackground = TextWhite,
     onSurface = TextWhite,
     surfaceVariant = Surface2,
-    onSurfaceVariant = TextDim
+    onSurfaceVariant = TextDim,
+    error = CrimsonDeep,
+    onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -37,25 +39,25 @@ private val LightColorScheme = lightColorScheme(
     tertiary = GoldPale,
     background = Color(0xFFFFFBF0),
     surface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.Black,
+    onPrimary = Color.Black,
+    onSecondary = Color.White,
     onBackground = Color(0xFF1C1B1F),
     onSurface = Color(0xFF1C1B1F),
     surfaceVariant = Color(0xFFF5F5F5),
-    onSurfaceVariant = Color(0xFF49454F)
+    onSurfaceVariant = Color(0xFF49454F),
+    error = CrimsonDeep,
+    onError = Color.White
 )
 
 @Composable
 fun GitaLearningTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     accentName: String? = "Sacred",
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     
-    // Determine the base color scheme
     val base = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -64,7 +66,6 @@ fun GitaLearningTheme(
         else -> LightColorScheme
     }
 
-    // Apply custom accent if it's not "Sacred" (default) or if dynamic color is off
     val scheme = if (accentName != null && accentName != "Sacred" && (!dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S)) {
         when (accentName) {
             "Lotus" -> base.copy(

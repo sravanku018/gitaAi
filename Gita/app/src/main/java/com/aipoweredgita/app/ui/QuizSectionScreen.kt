@@ -34,12 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
-
-// Premium color palette
-private val GradientSaffron = Color(0xFFFF8F00)
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 
 @Composable
 fun QuizSectionScreen(
@@ -51,8 +50,11 @@ fun QuizSectionScreen(
 
     // Hoist ViewModels to avoid re-creation on tab switches
     val quizViewModel: QuizViewModel = viewModel()
+    val quizState by quizViewModel.quizState.collectAsState()
+    val language = quizState.language
 
     var isStarted by remember(selectedTab) { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     // Remove auto-start logic from LaunchedEffect to allow manual start
     LaunchedEffect(selectedTab) {
@@ -87,7 +89,7 @@ fun QuizSectionScreen(
             }
 
             Text(
-                "Quiz Section",
+                text = translateLandingText("Quiz Section", language),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -114,7 +116,7 @@ fun QuizSectionScreen(
                         TabRowDefaults.SecondaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                             height = 3.dp,
-                            color = GradientSaffron
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -130,14 +132,14 @@ fun QuizSectionScreen(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = if (index == 2) Icons.Filled.Mic else Icons.Filled.School,
+                                    imageVector = Icons.Filled.School,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
-                                    tint = if (selectedTab == index) GradientSaffron else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    tint = if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    title,
+                                    text = translateLandingText(title, language),
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
                                     color = if (selectedTab == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
@@ -165,14 +167,42 @@ fun QuizSectionScreen(
                         "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths."
                         else "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?",
                     onStart = {
-                        quizViewModel.resetQuiz()
-                        isStarted = true
-                    }
+                        showLanguageDialog = true
+                    },
+                    language = language
                 )
             } else {
                 QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
             }
         }
+
+        if (showLanguageDialog) {
+            QuizLanguageDialog(
+                onLanguageSelected = { lang ->
+                    quizViewModel.setLanguage(lang)
+                    quizViewModel.resetQuiz()
+                    isStarted = true
+                    showLanguageDialog = false
+                },
+                onCancel = { showLanguageDialog = false }
+            )
+        }
+    }
+}
+
+private fun translateLandingText(text: String, language: String): String {
+    if (language != "tel") return text
+    return when (text) {
+        "Quiz Section" -> "క్విజ్ విభాగం"
+        "15 Questions" -> "15 ప్రశ్నలు"
+        "25 Questions" -> "25 ప్రశ్నలు"
+        "15 Question Marathon" -> "15 ప్రశ్నల మహోత్సవం"
+        "25 Question Challenge" -> "25 ప్రశ్నల సవాలు"
+        "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths." -> "భగవద్గీత యొక్క ప్రాథమిక సత్యాలపై మీ జ్ఞానాన్ని పరీక్షించడానికి ఒక చిన్న ఆధ్యాత్మిక విశ్లేషణ."
+        "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?" -> "పవిత్ర శ్లోకాల ద్వారా ఒక లోతైన ప్రయాణం. దైవిక జ్ఞానంపై మీ నైపుణ్యాన్ని పరీక్షించడానికి సిద్ధంగా ఉన్నారా?"
+        "Start Quiz" -> "క్విజ్ ప్రారంభించండి"
+        "Every question is a step closer to self-realization." -> "ప్రతి ప్రశ్నా మిమ్మల్ని ఆత్మసాక్షాత్కారానికి ఒక అడుగు దగ్గరగా తీసుకెళ్తుంది."
+        else -> text
     }
 }
 
@@ -180,7 +210,8 @@ fun QuizSectionScreen(
 private fun QuizStartLanding(
     title: String,
     description: String,
-    onStart: () -> Unit
+    onStart: () -> Unit,
+    language: String = "tel"
 ) {
     Column(
         modifier = Modifier
@@ -192,16 +223,15 @@ private fun QuizStartLanding(
         Surface(
             modifier = Modifier.size(120.dp),
             shape = CircleShape,
-            color = GradientSaffron.copy(alpha = 0.1f),
-
-            border = BorderStroke(2.dp, GradientSaffron.copy(alpha = 0.3f))
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.School,
                     contentDescription = null,
                     modifier = Modifier.size(60.dp),
-                    tint = GradientSaffron
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -209,7 +239,7 @@ private fun QuizStartLanding(
         Spacer(Modifier.height(32.dp))
 
         Text(
-            text = title,
+            text = translateLandingText(title, language),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -219,7 +249,7 @@ private fun QuizStartLanding(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = description,
+            text = translateLandingText(description, language),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -233,19 +263,19 @@ private fun QuizStartLanding(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = RoundedCornerShape(16.dp),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
             Icon(Icons.Default.PlayArrow, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Start Quiz", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text(translateLandingText("Start Quiz", language), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
         }
         
         Spacer(Modifier.height(16.dp))
         
         Text(
-            text = "Every question is a step closer to self-realization.",
+            text = translateLandingText("Every question is a step closer to self-realization.", language),
             style = MaterialTheme.typography.labelSmall,
             fontStyle = FontStyle.Italic,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -263,4 +293,28 @@ private fun QuizTabContent(
         onExitQuiz = onExit,
         viewModel = quizViewModel
     )
+}
+
+@Preview(showBackground = true, name = "Quiz Landing Light")
+@Composable
+fun PreviewQuizStartLandingLight() {
+    GitaLearningTheme(darkTheme = false) {
+        QuizStartLanding(
+            title = "15 Question Marathon",
+            description = "A quick spiritual check-in to test your knowledge.",
+            onStart = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Quiz Landing Dark", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun PreviewQuizStartLandingDark() {
+    GitaLearningTheme(darkTheme = true) {
+        QuizStartLanding(
+            title = "15 Question Marathon",
+            description = "A quick spiritual check-in to test your knowledge.",
+            onStart = {}
+        )
+    }
 }

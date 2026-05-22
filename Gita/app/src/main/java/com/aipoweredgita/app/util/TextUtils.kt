@@ -9,8 +9,8 @@ object TextUtils {
     fun sanitizeText(text: String?): String {
         if (text == null) return ""
         return text
-            .replace("\\r\\n", " ")
-            .replace("\\n", " ")
+            .replace("\\r\\n", "\n")
+            .replace("\\n", "\n")
             .replace("\r\n", "\n")
             .replace("\r", "\n")
             .replace(Regex("\n{3,}"), "\n\n")

@@ -113,6 +113,7 @@ fun ConfettiAnimation(show: Boolean) {
     )
 
     val confettiList = remember { mutableStateListOf<Confetti>() }
+    var tick by remember { mutableStateOf(0) }
 
     LaunchedEffect(show) {
         if (show) {
@@ -131,32 +132,32 @@ fun ConfettiAnimation(show: Boolean) {
                     )
                 }
             )
-        }
-    }
 
-    val time = remember { Animatable(0f) }
-    LaunchedEffect(show) {
-        if(show) {
-            time.snapTo(0f)
-            time.animateTo(1f, animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing)))
+            // Physics loop driven by frame rate ticker
+            while (true) {
+                withFrameMillis {
+                    confettiList.forEach { confetti ->
+                        confetti.x += confetti.velocityX
+                        confetti.y += confetti.velocityY
+                        confetti.rotation += confetti.rotationSpeed
+                        confetti.velocityY += 0.0005f
+
+                        if (confetti.y > 1.1f) {
+                            confetti.y = -0.1f
+                            confetti.x = Random.nextFloat()
+                            confetti.velocityY = Random.nextFloat() * 0.015f + 0.01f
+                        }
+                    }
+                    tick++
+                }
+            }
         }
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        if(show) {
-            for (i in confettiList.indices) {
-                val confetti = confettiList[i]
-                confetti.x += confetti.velocityX
-                confetti.y += confetti.velocityY
-                confetti.rotation += confetti.rotationSpeed
-                confetti.velocityY += 0.0005f
-
-                if (confetti.y > 1.1f) {
-                    confetti.y = -0.1f
-                    confetti.x = Random.nextFloat()
-                    confetti.velocityY = Random.nextFloat() * 0.015f + 0.01f
-                }
-
+        val currentTick = tick // Read the tick state to trigger Canvas redraws on every frame
+        if (show) {
+            confettiList.forEach { confetti ->
                 val centerX = size.width * confetti.x
                 val centerY = size.height * confetti.y
 

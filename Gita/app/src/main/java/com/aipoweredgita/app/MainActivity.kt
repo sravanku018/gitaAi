@@ -120,8 +120,9 @@ class MainActivity : ComponentActivity() {
                     scheduleDailyVerseWorker()
                     
                     // Automatically schedule model downloads and question ingestion on first run
-                    GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
-                    QwenDownloadWorker.scheduleImmediateDownload(applicationContext)
+                    // Gemma 4 (Flagship only) download is disabled automatically per user request, wait for user instruction
+                    // GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
+                    QwenDownloadWorker.scheduleBackgroundDownload(applicationContext, "Qwen3 0.6B")
                     QuestionIngestionWorker.schedule(applicationContext)
                     com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(applicationContext)
                 }

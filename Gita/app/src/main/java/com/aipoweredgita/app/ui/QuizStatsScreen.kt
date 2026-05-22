@@ -18,6 +18,23 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.database.QuizAttempt
 import com.aipoweredgita.app.viewmodel.QuizStatsViewModel
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.PI
 
 @Composable
 fun QuizStatsScreen(
@@ -32,6 +49,11 @@ fun QuizStatsScreen(
     val quiz20Stats by viewModel.quiz20Stats.collectAsState()
     val quiz30Stats by viewModel.quiz30Stats.collectAsState()
     val selectedQuizSize by viewModel.selectedQuizSize.collectAsState()
+
+    val userStats by viewModel.userStats.collectAsState()
+    val karmaCount by viewModel.karmaYogaCount.collectAsState()
+    val bhaktiCount by viewModel.bhaktiYogaCount.collectAsState()
+    val jnanaCount by viewModel.jnanaYogaCount.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -120,7 +142,11 @@ fun QuizStatsScreen(
                 attempts = displayAttempts,
                 averageAccuracy = displayAvgAccuracy,
                 averageTime = displayAvgTime,
-                bestAttempt = currentStats?.bestAttempt
+                bestAttempt = currentStats?.bestAttempt,
+                userStats = userStats,
+                karmaCount = karmaCount,
+                bhaktiCount = bhaktiCount,
+                jnanaCount = jnanaCount
             )
             2 -> TipsTab(averageAccuracy = displayAvgAccuracy)
         }
@@ -227,7 +253,11 @@ fun PerformanceTab(
     attempts: List<QuizAttempt>,
     averageAccuracy: Float,
     averageTime: Long,
-    bestAttempt: QuizAttempt?
+    bestAttempt: QuizAttempt?,
+    userStats: com.aipoweredgita.app.database.UserStats?,
+    karmaCount: Int,
+    bhaktiCount: Int,
+    jnanaCount: Int
 ) {
     if (attempts.isEmpty()) {
         EmptyState(message = "No performance data available yet.\nComplete some quizzes to see your stats!")
@@ -279,6 +309,23 @@ fun PerformanceTab(
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            // Charts Section
+            PerformanceTrendLineChart(attempts = attempts)
+            
+            userStats?.let {
+                ActivityDistributionDonutChart(
+                    normalTime = it.normalModeTimeSeconds,
+                    quizTime = it.quizModeTimeSeconds,
+                    voiceTime = it.voiceStudioTimeSeconds
+                )
+            }
+
+            SpiritualPathRadarChart(
+                karmaCount = karmaCount,
+                bhaktiCount = bhaktiCount,
+                jnanaCount = jnanaCount
+            )
 
             // Best Attempt
             val best = bestAttempt ?: attempts.maxByOrNull { it.accuracyPercentage }
@@ -507,6 +554,652 @@ fun EmptyState(message: String) {
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun PerformanceTrendLineChart(attempts: List<QuizAttempt>) {
+    val last10Attempts = remember(attempts) {
+        attempts.take(10).reversed()
+    }
+    
+    if (last10Attempts.isEmpty()) return
+
+    var selectedPointIndex by remember { mutableStateOf<Int?>(null) }
+    var tooltipOffset by remember { mutableStateOf(Offset.Zero) }
+
+    val saffronGold = Color(0xFFE08A1E)
+    val terracotta = Color(0xFFC2410C)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+
+    // Caching Path objects to eliminate allocations inside DrawScope
+    val cachedLinePath = remember { Path() }
+    val cachedFillPath = remember { Path() }
+
+    // Chart entry animation
+    var animationTriggered by remember { mutableStateOf(false) }
+    val animationProgress by animateFloatAsState(
+        targetValue = if (animationTriggered) 1f else 0f,
+        animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+        label = "line_chart_anim"
+    )
+    LaunchedEffect(last10Attempts) {
+        animationTriggered = true
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(260.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Performance Trend (Last 10 Quizzes)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(last10Attempts, animationProgress) {
+                            detectTapGestures { offset ->
+                                val width = size.width
+                                val height = size.height
+                                val paddingLeft = with(density) { 40.dp.toPx() }
+                                val paddingRight = with(density) { 20.dp.toPx() }
+                                val paddingTop = with(density) { 20.dp.toPx() }
+                                val paddingBottom = with(density) { 40.dp.toPx() }
+                                val chartWidth = width - paddingLeft - paddingRight
+                                val chartHeight = height - paddingTop - paddingBottom
+
+                                val pointsCount = last10Attempts.size
+                                val stepX = if (pointsCount > 1) chartWidth / (pointsCount - 1) else chartWidth
+
+                                var closestIndex = -1
+                                var minDistance = Float.MAX_VALUE
+
+                                for (i in last10Attempts.indices) {
+                                    val attempt = last10Attempts[i]
+                                    val x = paddingLeft + i * stepX
+                                    val y = paddingTop + chartHeight - (attempt.accuracyPercentage / 100f) * chartHeight * animationProgress
+                                    val distance = (offset.x - x) * (offset.x - x) + (offset.y - y) * (offset.y - y)
+                                    val touchThreshold = with(density) { 40.dp.toPx() }
+                                    if (distance < minDistance && distance < touchThreshold * touchThreshold) {
+                                        minDistance = distance
+                                        closestIndex = i
+                                        tooltipOffset = Offset(x, y)
+                                    }
+                                }
+                                selectedPointIndex = if (closestIndex != -1) closestIndex else null
+                            }
+                        }
+                ) {
+                    val width = size.width
+                    val height = size.height
+
+                    val paddingLeft = 40.dp.toPx()
+                    val paddingRight = 20.dp.toPx()
+                    val paddingTop = 20.dp.toPx()
+                    val paddingBottom = 40.dp.toPx()
+
+                    val chartWidth = width - paddingLeft - paddingRight
+                    val chartHeight = height - paddingTop - paddingBottom
+
+                    // Draw Horizontal Gridlines & Labels
+                    val gridLines = listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+                    val paint = android.graphics.Paint().apply {
+                        color = onSurface.copy(alpha = 0.6f).toArgb()
+                        textSize = 10.sp.toPx()
+                        textAlign = android.graphics.Paint.Align.RIGHT
+                    }
+
+                    gridLines.forEach { percentage ->
+                        val y = paddingTop + chartHeight - percentage * chartHeight
+                        drawLine(
+                            color = onSurface.copy(alpha = 0.1f),
+                            start = Offset(paddingLeft, y),
+                            end = Offset(width - paddingRight, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${(percentage * 100).toInt()}%",
+                            paddingLeft - 8.dp.toPx(),
+                            y + 4.dp.toPx(),
+                            paint
+                        )
+                    }
+
+                    if (last10Attempts.isEmpty()) return@Canvas
+
+                    val pointsCount = last10Attempts.size
+                    val stepX = if (pointsCount > 1) chartWidth / (pointsCount - 1) else chartWidth
+
+                    cachedLinePath.reset()
+                    cachedFillPath.reset()
+
+                    for (i in last10Attempts.indices) {
+                        val attempt = last10Attempts[i]
+                        val x = paddingLeft + i * stepX
+                        val y = paddingTop + chartHeight - (attempt.accuracyPercentage / 100f) * chartHeight * animationProgress
+
+                        if (i == 0) {
+                            cachedLinePath.moveTo(x, y)
+                            cachedFillPath.moveTo(x, paddingTop + chartHeight)
+                            cachedFillPath.lineTo(x, y)
+                        } else {
+                            val prevAttempt = last10Attempts[i - 1]
+                            val prevX = paddingLeft + (i - 1) * stepX
+                            val prevY = paddingTop + chartHeight - (prevAttempt.accuracyPercentage / 100f) * chartHeight * animationProgress
+                            
+                            // Cubic Bezier curve control points
+                            val cp1x = prevX + (x - prevX) / 2f
+                            val cp1y = prevY
+                            val cp2x = prevX + (x - prevX) / 2f
+                            val cp2y = y
+                            
+                            cachedLinePath.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y)
+                            cachedFillPath.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y)
+                        }
+
+                        if (i == last10Attempts.lastIndex) {
+                            cachedFillPath.lineTo(x, paddingTop + chartHeight)
+                            cachedFillPath.close()
+                        }
+                    }
+
+                    // Draw Gradient Fill under line
+                    drawPath(
+                        path = cachedFillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(saffronGold.copy(alpha = 0.3f), Color.Transparent),
+                            startY = paddingTop,
+                            endY = paddingTop + chartHeight
+                        )
+                    )
+
+                    // Draw Line
+                    drawPath(
+                        path = cachedLinePath,
+                        color = saffronGold,
+                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    )
+
+                    // Draw Points
+                    for (i in last10Attempts.indices) {
+                        val attempt = last10Attempts[i]
+                        val x = paddingLeft + i * stepX
+                        val y = paddingTop + chartHeight - (attempt.accuracyPercentage / 100f) * chartHeight * animationProgress
+
+                        // Accent border
+                        drawCircle(
+                            color = terracotta,
+                            radius = 5.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+
+                    // Draw X axis labels
+                    val labelPaint = android.graphics.Paint().apply {
+                        color = onSurface.copy(alpha = 0.6f).toArgb()
+                        textSize = 8.sp.toPx()
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                    for (i in last10Attempts.indices) {
+                        val x = paddingLeft + i * stepX
+                        val y = paddingTop + chartHeight + 16.dp.toPx()
+                        val text = "Q${i + 1}"
+                        drawContext.canvas.nativeCanvas.drawText(
+                            text,
+                            x,
+                            y,
+                            labelPaint
+                        )
+                    }
+                }
+
+                // Tooltip Overlay
+                selectedPointIndex?.let { index ->
+                    val attempt = last10Attempts[index]
+                    Tooltip(
+                        attempt = attempt,
+                        offset = tooltipOffset,
+                        modifier = Modifier.align(Alignment.TopStart)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Tooltip(
+    attempt: QuizAttempt,
+    offset: Offset,
+    modifier: Modifier = Modifier
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val xDp = with(density) { offset.x.toDp() }
+    val yDp = with(density) { offset.y.toDp() }
+
+    Box(
+        modifier = modifier
+            .offset(x = xDp - 50.dp, y = yDp - 65.dp)
+            .background(
+                color = MaterialTheme.colorScheme.inverseSurface,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+            .padding(8.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "${attempt.accuracyPercentage.toInt()}% Acc",
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = attempt.dateFormatted,
+                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+}
+
+@Composable
+fun ActivityDistributionDonutChart(
+    normalTime: Long,
+    quizTime: Long,
+    voiceTime: Long
+) {
+    val totalTime = normalTime + quizTime + voiceTime
+    val saffronGold = Color(0xFFE08A1E)
+    val terracotta = Color(0xFFC2410C)
+    val amberYellow = Color(0xFFF59E0B)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+
+    val items = remember(normalTime, quizTime, voiceTime) {
+        if (totalTime == 0L) {
+            listOf(
+                Triple("Empty", 1f, Color.LightGray)
+            )
+        } else {
+            listOf(
+                Triple("Normal Mode", normalTime.toFloat() / totalTime, saffronGold),
+                Triple("Quiz Mode", quizTime.toFloat() / totalTime, terracotta),
+                Triple("Voice Studio", voiceTime.toFloat() / totalTime, amberYellow)
+            )
+        }
+    }
+
+    var animationTriggered by remember { mutableStateOf(false) }
+    val animationProgress by animateFloatAsState(
+        targetValue = if (animationTriggered) 1f else 0f,
+        animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+        label = "donut_chart_anim"
+    )
+    LaunchedEffect(normalTime, quizTime, voiceTime) {
+        animationTriggered = true
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Study Time Distribution",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Donut Chart Canvas
+                Box(
+                    modifier = Modifier.size(140.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val strokeWidth = 16.dp.toPx()
+                        
+                        // Background track circle
+                        drawCircle(
+                            color = onSurface.copy(alpha = 0.05f),
+                            radius = (size.minDimension - strokeWidth) / 2f,
+                            style = Stroke(width = strokeWidth)
+                        )
+
+                        var startAngle = -90f
+                        items.forEach { (_, sweepRatio, color) ->
+                            val sweepAngle = sweepRatio * 360f * animationProgress
+                            drawArc(
+                                color = color,
+                                startAngle = startAngle,
+                                sweepAngle = sweepAngle,
+                                useCenter = false,
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                            )
+                            startAngle += sweepRatio * 360f // Continue startAngle based on full ratio
+                        }
+                    }
+                    
+                    // Center Text
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Total Time",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val totalHours = totalTime / 3600
+                        val totalMinutes = (totalTime % 3600) / 60
+                        val displayStr = when {
+                            totalHours > 0 -> "${totalHours}h ${totalMinutes}m"
+                            totalMinutes > 0 -> "${totalMinutes}m"
+                            else -> "${totalTime}s"
+                        }
+                        Text(
+                            text = displayStr,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // Legend
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items.forEach { (label, ratio, color) ->
+                        if (label != "Empty") {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(color, RoundedCornerShape(3.dp))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    val percent = (ratio * 100).toInt()
+                                    Text(
+                                        text = "$percent%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SpiritualPathRadarChart(
+    karmaCount: Int,
+    bhaktiCount: Int,
+    jnanaCount: Int
+) {
+    val saffronGold = Color(0xFFE08A1E)
+    val terracotta = Color(0xFFC2410C)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+
+    val targetMax = 50f
+    val karmaProgress = (karmaCount.toFloat() / targetMax).coerceAtMost(1.0f)
+    val bhaktiProgress = (bhaktiCount.toFloat() / targetMax).coerceAtMost(1.0f)
+    val jnanaProgress = (jnanaCount.toFloat() / targetMax).coerceAtMost(1.0f)
+
+    // Caching Path objects to eliminate allocations inside DrawScope
+    val ringPath = remember { Path() }
+    val progressPath = remember { Path() }
+
+    // Chart entry animation
+    var animationTriggered by remember { mutableStateOf(false) }
+    val animationProgress by animateFloatAsState(
+        targetValue = if (animationTriggered) 1f else 0f,
+        animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+        label = "radar_chart_anim"
+    )
+    LaunchedEffect(karmaCount, bhaktiCount, jnanaCount) {
+        animationTriggered = true
+    }
+
+    val archetype = remember(karmaCount, bhaktiCount, jnanaCount) {
+        val k = karmaCount
+        val b = bhaktiCount
+        val j = jnanaCount
+
+        when {
+            k == 0 && b == 0 && j == 0 -> "Aspirant (Beginner's Mind)"
+            kotlin.math.abs(k - b) <= 5 && kotlin.math.abs(b - j) <= 5 && kotlin.math.abs(k - j) <= 5 -> "Raja Yogi (The Harmonious Path)"
+            k > b && k > j -> "Karma Yogi (The Active Path)"
+            b > k && b > j -> "Bhakti Yogi (The Devotional Path)"
+            j > k && j > b -> "Jnana Yogi (The Philosophical Path)"
+            else -> "Aspirant (Beginner's Mind)"
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Spiritual Archetype Progression",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = archetype,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = terracotta,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Radar Spider Canvas
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .padding(8.dp)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2, size.height / 2)
+                    val radius = (size.width / 2) * 0.8f
+
+                    val angles = listOf(-90f, 30f, 150f)
+                    val labels = listOf("Karma Yoga", "Bhakti Yoga", "Jnana Yoga")
+
+                    // Draw Concentric Rings
+                    val steps = listOf(0.25f, 0.5f, 0.75f, 1.0f)
+                    steps.forEach { step ->
+                        ringPath.reset()
+                        for (i in angles.indices) {
+                            val angleRad = Math.toRadians(angles[i].toDouble())
+                            val x = center.x + radius * step * cos(angleRad).toFloat()
+                            val y = center.y + radius * step * sin(angleRad).toFloat()
+                            if (i == 0) {
+                                ringPath.moveTo(x, y)
+                            } else {
+                                ringPath.lineTo(x, y)
+                            }
+                        }
+                        ringPath.close()
+                        drawPath(
+                            path = ringPath,
+                            color = onSurface.copy(alpha = 0.05f),
+                            style = Stroke(width = 1.dp.toPx())
+                        )
+                    }
+
+                    // Draw Axes lines
+                    angles.forEach { angle ->
+                        val angleRad = Math.toRadians(angle.toDouble())
+                        val endX = center.x + radius * cos(angleRad).toFloat()
+                        val endY = center.y + radius * sin(angleRad).toFloat()
+                        drawLine(
+                            color = onSurface.copy(alpha = 0.1f),
+                            start = center,
+                            end = Offset(endX, endY),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    // Draw Progress Area (Animated)
+                    progressPath.reset()
+                    val progresses = listOf(
+                        (karmaProgress * animationProgress).coerceAtLeast(0.05f),
+                        (bhaktiProgress * animationProgress).coerceAtLeast(0.05f),
+                        (jnanaProgress * animationProgress).coerceAtLeast(0.05f)
+                    )
+                    for (i in angles.indices) {
+                        val angleRad = Math.toRadians(angles[i].toDouble())
+                        val p = progresses[i]
+                        val x = center.x + radius * p * cos(angleRad).toFloat()
+                        val y = center.y + radius * p * sin(angleRad).toFloat()
+                        if (i == 0) {
+                            progressPath.moveTo(x, y)
+                        } else {
+                            progressPath.lineTo(x, y)
+                        }
+                    }
+                    progressPath.close()
+
+                    // Fill progress area
+                    drawPath(
+                        path = progressPath,
+                        brush = Brush.radialGradient(
+                            colors = listOf(saffronGold.copy(alpha = 0.4f), terracotta.copy(alpha = 0.2f)),
+                            center = center,
+                            radius = radius
+                        )
+                    )
+
+                    // Stroke progress area
+                    drawPath(
+                        path = progressPath,
+                        color = terracotta,
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+
+                    // Draw corners points
+                    for (i in angles.indices) {
+                        val angleRad = Math.toRadians(angles[i].toDouble())
+                        val p = progresses[i]
+                        val x = center.x + radius * p * cos(angleRad).toFloat()
+                        val y = center.y + radius * p * sin(angleRad).toFloat()
+                        drawCircle(
+                            color = saffronGold,
+                            radius = 4.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+
+                    // Draw labels
+                    val labelPaint = android.graphics.Paint().apply {
+                        color = onSurface.toArgb()
+                        textSize = 9.sp.toPx()
+                        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                    }
+
+                    for (i in angles.indices) {
+                        val angleRad = Math.toRadians(angles[i].toDouble())
+                        val x = center.x + (radius + 15.dp.toPx()) * cos(angleRad).toFloat()
+                        val y = center.y + (radius + 15.dp.toPx()) * sin(angleRad).toFloat()
+
+                        val label = labels[i]
+                        val textWidth = labelPaint.measureText(label)
+                        
+                        val alignX = x - textWidth / 2f
+                        val alignY = when {
+                            sin(angleRad) > 0.1 -> y + 4.dp.toPx()
+                            sin(angleRad) < -0.1 -> y - 4.dp.toPx()
+                            else -> y
+                        }
+
+                        drawContext.canvas.nativeCanvas.drawText(
+                            label,
+                            alignX,
+                            alignY,
+                            labelPaint
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Details/Legends
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Action", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$karmaCount verses", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Devotion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$bhaktiCount verses", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Knowledge", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$jnanaCount verses", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.aipoweredgita.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -28,10 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.R
-import com.aipoweredgita.app.ui.components.GradientActionCard
+import com.aipoweredgita.app.ui.components.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
-import com.aipoweredgita.app.ui.components.LotusLevelManager
-import com.aipoweredgita.app.ui.components.LotusBadge
 import com.aipoweredgita.app.recommendation.RecommendationEngine
 import com.aipoweredgita.app.recommendation.AdaptiveCurriculumPlanner
 import com.aipoweredgita.app.recommendation.YogaAdvisor
@@ -48,8 +47,18 @@ import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.quiz.OrnamentRule
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.delay
 
 @Composable
@@ -128,6 +137,19 @@ fun MandalaHeroSection() {
     }
 }
 
+private fun clean(s: String?): String? {
+    if (s == null) return null
+    var t = s
+    val map = mapOf(
+        "â€¢" to "•", "â€“" to "–", "â€”" to "—", "â€˜" to "‘", "â€™" to "’",
+        "â€œ" to "“", "â€ " to "”", "â€¦" to "…", "Ã—" to "×", "Â" to "",
+        "ðŸ" to "", "dY" to "", "" to ""
+    )
+    for ((k, v) in map) t = t?.replace(k, v)
+    t = t?.replace(Regex("[\\u0000-\\u001F\\u007F]"), "")
+    return t
+}
+
 @Composable
 fun DashboardScreen(
     onNavigateToNormalMode: () -> Unit,
@@ -141,6 +163,7 @@ fun DashboardScreen(
     val stats by viewModel.stats.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
+    val language = remember { prefs.getString("quiz_language", "eng") ?: "eng" }
     val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
     var versesToday by remember { mutableStateOf(0) }
     var quizzesToday by remember { mutableStateOf(0) }
@@ -148,6 +171,15 @@ fun DashboardScreen(
     var quizToday by remember { mutableStateOf(0L) }
     var studioToday by remember { mutableStateOf(0L) }
     var versesListToday by remember { mutableStateOf<List<com.aipoweredgita.app.database.ReadVerse>>(emptyList()) }
+
+    // Read initial cached values synchronously to avoid visual flicker during load
+    val initialNextStepRaw = remember { prefs.getString("next_step_label", null) }
+    val initialNextLevel = remember { prefs.getInt("next_level", -1) }
+    val initialNextReasonRaw = remember { prefs.getString("next_reason", null) }
+
+    var nextStep by remember { mutableStateOf<String?>(clean(initialNextStepRaw)) }
+    var nextLevel by remember { mutableIntStateOf(initialNextLevel) }
+    var nextReason by remember { mutableStateOf<String?>(clean(initialNextReasonRaw)) }
 
     // Welcome Dialog State
     var showWelcomeDialog by remember { mutableStateOf(false) }
@@ -179,12 +211,35 @@ fun DashboardScreen(
             val lastSugDate = prefs.getString("next_suggestion_date", "")
             if (lastSugDate != today) {
                 val suggestion = withContext(Dispatchers.IO) { predictNext(db) }
-                prefs.edit()
-                    .putString("next_step_label", suggestion.nextStep)
-                    .putInt("next_level", suggestion.nextLevel)
-                    .putString("next_reason", suggestion.reason)
-                    .putString("next_suggestion_date", today)
-                    .apply()
+                val cleanedStep = clean(suggestion.nextStep)
+                val cleanedReason = clean(suggestion.reason)
+                withContext(Dispatchers.IO) {
+                    prefs.edit()
+                        .putString("next_step_label", cleanedStep)
+                        .putInt("next_level", suggestion.nextLevel)
+                        .putString("next_reason", cleanedReason)
+                        .putString("next_suggestion_date", today)
+                        .apply()
+                }
+                nextStep = cleanedStep
+                nextLevel = suggestion.nextLevel
+                nextReason = cleanedReason
+            } else {
+                val rawStep = prefs.getString("next_step_label", null)
+                val rawReason = prefs.getString("next_reason", null)
+                val cleanedStep = clean(rawStep)
+                val cleanedReason = clean(rawReason)
+                if (cleanedStep != rawStep || cleanedReason != rawReason) {
+                    withContext(Dispatchers.IO) {
+                        prefs.edit().apply {
+                            if (cleanedStep != rawStep) putString("next_step_label", cleanedStep)
+                            if (cleanedReason != rawReason) putString("next_reason", cleanedReason)
+                        }.apply()
+                    }
+                }
+                nextStep = cleanedStep
+                nextLevel = prefs.getInt("next_level", -1)
+                nextReason = cleanedReason
             }
         } catch (e: Exception) {
             android.util.Log.w("DashboardScreen", "Failed to load stats week", e)
@@ -227,299 +282,489 @@ fun DashboardScreen(
         }
     }
 
-    LazyColumn(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+            .background(Color(0xFF080400))
     ) {
-        item {
-            val nextStepRaw = prefs.getString("next_step_label", null)
-            val nextLevel = prefs.getInt("next_level", -1)
-            val nextReasonRaw = prefs.getString("next_reason", null)
-            // Sanitize any mojibake in persisted values
-            fun clean(s: String?): String? {
-                if (s == null) return null
-                var t = s
-                val map = mapOf(
-                    "â€¢" to "•", "â€“" to "–", "â€”" to "—", "â€˜" to "‘", "â€™" to "’",
-                    "â€œ" to "“", "â€" to "”", "â€¦" to "…", "Ã—" to "×", "Â" to "",
-                    "ðŸ" to "", "dY" to "", "" to ""
-                )
-                for ((k, v) in map) t = t?.replace(k, v)
-                t = t?.replace(Regex("[\\u0000-\\u001F\\u007F]"), "")
-                return t
-            }
-            val nextStep = clean(nextStepRaw)
-            val nextReason = clean(nextReasonRaw)
-            if ((nextStep != null && nextStepRaw != null && nextStep != nextStepRaw) ||
-                (nextReason != null && nextReasonRaw != null && nextReason != nextReasonRaw)) {
-                prefs.edit().apply {
-                    if (nextStep != null && nextStepRaw != null && nextStep != nextStepRaw) putString("next_step_label", nextStep)
-                    if (nextReason != null && nextReasonRaw != null && nextReason != nextReasonRaw) putString("next_reason", nextReason)
-                }.apply()
-            }
-            if (nextStep != null && nextLevel > 0) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(alpha = 0.2f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Next best action", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GoldSpark)
-                        Text("${nextStep ?: ""} at level $nextLevel", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                        if (!nextReason.isNullOrBlank()) Text(nextReason!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            when (nextStep) {
-                                "Read" -> Button(onClick = onNavigateToNormalMode, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("Start Reading") }
-                                "Quiz" -> Button(onClick = onNavigateToQuizMode, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("Start Quiz") }
-                                "Studio" -> Button(onClick = onNavigateToVoiceStudio, colors = ButtonDefaults.buttonColors(containerColor = Saffron)) { Text("ప్రశ్న సమాధానం") }
+        AmbientOrbs(modifier = Modifier.fillMaxSize())
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Header Row
+            item {
+                AnimatedItem(index = 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                            val greeting = when {
+                                hour < 12 -> "Good morning"
+                                hour < 17 -> "Good afternoon"
+                                else -> "Good evening"
+                            }
+                            Text(
+                                text = greeting,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFFFFAA3C).copy(alpha = 0.75f),
+                                letterSpacing = 0.4.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Bhagavad Gita",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White.copy(alpha = 0.95f),
+                                letterSpacing = (-0.6).sp
+                            )
+                        }
+                        
+                        GlassCard(
+                            modifier = Modifier.size(46.dp),
+                            tint = Color(0xFFFF6E00).copy(alpha = 0.15f),
+                            border = Color(0xFFFF8228).copy(alpha = 0.3f),
+                            cornerRadius = 16.dp
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "ॐ",
+                                    fontSize = 22.sp,
+                                    color = Color.White,
+                                    style = androidx.compose.ui.text.TextStyle(
+                                        shadow = Shadow(
+                                            color = Color(0xFFFF7800).copy(alpha = 0.5f),
+                                            offset = Offset(0f, 0f),
+                                            blurRadius = 8f
+                                        )
+                                    )
+                                )
                             }
                         }
                     }
                 }
             }
-            // Welcome Card with Mandala
-            AnimatedItem(index = 0) {
-                MandalaHeroSection()
-            }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+            // Hero — Collapsible Namaste & Next Best Action
+            item {
+                var heroOpen by remember { mutableStateOf(true) }
+                AnimatedItem(index = 1) {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        tint = Color(0xFFC85000).copy(alpha = 0.22f),
+                        border = Color(0xFFFF8C28).copy(alpha = 0.28f),
+                        cornerRadius = 28.dp
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawBehind {
+                                    val brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF7800).copy(alpha = 0.18f),
+                                            Color(0xFF962800).copy(alpha = 0.12f),
+                                            Color.Transparent
+                                        ),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(size.width, size.height)
+                                    )
+                                    drawRect(brush)
+                                }
+                        ) {
+                            MandalaBackground(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(140.dp)
+                                    .offset(x = 10.dp, y = (-10).dp),
+                                color = Color.White.copy(alpha = 0.07f)
+                            )
 
-        item {
-            // Today's Progress
-            AnimatedItem(index = 1) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Today's Progress",
-                        style = MaterialTheme.typography.headlineSmall, // Updated to use new typography
-                        color = GoldSpark
-                    )
-                    var showToday by remember { mutableStateOf(false) }
-                    IconButton(onClick = { showToday = true }) {
-                        Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Today, contentDescription = "Today", tint = GoldSpark)
-                    }
-                    if (showToday) {
-                        TodaySummaryDialog(
-                            onDismiss = { showToday = false },
-                            verses = versesToday,
-                            quizzes = quizzesToday,
-                            normalTime = normalToday,
-                            quizTime = quizToday,
-                            studioTime = studioToday,
-                            versesList = versesListToday,
-                            onReadMore = onNavigateToNormalMode,
-                            onTakeQuiz = onNavigateToQuizMode
-                        )
-                    }
-                }
-            }
-        }
+                            Column {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { heroOpen = !heroOpen }
+                                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(text = "🙏", fontSize = 30.sp)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Namaste",
+                                            fontSize = 22.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White.copy(alpha = 0.97f),
+                                            letterSpacing = (-0.5).sp
+                                        )
+                                        Text(
+                                            text = "Continue your spiritual journey",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFFFFDCA0).copy(alpha = 0.75f)
+                                        )
+                                    }
+                                    val rotationChevron by animateFloatAsState(
+                                        targetValue = if (heroOpen) 0f else -90f,
+                                        label = "chevron_rotation"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(RoundedCornerShape(9.dp))
+                                            .background(Color.White.copy(alpha = 0.1f))
+                                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(9.dp))
+                                            .graphicsLayer { rotationZ = rotationChevron },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "⌄", fontSize = 13.sp, color = Color(0xFFFFC864).copy(alpha = 0.8f))
+                                    }
+                                }
 
-        item {
-            OrnamentRule()
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            AnimatedItem(index = 2) {
-                AdaptiveStatRow(
-                    listOf(
-                        StatItem(
-                            title = "Time",
-                            value = stats?.timeSpentFormatted ?: "0m",
-                            icon = "⏱",
-                            color = Saffron
-                        ),
-                        StatItem(
-                            title = "Streak",
-                            value = "${stats?.currentStreak ?: 0} d",
-                            icon = "🔥",
-                            color = GoldSpark
-                        )
-                    )
-                )
-            }
-}
-
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            AdaptiveStatRow(
-                listOf(
-                    StatItem(
-                        title = "Verses",
-                        value = "$versesToday",
-                        icon = "📖",
-                        color = Saffron
-                    ),
-                    StatItem(
-                        title = "Quizzes",
-                        value = "$quizzesToday",
-                        icon = "🧠",
-                        color = GoldSpark
-                    )
-                )
-            )
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        item {
-            // Quick Actions
-            AnimatedItem(index = 4) {
-                Text(
-                    text = "Learning Modes",
-                    style = MaterialTheme.typography.headlineSmall, // Updated typography
-                    color = GoldSpark
-                )
-            }
-        }
-
-        item {
-            // Lotus badge preview
-            val level = LotusLevelManager.levelFor(stats)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "Lotus Level", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                LotusBadge(level = level, size = 32.dp)
-            }
-        }
-
-        item {
-            // Yoga focus suggestions
-            val advice = YogaAdvisor.suggest(stats)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Suggested Focus", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
-                    Text(text = "Current Level: ${advice.currentLevel}", color = MaterialTheme.colorScheme.onSurface)
-                    Text(text = "Next Levels: ${advice.nextFocusLevels.joinToString(", ")}", color = MaterialTheme.colorScheme.onSurface)
-                    advice.tips.forEach { tip -> Text(text = "• $tip", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            // Recommendations & Study Guides preview
-            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-            val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Recommendations", style = MaterialTheme.typography.titleMedium, color = GoldSpark)
-                    recs.take(3).forEach { r ->
-                        Text(text = "• ${r.recommendationTitle}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = onNavigateToQuizMode, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Saffron)) {
-                            Text("Start Plan")
-                        }
-                        Button(onClick = onNavigateToRecommendations, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                            Text("View All")
+                                AnimatedVisibility(
+                                    visible = heroOpen,
+                                    enter = expandVertically(animationSpec = tween(400)) + fadeIn(animationSpec = tween(300)),
+                                    exit = shrinkVertically(animationSpec = tween(400)) + fadeOut(animationSpec = tween(300))
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 20.dp, end = 20.dp, bottom = 18.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(Color.White.copy(alpha = 0.1f))
+                                        )
+                                        Spacer(modifier = Modifier.height(13.dp))
+                                        Pill(text = "NEXT BEST ACTION")
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = if (nextStep != null && nextLevel > 0) {
+                                                "${nextStep ?: ""} at Level $nextLevel · ${nextReason ?: "Balance your modes"}"
+                                            } else {
+                                                "Read at Level 1 · Keep consistent"
+                                            },
+                                            fontSize = 13.sp,
+                                            color = Color(0xFFFFEBC8).copy(alpha = 0.75f),
+                                            lineHeight = 18.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(14.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            val actionText = when (nextStep) {
+                                                "Read" -> "Start Reading"
+                                                "Quiz" -> "Start Quiz"
+                                                "Studio" -> if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A"
+                                                else -> "Explore"
+                                            }
+                                            val actionClick = when (nextStep) {
+                                                "Read" -> onNavigateToNormalMode
+                                                "Quiz" -> onNavigateToQuizMode
+                                                "Studio" -> onNavigateToVoiceStudio
+                                                else -> onNavigateToNormalMode
+                                            }
+                                            
+                                            Button(
+                                                onClick = actionClick,
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f)),
+                                                shape = RoundedCornerShape(50.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                                            ) {
+                                                Text(text = actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.92f))
+                                            }
+                                            
+                                            Button(
+                                                onClick = onNavigateToRecommendations,
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                                                shape = RoundedCornerShape(50.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFC864).copy(alpha = 0.2f))
+                                            ) {
+                                                Text(text = "View Plan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFFFFC864).copy(alpha = 0.7f))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
 
-        item {
-            AnimatedItem(index = 5) {
-                PremiumDashboardCard(
-                    title = "Read Verses",
-                    description = "Browse the sacred texts",
-                    icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read", tint = Color.White) },
-                    gradient = listOf(Saffron, GoldSpark),
-                    onClick = onNavigateToNormalMode,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                )
+            // Stats Label Row
+            item {
+                AnimatedItem(index = 2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Today's Stats",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.88f),
+                            letterSpacing = (-0.3).sp
+                        )
+                        var showToday by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showToday = true }) {
+                            Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Today, contentDescription = "Today", tint = Color(0xFFFFB450))
+                        }
+                        if (showToday) {
+                            TodaySummaryDialog(
+                                onDismiss = { showToday = false },
+                                verses = versesToday,
+                                quizzes = quizzesToday,
+                                normalTime = normalToday,
+                                quizTime = quizToday,
+                                studioTime = studioToday,
+                                versesList = versesListToday,
+                                onReadMore = onNavigateToNormalMode,
+                                onTakeQuiz = onNavigateToQuizMode
+                            )
+                        }
+                    }
+                }
             }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            AnimatedItem(index = 7) {
-                PremiumDashboardCard(
-                    title = "Take Quiz",
-                    description = "Test your knowledge - Text & Voice",
-                    icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz", tint = Color.White) },
-                    gradient = listOf(Forest, Saffron),
-                    onClick = onNavigateToQuizMode,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                )
+            // Stats Cards Row
+            item {
+                AnimatedItem(index = 3) {
+                    GlassStatRow(
+                        timeValue = stats?.timeSpentFormatted ?: "0m",
+                        streakValue = "${stats?.currentStreak ?: 0}d"
+                    )
+                }
             }
-        }
 
-        item {
-            AnimatedItem(index = 8) {
-                PremiumDashboardCard(
-                    title = "ప్రశ్న సమాధానం",
-                    description = "Chat & Quiz with AI Wisdom",
-                    icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Mic, contentDescription = "Voice Studio", tint = Color.White) },
-                    gradient = listOf(Saffron, CrimsonDeep),
-                    onClick = onNavigateToVoiceStudio,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // Learning Modes section label & Lotus Level badge
+            item {
+                AnimatedItem(index = 4) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Learning Modes",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.88f),
+                            letterSpacing = (-0.3).sp
+                        )
+                        val level = LotusLevelManager.levelFor(stats)
+                        Pill(
+                            text = "Lotus · Lv $level",
+                            color = Color.White.copy(alpha = 0.06f),
+                            textColor = Color.White.copy(alpha = 0.35f)
+                        )
+                    }
+                }
             }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+            // 2x2 Square Mode Cards
+            item {
+                AnimatedItem(index = 5) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            DashboardModeCard(
+                                emoji = "🎓",
+                                title = "Take Quiz",
+                                sub = "Text & Voice · 10m",
+                                bgContent = { QuizCardBg() },
+                                onClick = onNavigateToQuizMode,
+                                modifier = Modifier.weight(1f)
+                            )
+                            DashboardModeCard(
+                                emoji = "🎙",
+                                title = if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A",
+                                sub = "AI Wisdom · Live",
+                                bgContent = { VoiceCardBg() },
+                                onClick = onNavigateToVoiceStudio,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            DashboardModeCard(
+                                emoji = "✦",
+                                title = "Random Sloka",
+                                sub = "Daily inspiration",
+                                bgContent = { SlokaCardBg() },
+                                onClick = onNavigateToRandomSloka,
+                                modifier = Modifier.weight(1f)
+                            )
+                            DashboardModeCard(
+                                emoji = "📖",
+                                title = "Read Verses",
+                                sub = "Sacred texts",
+                                bgContent = { ReadCardBg() },
+                                onClick = onNavigateToNormalMode,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
 
-        item {
-        AnimatedItem(index = 8) {
-            PremiumDashboardCard(
-                title = "Random Sloka",
-                description = "Get inspired by a random verse",
-                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Default.Shuffle, contentDescription = "Random", tint = Color.White) },
-                gradient = listOf(GoldSpark, Saffron),
-                onClick = onNavigateToRandomSloka,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
+            // Recommendations — Collapsible
+            item {
+                var recoOpen by remember { mutableStateOf(true) }
+                val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
+                
+                AnimatedItem(index = 6) {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        tint = Color.White.copy(alpha = 0.03f),
+                        cornerRadius = 24.dp
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { recoOpen = !recoOpen }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = "✦ RECOMMENDATIONS",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFFA532),
+                                    letterSpacing = 0.5.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Color(0xFFFF9628).copy(alpha = 0.15f))
+                                        .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${recs.size} items",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFFA532),
+                                        letterSpacing = 0.3.sp
+                                    )
+                                }
+                                
+                                val rotationChevron by animateFloatAsState(
+                                    targetValue = if (recoOpen) 0f else -90f,
+                                    label = "reco_chevron_rotation"
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White.copy(alpha = 0.07f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                        .graphicsLayer { rotationZ = rotationChevron },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = "⌄", fontSize = 12.sp, color = Color(0xFFFFC864).copy(alpha = 0.7f))
+                                }
+                            }
+                            
+                            if (recoOpen) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .padding(horizontal = 16.dp)
+                                        .background(Color.White.copy(alpha = 0.06f))
+                                )
+                            }
+                            
+                            AnimatedVisibility(
+                                visible = recoOpen,
+                                enter = expandVertically(animationSpec = tween(400)) + fadeIn(animationSpec = tween(300)),
+                                exit = shrinkVertically(animationSpec = tween(400)) + fadeOut(animationSpec = tween(300))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp)
+                                ) {
+                                    if (recs.isEmpty()) {
+                                        val fallbackRecs = listOf(
+                                            Triple("Continue in Quiz Mode", "🎓", "Quiz"),
+                                            Triple("Review Chapter 1", "📖", "Read"),
+                                            Triple("Focus on Yoga Level 1", "🧘", "Level")
+                                        )
+                                        fallbackRecs.forEachIndexed { i, item ->
+                                            RecommendationRow(
+                                                text = item.first,
+                                                icon = item.second,
+                                                tag = item.third,
+                                                showDivider = i < fallbackRecs.size - 1
+                                            )
+                                        }
+                                    } else {
+                                        recs.take(3).forEachIndexed { i, r ->
+                                            val (emoji, tag) = when (r.recommendationType) {
+                                                "verse" -> "📖" to "Read"
+                                                "topic" -> "🎓" to "Quiz"
+                                                "yogalevel" -> "🧘" to "Level"
+                                                "question" -> "🎙" to "Voice"
+                                                else -> "✦" to "Gita"
+                                            }
+                                            RecommendationRow(
+                                                text = r.recommendationTitle,
+                                                icon = emoji,
+                                                tag = tag,
+                                                showDivider = i < recs.size.coerceAtMost(3) - 1
+                                            )
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = onNavigateToQuizMode,
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9628).copy(alpha = 0.35f)),
+                                            contentPadding = PaddingValues(vertical = 11.dp)
+                                        ) {
+                                            Text("Start Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        }
+                                        
+                                        Button(
+                                            onClick = onNavigateToRecommendations,
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.06f)),
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
+                                            contentPadding = PaddingValues(vertical = 11.dp)
+                                        ) {
+                                            Text("View All", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.45f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -682,5 +927,281 @@ private fun formatTime(seconds: Long): String {
         h > 0 -> "${h}h ${m}m"
         m > 0 -> "${m}m ${s}s"
         else -> "${s}s"
+    }
+}
+
+@Composable
+fun Pill(
+    text: String,
+    color: Color = Color(0xFFFF6E00).copy(alpha = 0.25f),
+    textColor: Color = Color(0xFFFFB450).copy(alpha = 0.9f)
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(color)
+            .border(1.dp, textColor.copy(alpha = 0.27f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+fun DashboardModeCard(
+    emoji: String,
+    title: String,
+    sub: String,
+    bgContent: @Composable BoxScope.() -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = tween(100),
+        label = "scale"
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(22.dp))
+    ) {
+        bgContent()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.05f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.55f)
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.45f)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(Color.White.copy(alpha = 0.14f))
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = emoji,
+                    fontSize = 22.sp,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.3f),
+                            offset = Offset(0f, 4f),
+                            blurRadius = 14f
+                        )
+                    )
+                )
+            }
+            Column {
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.97f),
+                    lineHeight = 16.sp,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 10f
+                        )
+                    )
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = sub,
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.5f),
+                    letterSpacing = 0.2.sp,
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            offset = Offset(0f, 1f),
+                            blurRadius = 4f
+                        )
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GlassStatRow(
+    timeValue: String,
+    streakValue: String
+) {
+    val uiCfg = LocalUiConfig.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        val itemModifier = if (uiCfg.isLandscape) Modifier.width(180.dp) else Modifier.weight(1f)
+        
+        GlassCard(
+            modifier = itemModifier,
+            tint = Color.White.copy(alpha = 0.04f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 16.dp)
+            ) {
+                Text("⏱", fontSize = 22.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = timeValue,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFF7828)
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    text = "Time Today",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.3f),
+                    letterSpacing = 0.4.sp
+                )
+            }
+        }
+
+        GlassCard(
+            modifier = itemModifier,
+            tint = Color.White.copy(alpha = 0.04f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 16.dp)
+            ) {
+                Text("🔥", fontSize = 22.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = streakValue,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFFBE28)
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    text = "Day Streak",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.3f),
+                    letterSpacing = 0.4.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecommendationRow(
+    text: String,
+    icon: String,
+    tag: String,
+    showDivider: Boolean
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = icon, fontSize = 15.sp)
+            }
+            
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.65f),
+                modifier = Modifier.weight(1f)
+            )
+            
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFF9628).copy(alpha = 0.1f))
+                    .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = tag,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFA532),
+                    letterSpacing = 0.4.sp
+                )
+            }
+            
+            Text(
+                text = "›",
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.18f)
+            )
+        }
+        
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color.White.copy(alpha = 0.05f))
+            )
+        }
     }
 }

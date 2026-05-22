@@ -19,7 +19,7 @@ class QwenDownloadWorker(
         private const val TAG = "QwenDownloadWorker"
         private const val WORK_NAME_QWEN = "qwen_download"
 
-        fun scheduleImmediateDownload(context: Context) {
+        fun scheduleImmediateDownload(context: Context, modelName: String = "Qwen3 0.6B") {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresDeviceIdle(false)
@@ -29,36 +29,59 @@ class QwenDownloadWorker(
 
             val request = OneTimeWorkRequestBuilder<QwenDownloadWorker>()
                 .setConstraints(constraints)
+                .setInputData(workDataOf("model_name" to modelName))
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
-                WORK_NAME_QWEN,
+                WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"),
                 ExistingWorkPolicy.REPLACE,
                 request
             )
-            Log.d(TAG, "Scheduled immediate Qwen download")
+            Log.d(TAG, "Scheduled immediate Qwen download for $modelName")
         }
 
-        fun cancelDownload(context: Context) {
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_QWEN)
+        fun scheduleBackgroundDownload(context: Context, modelName: String = "Qwen3 0.6B") {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .setRequiresDeviceIdle(false)
+                .setRequiresCharging(false)
+                .setRequiresBatteryNotLow(false)
+                .build()
+
+            val request = OneTimeWorkRequestBuilder<QwenDownloadWorker>()
+                .setConstraints(constraints)
+                .setInputData(workDataOf("model_name" to modelName))
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"),
+                ExistingWorkPolicy.KEEP,
+                request
+            )
+            Log.d(TAG, "Scheduled background Qwen download for $modelName (WiFi)")
+        }
+
+        fun cancelDownload(context: Context, modelName: String = "Qwen3 0.6B") {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(7020)
             notificationManager.cancel(7021)
             Log.d(TAG, "Cancelled Qwen download")
         }
 
-        fun getDownloadStatusLive(context: Context): androidx.lifecycle.LiveData<WorkInfo?> {
+        fun getDownloadStatusLive(context: Context, modelName: String = "Qwen3 0.6B"): androidx.lifecycle.LiveData<WorkInfo?> {
             val live = WorkManager.getInstance(context)
-                .getWorkInfosForUniqueWorkLiveData(WORK_NAME_QWEN)
+                .getWorkInfosForUniqueWorkLiveData(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
             val out = androidx.lifecycle.MediatorLiveData<WorkInfo?>()
             out.addSource(live) { list -> out.value = list.firstOrNull() }
             return out
         }
 
-        fun isDownloading(context: Context): Boolean {
+        fun isDownloading(context: Context, modelName: String = "Qwen3 0.6B"): Boolean {
             val workInfos = WorkManager.getInstance(context)
-                .getWorkInfosForUniqueWork(WORK_NAME_QWEN)
+                .getWorkInfosForUniqueWork(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
                 .get()
             return workInfos?.any {
                 it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
@@ -68,10 +91,11 @@ class QwenDownloadWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            Log.d(TAG, "QwenDownloadWorker started (attempt ${runAttemptCount + 1})")
+            val modelName = inputData.getString("model_name") ?: "Qwen3 0.6B"
+            Log.d(TAG, "QwenDownloadWorker started (attempt ${runAttemptCount + 1}) for $modelName")
 
             val manager = com.aipoweredgita.app.ml.ModelDownloadManager(applicationContext)
-            val modelInfo = manager.getModelInfo("Qwen3 0.6B") ?: return Result.failure()
+            val modelInfo = manager.getModelInfo(modelName) ?: return Result.failure()
             val qwenFile = File(applicationContext.filesDir, "ml_models/${modelInfo.fileName}")
             val minSize = (modelInfo.expectedBytes * 0.9).toLong()
 

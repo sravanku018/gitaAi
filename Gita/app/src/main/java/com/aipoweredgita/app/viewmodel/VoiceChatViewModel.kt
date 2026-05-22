@@ -14,10 +14,12 @@ import com.aipoweredgita.app.ml.AppFeature
 import com.aipoweredgita.app.ml.LiteRtLmVoiceChatEngine
 import com.aipoweredgita.app.ml.ModelAvailability
 import com.aipoweredgita.app.utils.AiTurnManager
+import com.aipoweredgita.app.utils.DeviceCapability
 import com.aipoweredgita.app.utils.LanguageMode
 import com.aipoweredgita.app.utils.VoiceManager
 import com.aipoweredgita.app.repository.ModeType
 import com.aipoweredgita.app.repository.StatsRepository
+import com.aipoweredgita.app.ml.TranslationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,7 +33,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import com.aipoweredgita.app.utils.DeviceTier
+import com.aipoweredgita.app.utils.DeviceTierDetector
 
 // ─── Data Models ──────────────────────────────────────────────────────────────
 
@@ -53,7 +64,8 @@ data class VoiceChatState(
     val userInput      : String             = "",
     val isLlmReady     : Boolean            = false,
     val error          : String?            = null,
-    val errorType      : VoiceChatErrorType? = null
+    val errorType      : VoiceChatErrorType? = null,
+    val currentModelName: String             = "Unknown"
 )
 
 enum class VoiceChatErrorType {
@@ -74,6 +86,66 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     private val statsRepository = StatsRepository(database.userStatsDao())
     private val voiceManager    = VoiceManager(application)
     private val voiceChatEngine = LiteRtLmVoiceChatEngine(application)
+    private val translationManager = TranslationManager()
+
+    private var useProxy = false
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    private suspend fun fetchGroqReply(groundedPrompt: String, history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
+        val systemPrompt = currentLanguageMode.systemInstruction
+        val json = JSONObject()
+        val messagesArray = JSONArray()
+        
+        val systemMsg = JSONObject()
+            .put("role", "system")
+            .put("content", systemPrompt)
+        messagesArray.put(systemMsg)
+        
+        val historyToSend = history.filter { it.text.isNotEmpty() }
+        if (historyToSend.isNotEmpty()) {
+            for (i in 0 until historyToSend.size - 1) {
+                val msg = historyToSend[i]
+                val role = if (msg.isUser) "user" else "assistant"
+                messagesArray.put(
+                    JSONObject()
+                        .put("role", role)
+                        .put("content", msg.text)
+                )
+            }
+            messagesArray.put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", groundedPrompt)
+            )
+        } else {
+            messagesArray.put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", groundedPrompt)
+            )
+        }
+        
+        json.put("messages", messagesArray)
+        
+        val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        
+        val request = Request.Builder()
+            .url("https://noisy-sheep-76.sravanku018.deno.net/")
+            .post(body)
+            .build()
+            
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw java.io.IOException("Unexpected code $response")
+            }
+            val responseString = response.body?.string() ?: throw java.io.IOException("Empty response body")
+            val jsonResponse = JSONObject(responseString)
+            jsonResponse.getString("reply")
+        }
+    }
 
     private val aiDispatcher = Dispatchers.Default.limitedParallelism(1)
     private val aiScope      = CoroutineScope(aiDispatcher + SupervisorJob())
@@ -96,6 +168,9 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         loadMessages()
         observeModelChanges()
         refreshModelStatus()
+        viewModelScope.launch {
+            translationManager.downloadModelsIfNeeded()
+        }
     }
 
     // ─── Setup ────────────────────────────────────────────────────────────────
@@ -134,36 +209,94 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun refreshModelStatus() {
         val context = getApplication<Application>()
+        val tier = DeviceTierDetector.detect(context)
+        val isLowTier = tier == DeviceTier.LOW || tier == DeviceTier.LOW_MID
+
+        val ma = ModelAvailability.getInstance(context)
+        val selected = ma.selectedModel.value
+
+        if (isLowTier || selected.contains("Groq", ignoreCase = true)) {
+            Log.d(tag, "Low-tier device detected (${tier.label}) or Cloud Proxy selected. Forcing Deno proxy fallback.")
+            useProxy = true
+            _state.update {
+                it.copy(
+                    isLlmReady = true,
+                    currentModelName = "Cloud Proxy (Groq)",
+                    error = null,
+                    errorType = null
+                )
+            }
+            return
+        }
+
         try {
             val ma        = ModelAvailability.getInstance(context)
             val modelPath = ma.getResolvedModelPath(AppFeature.VOICE)
 
             if (modelPath != null) {
+                // ✅ Adaptive config based on device RAM tier
+                val maxTokens  = DeviceCapability.getOptimalMaxTokens(context)
+                val timeoutMs  = DeviceCapability.getOptimalTimeout(context)
+                val samplerParams = DeviceCapability.getOptimalSampler(modelPath)
+                val sampler    = com.google.ai.edge.litertlm.SamplerConfig(
+                    topK        = samplerParams.topK,
+                    topP        = samplerParams.topP.toDouble(),
+                    temperature = samplerParams.temperature.toDouble()
+                )
+
+                val modelName = File(modelPath).name
+                Log.d(tag, "Using model: $modelName on Device tier: ${tier.label} " +
+                           "tokens=$maxTokens timeout=${timeoutMs}ms " +
+                           "topK=${samplerParams.topK} temp=${samplerParams.temperature}")
+
+                _state.update { it.copy(currentModelName = modelName) }
+
                 aiScope.launch {
                     initMutex.withLock {
                         try {
-                            val success = voiceChatEngine.initialize(modelPath)
+                            val success = voiceChatEngine.initialize(
+                                path      = modelPath,
+                                maxTokens = maxTokens,
+                                timeoutMs = timeoutMs,
+                                sampler   = sampler
+                            )
                             if (success) {
                                 voiceChatEngine.updateSystemInstruction(currentLanguageMode.systemInstruction)
                                 crashCount = 0
-                            }
-                            withContext(Dispatchers.Main) {
-                                _state.update {
-                                    it.copy(
-                                        isLlmReady = success,
-                                        error      = if (!success) "Failed to initialize AI model" else null,
-                                        errorType  = if (!success) VoiceChatErrorType.MODEL_INIT else null
-                                    )
+                                useProxy = false
+                                withContext(Dispatchers.Main) {
+                                    _state.update {
+                                        it.copy(
+                                            isLlmReady = true,
+                                            error      = null,
+                                            errorType  = null
+                                        )
+                                    }
+                                }
+                            } else {
+                                Log.w(tag, "On-device model initialization failed. Falling back to Deno proxy.")
+                                useProxy = true
+                                withContext(Dispatchers.Main) {
+                                    _state.update {
+                                        it.copy(
+                                            isLlmReady = true,
+                                            currentModelName = "Cloud Proxy (Groq)",
+                                            error      = null,
+                                            errorType  = null
+                                        )
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(tag, "Model init crashed", e)
+                            Log.e(tag, "Model init crashed, falling back to Deno proxy", e)
+                            useProxy = true
                             withContext(Dispatchers.Main) {
                                 _state.update {
                                     it.copy(
-                                        isLlmReady = false,
-                                        error      = "Model init failed: ${e.message ?: "Unknown"}",
-                                        errorType  = VoiceChatErrorType.MODEL_INIT
+                                        isLlmReady = true,
+                                        currentModelName = "Cloud Proxy (Groq)",
+                                        error      = null,
+                                        errorType  = null
                                     )
                                 }
                             }
@@ -171,15 +304,26 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 }
             } else {
-                _state.update { it.copy(isLlmReady = false) }
+                Log.d(tag, "No on-device models downloaded. Falling back to Deno proxy.")
+                useProxy = true
+                _state.update {
+                    it.copy(
+                        isLlmReady = true,
+                        currentModelName = "Cloud Proxy (Groq)",
+                        error = null,
+                        errorType = null
+                    )
+                }
             }
         } catch (e: Exception) {
-            Log.e(tag, "Failed to check model status", e)
+            Log.e(tag, "Failed to check model status, falling back to Deno proxy", e)
+            useProxy = true
             _state.update {
                 it.copy(
-                    isLlmReady = false,
-                    error      = "Could not check model status",
-                    errorType  = VoiceChatErrorType.MODEL_INIT
+                    isLlmReady = true,
+                    currentModelName = "Cloud Proxy (Groq)",
+                    error      = null,
+                    errorType  = null
                 )
             }
         }
@@ -195,14 +339,19 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     private fun buildGroundedPrompt(
         userText    : String,
         cachedVerse : CachedVerse? = null,
-        gitaVerse   : GitaVerse?   = null
+        gitaVerse   : GitaVerse?   = null,
+        forceTelugu : Boolean      = false
     ): String {
+        val langSuffix = if (forceTelugu) " You MUST respond ENTIRELY in Telugu (తెలుగు). Do not use English." else ""
+
         // No verse context — let Krishna answer freely
         if (cachedVerse == null && gitaVerse == null) {
             return buildString {
                 appendLine("Question: $userText")
                 appendLine()
-                append("Answer as Krishna in 3 sentences from Bhagavad Gita wisdom.")
+                val sentences = DeviceCapability.getOptimalSentenceCount(getApplication())
+                appendLine("If the Question is just a simple greeting (e.g., 'hello', 'hi', 'hey', 'namaste', 'namste', 'నమస్తే', 'నమస్కారం', etc.), respond with a warm, brief Krishna-style greeting (1 sentence max) asking how you can guide them. Do not provide a long sermon or explanation.")
+                append("Otherwise, answer the Question as Krishna in $sentences sentences from Bhagavad Gita wisdom.$langSuffix")
             }
         }
         // Verse context available — ground the answer
@@ -216,8 +365,9 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             val verseNo     = gitaVerse?.verseNo     ?: cachedVerse?.verseNo
             val verseText   = gitaVerse?.verse?.takeIf       { it.isNotBlank() } ?: cachedVerse?.verse
             val translation = gitaVerse?.translation?.takeIf { it.isNotBlank() } ?: cachedVerse?.translation
-            val explanation = gitaVerse?.purport?.firstOrNull()?.takeIf { it.isNotBlank() }
-                ?: cachedVerse?.explanation?.take(200)
+            val explanationLimit = DeviceCapability.getOptimalExplanationLength(getApplication())
+            val explanation = gitaVerse?.purport?.firstOrNull()?.takeIf { it.isNotBlank() }?.take(explanationLimit)
+                              ?: cachedVerse?.explanation?.take(explanationLimit)
 
             if (chapterNo != null && verseNo != null)
                 appendLine("Chapter: $chapterNo, Verse: $verseNo")
@@ -228,7 +378,8 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             appendLine()
             appendLine("Question: $userText")
             appendLine()
-            append("Explain this verse in 3 sentences. Do not rewrite it.")
+            val sentences = DeviceCapability.getOptimalSentenceCount(getApplication())
+            append("Explain this verse by telling a unique, creative, and non-repetitive mini-story or practical analogy in $sentences sentences. Keep it simple, engaging, and easy to understand. Do not use complex jargon. Do not rewrite the verse itself.$langSuffix")
         }
     }
 
@@ -280,51 +431,111 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                 AiTurnManager.mutex.withLock {
                     stopAll()
 
-                    // ✅ FIX: grounded prompt — param verse first, stored verse as fallback
+                    val isTeluguMode = currentLanguageMode.sttLocale.contains("te", ignoreCase = true)
+                    val ma           = ModelAvailability.getInstance(getApplication())
+                    val isUsingGemma = ma.isGemmaRunning(AppFeature.VOICE)
+                    val useMlKit     = isTeluguMode && !isUsingGemma && !useProxy
+
+                    val processedUserText = if (useMlKit) {
+                        withContext(Dispatchers.Main) {
+                            _state.update { s ->
+                                s.copy(messages = s.messages.map { m ->
+                                    if (m.id == aiMessageId) m.copy(text = "") else m
+                                })
+                            }
+                        }
+                        translationManager.translateTeluguToEnglish(messageText)
+                    } else {
+                        messageText
+                    }
+
+                    // ✅ FIX: grounded prompt using English (if ML Kit) or forced Telugu (if native)
                     val groundedPrompt = buildGroundedPrompt(
-                        userText    = messageText,
+                        userText    = processedUserText,
                         cachedVerse = cachedVerse ?: currentCachedVerse,
-                        gitaVerse   = gitaVerse   ?: currentGitaVerse
+                        gitaVerse   = gitaVerse   ?: currentGitaVerse,
+                        forceTelugu = isTeluguMode && !useMlKit // Use native Telugu for Gemma 4
                     )
                     Log.d(tag, "GROUNDED PROMPT:\n$groundedPrompt")
 
-                    voiceChatEngine.sendMessage(
-                        prompt    = groundedPrompt,
-                        onPartial = { partial ->
-                            val nowMs = System.currentTimeMillis()
-                            if (nowMs - lastUpdate > 64) { // ~15fps throttle
-                                lastUpdate = nowMs
-                                viewModelScope.launch(Dispatchers.Main) {
-                                    _state.update { s ->
-                                        s.copy(messages = s.messages.map { m ->
-                                            if (m.id == aiMessageId) m.copy(text = partial) else m
-                                        })
-                                    }
-                                }
+                    if (useProxy) {
+                        val reply = fetchGroqReply(groundedPrompt, _state.value.messages)
+                        val basicCleaned = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(reply)
+                        val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(basicCleaned)
+
+                        withContext(Dispatchers.Main) {
+                            _state.update { s ->
+                                s.copy(
+                                    messages = s.messages.map { m ->
+                                        if (m.id == aiMessageId) m.copy(text = finalAnswer) else m
+                                    },
+                                    isThinking = false
+                                )
                             }
-                        },
-                        onCleaned = { deepCleaned ->
-                            viewModelScope.launch(Dispatchers.Main) {
-                                _state.update { s ->
-                                    s.copy(
-                                        messages   = s.messages.map { m ->
-                                            if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
-                                        },
-                                        isThinking = false  // ✅ cleared here on happy path
-                                    )
-                                }
-                                saveMessage(ChatMessage(id = aiMessageId, text = deepCleaned, isUser = false))
-                                try {
-                                    speakResponse(deepCleaned)
-                                } catch (e: Exception) {
-                                    Log.e(tag, "TTS failed", e)
-                                    _state.update {
-                                        it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
-                                    }
+                            saveMessage(ChatMessage(id = aiMessageId, text = finalAnswer, isUser = false))
+                            try {
+                                speakResponse(finalAnswer)
+                            } catch (e: Exception) {
+                                Log.e(tag, "TTS failed", e)
+                                _state.update {
+                                    it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
                                 }
                             }
                         }
-                    )
+                    } else {
+                        voiceChatEngine.sendMessage(
+                            prompt    = groundedPrompt,
+                            onPartial = { partial ->
+                                val nowMs = System.currentTimeMillis()
+                                if (nowMs - lastUpdate > 64) { // ~15fps throttle
+                                    lastUpdate = nowMs
+                                    viewModelScope.launch(Dispatchers.Main) {
+                                        _state.update { s ->
+                                            s.copy(messages = s.messages.map { m ->
+                                                if (m.id == aiMessageId) m.copy(text = partial) else m
+                                            })
+                                        }
+                                    }
+                                }
+                            },
+                            onCleaned = { deepCleaned ->
+                                aiScope.launch {
+                                    val finalAnswer = if (useMlKit) {
+                                        withContext(Dispatchers.Main) {
+                                            _state.update { s ->
+                                                s.copy(messages = s.messages.map { m ->
+                                                    if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
+                                                })
+                                            }
+                                        }
+                                        translationManager.translateEnglishToTelugu(deepCleaned)
+                                    } else {
+                                        deepCleaned
+                                    }
+
+                                    withContext(Dispatchers.Main) {
+                                        _state.update { s ->
+                                            s.copy(
+                                                messages   = s.messages.map { m ->
+                                                    if (m.id == aiMessageId) m.copy(text = finalAnswer) else m
+                                                },
+                                                isThinking = false  // ✅ cleared here on happy path
+                                            )
+                                        }
+                                        saveMessage(ChatMessage(id = aiMessageId, text = finalAnswer, isUser = false))
+                                        try {
+                                            speakResponse(finalAnswer)
+                                        } catch (e: Exception) {
+                                            Log.e(tag, "TTS failed", e)
+                                            _state.update {
+                                                it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e

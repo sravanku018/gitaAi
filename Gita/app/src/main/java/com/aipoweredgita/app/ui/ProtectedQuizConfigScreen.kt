@@ -46,7 +46,8 @@ import com.aipoweredgita.app.ui.theme.*
 @Composable
 fun ProtectedQuizConfigScreen(
     onStartQuiz: (Int, String) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    language: String = "tel"
 ) {
     val uiCfg = LocalUiConfig.current
     if (uiCfg.isLandscape) {
@@ -59,14 +60,16 @@ fun ProtectedQuizConfigScreen(
         ) {
             SacredQuizConfigScreen(
                 modifier = Modifier.weight(1f),
-                onStartQuiz = { count: Int -> onStartQuiz(count, "tel") }
+                onStartQuiz = { count: Int -> onStartQuiz(count, language) },
+                language = language
             )
             Spacer(Modifier.weight(1f))
         }
     } else {
         SacredQuizConfigScreen(
             modifier = Modifier.fillMaxSize(),
-            onStartQuiz = { count: Int -> onStartQuiz(count, "tel") }
+            onStartQuiz = { count: Int -> onStartQuiz(count, language) },
+            language = language
         )
     }
 }
@@ -77,7 +80,8 @@ fun ProtectedQuizConfigScreen(
 @Composable
 fun SacredQuizConfigScreen(
     modifier: Modifier = Modifier,
-    onStartQuiz: (Int) -> Unit
+    onStartQuiz: (Int) -> Unit,
+    language: String = "tel"
 ) {
     var questionCount by remember { mutableStateOf(15) }
 
@@ -131,29 +135,30 @@ fun SacredQuizConfigScreen(
         ) {
 
             // ── Header ─────────────────────────────────────────────────────
-            OrnamentalHeader()
+            OrnamentalHeader(language = language)
 
             Spacer(Modifier.height(36.dp))
 
             // ── Question count section ─────────────────────────────────────
-            SectionLabel(text = "Questions per battle")
+            SectionLabel(text = "Questions per battle", language = language)
             Spacer(Modifier.height(14.dp))
             QuestionCountRow(
                 selected  = questionCount,
-                onSelect  = { questionCount = it }
+                onSelect  = { questionCount = it },
+                language = language
             )
 
             Spacer(Modifier.height(32.dp))
 
             // ── Language badge ─────────────────────────────────────────────
-            SectionLabel(text = "Language")
+            SectionLabel(text = "Language", language = language)
             Spacer(Modifier.height(14.dp))
-            LanguageBadgeCard()
+            LanguageBadgeCard(language = language)
 
             Spacer(Modifier.height(32.dp))
 
             // ── Feature highlights ─────────────────────────────────────────
-            FeatureHighlightsCard()
+            FeatureHighlightsCard(language = language)
 
             Spacer(Modifier.height(40.dp))
 
@@ -181,20 +186,25 @@ fun SacredQuizConfigScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text       = "प्रारंभ करें",
+                        text       = if (language == "tel") "ప్రారంభించండి" else "प्रारंभ करें",
                         fontSize   = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color      = Color.White.copy(alpha = 0.7f),
                         letterSpacing = 2.sp
                     )
                     Text(
-                        text       = "Begin Quiz",
+                        text       = if (language == "tel") "క్విజ్ ప్రారంభించండి" else "Begin Quiz",
                         fontSize   = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color      = Color.White
                     )
+                    val subtext = if (language == "tel") {
+                        "$questionCount ప్రశ్నలు · తెలుగు"
+                    } else {
+                        "$questionCount questions · Telugu"
+                    }
                     Text(
-                        text     = "$questionCount questions · Telugu",
+                        text     = subtext,
                         fontSize = 12.sp,
                         color    = Color.White.copy(alpha = 0.65f),
                         fontStyle = FontStyle.Italic
@@ -207,9 +217,51 @@ fun SacredQuizConfigScreen(
     }
 }
 
+// ── Translation Helper ──────────────────────────────────────────────────────
+private fun translateConfigText(text: String, language: String): String {
+    if (language != "tel") return text
+    return when (text) {
+        "Questions per battle" -> "సమరానికి ప్రశ్నలు"
+        "Language" -> "భాష"
+        "WHAT TO EXPECT" -> "ఏమి ఆశించాలి"
+        "Context-aware Gita questions" -> "సందర్భోచిత గీతా ప్రశ్నలు"
+        "Intelligent difficulty scaling" -> "కఠినత్వ స్థాయిల క్రమబద్ధీకరణ"
+        "Telugu language support" -> "తెలుగు భాషా మద్దతు"
+        "100% offline & private" -> "100% ఆఫ్‌లైన్ & వ్యక్తిగతం"
+        "Gita Quiz" -> "గీతా క్విజ్"
+        "Test your knowledge of the sacred scripture" -> "పవిత్ర గ్రంథంపై మీ జ్ఞానాన్ని పరీక్షించుకోండి"
+        "Sprint" -> "లఘు ప్రశ్నలు"
+        "Deep Dive" -> "లోతైన విశ్లేషణ"
+        "LANGUAGE" -> "భాష"
+        "Download AI Engine" -> "AI ఇంజిన్‌ను డౌన్‌లోడ్ చేయండి"
+        "Select a model to download:" -> "డౌన్‌లోడ్ చేయడానికి ఒక నమూనాను ఎంచుకోండి:"
+        "UNLOCKS" -> "అన్‌లాక్ అవుతాయి"
+        "Download once, quiz anytime — fully offline." -> "ఒక్కసారి డౌన్‌లోడ్ చేయండి, ఎప్పుడైనా క్విజ్ ఆడండి — పూర్తిగా ఆఫ్‌లైన్."
+        "Not now" -> "ఇప్పుడు వద్దు"
+        "Download  →" -> "డౌన్‌లోడ్  →"
+        "All models ready" -> "అన్ని మోడల్స్ సిద్ధంగా ఉన్నాయి"
+        "The Arena Prepares" -> "యుద్ధరంగం సిద్ధమవుతోంది"
+        "AI models are downloading to power your quiz experience. This happens only once." -> "మీ క్విజ్ అనుభవాన్ని మెరుగుపరచడానికి AI మోడల్స్ డౌన్‌లోడ్ అవుతున్నాయి. ఇది ఒక్కసారి మాత్రమే జరుగుతుంది."
+        "AWAITING YOU" -> "మీ కొరకు సిద్ధంగా ఉన్నవి"
+        "Intelligent Questions" -> "మేధోపరమైన ప్రశ్నలు"
+        "Theme-Based Learning" -> "విషయ-ఆధారిత అభ్యాసం"
+        "Fully Offline" -> "పూర్తిగా ఆఫ్‌లైన్"
+        "Context Aware" -> "సందర్భోచితం"
+        "← Return to Home" -> "← హోమ్‌కి తిరిగి వెళ్ళండి"
+        "Please wait until models finish downloading." -> "దయచేసి మోడల్స్ డౌన్‌లోడ్ పూర్తయ్యే వరకు వేచి ఉండండి."
+        "DOWNLOAD PROGRESS" -> "డౌన్‌లోడ్ పురోగతి"
+        "Preparing download…" -> "డౌన్‌లోడ్ సిద్ధమవుతోంది…"
+        "file(s) remaining" -> "ఫైల్(లు) మిగిలి ఉన్నాయి"
+        "MB left" -> "MB మిగిలి ఉంది"
+        "Smart context-aware questions" -> "సందర్భోచిత మేధో ప్రశ్నలు"
+        "Offline & private" -> "ఆఫ్‌లైన్ & వ్యక్తిగతం"
+        else -> text
+    }
+}
+
 // ── Ornamental header ───────────────────────────────────────────────────────
 @Composable
-private fun OrnamentalHeader() {
+private fun OrnamentalHeader(language: String = "tel") {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         // Krishna & Devotee Imagery
         Row(
@@ -265,7 +317,7 @@ private fun OrnamentalHeader() {
         Spacer(Modifier.height(6.dp))
         // Title
         Text(
-            text  = "Gita Quiz",
+            text  = translateConfigText("Gita Quiz", language),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextWhite,
@@ -273,7 +325,7 @@ private fun OrnamentalHeader() {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text      = "Test your knowledge of the sacred scripture",
+            text      = translateConfigText("Test your knowledge of the sacred scripture", language),
             fontSize  = 13.sp,
             color     = TextWhite.copy(alpha = 0.4f),
             fontStyle = FontStyle.Italic,
@@ -287,7 +339,7 @@ private fun OrnamentalHeader() {
 
 // ── Question count selector ─────────────────────────────────────────────────
 @Composable
-private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit) {
+private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit, language: String = "tel") {
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -328,7 +380,7 @@ private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit) {
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text     = label,
+                        text     = translateConfigText(label, language),
                         fontSize = 11.sp,
                         color    = if (isActive) GoldPale.copy(0.8f) else TextWhite.copy(0.3f),
                         letterSpacing = 1.5.sp,
@@ -351,7 +403,7 @@ private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit) {
 
 // ── Language badge card ─────────────────────────────────────────────────────
 @Composable
-private fun LanguageBadgeCard() {
+private fun LanguageBadgeCard(language: String = "tel") {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,7 +416,7 @@ private fun LanguageBadgeCard() {
     ) {
         Column {
             Text(
-                text      = "LANGUAGE",
+                text      = translateConfigText("LANGUAGE", language),
                 fontSize  = 10.sp,
                 color     = TextWhite.copy(0.35f),
                 letterSpacing = 1.8.sp,
@@ -393,7 +445,7 @@ private fun LanguageBadgeCard() {
 
 // ── Feature highlights card ─────────────────────────────────────────────────
 @Composable
-private fun FeatureHighlightsCard() {
+private fun FeatureHighlightsCard(language: String = "tel") {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -404,7 +456,7 @@ private fun FeatureHighlightsCard() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text      = "WHAT TO EXPECT",
+            text      = translateConfigText("WHAT TO EXPECT", language),
             fontSize  = 10.sp,
             color     = GoldSpark.copy(0.6f),
             letterSpacing = 1.8.sp,
@@ -422,7 +474,7 @@ private fun FeatureHighlightsCard() {
             ) {
                 Text(icon, fontSize = 10.sp, color = GoldSpark)
                 Text(
-                    text     = text,
+                    text     = translateConfigText(text, language),
                     fontSize = 13.sp,
                     color    = TextWhite.copy(0.65f)
                 )
@@ -433,7 +485,7 @@ private fun FeatureHighlightsCard() {
 
 // ── Section label ───────────────────────────────────────────────────────────
 @Composable
-private fun SectionLabel(text: String) {
+private fun SectionLabel(text: String, language: String = "tel") {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -446,7 +498,7 @@ private fun SectionLabel(text: String) {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text       = text.uppercase(),
+            text       = translateConfigText(text, language).uppercase(),
             fontSize   = 11.sp,
             fontWeight = FontWeight.Bold,
             color      = TextWhite.copy(0.55f),
@@ -500,7 +552,8 @@ private fun OrnamentRule() {
 fun AIDownloadDialog(
     viewModel         : ModelDownloadViewModel,
     onConfirmDownload : (String) -> Unit,
-    onCancel          : () -> Unit
+    onCancel          : () -> Unit,
+    language          : String = "tel"
 ) {
     val context = LocalContext.current
     val manager = remember { ModelDownloadManager(context) }
@@ -517,7 +570,8 @@ fun AIDownloadDialog(
         selectedModel = selectedModel,
         onModelSelect = { selectedModel = it },
         onConfirmDownload = onConfirmDownload,
-        onCancel = onCancel
+        onCancel = onCancel,
+        language = language
     )
 }
 
@@ -527,7 +581,8 @@ fun AIDownloadDialogContent(
     selectedModel     : String?,
     onModelSelect     : (String) -> Unit,
     onConfirmDownload : (String) -> Unit,
-    onCancel          : () -> Unit
+    onCancel          : () -> Unit,
+    language          : String = "tel"
 ) {
     val missingModels = modelStatuses.filter { !it.isDownloaded }
 
@@ -546,7 +601,7 @@ fun AIDownloadDialogContent(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Download AI Engine",
+                    text = translateConfigText("Download AI Engine", language),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 20.sp,
                     color      = TextWhite,
@@ -572,7 +627,7 @@ fun AIDownloadDialogContent(
                     ) {
                         Text("✦", color = ForestMid, fontSize = 14.sp)
                         Text(
-                            "All models ready",
+                            text = translateConfigText("All models ready", language),
                             fontSize   = 14.sp,
                             color      = Color(0xFFC0DD97),
                             fontWeight = FontWeight.Medium
@@ -580,7 +635,7 @@ fun AIDownloadDialogContent(
                     }
                 } else {
                     Text(
-                        "Select a model to download:",
+                        text = translateConfigText("Select a model to download:", language),
                         fontSize = 13.sp,
                         color    = TextWhite.copy(0.55f)
                     )
@@ -633,7 +688,7 @@ fun AIDownloadDialogContent(
 
                 // Features unlocked panel
                 Column(
-                    modifier = Modifier
+                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(BgDark)
@@ -642,7 +697,7 @@ fun AIDownloadDialogContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        "UNLOCKS",
+                        text = translateConfigText("UNLOCKS", language),
                         fontSize      = 10.sp,
                         color         = GoldSpark.copy(0.6f),
                         letterSpacing = 2.sp,
@@ -664,13 +719,13 @@ fun AIDownloadDialogContent(
                                     .clip(CircleShape)
                                     .background(ForestMid)
                             )
-                            Text(feat, fontSize = 12.sp, color = TextWhite.copy(0.6f))
+                            Text(translateConfigText(feat, language), fontSize = 12.sp, color = TextWhite.copy(0.6f))
                         }
                     }
                 }
 
                 Text(
-                    "Download once, quiz anytime — fully offline.",
+                    text = translateConfigText("Download once, quiz anytime — fully offline.", language),
                     fontSize  = 12.sp,
                     color     = GoldPale.copy(0.55f),
                     fontStyle = FontStyle.Italic,
@@ -695,7 +750,7 @@ fun AIDownloadDialogContent(
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Text(
-                    "Download  →",
+                    text = translateConfigText("Download  →", language),
                     color      = if (selectedModel != null) Color.White else Color.White.copy(0.3f),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 14.sp
@@ -704,7 +759,7 @@ fun AIDownloadDialogContent(
         },
         dismissButton = {
             TextButton(onClick = onCancel) {
-                Text("Not now", color = TextWhite.copy(0.4f), fontSize = 13.sp)
+                Text(translateConfigText("Not now", language), color = TextWhite.copy(0.4f), fontSize = 13.sp)
             }
         }
     )
@@ -716,7 +771,8 @@ fun AIDownloadDialogContent(
 @Composable
 fun QuizNotReadyScreen(
     onBackClick: () -> Unit,
-    viewModel  : ModelDownloadViewModel = viewModel()
+    viewModel  : ModelDownloadViewModel = viewModel(),
+    language   : String = "tel"
 ) {
     val context = LocalContext.current
     val perFileProgress by viewModel.fileProgressList.collectAsState()
@@ -740,7 +796,8 @@ fun QuizNotReadyScreen(
         onBackClick     = onBackClick,
         perFileProgress = perFileProgress,
         filesRemaining  = filesRemaining,
-        remainingMb     = remMb
+        remainingMb     = remMb,
+        language        = language
     )
 }
 
@@ -749,7 +806,8 @@ fun QuizNotReadyScreenContent(
     onBackClick     : () -> Unit,
     perFileProgress : List<ModelDownloadProgress>,
     filesRemaining  : Int,
-    remainingMb     : Int?
+    remainingMb     : Int?,
+    language        : String = "tel"
 ) {
     // Pulsing diya rings
     val infiniteTransition = rememberInfiniteTransition(label = "diya")
@@ -828,7 +886,7 @@ fun QuizNotReadyScreenContent(
             Spacer(Modifier.height(20.dp))
 
             Text(
-                "कुरुक्षेत्र तैयार हो रहा है",
+                text = if (language == "tel") "ధర్మక్షేత్రం సిద్ధమవుతోంది" else "कुरुक्षेत्र तैयार हो रहा है",
                 fontSize   = 13.sp,
                 color      = GoldSpark.copy(0.6f),
                 fontStyle  = FontStyle.Italic,
@@ -836,7 +894,7 @@ fun QuizNotReadyScreenContent(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "The Arena Prepares",
+                text = translateConfigText("The Arena Prepares", language),
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color      = TextWhite,
@@ -845,7 +903,7 @@ fun QuizNotReadyScreenContent(
 
             Spacer(Modifier.height(8.dp))
             Text(
-                "AI models are downloading to power your quiz experience. This happens only once.",
+                text = translateConfigText("AI models are downloading to power your quiz experience. This happens only once.", language),
                 fontSize   = 13.sp,
                 color      = TextWhite.copy(0.4f),
                 textAlign  = TextAlign.Center,
@@ -860,7 +918,8 @@ fun QuizNotReadyScreenContent(
             DownloadProgressCardContent(
                 remainingMb = remainingMb,
                 perFileProgress = perFileProgress,
-                filesRemaining = filesRemaining
+                filesRemaining = filesRemaining,
+                language = language
             )
 
             Spacer(Modifier.height(28.dp))
@@ -876,7 +935,7 @@ fun QuizNotReadyScreenContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "AWAITING YOU",
+                    text = translateConfigText("AWAITING YOU", language),
                     fontSize = 10.sp,
                     color    = GoldSpark.copy(0.55f),
                     letterSpacing = 1.8.sp,
@@ -893,7 +952,7 @@ fun QuizNotReadyScreenContent(
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Text(icon, color = Saffron, fontSize = 11.sp)
-                        Text(text, fontSize = 13.sp, color = TextWhite.copy(0.6f))
+                        Text(translateConfigText(text, language), fontSize = 13.sp, color = TextWhite.copy(0.6f))
                     }
                 }
             }
@@ -916,7 +975,7 @@ fun QuizNotReadyScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "← Return to Home",
+                    text = translateConfigText("← Return to Home", language),
                     color      = GoldPale.copy(0.7f),
                     fontWeight = FontWeight.Medium,
                     fontSize   = 15.sp
@@ -925,7 +984,7 @@ fun QuizNotReadyScreenContent(
 
             Spacer(Modifier.height(16.dp))
             Text(
-                "Please wait until models finish downloading.",
+                text = translateConfigText("Please wait until models finish downloading.", language),
                 fontSize  = 11.sp,
                 color     = TextWhite.copy(0.25f),
                 textAlign = TextAlign.Center,
@@ -939,7 +998,8 @@ fun QuizNotReadyScreenContent(
 @Composable
 private fun DownloadProgressCard(
     viewModel: ModelDownloadViewModel,
-    context  : android.content.Context
+    context  : android.content.Context,
+    language : String = "tel"
 ) {
     val mgr = remember { ModelDownloadManager(context) }
     var remMb by remember { mutableStateOf<Int?>(null) }
@@ -961,7 +1021,8 @@ private fun DownloadProgressCard(
     DownloadProgressCardContent(
         remainingMb = remMb,
         perFileProgress = perFileProgress,
-        filesRemaining = filesRemaining
+        filesRemaining = filesRemaining,
+        language = language
     )
 }
 
@@ -969,7 +1030,8 @@ private fun DownloadProgressCard(
 fun DownloadProgressCardContent(
     remainingMb     : Int?,
     perFileProgress : List<ModelDownloadProgress>,
-    filesRemaining  : Int
+    filesRemaining  : Int,
+    language        : String = "tel"
 ) {
     Column(
         modifier = Modifier
@@ -986,7 +1048,7 @@ fun DownloadProgressCardContent(
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Text(
-                "DOWNLOAD PROGRESS",
+                text = translateConfigText("DOWNLOAD PROGRESS", language),
                 fontSize = 10.sp,
                 color    = GoldSpark.copy(0.55f),
                 letterSpacing = 1.8.sp,
@@ -999,8 +1061,13 @@ fun DownloadProgressCardContent(
                     .border(0.5.dp, Saffron.copy(0.35f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
+                val mbLeftText = if (language == "tel") {
+                    "${remainingMb ?: 0} MB మిగిలి ఉంది"
+                } else {
+                    "${remainingMb ?: 0} MB left"
+                }
                 Text(
-                    "${remainingMb ?: 0} MB left",
+                    text = mbLeftText,
                     fontSize   = 11.sp,
                     color      = GoldPale.copy(0.8f),
                     fontWeight = FontWeight.Medium
@@ -1009,8 +1076,13 @@ fun DownloadProgressCardContent(
         }
 
         if (perFileProgress.isNotEmpty()) {
+            val filesRemainingText = if (language == "tel") {
+                "$filesRemaining ఫైల్(లు) మిగిలి ఉన్నాయి"
+            } else {
+                "$filesRemaining file(s) remaining"
+            }
             Text(
-                "$filesRemaining file(s) remaining",
+                text = filesRemainingText,
                 fontSize = 13.sp,
                 color    = TextWhite.copy(0.5f)
             )
@@ -1020,13 +1092,14 @@ fun DownloadProgressCardContent(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val fileLabel = if (language == "tel") "ఫైల్ ${idx + 1}" else "File ${idx + 1}"
                         Text(
-                            "File ${idx + 1}",
+                            text = fileLabel,
                             fontSize = 12.sp,
                             color    = TextWhite.copy(0.45f)
                         )
                         Text(
-                            "${p.percentage}%",
+                            text = "${p.percentage}%",
                             fontSize   = 12.sp,
                             color      = GoldPale,
                             fontWeight = FontWeight.Medium
@@ -1081,7 +1154,7 @@ fun DownloadProgressCardContent(
                 )
             }
             Text(
-                "Preparing download…",
+                text = translateConfigText("Preparing download…", language),
                 fontSize  = 12.sp,
                 color     = TextWhite.copy(0.3f),
                 fontStyle = FontStyle.Italic

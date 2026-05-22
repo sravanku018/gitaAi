@@ -74,7 +74,7 @@ fun MainScreen(
                     },
                     onNavigateToQuizStats = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.QuizStats.route)
+                        navController.navigate(Screen.ActivityHistory.route)
                     },
                     onNavigateToOfflineDownload = {
                         scope.launch { drawerState.close() }
@@ -301,8 +301,8 @@ fun DrawerContent(
             )
 
             TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Statistics") },
-                title = "Statistics",
+                icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Activity History") },
+                title = "Activity History",
                 onClick = onNavigateToQuizStats
             )
 

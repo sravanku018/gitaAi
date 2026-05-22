@@ -17,6 +17,13 @@ val Forest      = Color(0xFF2D5016)
 val ForestMid   = Color(0xFF3E6B21)
 val CrimsonDeep = Color(0xFF8B1A1A)
 
+// Neutral & Parchment tones for text/surfaces
+val InkDeep       = Color(0xFF1A1A1A)
+val InkSoft       = Color(0xFF4A4A4A)
+val Cream         = Color(0xFFFFFBF0)
+val ParchmentDark = Color(0xFFEADFCA)
+val Gold          = Color(0xFFFFD700) // Alias for GoldSpark
+
 // Light theme colors - Saffron/Orange theme
 val SaffronLegacy = Color(0xFFFF6B35)
 val OrangeLight = Color(0xFFFFA500)
@@ -40,11 +47,18 @@ val OceanPrimary = Color(0xFF06B6D4) // Cyan
 val OceanSecondary = Color(0xFF10B981) // Teal
 val OceanTertiary = Color(0xFF3B82F6) // Blue
 
-// Legacy colors for compatibility
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Shared spiritual tokens (migrated from SplashScreen)
+val NightInk   = Color(0xFF0A0812)  // near-black deep indigo
+val DeepVoid   = Color(0xFF110E1A)
+val MoonSilver = Color(0xFFD4C9E8)  // body text on dark
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Glass Card Gradients
+val QuizGreenStart  = Color(0x8C28A014)
+val QuizGreenEnd    = Color(0xCC0A5005)
+val VoiceRedStart   = Color(0x99DC4600)
+val VoiceRedEnd     = Color(0xD9781900)
+val SlokaGoldStart  = Color(0x99B47800)
+val SlokaGoldEnd    = Color(0xD95A3200)
+val ReadBlueStart   = Color(0x8C1E5AC8)
+val ReadBlueEnd     = Color(0xD90A2878)
+

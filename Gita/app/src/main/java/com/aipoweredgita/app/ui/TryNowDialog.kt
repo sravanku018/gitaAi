@@ -44,10 +44,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Premium color palette
-private val GradientSaffron = Color(0xFFFF8F00)
-private val GradientAmber = Color(0xFFFFC107)
-
 @Composable
 fun TryNowDialog(
     onDismiss: () -> Unit,
@@ -75,9 +71,9 @@ fun TryNowDialog(
     var hasConfirmedMobileData by remember { mutableStateOf(false) }
     var isDownloadingInBackground by remember { mutableStateOf(false) }
 
-    val networkType = remember(context) { NetworkUtils.getNetworkType(context) }
-    val isOnMobileData = networkType == NetworkUtils.NetworkType.CELLULAR
-    val isOnWiFi = networkType == NetworkUtils.NetworkType.WIFI
+    val networkType = remember(context) { com.aipoweredgita.app.utils.NetworkUtils.getNetworkType(context) }
+    val isOnMobileData = networkType == com.aipoweredgita.app.utils.NetworkUtils.NetworkType.CELLULAR
+    val isOnWiFi = networkType == com.aipoweredgita.app.utils.NetworkUtils.NetworkType.WIFI
 
     LaunchedEffect(isOnMobileData) {
         if (isOnMobileData && !hasConfirmedMobileData) {
@@ -143,7 +139,7 @@ private fun TryNowDialogContent(
                 Icon(
                     imageVector = Icons.Default.Download,
                     contentDescription = null,
-                    tint = GradientSaffron,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
@@ -169,7 +165,7 @@ private fun TryNowDialogContent(
                         Icon(
                             imageVector = if (isOnWiFi) Icons.Default.NetworkWifi else Icons.Default.NetworkCell,
                             contentDescription = null,
-                            tint = if (isOnWiFi) MaterialTheme.colorScheme.primary else GradientSaffron,
+                            tint = if (isOnWiFi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(20.dp)
                         )
                         val sizeText = if (remainingBytes > 0) " (${remainingBytes / (1024 * 1024)} MB)" else ""
@@ -196,7 +192,7 @@ private fun TryNowDialogContent(
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
-                            color = GradientSaffron,
+                            color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         Text(
@@ -211,7 +207,7 @@ private fun TryNowDialogContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(currentModel, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                                Text("$overallProgress%", style = MaterialTheme.typography.bodySmall, color = GradientSaffron)
+                                Text("$overallProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
                             LinearProgressIndicator(
                                 progress = { overallProgress / 100f },
@@ -219,7 +215,7 @@ private fun TryNowDialogContent(
                                     .fillMaxWidth()
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
-                                color = GradientSaffron,
+                                color = MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
@@ -277,7 +273,7 @@ private fun TryNowDialogContent(
             if (!isDownloading) {
                 Button(
                     onClick = onDownloadNow,
-                    colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.height(48.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -313,7 +309,7 @@ private fun MobileDataConfirmationDialog(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-    val cellularGen = NetworkUtils.getCellularGeneration(context)
+    val cellularGen = com.aipoweredgita.app.utils.NetworkUtils.getCellularGeneration(context)
     MobileDataConfirmationDialogContent(
         cellularGen = cellularGen,
         onConfirm = onConfirm,
@@ -323,7 +319,7 @@ private fun MobileDataConfirmationDialog(
 
 @Composable
 private fun MobileDataConfirmationDialogContent(
-    cellularGen: NetworkUtils.CellularGeneration?,
+    cellularGen: com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration?,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -345,7 +341,7 @@ private fun MobileDataConfirmationDialogContent(
                 if (cellularGen != null) {
                     Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)) {
                         Text(
-                            "Network: ${if (cellularGen == NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
+                            "Network: ${if (cellularGen == com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -365,7 +361,7 @@ private fun MobileDataConfirmationDialogContent(
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron)) {
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                 Text("Continue", fontWeight = FontWeight.Bold)
             }
         },
@@ -393,7 +389,7 @@ private fun showDownloadNotification(context: Context, totalBytes: Long) {
     val notificationBuilder = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(android.R.drawable.stat_sys_download)
         .setContentTitle("Downloading AI Engine")
-        .setContentText("Gemma 2B model - ${totalBytes / (1024 * 1024)} MB")
+        .setContentText("AI Engine model - ${totalBytes / (1024 * 1024)} MB")
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setOngoing(true)
         .setOnlyAlertOnce(true)
@@ -525,7 +521,7 @@ fun PreviewTryNowDialogDownloading() {
         TryNowDialogContent(
             isDownloading = true,
             overallProgress = 45,
-            currentModel = "Gemma 2B",
+            currentModel = "Gemma 4 2B",
             remainingBytes = 1400 * 1024 * 1024L,
             isOnWiFi = true,
             isOnMobileData = false,
@@ -542,7 +538,7 @@ fun PreviewTryNowDialogDownloading() {
 fun PreviewMobileDataConfirmation() {
     GitaLearningTheme {
         MobileDataConfirmationDialogContent(
-            cellularGen = NetworkUtils.CellularGeneration.FIVE_G,
+            cellularGen = com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration.FIVE_G,
             onConfirm = {},
             onCancel = {}
         )

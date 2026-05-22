@@ -19,11 +19,10 @@ enum class AppFeature { VOICE, QUIZ }
  *
  * Model Strategy:
  * - **Qwen3 0.6B (~614MB)** → Primary text model (Quiz + Studio, fast, multilingual)
- * - **Gemma 4 2B (~2.58GB)** → Voice Studio + Studio Quiz (better speech understanding)
+ * - **Gemma 4 2B (~2.58GB)** → Voice Studio + Studio Quiz (flagship performance)
  *
  * Features gracefully degrade:
- * - If Qwen3 is missing → falls back to Gemma 4 → rule-based templates
- * - If Gemma 4 is missing → voice features show download prompt
+ * - If Gemma 4 is missing → falls back to Qwen3
  */
 class ModelAvailability(appContext: Context) {
 
@@ -48,8 +47,8 @@ class ModelAvailability(appContext: Context) {
     }
 
     // Model size thresholds for integrity validation
-    private val qwen3MinSize = 500_000_000L    // ~500MB for Qwen3-0.6B (actual: 614MB)
-    private val gemma4MinSize = 2_500_000_000L // ~2.5GB for gemma-4-E2B-it (actual: 2.58GB)
+    private val qwen3MinSize = 300_000_000L    // ~300MB floor for 0.6B
+    private val gemma4MinSize = 1_000_000_000L // ~1GB floor for 2B models (handles various quantizations)
 
     fun isQwen3Available(): Boolean = getQwen3Path() != null
     fun isGemma4Available(): Boolean = getGemma4Path() != null
@@ -67,25 +66,36 @@ class ModelAvailability(appContext: Context) {
         val qwen3Exists = qwen3Path != null
         val gemma4Exists = gemma4Path != null
 
-        val isHighEnd = com.aipoweredgita.app.utils.DeviceUtils.getDeviceCategory(context) ==
-                com.aipoweredgita.app.utils.DeviceConfigCategory.HIGH
+        val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
+        // High-Mid devices (~7-10L Antutu) are also considered "high-end" for Voice Chat
+        val isHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP || 
+                        tier == com.aipoweredgita.app.utils.DeviceTier.HIGH_MID
 
-        return when {
+        val resolved = when {
+            selected.contains("Groq", ignoreCase = true) -> null
             selected.contains("Qwen3") && qwen3Exists -> qwen3Path
             selected.contains("Gemma 4") && gemma4Exists -> gemma4Path
             else -> {
-                // Smart Auto Fallback
-                if (feature == AppFeature.VOICE) {
-                    // Voice MUST use Gemma 4 if available for quality.
-                    // If Gemma 4 is not available, it should return null to prompt download
-                    // rather than failing with Qwen3's poor Telugu audio alignment.
-                    gemma4Path
+                if (feature == AppFeature.QUIZ) {
+                    qwen3Path ?: gemma4Path
                 } else {
-                    // Text/Quiz prefers Qwen3 (fast, multilingual)
-                    qwen3Path ?: (if (isHighEnd) gemma4Path else null)
+                    if (isHighEnd) {
+                        gemma4Path ?: qwen3Path
+                    } else {
+                        qwen3Path ?: gemma4Path
+                    }
                 }
             }
         }
+
+        Log.d(TAG, "Resolved model for $feature: ${resolved?.let { File(it).name } ?: "NONE"} " +
+                   "(Selected: $selected, Tier: ${tier.label}, Qwen3: $qwen3Exists, Gemma4: $gemma4Exists)")
+        return resolved
+    }
+
+    fun isGemmaRunning(feature: AppFeature): Boolean {
+        val path = getResolvedModelPath(feature)
+        return path != null && path.contains("gemma", ignoreCase = true)
     }
 
     /**
@@ -97,7 +107,7 @@ class ModelAvailability(appContext: Context) {
 
     /**
      * Get the best model for TEXT features (quiz, Studio) based on availability fallback.
-     * Priority: Qwen3 0.6B (lighter, multilingual) → Gemma 4 2B
+     * Priority: Qwen3 0.6B → Gemma 4 2B
      */
     fun getBestTextModelPath(): String? {
         return getQwen3Path()
@@ -108,11 +118,14 @@ class ModelAvailability(appContext: Context) {
 
     /**
      * Get the best model for VOICE features (Voice Studio, Studio Quiz).
-     * Requires Gemma 4 2B specifically — it has better speech understanding.
      */
-    fun getBestVoiceModelPath(): String? = getGemma4Path()
+    fun getBestVoiceModelPath(): String? {
+        return getResolvedModelPath(AppFeature.VOICE)
+    }
 
-    fun areVoiceFeaturesAvailable(): Boolean = isGemma4Available()
+    fun areVoiceFeaturesAvailable(): Boolean {
+        return isGemma4Available() || isQwen3Available()
+    }
 
     fun updateSelectedModel(newModel: String) {
         prefs.edit().putString("selected_ai_model", newModel).apply()

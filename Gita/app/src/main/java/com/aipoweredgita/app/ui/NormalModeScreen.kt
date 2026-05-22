@@ -27,9 +27,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,23 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.util.TextUtils.sanitizeText
 import com.aipoweredgita.app.viewmodel.NormalModeViewModel
 import com.aipoweredgita.app.viewmodel.ScreenConfigViewModel
-
-// ── Brand palette ──────────────────────────────────────────────────────────
-private val Saffron       = Color(0xFFE8600A)
-private val SaffronLight  = Color(0xFFF0B940)
-private val Gold          = Color(0xFFC8922A)
-private val GoldPale      = Color(0xFFF5DFA0)
-private val InkDeep       = Color(0xFF0C0800)
-private val InkSoft       = Color(0xFF3D2E14)
-private val Cream         = Color(0xFFFDF6E8)
-private val ParchmentDark = Color(0xFFEDE0C4)
-private val Forest        = Color(0xFF2D5016)
-private val ForestMid     = Color(0xFF3E6B21)
-private val CrimsonDeep   = Color(0xFF8B1A1A)
-private val PurpleDeep    = Color(0xFF4A148C)
 
 // ── Chapter metadata ───────────────────────────────────────────────────────
 private val chapterNames = mapOf(
@@ -239,18 +224,9 @@ private fun ChapterVerseHeroCard(
 
     val chapterName = chapterNames[chapter] ?: ""
 
-    // Animated gold shimmer on the number
-    val shimmer by rememberInfiniteTransition(label = "shimmer").animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3000), RepeatMode.Reverse),
-        label = "gold_shimmer"
-    )
-    val numberColor = Color(
-        red   = (Gold.red   + (SaffronLight.red   - Gold.red)   * shimmer).coerceIn(0f, 1f),
-        green = (Gold.green + (SaffronLight.green - Gold.green) * shimmer).coerceIn(0f, 1f),
-        blue  = (Gold.blue  + (SaffronLight.blue  - Gold.blue)  * shimmer).coerceIn(0f, 1f)
-    )
+    val numberColor = MaterialTheme.colorScheme.secondary
 
+    val accentColor = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -260,22 +236,12 @@ private fun ChapterVerseHeroCard(
                 // Subtle warm glow bottom-left
                 drawCircle(
                     brush = Brush.radialGradient(
-                        listOf(Saffron.copy(alpha = 0.18f), Color.Transparent),
+                        listOf(accentColor.copy(alpha = 0.18f), Color.Transparent),
                         center = Offset(0f, size.height),
                         radius = size.width * 0.7f
                     ),
                     radius = size.width * 0.7f,
                     center = Offset(0f, size.height)
-                )
-                // Forest glow top-right
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(Forest.copy(alpha = 0.15f), Color.Transparent),
-                        center = Offset(size.width, 0f),
-                        radius = size.width * 0.55f
-                    ),
-                    radius = size.width * 0.55f,
-                    center = Offset(size.width, 0f)
                 )
             }
     ) {
@@ -286,7 +252,7 @@ private fun ChapterVerseHeroCard(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.5.sp,
-                color    = Gold.copy(alpha = 0.7f)
+                color    = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
             )
 
             Spacer(Modifier.height(14.dp))
@@ -301,7 +267,7 @@ private fun ChapterVerseHeroCard(
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.06f))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                         .clickable(onClick = onChapterTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -310,7 +276,7 @@ private fun ChapterVerseHeroCard(
                         text  = "CHAPTER",
                         fontSize = 9.sp,
                         letterSpacing = 2.sp,
-                        color = Cream.copy(alpha = 0.4f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         fontWeight = FontWeight.Medium
                     )
                     Text(
@@ -329,7 +295,7 @@ private fun ChapterVerseHeroCard(
                             modifier = Modifier
                                 .size(if (i == 2) 6.dp else 3.dp)
                                 .clip(CircleShape)
-                                .background(Gold.copy(alpha = if (i == 2) 0.8f else 0.3f))
+                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = if (i == 2) 0.8f else 0.3f))
                         )
                         if (i < 4) Spacer(Modifier.height(4.dp))
                     }
@@ -339,7 +305,7 @@ private fun ChapterVerseHeroCard(
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.06f))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
                         .clickable(onClick = onVerseTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -348,7 +314,7 @@ private fun ChapterVerseHeroCard(
                         text  = "VERSE",
                         fontSize = 9.sp,
                         letterSpacing = 2.sp,
-                        color = Cream.copy(alpha = 0.4f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         fontWeight = FontWeight.Medium
                     )
                     Text(
@@ -370,7 +336,7 @@ private fun ChapterVerseHeroCard(
                     .height(1.dp)
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Color.Transparent, Gold.copy(0.6f), Color.Transparent)
+                            listOf(Color.Transparent, MaterialTheme.colorScheme.secondary.copy(0.6f), Color.Transparent)
                         )
                     )
             )
@@ -381,14 +347,14 @@ private fun ChapterVerseHeroCard(
                 Text(
                     text      = "ॐ",
                     fontSize  = 16.sp,
-                    color     = Gold,
+                    color     = MaterialTheme.colorScheme.secondary,
                     fontStyle = FontStyle.Normal
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text      = "Tap chapter or verse to navigate",
                     fontSize  = 11.sp,
-                    color     = Cream.copy(alpha = 0.35f),
+                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                     fontStyle = FontStyle.Italic
                 )
             }
@@ -401,13 +367,15 @@ private fun ChapterVerseHeroCard(
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun IlluminatedVerseCard(text: String) {
+    val gold = MaterialTheme.colorScheme.secondary
+    val primary = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .border(
                 width = 1.dp,
-                brush = Brush.linearGradient(listOf(Gold.copy(0.6f), Saffron.copy(0.4f), Gold.copy(0.6f))),
+                brush = Brush.linearGradient(listOf(gold.copy(0.6f), primary.copy(0.4f), gold.copy(0.6f))),
                 shape = RoundedCornerShape(20.dp)
             )
             .background(
@@ -427,7 +395,7 @@ private fun IlluminatedVerseCard(text: String) {
                 .fillMaxHeight()
                 .align(Alignment.CenterStart)
                 .background(
-                    Brush.verticalGradient(listOf(Gold, Saffron, Gold))
+                    Brush.verticalGradient(listOf(gold, primary, gold))
                 )
         )
 
@@ -437,7 +405,7 @@ private fun IlluminatedVerseCard(text: String) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Gold.copy(alpha = 0.15f))
+                        .background(gold.copy(alpha = 0.15f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
@@ -445,7 +413,7 @@ private fun IlluminatedVerseCard(text: String) {
                         fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
-                        color      = InkSoft
+                        color      = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.width(10.dp))
@@ -456,12 +424,12 @@ private fun IlluminatedVerseCard(text: String) {
                         .height(1.dp)
                         .background(
                             Brush.horizontalGradient(
-                                listOf(Gold.copy(0.4f), Color.Transparent)
+                                listOf(gold.copy(0.4f), Color.Transparent)
                             )
                         )
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("✦", fontSize = 10.sp, color = Gold.copy(0.6f))
+                Text("✦", fontSize = 10.sp, color = gold.copy(0.6f))
             }
 
             Spacer(Modifier.height(14.dp))
@@ -490,14 +458,14 @@ private fun MeaningCard(text: String) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFEAF3DE))
-            .border(1.dp, ForestMid.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
     ) {
         // Left stripe
         Box(
             modifier = Modifier
                 .width(4.dp)
                 .fillMaxHeight()
-                .background(ForestMid)
+                .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else ForestMid)
         )
 
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
@@ -505,7 +473,7 @@ private fun MeaningCard(text: String) {
                 Icon(
                     imageVector        = Icons.Filled.Favorite,
                     contentDescription = null,
-                    tint               = ForestMid,
+                    tint               = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else ForestMid,
                     modifier           = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(6.dp))
@@ -514,7 +482,7 @@ private fun MeaningCard(text: String) {
                     fontSize   = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    color      = Forest
+                    color      = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else Forest
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -559,7 +527,7 @@ private fun ExplanationCard(text: String) {
                     modifier = Modifier
                         .size(5.dp)
                         .clip(RoundedCornerShape(1.dp))
-                        .background(Gold.copy(0.7f))
+                        .background(MaterialTheme.colorScheme.secondary.copy(0.7f))
                 )
                 if (it < 2) Spacer(Modifier.width(4.dp))
             }
@@ -569,7 +537,7 @@ private fun ExplanationCard(text: String) {
                 fontSize   = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
-                color      = if (isSystemInDarkTheme()) Gold.copy(0.8f) else Saffron
+                color      = MaterialTheme.colorScheme.secondary
             )
         }
 
@@ -581,7 +549,7 @@ private fun ExplanationCard(text: String) {
                 .fillMaxWidth()
                 .height(1.dp)
                 .background(
-                    Brush.horizontalGradient(listOf(Gold.copy(0.5f), Color.Transparent))
+                    Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.secondary.copy(0.5f), Color.Transparent))
                 )
         )
 
@@ -591,7 +559,7 @@ private fun ExplanationCard(text: String) {
             text      = text,
             fontSize  = 14.sp,
             lineHeight = 24.sp,
-            color     = if (isSystemInDarkTheme()) GoldPale.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
+            color     = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Justify
         )
     }
@@ -607,17 +575,17 @@ private fun VerseNoteCard(note: String) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFFAEEDA))
-            .border(1.dp, Gold.copy(0.4f), RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Text("◆", fontSize = 12.sp, color = Gold, modifier = Modifier.padding(top = 2.dp))
+        Text("◆", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
         Spacer(Modifier.width(10.dp))
         Text(
             text      = note,
             fontSize  = 12.sp,
             lineHeight = 20.sp,
-            color     = InkSoft,
+            color     = MaterialTheme.colorScheme.onSurfaceVariant,
             fontStyle = FontStyle.Italic
         )
     }
@@ -732,7 +700,7 @@ private fun BottomActionBar(
                         Icon(
                             imageVector        = Icons.Filled.Share,
                             contentDescription = null,
-                            tint               = InkSoft,
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier           = Modifier.size(18.dp)
                         )
                         Text(
@@ -800,8 +768,8 @@ private fun NavArrowButton(
         modifier = modifier
             .height(44.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(ParchmentDark.copy(alpha = alpha))
-            .border(1.dp, Gold.copy(alpha = 0.3f * alpha), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha))
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f * alpha), RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick),
         verticalAlignment   = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -810,7 +778,7 @@ private fun NavArrowButton(
             Icon(
                 imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
                 modifier           = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(6.dp))
@@ -819,14 +787,14 @@ private fun NavArrowButton(
             text       = label,
             fontSize   = 14.sp,
             fontWeight = FontWeight.Medium,
-            color      = InkSoft.copy(alpha = alpha)
+            color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
         )
         if (isForward) {
             Spacer(Modifier.width(6.dp))
             Icon(
                 imageVector        = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint               = InkSoft.copy(alpha = alpha),
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
                 modifier           = Modifier.size(16.dp)
             )
         }
@@ -850,7 +818,7 @@ private fun GitaLoadingScreen() {
             Text(
                 "Loading verse…",
                 fontSize  = 14.sp,
-                color     = InkSoft.copy(0.5f),
+                color     = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f),
                 fontStyle = FontStyle.Italic
             )
         }
@@ -863,7 +831,7 @@ private fun GitaErrorScreen(message: String, onRetry: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⚠", fontSize = 40.sp, color = Saffron)
             Spacer(Modifier.height(12.dp))
-            Text(message, fontSize = 14.sp, color = InkSoft, textAlign = TextAlign.Center)
+            Text(message, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(20.dp))
             Box(
                 modifier = Modifier
@@ -890,13 +858,13 @@ fun ChapterSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = Cream,
+        containerColor   = MaterialTheme.colorScheme.surface,
         shape            = RoundedCornerShape(24.dp),
         title = {
             Text(
                 "Select Chapter",
                 fontWeight = FontWeight.Bold,
-                color      = InkDeep
+                color      = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -921,19 +889,19 @@ fun ChapterSelectionDialog(
                             text       = "$ch",
                             fontWeight = FontWeight.Bold,
                             fontSize   = 15.sp,
-                            color      = if (isActive) Gold else InkSoft.copy(0.4f),
+                            color      = if (isActive) Gold else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f),
                             modifier   = Modifier.width(28.dp)
                         )
                         Column {
                             Text(
                                 text       = "Chapter $ch",
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                                color      = if (isActive) InkDeep else InkSoft
+                                color      = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text      = chapterNames[ch] ?: "",
                                 fontSize  = 12.sp,
-                                color     = InkSoft.copy(0.55f),
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.55f),
                                 fontStyle = FontStyle.Italic
                             )
                         }
@@ -968,13 +936,13 @@ fun VerseSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = Cream,
+        containerColor   = MaterialTheme.colorScheme.surface,
         shape            = RoundedCornerShape(24.dp),
         title = {
             Text(
                 "Select Verse  ·  1–$maxVerses",
                 fontWeight = FontWeight.Bold,
-                color      = InkDeep
+                color      = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1014,7 +982,7 @@ fun VerseSelectionDialog(
                         Text(
                             text       = label,
                             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                            color      = if (isActive) InkDeep else InkSoft
+                            color      = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (isActive) {
                             Text("✦", fontSize = 12.sp, color = Gold)

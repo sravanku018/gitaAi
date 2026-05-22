@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -30,28 +31,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.R
+import com.aipoweredgita.app.ui.theme.NightInk
+import com.aipoweredgita.app.ui.theme.DeepVoid
+import com.aipoweredgita.app.ui.theme.MoonSilver
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
-// ─── Color Palette: Sacred Manuscript ────────────────────────────────────────
-private object SacredColors {
-    // Backgrounds
-    val NightInk        = Color(0xFF0A0812)   // near-black deep indigo
-    val DeepVoid        = Color(0xFF110E1A)
-    val MidnightVeil    = Color(0xFF1C1628)
-
-    // Gold hierarchy
-    val GoldFlame       = Color(0xFFFFD050)   // primary gold — titles, mandala rings
-    val GoldDusk        = Color(0xFFE8A825)   // medium gold — quote text
-    val GoldAsh         = Color(0xFFBF8B2E)   // muted gold — secondary text
-    val GoldGlow        = Color(0xFFFFE99A)   // near-white gold — accent highlight
-
-    // Spiritual tints
-    val SaffronAura     = Color(0xFFFF7B1C)   // lotus / aura orange
-    val TilakRed        = Color(0xFFCC3311)   // danger / exit accent
-    val MoonSilver      = Color(0xFFD4C9E8)   // body text on dark
-    val StarDust        = Color(0xFF6B5F8A)   // muted decorative
-}
+// ─── Splash-specific color constants ──────────────────────────────────────────
+private val MidnightVeil = Color(0xFF1C1628)
+private val GoldFlame    = Color(0xFFFFD050)   // primary gold — titles, mandala rings
+private val GoldDusk     = Color(0xFFE8A825)   // medium gold — quote text
+private val GoldAsh      = Color(0xFFBF8B2E)   // muted gold — secondary text
+private val GoldGlow     = Color(0xFFFFE99A)   // near-white gold — accent highlight
+private val SaffronAura  = Color(0xFFFF7B1C)   // lotus / aura orange
+private val TilakRed     = Color(0xFFCC3311)   // danger / exit accent
+private val StarDust     = Color(0xFF6B5F8A)   // muted decorative
 
 // ─── Gita Quote Pool ──────────────────────────────────────────────────────────
 private val gitaQuotes = listOf(
@@ -81,7 +75,7 @@ private fun MandalaCanvas(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    SacredColors.SaffronAura.copy(alpha = auraAlpha * 0.35f),
+                    SaffronAura.copy(alpha = auraAlpha * 0.35f),
                     Color.Transparent
                 ),
                 center = Offset(cx, cy),
@@ -98,7 +92,7 @@ private fun MandalaCanvas(
                 val px     = cx + r * cos(angle)
                 val py     = cy + r * sin(angle)
                 drawCircle(
-                    color  = SacredColors.GoldFlame.copy(alpha = 0.18f),
+                    color  = GoldFlame.copy(alpha = 0.18f),
                     radius = r * 0.14f,
                     center = Offset(px, py)
                 )
@@ -112,7 +106,7 @@ private fun MandalaCanvas(
                 val px     = cx + r * 0.62f * cos(angle)
                 val py     = cy + r * 0.62f * sin(angle)
                 drawCircle(
-                    color  = SacredColors.GoldDusk.copy(alpha = 0.22f),
+                    color  = GoldDusk.copy(alpha = 0.22f),
                     radius = r * 0.09f,
                     center = Offset(px, py)
                 )
@@ -122,7 +116,7 @@ private fun MandalaCanvas(
         // Concentric circle halos
         listOf(0.28f, 0.50f, 0.72f, 0.95f).forEach { scale ->
             drawCircle(
-                color  = SacredColors.GoldFlame.copy(alpha = 0.10f),
+                color  = GoldFlame.copy(alpha = 0.10f),
                 radius = r * scale,
                 center = Offset(cx, cy),
                 style  = Stroke(width = 0.8f)
@@ -134,7 +128,7 @@ private fun MandalaCanvas(
             repeat(12) { i ->
                 val angle = (i * 30f) * (PI / 180f).toFloat()
                 drawLine(
-                    color       = SacredColors.GoldAsh.copy(alpha = 0.15f),
+                    color       = GoldAsh.copy(alpha = 0.15f),
                     start       = Offset(cx + r * 0.3f * cos(angle), cy + r * 0.3f * sin(angle)),
                     end         = Offset(cx + r * 0.95f * cos(angle), cy + r * 0.95f * sin(angle)),
                     strokeWidth = 0.6f
@@ -174,7 +168,7 @@ private fun ParticleField(modifier: Modifier = Modifier) {
         particles.forEach { p ->
             val alpha = (sin(tick + p.phase) * 0.3f + 0.5f).coerceIn(0f, 1f)
             drawCircle(
-                color  = SacredColors.GoldGlow.copy(alpha = alpha),
+                color  = GoldGlow.copy(alpha = alpha),
                 radius = p.radius.dp.toPx(),
                 center = Offset(size.width * p.x, size.height * p.y)
             )
@@ -193,7 +187,7 @@ private fun GoldDivider(modifier: Modifier = Modifier) {
         // Left arm
         drawLine(
             brush  = Brush.horizontalGradient(
-                colors = listOf(Color.Transparent, SacredColors.GoldAsh)
+                colors = listOf(Color.Transparent, GoldAsh)
             ),
             start       = Offset(cx - halfW, cy),
             end         = Offset(cx - 12f, cy),
@@ -202,7 +196,7 @@ private fun GoldDivider(modifier: Modifier = Modifier) {
         // Right arm
         drawLine(
             brush  = Brush.horizontalGradient(
-                colors = listOf(SacredColors.GoldAsh, Color.Transparent)
+                colors = listOf(GoldAsh, Color.Transparent)
             ),
             start       = Offset(cx + 12f, cy),
             end         = Offset(cx + halfW, cy),
@@ -210,7 +204,7 @@ private fun GoldDivider(modifier: Modifier = Modifier) {
         )
         // Centre diamond
         drawCircle(
-            color  = SacredColors.GoldFlame,
+            color  = GoldFlame,
             radius = 3.dp.toPx(),
             center = Offset(cx, cy)
         )
@@ -222,20 +216,20 @@ private fun GoldDivider(modifier: Modifier = Modifier) {
 private fun OmBadge() {
     Surface(
         shape  = RoundedCornerShape(40.dp),
-        color  = SacredColors.GoldFlame.copy(alpha = 0.12f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, SacredColors.GoldFlame.copy(alpha = 0.40f))
+        color  = GoldFlame.copy(alpha = 0.12f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldFlame.copy(alpha = 0.40f))
     ) {
         Row(
             modifier               = Modifier.padding(horizontal = 18.dp, vertical = 7.dp),
             verticalAlignment      = Alignment.CenterVertically,
             horizontalArrangement  = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = "ॐ", fontSize = 15.sp, color = SacredColors.GoldFlame)
+            Text(text = "ॐ", style = MaterialTheme.typography.titleMedium, color = GoldFlame)
             Text(
                 text         = "Gemma 4 · Wisdom Engine",
-                fontSize     = 12.sp,
+                style        = MaterialTheme.typography.bodySmall,
                 fontWeight   = FontWeight.Medium,
-                color        = SacredColors.GoldDusk,
+                color        = GoldDusk,
                 letterSpacing = 0.6.sp
             )
         }
@@ -296,9 +290,9 @@ fun SplashScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        SacredColors.NightInk,
-                        SacredColors.DeepVoid,
-                        SacredColors.MidnightVeil
+                        NightInk,
+                        DeepVoid,
+                        MidnightVeil
                     )
                 )
             ),
@@ -334,18 +328,18 @@ fun SplashScreen(
                 Surface(
                     modifier = Modifier.size(148.dp),
                     shape    = CircleShape,
-                    color    = SacredColors.GoldFlame.copy(alpha = 0.06f),
+                    color    = GoldFlame.copy(alpha = 0.06f),
                     border   = androidx.compose.foundation.BorderStroke(
-                        0.8.dp, SacredColors.GoldFlame.copy(alpha = 0.30f)
+                        0.8.dp, GoldFlame.copy(alpha = 0.30f)
                     )
                 ) {}
                 // Inner glassy disc
                 Surface(
                     modifier = Modifier.size(120.dp),
                     shape    = CircleShape,
-                    color    = SacredColors.GoldFlame.copy(alpha = 0.04f),
+                    color    = GoldFlame.copy(alpha = 0.04f),
                     border   = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, SacredColors.GoldGlow.copy(alpha = 0.20f)
+                        0.5.dp, GoldGlow.copy(alpha = 0.20f)
                     )
                 ) {}
                 // Logo image
@@ -363,9 +357,9 @@ fun SplashScreen(
             // Sanskrit header ornament
             Text(
                 text          = "॥ श्रीमद्भगवद्गीता ॥",
-                fontSize      = 12.sp,
+                style         = MaterialTheme.typography.bodySmall,
                 fontWeight    = FontWeight.Normal,
-                color         = SacredColors.GoldAsh,
+                color         = GoldAsh,
                 letterSpacing = 2.sp,
                 textAlign     = TextAlign.Center
             )
@@ -375,11 +369,12 @@ fun SplashScreen(
             // App title
             Text(
                 text          = stringResource(id = R.string.app_name),
-                fontSize      = 30.sp,
-                fontWeight    = FontWeight.ExtraBold,
-                color         = SacredColors.GoldFlame,
-                textAlign     = TextAlign.Center,
-                letterSpacing = 3.sp
+                style         = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 3.sp
+                ),
+                color         = GoldFlame,
+                textAlign     = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -391,12 +386,13 @@ fun SplashScreen(
             // Quote
             Text(
                 text       = "\u201C$quote\u201D",
-                fontSize   = 15.sp,
-                fontStyle  = FontStyle.Italic,
+                style      = MaterialTheme.typography.bodyLarge.copy(
+                    fontStyle = FontStyle.Italic,
+                    lineHeight = 24.sp
+                ),
                 fontWeight = FontWeight.Normal,
-                color      = SacredColors.MoonSilver.copy(alpha = 0.88f),
+                color      = MoonSilver.copy(alpha = 0.88f),
                 textAlign  = TextAlign.Center,
-                lineHeight = 24.sp,
                 modifier   = Modifier.padding(horizontal = 12.dp)
             )
         }
@@ -417,7 +413,7 @@ fun SplashScreen(
                 Text(
                     text          = "v1.6.0 · Build 4",
                     fontSize      = 10.sp,
-                    color         = SacredColors.StarDust,
+                    color         = StarDust,
                     letterSpacing = 1.8.sp,
                     fontWeight    = FontWeight.Light
                 )
@@ -468,9 +464,9 @@ fun ExitScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        SacredColors.NightInk,
-                        SacredColors.DeepVoid,
-                        SacredColors.MidnightVeil
+                        NightInk,
+                        DeepVoid,
+                        MidnightVeil
                     )
                 )
             )
@@ -493,9 +489,9 @@ fun ExitScreen(
                 .padding(horizontal = 28.dp)
                 .scale(cardScale),
             shape  = RoundedCornerShape(24.dp),
-            color  = SacredColors.NightInk.copy(alpha = 0.92f),
+            color  = NightInk.copy(alpha = 0.92f),
             border = androidx.compose.foundation.BorderStroke(
-                0.8.dp, SacredColors.GoldFlame.copy(alpha = 0.30f)
+                0.8.dp, GoldFlame.copy(alpha = 0.30f)
             )
         ) {
             Column(
@@ -516,8 +512,8 @@ fun ExitScreen(
 
                 Text(
                     text          = "॥ धन्यवाद ॥",
-                    fontSize      = 11.sp,
-                    color         = SacredColors.GoldAsh,
+                    style         = MaterialTheme.typography.labelSmall,
+                    color         = GoldAsh,
                     letterSpacing = 2.sp
                 )
 
@@ -525,9 +521,10 @@ fun ExitScreen(
 
                 Text(
                     text       = "Thank You",
-                    fontSize   = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = SacredColors.GoldFlame
+                    style      = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color      = GoldFlame
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -538,18 +535,19 @@ fun ExitScreen(
 
                 Text(
                     text      = "The Gita travels with you.\nCome back whenever you seek wisdom.",
-                    fontSize  = 14.sp,
-                    color     = SacredColors.MoonSilver.copy(alpha = 0.80f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 22.sp
+                    style     = MaterialTheme.typography.bodyMedium.copy(
+                        lineHeight = 22.sp
+                    ),
+                    color     = MoonSilver.copy(alpha = 0.80f),
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text      = "Are you sure you want to exit?",
-                    fontSize  = 13.sp,
-                    color     = SacredColors.StarDust,
+                    style     = MaterialTheme.typography.bodyMedium,
+                    color     = StarDust,
                     textAlign = TextAlign.Center
                 )
 
@@ -567,17 +565,18 @@ fun ExitScreen(
                             .height(52.dp),
                         shape  = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(
-                            0.8.dp, SacredColors.GoldFlame.copy(alpha = 0.50f)
+                            0.8.dp, GoldFlame.copy(alpha = 0.50f)
                         ),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = SacredColors.GoldFlame
+                            contentColor = GoldFlame
                         )
                     ) {
                         Text(
                             text       = "Stay",
-                            fontSize   = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.5.sp
+                            style      = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.5.sp
+                            )
                         )
                     }
 
@@ -589,15 +588,16 @@ fun ExitScreen(
                             .height(52.dp),
                         shape  = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = SacredColors.TilakRed,
-                            contentColor   = SacredColors.GoldGlow
+                            containerColor = TilakRed,
+                            contentColor   = GoldGlow
                         )
                     ) {
                         Text(
                             text          = "Exit",
-                            fontSize      = 15.sp,
-                            fontWeight    = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
+                            style         = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            )
                         )
                     }
                 }

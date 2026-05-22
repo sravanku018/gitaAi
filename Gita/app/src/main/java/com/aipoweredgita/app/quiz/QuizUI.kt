@@ -32,9 +32,6 @@ import com.aipoweredgita.app.util.TextUtils
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import kotlinx.coroutines.delay
 
-private val TimerGreen = Color(0xFF4CAF50)
-private val TimerYellow = Color(0xFFFFC107)
-private val TimerRed = Color(0xFFF44336)
 
 @Composable
 fun QuizContent(
@@ -61,10 +58,12 @@ fun QuizContent(
     val quizState = vm?.quizState?.collectAsState()
     val timeLeft = quizState?.value?.questionTimeLeftSeconds ?: 30
     val isTimerRunning = quizState?.value?.isTimerRunning ?: false
+    val language = quizState?.value?.language ?: "en"
 
-    if (!isOpenEnded) {
-        val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
-        LaunchedEffect(options) {
+    // Staggered enter animation state for options
+    val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
+    LaunchedEffect(options) {
+        if (!isOpenEnded) {
             appeared.forEachIndexed { i, state ->
                 delay(60L)
                 state.value = true
@@ -107,7 +106,8 @@ fun QuizContent(
                 isTimerRunning = isTimerRunning,
                 questionNumber = quizState?.value?.totalQuestions ?: 0,
                 totalQuestions = quizState?.value?.maxQuestions ?: 0,
-                score = quizState?.value?.score ?: 0
+                score = quizState?.value?.score ?: 0,
+                language = language
             )
 
             // Ornamental separator
@@ -126,7 +126,7 @@ fun QuizContent(
                     value = userAnswer,
                     onValueChange = { userAnswer = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Type your answer here...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text(translateUiText("Type your answer here...", language), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     minLines = 6,
                     maxLines = 10,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -160,7 +160,7 @@ fun QuizContent(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Submit Answer", fontWeight = FontWeight.Bold)
+                    Text(translateUiText("Submit Answer", language), fontWeight = FontWeight.Bold)
                 }
             } else {
                 options.forEachIndexed { index, option ->
@@ -172,8 +172,9 @@ fun QuizContent(
                         else -> OptionVisualState.Idle
                     }
                     AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 })
+                        visible = appeared.getOrNull(index)?.value == true,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
+                        exit = fadeOut()
                     ) {
                         AnimatedOptionCard(
                             text = option,
@@ -235,14 +236,14 @@ fun QuizContent(
                         }
 
                         Text(
-                            text = if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning",
+                            text = translateUiText(if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning", language),
                             style = MaterialTheme.typography.titleLarge,
                             color = if (isCorrect) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            text = if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.",
+                            text = translateUiText(if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.", language),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -269,7 +270,7 @@ fun QuizContent(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Continue Journey", fontWeight = FontWeight.Bold)
+                            Text(translateUiText("Continue Journey", language), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -302,7 +303,8 @@ private fun QuizTimerHeader(
     isTimerRunning: Boolean,
     questionNumber: Int,
     totalQuestions: Int,
-    score: Int
+    score: Int,
+    language: String
 ) {
     val progress = if (maxTime > 0) timeLeft.toFloat() / maxTime else 0f
     val animatedProgress by animateFloatAsState(
@@ -312,9 +314,9 @@ private fun QuizTimerHeader(
     )
 
     val timerColor = when {
-        timeLeft > 15 -> TimerGreen
-        timeLeft > 5 -> TimerYellow
-        else -> TimerRed
+        timeLeft > 15 -> Forest
+        timeLeft > 5 -> Saffron
+        else -> MaterialTheme.colorScheme.error
     }
     val animatedTimerColor by animateColorAsState(targetValue = timerColor, label = "timer_color")
 
@@ -335,7 +337,7 @@ private fun QuizTimerHeader(
                 // Question counter
                 Column {
                     Text(
-                        text = "PROGRESS",
+                        text = translateUiText("PROGRESS", language),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
@@ -369,7 +371,7 @@ private fun QuizTimerHeader(
                 // Score
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "SCORE",
+                        text = translateUiText("SCORE", language),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
@@ -383,5 +385,22 @@ private fun QuizTimerHeader(
                 }
             }
         }
+    }
+}
+
+fun translateUiText(text: String, language: String): String {
+    if (language.lowercase() != "tel") return text
+    return when (text) {
+        "Type your answer here..." -> "మీ సమాధానాన్ని ఇక్కడ నమోదు చేయండి..."
+        "Submit Answer" -> "సమాధానాన్ని సమర్పించండి"
+        "PROGRESS" -> "పురోగతి"
+        "SCORE" -> "స్కోరు"
+        "Excellent!" -> "అద్భుతం!"
+        "Insight Shared" -> "అంతర్దృష్టి పంచుకోబడింది"
+        "Keep Learning" -> "నిరంతరం నేర్చుకోండి"
+        "You have grasped the wisdom correctly." -> "మీరు జ్ఞానాన్ని సరిగ్గా గ్రహించారు."
+        "Every step is a progress toward mastery." -> "ప్రతి అడుగు నిపుణత వైపు సాగే పురోగతి."
+        "Continue Journey" -> "ప్రయాణాన్ని కొనసాగించండి"
+        else -> text
     }
 }

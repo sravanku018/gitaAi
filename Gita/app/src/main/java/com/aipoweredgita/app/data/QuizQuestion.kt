@@ -33,5 +33,6 @@ data class QuizState(
     val isQuizComplete: Boolean = false,
     val difficultyLevel: Int = 5,
     val questionTimeLeftSeconds: Int = 30,
-    val isTimerRunning: Boolean = false
+    val isTimerRunning: Boolean = false,
+    val language: String = "en"
 )
