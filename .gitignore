@@ -1,0 +1,5 @@
+# Android build outputs
+*.apk
+*.aab
+app/release/
+app/debug/
