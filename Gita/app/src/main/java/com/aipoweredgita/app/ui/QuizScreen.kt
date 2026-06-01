@@ -1,6 +1,9 @@
 package com.aipoweredgita.app.ui
 
+<<<<<<< HEAD
 import android.widget.Toast
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,12 +33,15 @@ fun QuizScreen(
     val quizState by viewModel.quizState.collectAsState()
     val context = LocalContext.current
 
+<<<<<<< HEAD
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     LaunchedEffect(Unit) {
         if (quizState.currentQuestion == null && !quizState.isLoading) {
             val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)
@@ -120,7 +126,10 @@ fun QuizScreen(
         CompletionDialog(
             score = quizState.score,
             total = quizState.totalQuestions,
+<<<<<<< HEAD
             coins = quizState.coinsEarned,
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             onExit = onExitQuiz,
             onRestart = { 
                 viewModel.restartQuiz() 

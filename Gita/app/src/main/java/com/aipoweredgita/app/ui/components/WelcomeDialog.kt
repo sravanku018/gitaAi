@@ -58,7 +58,11 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
+<<<<<<< HEAD
                     text = "✨ What's New in v1.8.0",
+=======
+                    text = "🙏 Welcome to Bhagavad Gita",
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -69,7 +73,11 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
+<<<<<<< HEAD
                     text = "We've introduced the Krishna Coin system and expanded Yoga Levels!",
+=======
+                    text = "Discover the timeless wisdom of the Bhagavad Gita in Telugu",
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -83,6 +91,7 @@ fun WelcomeDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     FeatureItem(
+<<<<<<< HEAD
                         icon = "🪙",
                         title = "Krishna Coins",
                         description = "Earn coins by sharing random sloka every day and completing chapters."
@@ -98,10 +107,28 @@ fun WelcomeDialog(
                         icon = "🎙️",
                         title = "Sacred Inquiries",
                         description = "Use your coins in Voice Studio for deep spiritual guidance from Krishna."
+=======
+                        icon = "📖",
+                        title = "Read Verses",
+                        description = "Explore all 700 verses with translations"
+                    )
+                    
+                    FeatureItem(
+                        icon = "🎯",
+                        title = "Test Your Knowledge",
+                        description = "AI-powered quizzes to deepen understanding"
+                    )
+                    
+                    FeatureItem(
+                        icon = "💬",
+                        title = "Ask Questions",
+                        description = "Get relevant verses for your spiritual queries"
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     )
                     
                     FeatureItem(
                         icon = "📊",
+<<<<<<< HEAD
                         title = "Progress Tracking",
                         description = "New detailed breakdown of coins earned by spiritual segment."
                     )
@@ -110,6 +137,16 @@ fun WelcomeDialog(
                         icon = "✨",
                         title = "New Animations",
                         description = "Global animations for earning coins, burning energy, and leveling up."
+=======
+                        title = "Track Progress",
+                        description = "Yoga progression system with 4 levels"
+                    )
+                    
+                    FeatureItem(
+                        icon = "🔔",
+                        title = "Daily Reminders",
+                        description = "Receive daily verses and reflections"
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     )
                 }
                 

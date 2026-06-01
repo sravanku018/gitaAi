@@ -1,0 +1,59 @@
+*** Begin Patch
+*** Update File: app/src/main/java/com/example/gitalearning/data/QuizQuestion.kt
+@@
+-package com.aipoweredgita.app.data
+-
+-data class QuizQuestion(
+-    val verse: GitaVerse,
+-    val question: String,
+-    val options: List<String>,
+-    val correctAnswerIndex: Int
+-)
+-
+-data class QuizState(
+-    val currentQuestion: QuizQuestion? = null,
+-    val score: Int = 0,
+-    val totalQuestions: Int = 0,
+-    val maxQuestions: Int = 10,
+-    val isLoading: Boolean = false,
+-    val error: String? = null,
+-    val selectedAnswerIndex: Int? = null,
+-    val showAnswer: Boolean = false,
+-    val showCorrectAnswer: Boolean = false,
+-    val isQuizComplete: Boolean = false
+-)
++package com.aipoweredgita.app.data
++
++// Supported question types
++enum class QuestionType {
++    MCQ,
++    ESSAY,
++    COMPARISON,
++    APPLICATION
++}
++
++data class QuizQuestion(
++    val verse: GitaVerse,
++    val question: String,
++    val options: List<String> = emptyList(), // for MCQ/comparison
++    val correctAnswerIndex: Int = -1, // MCQ only
++    val type: QuestionType = QuestionType.MCQ,
++    val explanation: String? = null, // rationale or guidance
++    val rubricKeywords: List<String> = emptyList() // for ESSAY/APPLICATION auto-check
++)
++
++data class QuizState(
++    val currentQuestion: QuizQuestion? = null,
++    val score: Int = 0,
++    val totalQuestions: Int = 0,
++    val maxQuestions: Int = 10,
++    val isLoading: Boolean = false,
++    val error: String? = null,
++    val selectedAnswerIndex: Int? = null,
++    val openEndedAnswer: String = "", // for ESSAY/APPLICATION
++    val showAnswer: Boolean = false,
++    val showCorrectAnswer: Boolean = false,
++    val isQuizComplete: Boolean = false,
++    val difficultyLevel: Int = 5 // 1-10 dynamic
++)
+*** End Patch

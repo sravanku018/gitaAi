@@ -20,7 +20,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+<<<<<<< HEAD
 import com.aipoweredgita.app.ui.theme.GoldSpark
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 data class YogaLevel(
     val level: Int,
@@ -40,7 +43,11 @@ fun VerticalProgressRoad(
         YogaLevel(1, "Bhakti Yoga", "🔥", Color(0xFFE91E63)),
         YogaLevel(2, "Jnana Yoga", "🧠", Color(0xFF2196F3)),
         YogaLevel(3, "Dhyana Yoga", "🌬️", Color(0xFF9C27B0)),
+<<<<<<< HEAD
         YogaLevel(4, "Moksha", "🌺", GoldSpark)
+=======
+        YogaLevel(4, "Moksha", "🌺", Color(0xFFFFD700))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
     
     // Animated progress
@@ -49,8 +56,11 @@ fun VerticalProgressRoad(
         animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
         label = "progress_animation"
     )
+<<<<<<< HEAD
 
     val dashPathEffect = remember { PathEffect.dashPathEffect(floatArrayOf(20f, 20f)) }
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     
     // Pulsing animation for current level
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -127,6 +137,7 @@ fun VerticalProgressRoad(
                     )
                     
                     // Road center line (dashed)
+<<<<<<< HEAD
                     drawLine(
                         color = Color.White,
                         start = Offset(centerX, 0f),
@@ -134,6 +145,21 @@ fun VerticalProgressRoad(
                         strokeWidth = 3.dp.toPx(),
                         cap = StrokeCap.Round,
                         pathEffect = dashPathEffect
+=======
+                    val dashPath = Path().apply {
+                        moveTo(centerX, 0f)
+                        lineTo(centerX, size.height)
+                    }
+                    
+                    drawPath(
+                        path = dashPath,
+                        color = Color.White,
+                        style = Stroke(
+                            width = 3.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f)),
+                            cap = StrokeCap.Round
+                        )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     )
                 }
                 
@@ -216,4 +242,7 @@ fun VerticalProgressRoad(
         }
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

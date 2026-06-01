@@ -27,14 +27,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+<<<<<<< HEAD
 import androidx.compose.ui.graphics.luminance
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.aipoweredgita.app.ui.theme.*
 import kotlin.math.roundToInt
+<<<<<<< HEAD
 import kotlinx.coroutines.launch
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 sealed class OptionVisualState {
     object Idle : OptionVisualState()
@@ -51,6 +57,7 @@ fun AnimatedOptionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+<<<<<<< HEAD
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val containerColor = when (state) {
         OptionVisualState.Idle -> MaterialTheme.colorScheme.surfaceVariant
@@ -71,6 +78,27 @@ fun AnimatedOptionCard(
         OptionVisualState.Selected -> MaterialTheme.colorScheme.primary
         OptionVisualState.Correct -> if (isDark) MaterialTheme.colorScheme.secondary else ForestMid
         OptionVisualState.Wrong -> MaterialTheme.colorScheme.error
+=======
+    val containerColor = when (state) {
+        OptionVisualState.Idle -> Surface1
+        OptionVisualState.Selected -> Saffron.copy(alpha = 0.2f)
+        OptionVisualState.Correct -> Forest.copy(alpha = 0.3f)
+        OptionVisualState.Wrong -> CrimsonDeep.copy(alpha = 0.3f)
+    }
+    
+    val borderColor = when (state) {
+        OptionVisualState.Idle -> Surface2
+        OptionVisualState.Selected -> Saffron
+        OptionVisualState.Correct -> GoldSpark
+        OptionVisualState.Wrong -> Color.Red
+    }
+
+    val contentColor = when (state) {
+        OptionVisualState.Idle -> TextWhite
+        OptionVisualState.Selected -> GoldSpark
+        OptionVisualState.Correct -> GoldSpark
+        OptionVisualState.Wrong -> Color.Red
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     val animatedColor = animateColorAsState(targetValue = containerColor, label = "cardColor")
@@ -86,6 +114,7 @@ fun AnimatedOptionCard(
             OptionVisualState.Selected, OptionVisualState.Correct, OptionVisualState.Wrong -> {
                 scale.snapTo(1f)
                 offsetY.snapTo(0f)
+<<<<<<< HEAD
                 
                 launch {
                     scale.animateTo(1.04f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
@@ -115,6 +144,29 @@ fun AnimatedOptionCard(
                 launch { scale.animateTo(1f) }
                 launch { offsetX.animateTo(0f) }
                 launch { offsetY.animateTo(0f) }
+=======
+                scale.animateTo(1.04f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+                offsetY.animateTo(-8f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+                offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium))
+                
+                if (state == OptionVisualState.Wrong) {
+                    offsetX.snapTo(0f)
+                    offsetX.animateTo(0f, keyframes {
+                        durationMillis = 300
+                        0f at 0
+                        8f at 50
+                        -8f at 100
+                        5f at 150
+                        -5f at 200
+                        0f at 300
+                    })
+                }
+            }
+            else -> {
+                scale.animateTo(1f)
+                offsetX.animateTo(0f)
+                offsetY.animateTo(0f)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }

@@ -113,7 +113,10 @@ fun ConfettiAnimation(show: Boolean) {
     )
 
     val confettiList = remember { mutableStateListOf<Confetti>() }
+<<<<<<< HEAD
     var tick by remember { mutableStateOf(0) }
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     LaunchedEffect(show) {
         if (show) {
@@ -132,6 +135,7 @@ fun ConfettiAnimation(show: Boolean) {
                     )
                 }
             )
+<<<<<<< HEAD
 
             // Physics loop driven by frame rate ticker
             while (true) {
@@ -151,13 +155,40 @@ fun ConfettiAnimation(show: Boolean) {
                     tick++
                 }
             }
+=======
+        }
+    }
+
+    val time = remember { Animatable(0f) }
+    LaunchedEffect(show) {
+        if(show) {
+            time.snapTo(0f)
+            time.animateTo(1f, animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing)))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+<<<<<<< HEAD
         val currentTick = tick // Read the tick state to trigger Canvas redraws on every frame
         if (show) {
             confettiList.forEach { confetti ->
+=======
+        if(show) {
+            for (i in confettiList.indices) {
+                val confetti = confettiList[i]
+                confetti.x += confetti.velocityX
+                confetti.y += confetti.velocityY
+                confetti.rotation += confetti.rotationSpeed
+                confetti.velocityY += 0.0005f
+
+                if (confetti.y > 1.1f) {
+                    confetti.y = -0.1f
+                    confetti.x = Random.nextFloat()
+                    confetti.velocityY = Random.nextFloat() * 0.015f + 0.01f
+                }
+
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val centerX = size.width * confetti.x
                 val centerY = size.height * confetti.y
 

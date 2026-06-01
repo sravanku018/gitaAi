@@ -13,7 +13,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
+<<<<<<< HEAD
         android:name=".GitaApp"
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         android:allowBackup="true"
         android:supportsRtl="true"
         android:label="Gita Learning"

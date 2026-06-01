@@ -22,9 +22,14 @@ class YogaProgressionRepository(private val dao: YogaProgressionDao) {
      * Update progression after quiz completion
      * @param score Number of correct answers
      * @param total Total questions
+<<<<<<< HEAD
      * @return Pair<Boolean, Int?> - (didLevelUp, newLevel)
      */
     suspend fun updateFromQuiz(score: Int, total: Int): Pair<Boolean, Int?> {
+=======
+     */
+    suspend fun updateFromQuiz(score: Int, total: Int) {
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         val progression = getProgression()
         val accuracy = if (total > 0) (score.toFloat() / total * 100f) else 0f
         
@@ -42,7 +47,11 @@ class YogaProgressionRepository(private val dao: YogaProgressionDao) {
         )
         
         dao.updateProgression(updated)
+<<<<<<< HEAD
         return calculateAndUpdateProgression()
+=======
+        calculateAndUpdateProgression()
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
     
     /**

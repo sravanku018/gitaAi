@@ -1,6 +1,7 @@
 package com.aipoweredgita.app.database
 
 import androidx.room.TypeConverter
+<<<<<<< HEAD
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -17,6 +18,10 @@ class Converters {
         val type = object : TypeToken<Map<String, Int>>() {}.type
         return gson.fromJson(value, type) ?: emptyMap()
     }
+=======
+
+class Converters {
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     @TypeConverter
     fun fromBookmarkType(value: BookmarkType): String {
         return value.name

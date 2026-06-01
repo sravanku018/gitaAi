@@ -24,14 +24,22 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Mic
+<<<<<<< HEAD
 import androidx.compose.material.icons.filled.SmartToy
+=======
+import androidx.compose.material.icons.filled.MusicNote
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+<<<<<<< HEAD
 
+=======
+import androidx.compose.ui.draw.drawWithContent
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -53,6 +61,7 @@ import com.aipoweredgita.app.viewmodel.VoiceChatViewModel
 import com.aipoweredgita.app.viewmodel.ChatMessage
 import com.aipoweredgita.app.viewmodel.VoiceChatState
 import com.aipoweredgita.app.ui.theme.*
+<<<<<<< HEAD
 import com.aipoweredgita.app.ui.components.AmbientOrbs
 import com.aipoweredgita.app.ui.components.GlassCard
 import androidx.compose.ui.draw.drawBehind
@@ -103,6 +112,22 @@ private fun getVoiceStudioColors(): VoiceStudioColors {
             RevolvingYellow = gold
         )
     }
+=======
+
+// ── Shared Sacred Gold Palette ──────────────────────────
+@Composable
+private fun getVoiceStudioColors() = object {
+    val Border        = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val BorderHi      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+    val TextPrimary   = MaterialTheme.colorScheme.onSurface
+    val TextSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val TextMuted     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+    val ListenRed     = CrimsonDeep
+    val SpeakGreen    = Forest
+    val UserBubbleBg  = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    val UserBubbleBdr = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val RevolvingYellow = GoldBright
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 }
 
 @Composable
@@ -119,6 +144,7 @@ fun VoiceStudioScreen(
         onDispose { voiceChatViewModel.onStopSession() }
     }
 
+<<<<<<< HEAD
     val colors = getVoiceStudioColors()
 
     Box(modifier = modifier.fillMaxSize().background(colors.AppBg)) {
@@ -128,6 +154,27 @@ fun VoiceStudioScreen(
         VoiceChatTab(
             voiceChatViewModel = voiceChatViewModel,
             onExit = onExit
+=======
+    var selectedLanguageMode by remember {
+        mutableStateOf(
+            com.aipoweredgita.app.utils.LanguageMode.fromString(
+                prefs.getString("language_mode", com.aipoweredgita.app.utils.LanguageMode.AUTO.name) ?: "AUTO"
+            )
+        )
+    }
+
+    fun saveLanguageMode(mode: com.aipoweredgita.app.utils.LanguageMode) {
+        selectedLanguageMode = mode
+        prefs.edit().putString("language_mode", mode.name).apply()
+    }
+
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        VoiceChatTab(
+            languageMode = selectedLanguageMode,
+            voiceChatViewModel = voiceChatViewModel,
+            onExit = onExit,
+            onLanguageModeChange = { saveLanguageMode(it) }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         )
     }
 }
@@ -136,6 +183,7 @@ fun VoiceStudioScreen(
 
 @Composable
 private fun VoiceChatTab(
+<<<<<<< HEAD
     voiceChatViewModel: VoiceChatViewModel = viewModel(),
     onExit: () -> Unit
 ) {
@@ -143,6 +191,17 @@ private fun VoiceChatTab(
     val state by voiceChatViewModel.state.collectAsState()
     VoiceChatContent(
         state = state,
+=======
+    languageMode: com.aipoweredgita.app.utils.LanguageMode,
+    voiceChatViewModel: VoiceChatViewModel = viewModel(),
+    onExit: () -> Unit,
+    onLanguageModeChange: (com.aipoweredgita.app.utils.LanguageMode) -> Unit
+) {
+    val state by voiceChatViewModel.state.collectAsState()
+    VoiceChatContent(
+        state = state,
+        languageMode = languageMode,
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         onSendMessage          = { voiceChatViewModel.sendMessage(it) },
         onSendCurrentMessage   = { voiceChatViewModel.sendMessage() },
         onUpdateUserInput      = { voiceChatViewModel.updateUserInput(it) },
@@ -153,10 +212,15 @@ private fun VoiceChatTab(
         onClearError           = { voiceChatViewModel.clearError() },
         onRefreshModelStatus   = { voiceChatViewModel.refreshModelStatus() },
         onSetLanguageMode      = { voiceChatViewModel.setLanguageMode(it) },
+<<<<<<< HEAD
         onUpdateSelectedModel  = { com.aipoweredgita.app.ml.ModelAvailability.getInstance(context).updateSelectedModel(it) },
         onConfirmSend          = { voiceChatViewModel.confirmAndSendMessage() },
         onDismissConfirmation  = { voiceChatViewModel.dismissCoinConfirmation() },
         onExit                 = onExit
+=======
+        onExit                 = onExit,
+        onLanguageModeChange   = onLanguageModeChange
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
 }
 
@@ -166,6 +230,10 @@ private fun VoiceChatTab(
 @Composable
 private fun VoiceChatContent(
     state: VoiceChatState,
+<<<<<<< HEAD
+=======
+    languageMode: com.aipoweredgita.app.utils.LanguageMode,
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     onSendMessage: (String) -> Unit,
     onSendCurrentMessage: () -> Unit,
     onUpdateUserInput: (String) -> Unit,
@@ -176,20 +244,30 @@ private fun VoiceChatContent(
     onClearError: () -> Unit,
     onRefreshModelStatus: () -> Unit,
     onSetLanguageMode: (com.aipoweredgita.app.utils.LanguageMode) -> Unit,
+<<<<<<< HEAD
     onUpdateSelectedModel: (String) -> Unit,
     onConfirmSend: () -> Unit,
     onDismissConfirmation: () -> Unit,
     onExit: () -> Unit
+=======
+    onExit: () -> Unit,
+    onLanguageModeChange: (com.aipoweredgita.app.utils.LanguageMode) -> Unit
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val canInteract = state.isLlmReady && !state.isThinking
     val isBusy = state.isThinking || state.isSpeaking || state.isListening || !canInteract
     val colors = getVoiceStudioColors()
+<<<<<<< HEAD
     var showModelMenu by remember { mutableStateOf(false) }
     val modelOptions = listOf("Auto (Recommended)", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
 
 
+=======
+
+    LaunchedEffect(languageMode) { onSetLanguageMode(languageMode) }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     var hasAudioPermission by remember {
         mutableStateOf(
@@ -206,7 +284,27 @@ private fun VoiceChatContent(
     }
 
     Column(
+<<<<<<< HEAD
         modifier = Modifier.fillMaxSize()
+=======
+        modifier = Modifier
+            .fillMaxSize()
+            .drawWithContent {
+                drawContent()
+                // Spark-like gold line around borders
+                val strokeWidth = 2.dp.toPx()
+                // Outer glow effect
+                drawRect(
+                    color = GoldSpark.copy(alpha = 0.3f),
+                    style = Stroke(width = strokeWidth * 2f)
+                )
+                // Main solid gold line
+                drawRect(
+                    color = GoldSpark,
+                    style = Stroke(width = strokeWidth)
+                )
+            }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     ) {
 
         // ── Top bar ───────────────────────────────────────────────────────────
@@ -220,6 +318,7 @@ private fun VoiceChatContent(
                 onClick = onExit,
                 modifier = Modifier
                     .size(36.dp)
+<<<<<<< HEAD
                     .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
                     .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
             ) {
@@ -334,6 +433,24 @@ private fun VoiceChatContent(
                     )
                 }
             }
+=======
+                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    .border(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Back",
+                    tint = colors.RevolvingYellow, modifier = Modifier.size(16.dp))
+            }
+
+            Text(
+                text = "Sacred conversations",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Normal,
+                    color = colors.TextPrimary,
+                    letterSpacing = 0.2.sp
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+            )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
 
         Spacer(Modifier.height(8.dp))
@@ -385,7 +502,11 @@ private fun VoiceChatContent(
                     Spacer(Modifier.height(10.dp))
 
                     Text(
+<<<<<<< HEAD
                         text = "Speak or write your question � each inquiry costs 1 Krishna Coin. The Gita holds answers to every struggle of the human soul.",
+=======
+                        text = "Speak or write your question — the Gita holds answers to every struggle of the human soul.",
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = colors.TextSecondary,
                             lineHeight = 22.sp
@@ -406,6 +527,7 @@ private fun VoiceChatContent(
                                 SuggestionChip(
                                     onClick = { if (!isBusy) onSendMessage(suggestion) },
                                     enabled = !isBusy,
+<<<<<<< HEAD
                                     label = { Text(suggestion, fontSize = 12.sp, color = colors.TextPrimary) },
                                     colors = SuggestionChipDefaults.suggestionChipColors(
                                         containerColor = if (colors.IsDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
@@ -419,12 +541,29 @@ private fun VoiceChatContent(
                                         disabledBorderColor = if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f)
                                     ),
                                     shape = MaterialTheme.shapes.large,
+=======
+                                    label = { Text(suggestion, fontSize = 12.sp) },
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = colors.TextSecondary,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        disabledLabelColor = colors.TextMuted
+                                    ),
+                                    border = SuggestionChipDefaults.suggestionChipBorder(
+                                        borderColor = colors.Border, enabled = true,
+                                        disabledBorderColor = colors.Border
+                                    ),
+                                    shape = RoundedCornerShape(20.dp),
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
                     }
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
             } else {
                 LazyColumn(
@@ -446,8 +585,11 @@ private fun VoiceChatContent(
                     }
                 // ── Thinking bubble ───────────────────────────────────────────────────────────
                 if (state.isThinking) { item { ThinkingBubble() } }
+<<<<<<< HEAD
                 // ── Listening bubble ───────────────────────────────────────────────────────────
                 if (state.isListening) { item { ListeningBubble(state.liveTranscript) } }
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
             }
         }
@@ -458,9 +600,15 @@ private fun VoiceChatContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 6.dp),
+<<<<<<< HEAD
                 color = if (colors.IsDark) Color(0x1AEA4335) else Color(0x0DEA4335),
                 shape = MaterialTheme.shapes.medium,
                 border = androidx.compose.foundation.BorderStroke(0.5.dp, if (colors.IsDark) Color(0x4DEA4335) else Color(0x28EA4335))
+=======
+                color = Color(0x1AEA4335),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0x4DEA4335))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -470,7 +618,11 @@ private fun VoiceChatContent(
                     Icon(Icons.Default.Error, contentDescription = null,
                         tint = Color(0xFFE57373), modifier = Modifier.size(15.dp))
                     Text(state.error ?: "An error occurred", modifier = Modifier.weight(1f),
+<<<<<<< HEAD
                         style = MaterialTheme.typography.bodySmall.copy(color = if (colors.IsDark) Color(0xFFFFCDD2) else Color(0xFFC62828)))
+=======
+                        style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2)))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     Text(
                         text = "Retry",
                         modifier = Modifier.clickable { onClearError(); onRefreshModelStatus() },
@@ -483,10 +635,17 @@ private fun VoiceChatContent(
         }
 
         // ── Bottom panel ──────────────────────────────────────────────────────
+<<<<<<< HEAD
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(colors.AppBg.copy(alpha = 0.85f))
+=======
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
+            tonalElevation = 0.dp
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ) {
             Column(
                 modifier = Modifier
@@ -512,12 +671,18 @@ private fun VoiceChatContent(
                             .weight(1f)
                             .heightIn(min = 42.dp),
                         placeholder = {
+<<<<<<< HEAD
                             Text("Ask Krishna (Costs 1 coin)...",
                                 style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextSecondary.copy(alpha = 0.7f)))
+=======
+                            Text("Share your search for truth...",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextMuted))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.TextPrimary),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colors.RevolvingYellow,
+<<<<<<< HEAD
                             unfocusedBorderColor = if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.12f),
                             focusedContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
                             unfocusedContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f),
@@ -526,12 +691,20 @@ private fun VoiceChatContent(
                             focusedTextColor = colors.TextPrimary,
                             unfocusedTextColor = colors.TextPrimary,
                             disabledTextColor = colors.TextMuted
+=======
+                            unfocusedBorderColor = colors.Border,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledBorderColor = colors.Border
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         ),
                         shape = RoundedCornerShape(21.dp),
                         singleLine = false,
                         maxLines = 3
                     )
 
+<<<<<<< HEAD
                     // Mic button for voice input
                     IconButton(
                         onClick = {
@@ -552,6 +725,8 @@ private fun VoiceChatContent(
                             modifier = Modifier.size(18.dp))
                     }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     val canSend = !isBusy && state.userInput.isNotBlank()
                     IconButton(
                         onClick = { if (canSend) onSendCurrentMessage() },
@@ -559,19 +734,27 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
+<<<<<<< HEAD
                                 if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)),
                                 CircleShape
                             )
                             .border(
                                 1.dp,
                                 if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+=======
+                                if (canSend) colors.RevolvingYellow else MaterialTheme.colorScheme.surfaceVariant,
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                                 CircleShape
                             )
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
+<<<<<<< HEAD
                             tint = if (canSend) MaterialTheme.colorScheme.surface else colors.TextPrimary.copy(alpha = 0.3f),
+=======
+                            tint = if (canSend) MaterialTheme.colorScheme.background else colors.TextMuted,
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -581,13 +764,18 @@ private fun VoiceChatContent(
                         onClick = { if (canInteract) onClearChat() },
                         modifier = Modifier
                             .size(42.dp)
+<<<<<<< HEAD
                             .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
                             .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
+=======
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = "Clear",
                             tint = colors.RevolvingYellow, modifier = Modifier.size(18.dp))
                     }
                 }
+<<<<<<< HEAD
             }
         }
 
@@ -634,6 +822,40 @@ private fun VoiceChatContent(
                     }
                 }
             )
+=======
+
+                // Centered Language Selector
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    com.aipoweredgita.app.utils.LanguageMode.entries.forEachIndexed { index, mode ->
+                        val selected = languageMode == mode
+                        SegmentedButton(
+                            selected = selected,
+                            onClick = { onLanguageModeChange(mode) },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = com.aipoweredgita.app.utils.LanguageMode.entries.size),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = colors.RevolvingYellow,
+                                activeContentColor = MaterialTheme.colorScheme.background,
+                                inactiveContainerColor = Color.Transparent,
+                                inactiveContentColor = colors.RevolvingYellow
+                            ),
+                            border = SegmentedButtonDefaults.borderStroke(color = colors.Border),
+                            label = {
+                                Text(
+                                    text = mode.displayName,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            icon = {}
+                        )
+                    }
+                }
+            }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 }
@@ -728,6 +950,7 @@ private fun ChatBubble(
             Spacer(Modifier.width(10.dp))
         }
 
+<<<<<<< HEAD
         val bubbleShape = if (isUser)
             RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
         else
@@ -751,6 +974,20 @@ private fun ChatBubble(
                         )
                     )
                 }
+=======
+        Surface(
+            modifier = Modifier.widthIn(max = 260.dp),
+            shape = if (isUser)
+                RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
+            else
+                RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
+            color = if (isUser) colors.UserBubbleBg else MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(
+                0.5.dp,
+                if (isUser) colors.UserBubbleBdr else colors.Border
+            ),
+            tonalElevation = if (isUser) 0.dp else 1.dp
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ) {
             Text(
                 text = message.text,
@@ -855,6 +1092,7 @@ private fun ThinkingBubble() {
             }
         }
         Spacer(Modifier.width(10.dp))
+<<<<<<< HEAD
         val bubbleShape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
         val bubbleBg = if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.03f)
         val bubbleBdrColor = if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f)
@@ -873,6 +1111,12 @@ private fun ThinkingBubble() {
                         )
                     )
                 }
+=======
+        Surface(
+            shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
+            color = colors.RevolvingYellow.copy(alpha = 0.10f),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.22f))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -885,6 +1129,7 @@ private fun ThinkingBubble() {
     }
 }
 
+<<<<<<< HEAD
 // ── Listening bubble ───────────────────────────────────────────────────────────
 
 @Composable
@@ -958,6 +1203,8 @@ private fun ListeningBubble(liveTranscript: String) {
     }
 }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 // ── Previews ──────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true)
@@ -967,6 +1214,7 @@ fun PreviewVoiceStudioIdle() {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
                 state = VoiceChatState(isLlmReady = true),
+<<<<<<< HEAD
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -975,6 +1223,13 @@ fun PreviewVoiceStudioIdle() {
                 onConfirmSend = {},
                 onDismissConfirmation = {},
                 onExit = {}
+=======
+                languageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
+                onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
+                onClearChat = {}, onStartListening = {}, onStopListening = {},
+                onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
+                onSetLanguageMode = {}, onExit = {}, onLanguageModeChange = {}
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         }
     }
@@ -985,12 +1240,17 @@ fun PreviewVoiceStudioIdle() {
 fun PreviewVoiceStudioChat() {
     val msgs = listOf(
         ChatMessage(text = "What is karma?", isUser = true),
+<<<<<<< HEAD
         ChatMessage(text = "Karma is the law of cause and effect � every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
+=======
+        ChatMessage(text = "Karma is the law of cause and effect — every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
                 state = VoiceChatState(messages = msgs, isLlmReady = true),
+<<<<<<< HEAD
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -999,6 +1259,13 @@ fun PreviewVoiceStudioChat() {
                 onConfirmSend = {},
                 onDismissConfirmation = {},
                 onExit = {}
+=======
+                languageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
+                onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
+                onClearChat = {}, onStartListening = {}, onStopListening = {},
+                onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
+                onSetLanguageMode = {}, onExit = {}, onLanguageModeChange = {}
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         }
     }
@@ -1011,6 +1278,7 @@ fun PreviewVoiceStudioListening() {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
                 state = VoiceChatState(isLlmReady = true, isListening = true),
+<<<<<<< HEAD
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -1019,6 +1287,13 @@ fun PreviewVoiceStudioListening() {
                 onConfirmSend = {},
                 onDismissConfirmation = {},
                 onExit = {}
+=======
+                languageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
+                onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
+                onClearChat = {}, onStartListening = {}, onStopListening = {},
+                onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
+                onSetLanguageMode = {}, onExit = {}, onLanguageModeChange = {}
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         }
     }
@@ -1034,6 +1309,7 @@ fun PreviewVoiceStudioThinking() {
                     messages = listOf(ChatMessage(text = "What is dharma?", isUser = true)),
                     isLlmReady = true, isThinking = true
                 ),
+<<<<<<< HEAD
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -1042,8 +1318,18 @@ fun PreviewVoiceStudioThinking() {
                 onConfirmSend = {},
                 onDismissConfirmation = {},
                 onExit = {}
+=======
+                languageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
+                onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
+                onClearChat = {}, onStartListening = {}, onStopListening = {},
+                onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
+                onSetLanguageMode = {}, onExit = {}, onLanguageModeChange = {}
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         }
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

@@ -8,11 +8,16 @@ import com.google.gson.reflect.TypeToken
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+<<<<<<< HEAD
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+=======
+import retrofit2.http.GET
+import retrofit2.http.Path
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import java.util.concurrent.TimeUnit
 
 private const val BASE_URL = com.aipoweredgita.app.util.GitaConstants.API_BASE_URL
@@ -71,6 +76,7 @@ object GitaApi {
         retrofit.create(GitaApiService::class.java)
     }
 }
+<<<<<<< HEAD
 
 // ── Coin API (reuses shared okHttpClient + gson) ─────────────────────────────────
 
@@ -218,3 +224,5 @@ object CoinApi {
         coinRetrofit.create(CoinApiService::class.java)
     }
 }
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

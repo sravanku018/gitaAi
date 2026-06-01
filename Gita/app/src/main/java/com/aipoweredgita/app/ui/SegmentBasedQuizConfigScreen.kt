@@ -170,7 +170,11 @@ fun SegmentBasedQuizConfigScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
+<<<<<<< HEAD
                                 .clip(MaterialTheme.shapes.small)
+=======
+                                .clip(RoundedCornerShape(8.dp))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                                 .background(color),
                             contentAlignment = Alignment.Center
                         ) {
@@ -220,7 +224,11 @@ fun SegmentBasedQuizConfigScreen(
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             ),
+<<<<<<< HEAD
             shape = MaterialTheme.shapes.medium
+=======
+            shape = RoundedCornerShape(12.dp)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ) {
             Text(
                 text = "Start AI-Guided Quiz",
@@ -262,7 +270,11 @@ fun QuizOptionCard(
         brush = Brush.horizontalGradient(gradient),
         modifier = modifier
             .height(80.dp)
+<<<<<<< HEAD
             .border(3.dp, borderColor, MaterialTheme.shapes.large)
+=======
+            .border(3.dp, borderColor, RoundedCornerShape(16.dp))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             .clickable(onClick = onClick),
         elevation = if (isSelected) 8.dp else 4.dp,
         cornerRadius = 16.dp,

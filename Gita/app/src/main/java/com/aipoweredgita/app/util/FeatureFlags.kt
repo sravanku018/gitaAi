@@ -15,7 +15,11 @@ object FeatureFlags {
     @JvmField val SHOW_OFFLINE_BANNER: Boolean = true
 
     // Background download constraints (can be tuned per build/flavor)
+<<<<<<< HEAD
     // Set to false to allow downloads on mobile data (useful for large models like Gemma 4 2B)
+=======
+    // Set to false to allow downloads on mobile data (useful for large models like Gemma 2B)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     @JvmField val DOWNLOADS_REQUIRE_UNMETERED: Boolean = false
     @JvmField val DOWNLOADS_REQUIRE_CHARGING: Boolean = false
     @JvmField val DOWNLOADS_REQUIRE_BATTERY_NOT_LOW: Boolean = false

@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.repository
 
+<<<<<<< HEAD
 import android.content.Context
 import android.util.Log
 import com.aipoweredgita.app.database.DailyActivity
@@ -50,10 +51,23 @@ class StatsRepository(
         segmentCorrectMap: Map<String, Int> = emptyMap()
     ): Int {
         ensureUserSynced()
+=======
+import com.aipoweredgita.app.database.UserStatsDao
+import com.aipoweredgita.app.repository.ModeType
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.*
+
+class StatsRepository(private val userStatsDao: UserStatsDao) {
+
+    suspend fun trackQuizCompletion(score: Int, totalQuestions: Int) {
+        // Update quiz statistics
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(totalQuestions)
         userStatsDao.addCorrectAnswers(score)
 
+<<<<<<< HEAD
         val stats = userStatsDao.getUserStatsOnce()
         stats?.let {
             val currentBestPercentage = if (it.bestScoreOutOf > 0)
@@ -76,6 +90,27 @@ class StatsRepository(
 
         updateStreak()
         return coins
+=======
+        // Update best score if this is better
+        val currentStats = userStatsDao.getUserStatsOnce()
+        currentStats?.let {
+            val currentBestPercentage = if (it.bestScoreOutOf > 0)
+                (it.bestScore.toFloat() / it.bestScoreOutOf) * 100
+            else 0f
+
+            val newPercentage = if (totalQuestions > 0) {
+                (score.toFloat() / totalQuestions) * 100
+            } else {
+                0f
+            }
+
+            if (newPercentage > currentBestPercentage) {
+                userStatsDao.updateBestScore(score, totalQuestions)
+            }
+        }
+
+        updateStreak()
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     suspend fun trackVerseRead() {
@@ -102,6 +137,7 @@ class StatsRepository(
         val today = LocalDate.now().toString()
         val lastActiveDate = currentStats.lastActiveDate
 
+<<<<<<< HEAD
         userStatsDao.updateLastActive(System.currentTimeMillis(), today)
 
         when {
@@ -112,20 +148,45 @@ class StatsRepository(
             }
             lastActiveDate == today -> {}
             isYesterday(lastActiveDate) -> {
+=======
+        // Update last active
+        userStatsDao.updateLastActive(System.currentTimeMillis(), today)
+
+        // Calculate streak
+        when {
+            lastActiveDate.isEmpty() -> {
+                // First time
+                userStatsDao.updateCurrentStreak(1)
+                userStatsDao.updateLongestStreak(1)
+            }
+            lastActiveDate == today -> {
+                // Already active today, no change
+            }
+            isYesterday(lastActiveDate) -> {
+                // Consecutive day
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val newStreak = currentStats.currentStreak + 1
                 userStatsDao.updateCurrentStreak(newStreak)
                 if (newStreak > currentStats.longestStreak) {
                     userStatsDao.updateLongestStreak(newStreak)
                 }
+<<<<<<< HEAD
                 userStatsDao.updateDaysActive(currentStats.daysActive + 1)
             }
             else -> {
                 userStatsDao.updateCurrentStreak(1)
                 userStatsDao.updateDaysActive(currentStats.daysActive + 1)
+=======
+            }
+            else -> {
+                // Streak broken
+                userStatsDao.updateCurrentStreak(1)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
 
+<<<<<<< HEAD
     suspend fun trackSlokaShared(chapter: Int? = null, verse: Int? = null) {
         ensureUserSynced()
         val uid = userId()
@@ -155,6 +216,8 @@ class StatsRepository(
         updateStreak()
     }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     private fun isYesterday(dateString: String): Boolean {
         return try {
             val inputDate = LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
@@ -165,6 +228,7 @@ class StatsRepository(
         }
     }
 
+<<<<<<< HEAD
     suspend fun trackChapterCompleted(chapterNo: Int) {
         ensureUserSynced()
         userStatsDao.incrementChaptersCompleted()
@@ -222,4 +286,9 @@ class StatsRepository(
             CoinApi.retrofitService.spendCoins(CoinSpendRequest(uid, question))
         } catch (e: Exception) { android.util.Log.e("StatsRepository", "Failed to spend coins: ${e.message}") }
     }
+=======
+    suspend fun updateFavoritesCount(count: Int) {
+        userStatsDao.updateFavoritesCount(count)
+    }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 }

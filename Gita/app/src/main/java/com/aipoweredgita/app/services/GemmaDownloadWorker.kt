@@ -20,6 +20,7 @@ class GemmaDownloadWorker(
         private const val WORK_NAME_GEMMA = "gemma_download"
 
         fun scheduleImmediateDownload(context: Context) {
+<<<<<<< HEAD
             val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
             val isHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP || 
                             tier == com.aipoweredgita.app.utils.DeviceTier.HIGH_MID
@@ -29,6 +30,8 @@ class GemmaDownloadWorker(
                 return
             }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresDeviceIdle(false)
@@ -50,6 +53,7 @@ class GemmaDownloadWorker(
         }
 
         fun scheduleBackgroundDownload(context: Context) {
+<<<<<<< HEAD
             val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
             val isHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP || 
                             tier == com.aipoweredgita.app.utils.DeviceTier.HIGH_MID
@@ -59,6 +63,8 @@ class GemmaDownloadWorker(
                 return
             }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.UNMETERED)
                 .setRequiresDeviceIdle(false)
@@ -106,6 +112,7 @@ class GemmaDownloadWorker(
     }
 
     override suspend fun doWork(): Result {
+<<<<<<< HEAD
         val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(applicationContext)
         val isHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP || 
                         tier == com.aipoweredgita.app.utils.DeviceTier.HIGH_MID
@@ -115,6 +122,8 @@ class GemmaDownloadWorker(
             return Result.success() // Success because we don't want to retry
         }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         return try {
             Log.d(TAG, "GemmaDownloadWorker started (attempt ${runAttemptCount + 1})")
 

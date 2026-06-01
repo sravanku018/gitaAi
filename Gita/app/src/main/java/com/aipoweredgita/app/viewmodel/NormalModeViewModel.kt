@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 package com.aipoweredgita.app.viewmodel
+=======
+﻿package com.aipoweredgita.app.viewmodel
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 import android.app.Application
 import android.util.Log
@@ -13,6 +17,7 @@ import com.aipoweredgita.app.util.TimeTracker
 import com.aipoweredgita.app.util.GitaConstants
 import com.aipoweredgita.app.util.ThrottledDatabaseUpdater
 import com.aipoweredgita.app.repository.ModeType
+<<<<<<< HEAD
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -20,6 +25,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+=======
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,6 +57,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     private val _state = MutableStateFlow(NormalModeState())
     val state: StateFlow<NormalModeState> = _state.asStateFlow()
 
+<<<<<<< HEAD
     private val _events = MutableSharedFlow<String>()
     val events: SharedFlow<String> = _events.asSharedFlow()
 
@@ -56,12 +67,21 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     private val offlineCacheRepository = com.aipoweredgita.app.repository.OfflineCacheRepository(database.cachedVerseDao())
     private val statsRepository = StatsRepository(database.userStatsDao(), database.dailyActivityDao(), application)
     private val yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
+=======
+    private val favoriteRepository: FavoriteRepository
+    private val offlineCacheRepository: com.aipoweredgita.app.repository.OfflineCacheRepository
+    private lateinit var statsRepository: StatsRepository
+    private lateinit var database: GitaDatabase
+    private lateinit var readVerseDao: com.aipoweredgita.app.database.ReadVerseDao
+    private lateinit var yogaProgressionRepository: com.aipoweredgita.app.repository.YogaProgressionRepository
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     private val language = GitaConstants.DEFAULT_LANGUAGE
     private val gitaRepository = GitaRepository()
     private var lastRequestedChapter: Int = 1
     private var lastRequestedVerse: Int = 1
 
     // Throttled database updater - batches verse reads to reduce I/O
+<<<<<<< HEAD
     private val throttledUpdater = ThrottledDatabaseUpdater(
         batchSize = 10,
         flushIntervalMs = 5000L
@@ -88,6 +108,9 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
             throw e
         }
     }
+=======
+    private lateinit var throttledUpdater: ThrottledDatabaseUpdater
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     // Time tracker
     private val timeTracker = TimeTracker { seconds ->
@@ -105,7 +128,57 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     init {
+<<<<<<< HEAD
         timeTracker.start()
+=======
+        database = GitaDatabase.getDatabase(application)
+        favoriteRepository = FavoriteRepository(database.favoriteVerseDao())
+        offlineCacheRepository = com.aipoweredgita.app.repository.OfflineCacheRepository(database.cachedVerseDao())
+        statsRepository = StatsRepository(database.userStatsDao())
+        readVerseDao = database.readVerseDao()
+        yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
+
+        // Initialize throttled updater for batched database writes
+        throttledUpdater = ThrottledDatabaseUpdater(
+            batchSize = 10,
+            flushIntervalMs = 5000L
+        ) { batch ->
+            // Batch write callback
+            try {
+                val today = java.time.LocalDate.now().toString()
+
+                // Insert all verse reads in batch
+                batch.forEach { verseRead ->
+                    readVerseDao.insert(
+                        com.aipoweredgita.app.database.ReadVerse(
+                            chapterNo = verseRead.chapter,
+                            verseNo = verseRead.verse,
+                            date = today
+                        )
+                    )
+                }
+
+                // Update distinct verses count
+                val distinct = readVerseDao.distinctVersePairs()
+                database.userStatsDao().updateDistinctVersesRead(distinct)
+
+                // Record in daily activity
+                val dailyDao = database.dailyActivityDao()
+                dailyDao.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+                dailyDao.addVerses(today, batch.size)
+
+                Log.d(TAG, "Batch write completed: ${batch.size} verses")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in batch write: ${e.message}")
+                throw e
+            }
+        }
+
+        // Start time tracking
+        timeTracker.start()
+
+        // Auto-retry on reconnect if previous load failed due to offline
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         viewModelScope.launch {
             com.aipoweredgita.app.utils.NetworkUtils.networkStatusFlow(getApplication())
                 .collect { online ->
@@ -130,7 +203,11 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
         
         // Always set combinedGroups to empty list
         viewModelScope.launch {
+<<<<<<< HEAD
             _state.update { it.copy(combinedGroups = emptyList()) }
+=======
+            _state.value = _state.value.copy(combinedGroups = emptyList())
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 
@@ -138,6 +215,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             lastRequestedChapter = chapter
             lastRequestedVerse = verse
+<<<<<<< HEAD
             _state.update {
                 it.copy(
                     isLoading = true,
@@ -151,12 +229,29 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
 
             try {
                 Log.d(TAG, "Loading Chapter $chapter, Verse $verse (Attempt ${retryCount + 1})")
+=======
+            _state.value = _state.value.copy(
+                isLoading = true,
+                error = null,
+                currentChapter = chapter,
+                currentVerse = verse,
+                // Clear any previous combined group during loading to prevent stale UI
+                combinedVerseNos = emptyList()
+            )
+
+            try {
+                println("GitaApp: Loading Chapter $chapter, Verse $verse (Attempt ${retryCount + 1})")
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
                 // Try cache first
                 val verseData = offlineCacheRepository.getVerse(chapter, verse)
 
                 if (verseData != null) {
+<<<<<<< HEAD
                     Log.d(TAG, "Loaded from cache: ${verseData.verse.take(50)}")
+=======
+                    println("GitaApp: Loaded from cache: ${verseData.verse.take(50)}")
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     
                     // Check if this verse was separated from a combined group
                     val note = if (verseData.wasSeparated && verseData.originalCombinedGroup.isNotEmpty()) {
@@ -165,6 +260,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     } else null
                     
                     // All verses are treated as separate - no combined verse detection
+<<<<<<< HEAD
                     _state.update {
                         it.copy(
                             verse = verseData,
@@ -174,6 +270,15 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                             separatedVerseNote = note
                         )
                     }
+=======
+                    _state.value = _state.value.copy(
+                        verse = verseData,
+                        isLoading = false,
+                        error = null,
+                        combinedVerseNos = emptyList(),  // Always empty - all verses are separate
+                        separatedVerseNote = note
+                    )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     // Don't compute combined groups - all verses are separate
                     computeChapterCombinedGroups(chapter)
                     // Check favorite status
@@ -184,6 +289,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     // Fallback to API if not cached
                     val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(getApplication())
                     if (!online) {
+<<<<<<< HEAD
                         _state.update {
                             it.copy(
                                 isLoading = false,
@@ -195,6 +301,17 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     Log.d(TAG, "Cache miss, fetching from API...")
                     val apiVerse = gitaRepository.getVerse(language, chapter, verse)
                     Log.d(TAG, "Successfully loaded from API: ${apiVerse.verse.take(50)}")
+=======
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = "Offline: verse not downloaded. Use Offline mode or reconnect."
+                        )
+                        return@launch
+                    }
+                    println("GitaApp: Cache miss, fetching from API...")
+                    val apiVerse = gitaRepository.getVerse(language, chapter, verse)
+                    println("GitaApp: Successfully loaded from API: ${apiVerse.verse.take(50)}")
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     
                     // Check if this verse was separated from a combined group
                     val note = if (apiVerse.wasSeparated && apiVerse.originalCombinedGroup.isNotEmpty()) {
@@ -203,6 +320,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     } else null
                     
                     // All verses are treated as separate - no combined verse detection
+<<<<<<< HEAD
                     _state.update {
                         it.copy(
                             verse = apiVerse,
@@ -212,6 +330,15 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                             separatedVerseNote = note
                         )
                     }
+=======
+                    _state.value = _state.value.copy(
+                        verse = apiVerse,
+                        isLoading = false,
+                        error = null,
+                        combinedVerseNos = emptyList(),  // Always empty - all verses are separate
+                        separatedVerseNote = note
+                    )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     computeChapterCombinedGroups(chapter)
                     // Check favorite status
                     checkFavoriteStatus(chapter, verse)
@@ -219,7 +346,12 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     trackVerseRead()
                 }
             } catch (e: Exception) {
+<<<<<<< HEAD
                 Log.e(TAG, "Error loading verse - ${e::class.simpleName}: ${e.message}", e)
+=======
+                println("GitaApp: Error loading verse - ${e::class.simpleName}: ${e.message}")
+                e.printStackTrace()
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
                 // Retry logic for transient errors (network, timeout)
                 val isTransientError = e.message?.let {
@@ -229,7 +361,11 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                 } ?: false
 
                 if (isTransientError && retryCount < 2) {
+<<<<<<< HEAD
                     Log.d(TAG, "Retrying... (Attempt ${retryCount + 2})")
+=======
+                    println("GitaApp: Retrying... (Attempt ${retryCount + 2})")
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     kotlinx.coroutines.delay(1000) // Wait 1 second before retry
                     loadVerse(chapter, verse, retryCount + 1)
                     return@launch
@@ -273,12 +409,19 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     }
                 }
 
+<<<<<<< HEAD
                 _state.update {
                     it.copy(
                         isLoading = false,
                         error = errorMsg
                     )
                 }
+=======
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = errorMsg
+                )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
@@ -332,7 +475,11 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     private fun checkFavoriteStatus(chapter: Int, verse: Int) {
         viewModelScope.launch {
             favoriteRepository.isFavorite(chapter, verse).collect { isFav ->
+<<<<<<< HEAD
                 _state.update { it.copy(isFavorite = isFav) }
+=======
+                _state.value = _state.value.copy(isFavorite = isFav)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
@@ -348,6 +495,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
             }
 
             result.onSuccess { message ->
+<<<<<<< HEAD
                 _state.update {
                     it.copy(
                         favoriteMessage = message,
@@ -365,6 +513,21 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 kotlinx.coroutines.delay(2000)
                 _state.update { it.copy(favoriteMessage = null) }
+=======
+                _state.value = _state.value.copy(
+                    favoriteMessage = message,
+                    isFavorite = !_state.value.isFavorite
+                )
+                // Clear message after delay
+                kotlinx.coroutines.delay(2000)
+                _state.value = _state.value.copy(favoriteMessage = null)
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    favoriteMessage = error.message ?: "Operation failed"
+                )
+                kotlinx.coroutines.delay(2000)
+                _state.value = _state.value.copy(favoriteMessage = null)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
@@ -387,6 +550,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
             
             // Track distinct verses read (throttled to reduce DB writes)
             val vNo = verse.verseNo
+<<<<<<< HEAD
             
             // Check for chapter completion
             val currentReadCount = readVerseDao.getReadVersesCountByChapter(verse.chapterNo)
@@ -403,6 +567,8 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             if (verse.chapterNo in 1..18 && vNo >= 1) {
                 throttledUpdater.trackVerseRead(verse.chapterNo, vNo)
             } else {

@@ -31,7 +31,10 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
     private var downloadService: ModelDownloadService? = null
     private var isBound = false
     private val manager by lazy { ModelDownloadManager(getApplication()) }
+<<<<<<< HEAD
     private var downloadJob: kotlinx.coroutines.Job? = null
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     private val _downloadProgress = MutableStateFlow(ModelDownloadProgress())
     val downloadProgress: StateFlow<ModelDownloadProgress> = _downloadProgress.asStateFlow()
@@ -42,6 +45,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
 
+<<<<<<< HEAD
     private val _modelsStatus = MutableStateFlow<List<ModelDownloadManager.ModelStatus>>(emptyList())
     val modelsStatus: StateFlow<List<ModelDownloadManager.ModelStatus>> = _modelsStatus.asStateFlow()
 
@@ -58,6 +62,8 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     // Track per-file progress for all models
     private val _fileProgressMap = MutableStateFlow<Map<String, com.aipoweredgita.app.ui.ModelDownloadProgress>>(emptyMap())
     val fileProgressList: StateFlow<List<com.aipoweredgita.app.ui.ModelDownloadProgress>> =
@@ -82,12 +88,16 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
             if (remain > 0) remain else 0L
         }.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
+<<<<<<< HEAD
     private val totalModels: Int
         get() {
             val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(getApplication())
             return if (tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP) 3 else 2
         }
 
+=======
+    private val totalModels = 2  // Qwen3 0.6B + Gemma 4 2B
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     val filesRemaining: StateFlow<Int> =
         _fileProgressMap.asStateFlow()
             .map { mp ->
@@ -95,7 +105,11 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                 val rem = totalModels - completed
                 if (rem >= 0) rem else 0
             }
+<<<<<<< HEAD
             .stateIn(viewModelScope, SharingStarted.Eagerly, 2)
+=======
+            .stateIn(viewModelScope, SharingStarted.Eagerly, totalModels)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -127,6 +141,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+<<<<<<< HEAD
             downloadService = null
             isBound = false
             Log.d(TAG, "Service disconnected unexpectedly")
@@ -136,12 +151,19 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
             downloadService = null
             isBound = false
             Log.w(TAG, "Service binding died — service process crashed")
+=======
+            isBound = false
+            Log.d(TAG, "Service disconnected")
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 
     init {
         bindToService()
+<<<<<<< HEAD
         refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     private fun bindToService() {
@@ -167,6 +189,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     /** Start manifest-based downloads using ModelDownloadManager (shows real progress) */
     fun startManagerDownload() {
+<<<<<<< HEAD
         if (_isDownloading.value) return
         downloadJob?.cancel()
         downloadJob = viewModelScope.launch {
@@ -186,6 +209,13 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     if (prog.status == "failed_insufficient_space") {
                         _errorMessage.value = "Insufficient disk space for ${prog.modelName}."
                     }
+=======
+        viewModelScope.launch {
+            try {
+                _isDownloading.value = true
+                _overallProgress.value = 0
+                val ok = manager.downloadAllModels { prog ->
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     _downloadProgress.value = com.aipoweredgita.app.ui.ModelDownloadProgress(
                         modelName = prog.fileName,
                         percentage = prog.percent,
@@ -207,12 +237,18 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     _overallProgress.value = prog.percent
                 }
                 _isDownloading.value = false
+<<<<<<< HEAD
                 refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 if (!ok) Log.w(TAG, "Model downloads incomplete")
             } catch (e: Exception) {
                 Log.e(TAG, "Manager download failed: ${e.message}")
                 _isDownloading.value = false
+<<<<<<< HEAD
                 refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
@@ -222,6 +258,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
      */
     fun startSingleModelDownload(modelName: String) {
         if (_isDownloading.value) return
+<<<<<<< HEAD
         downloadJob?.cancel()
         downloadJob = viewModelScope.launch {
             try {
@@ -239,6 +276,13 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     if (prog.status == "failed_insufficient_space") {
                         _errorMessage.value = "Insufficient disk space for ${prog.modelName}."
                     }
+=======
+        viewModelScope.launch {
+            try {
+                _isDownloading.value = true
+                _overallProgress.value = 0
+                val ok = manager.downloadModel(modelName) { prog ->
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     _downloadProgress.value = com.aipoweredgita.app.ui.ModelDownloadProgress(
                         modelName = prog.fileName,
                         percentage = prog.percent,
@@ -260,12 +304,18 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     _overallProgress.value = prog.percent
                 }
                 _isDownloading.value = false
+<<<<<<< HEAD
                 refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 if (!ok) Log.w(TAG, "Model $modelName download failed or incomplete")
             } catch (e: Exception) {
                 Log.e(TAG, "$modelName download failed: ${e.message}")
                 _isDownloading.value = false
+<<<<<<< HEAD
                 refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
     }
@@ -278,10 +328,13 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
             downloadService!!.cancelDownload()
             Log.d(TAG, "Download cancelled")
         }
+<<<<<<< HEAD
         downloadJob?.cancel()
         downloadJob = null
         _isDownloading.value = false
         refreshModelStatus()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     /**
@@ -293,6 +346,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     override fun onCleared() {
         super.onCleared()
+<<<<<<< HEAD
         try {
             getApplication<Application>().unbindService(serviceConnection)
         } catch (_: IllegalArgumentException) {
@@ -301,6 +355,12 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         }
         isBound = false
         downloadService = null
+=======
+        if (isBound) {
+            getApplication<Application>().unbindService(serviceConnection)
+            isBound = false
+        }
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         Log.d(TAG, "ViewModel cleared")
     }
 }

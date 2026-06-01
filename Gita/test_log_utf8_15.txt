@@ -1,0 +1,109 @@
+﻿> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+.\gradlew : e: file:///C:
+/Users/srath/Downloads/16
+-10-2025/Gita/app/src/mai
+n/java/com/aipoweredgita/
+app/notifications/Notific
+ationManager.kt:30:78 
+Too many arguments for 
+'constructor(context: 
+Context): NotificationPri
+orityClassifier'.
+At line:1 char:1
++ .\gradlew 
+:app:testDebugUnitTest 
+--tests "com.aipoweredgit
+a.app.notif ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (e: file:///C:/U...i   
+ tyClassifier'.:Strin    
+g) [], RemoteExcepti    
+on
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+e: file:///C:/Users/srath
+/Downloads/16-10-2025/Git
+a/app/src/main/java/com/a
+ipoweredgita/app/notifica
+tions/NotificationManager
+.kt:30:92 Too many 
+arguments for 
+'constructor(context: 
+Context): NotificationPri
+orityClassifier'.
+e: file:///C:/Users/srath
+/Downloads/16-10-2025/Git
+a/app/src/main/java/com/a
+ipoweredgita/app/notifica
+tions/NotificationPriorit
+yClassifier.kt:193:59 
+Unresolved reference 
+'dailyActivityDao'.
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileDebugKo
+tlin'.
+> A failure occurred 
+while executing org.jetbr
+ains.kotlin.compilerRunne
+r.GradleCompilerRunnerWit
+hWorkers$GradleKotlinComp
+ilerWorkAction
+   > Compilation error. 
+See log for more details
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 1s
+24 actionable tasks: 1 executed, 23 up-to-date
+

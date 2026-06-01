@@ -30,9 +30,12 @@ interface UserStatsDao {
     @Query("UPDATE user_stats SET versesRead = versesRead + 1 WHERE id = 1")
     suspend fun incrementVersesRead()
 
+<<<<<<< HEAD
     @Query("UPDATE user_stats SET chaptersCompleted = chaptersCompleted + 1 WHERE id = 1")
     suspend fun incrementChaptersCompleted()
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     @Query("UPDATE user_stats SET distinctVersesRead = :count WHERE id = 1")
     suspend fun updateDistinctVersesRead(count: Int)
 
@@ -54,9 +57,12 @@ interface UserStatsDao {
     @Query("UPDATE user_stats SET currentStreak = :streak WHERE id = 1")
     suspend fun updateCurrentStreak(streak: Int)
 
+<<<<<<< HEAD
     @Query("UPDATE user_stats SET daysActive = :count WHERE id = 1")
     suspend fun updateDaysActive(count: Int)
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     @Query("UPDATE user_stats SET longestStreak = :streak WHERE id = 1")
     suspend fun updateLongestStreak(streak: Int)
 
@@ -69,20 +75,26 @@ interface UserStatsDao {
     @Query("UPDATE user_stats SET userName = :name, dateOfBirth = :dob WHERE id = 1")
     suspend fun updateProfile(name: String, dob: String)
 
+<<<<<<< HEAD
     @Query("UPDATE user_stats SET userId = :userId WHERE id = 1")
     suspend fun updateUserId(userId: String)
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     // Initialize stats if not exists
     suspend fun initializeStatsIfNeeded() {
         val existing = getUserStatsOnce()
         if (existing == null) {
             insertStats(UserStats())
         }
+<<<<<<< HEAD
         // Ensure userId is set (UUID generated once on first launch)
         val stats = getUserStatsOnce()
         if (stats != null && stats.userId.isEmpty()) {
             val uuid = java.util.UUID.randomUUID().toString()
             updateUserId(uuid)
         }
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 }

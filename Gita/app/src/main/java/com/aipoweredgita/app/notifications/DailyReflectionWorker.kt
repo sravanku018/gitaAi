@@ -22,7 +22,11 @@ class DailyReflectionWorker(appContext: Context, params: WorkerParameters) : Cor
 
             val db = GitaDatabase.getDatabase(context)
             val stats = db.userStatsDao().getUserStatsOnce()
+<<<<<<< HEAD
             val level = com.aipoweredgita.app.ui.components.YogaLevelManager.levelFor(stats)
+=======
+            val level = com.aipoweredgita.app.ui.components.LotusLevelManager.levelFor(stats)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
             val prompt = when (level) {
                 in 0..1 -> "What duty can you perform today without attachment to the result?"

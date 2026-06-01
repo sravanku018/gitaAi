@@ -103,7 +103,11 @@ fun QuizConfigScreen(
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             ),
+<<<<<<< HEAD
             shape = MaterialTheme.shapes.medium
+=======
+            shape = RoundedCornerShape(12.dp)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ) {
             Text(
                 text = "Start Quiz",
@@ -140,7 +144,11 @@ fun QuizOptionCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(100.dp)
+<<<<<<< HEAD
             .border(3.dp, borderColor, MaterialTheme.shapes.large)
+=======
+            .border(3.dp, borderColor, RoundedCornerShape(16.dp))
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             .clickable(onClick = onClick),
         elevation = if (isSelected) 8.dp else 4.dp,
         cornerRadius = 16.dp,
@@ -175,7 +183,11 @@ fun QuizOptionCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .size(32.dp)
+<<<<<<< HEAD
                         .background(MaterialTheme.colorScheme.onPrimary, MaterialTheme.shapes.small),
+=======
+                        .background(MaterialTheme.colorScheme.onPrimary, RoundedCornerShape(8.dp)),
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

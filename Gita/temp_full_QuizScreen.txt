@@ -1,0 +1,539 @@
+package com.aipoweredgita.app.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+import com.aipoweredgita.app.viewmodel.QuizViewModel
+
+private fun sanitizeText(text: String?): String {
+    if (text == null) return ""
+    return text
+        .replace("\\r\\n", " ")
+        .replace("\\n", " ")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+}
+
+@Composable
+fun QuizScreen(
+    modifier: Modifier = Modifier,
+    viewModel: QuizViewModel = viewModel(),
+    onExitQuiz: () -> Unit = {}
+) {
+    val quizState by viewModel.quizState.collectAsState()
+    val uiCfg = LocalUiConfig.current
+    val scrollState = rememberScrollState()
+    var prevAnswerMs by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(Unit) {
+        if (quizState.currentQuestion == null && !quizState.isLoading) {
+            viewModel.loadNextQuestion()
+        }
+    }
+
+    // Note: Avoid auto-exit on completion; we will show a dialog instead
+
+    // Use orientation-aware padding and enable vertical scrolling
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(if (uiCfg.isLandscape) 24.dp else 16.dp)
+            .verticalScroll(scrollState)
+    ) {
+        // Header with score and progress
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = "Score: ${quizState.score}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (quizState.totalQuestions > 0) {
+                val accuracy = (quizState.score * 100) / quizState.totalQuestions
+                Text(
+                    text = "$accuracy% Accuracy",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = when {
+                        accuracy >= 80 -> Color(0xFF4CAF50)
+                        accuracy >= 60 -> Color(0xFFFFA726)
+                        else -> Color(0xFFFF5252)
+                    },
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        when {
+            quizState.isLoading -> LoadingScreen("Loading question...")
+            quizState.error != null -> ErrorScreen(error = quizState.error!!) {
+                viewModel.loadNextQuestion()
+            }
+            quizState.currentQuestion != null -> {
+                QuestionCard(
+                    question = quizState.currentQuestion!!,
+                    selectedAnswerIndex = quizState.selectedAnswerIndex,
+                    showAnswer = quizState.showAnswer,
+                    showCorrectAnswer = quizState.showCorrectAnswer,
+                    onAnswerSelected = { index ->
+                        val qType = quizState.currentQuestion?.type
+                        if ((qType == com.aipoweredgita.app.data.QuestionType.MCQ || qType == com.aipoweredgita.app.data.QuestionType.COMPARISON) && !quizState.showAnswer) {
+                            viewModel.selectAnswer(index)
+                        }
+                    },
+                    onSubmitOpenEnded = { text ->
+                        if (!quizState.showAnswer) {
+                            viewModel.submitOpenEndedAnswer(text)
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (quizState.showAnswer) {
+                    val isCorrect = quizState.selectedAnswerIndex == quizState.currentQuestion?.correctAnswerIndex
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCorrect) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color(0xFFFF5252).copy(alpha = 0.2f)
+                        )
+                    ) {
+                        Text(
+                            text = if (isCorrect) "✓ Correct!" else "✗ Incorrect",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val isQuizComplete = quizState.isQuizComplete
+                    if (!isQuizComplete && !quizState.showCorrectAnswer) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { viewModel.revealAnswer() }, modifier = Modifier.weight(1f)) {
+                                Text("Reveal Answer")
+                            }
+                            Button(onClick = { viewModel.loadNextQuestion() }, modifier = Modifier.weight(1f)) {
+                                Text("Next Question")
+                            }
+                        }
+                    } else {
+                        if (!isQuizComplete) {
+                            Button(onClick = { viewModel.loadNextQuestion() }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Next Question")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        OutlinedButton(onClick = { viewModel.resetQuiz() }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Restart Quiz")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = { viewModel.exitQuiz(); onExitQuiz() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                            Text("Exit Quiz")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Per-question result popup with auto-advance
+        val showResultPopup = quizState.showAnswer && !quizState.isQuizComplete && quizState.currentQuestion != null
+        if (showResultPopup) {
+            val current = quizState.currentQuestion!!
+            val isCorrect = quizState.selectedAnswerIndex == current.correctAnswerIndex
+            val correctIdx = current.correctAnswerIndex
+            val correctText = if (correctIdx >= 0 && correctIdx < current.options.size) sanitizeText(current.options[correctIdx]) else null
+            AlertDialog(
+                onDismissRequest = { viewModel.loadNextQuestion() },
+                confirmButton = {
+                    Button(onClick = { viewModel.loadNextQuestion() }) { Text("Next Question") }
+                },
+                title = { Text(if (isCorrect) "\u2705 Correct" else "\u274C Incorrect") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.clickable { viewModel.loadNextQuestion() }) {
+                        if (!isCorrect && correctText != null) {
+                            Text(text = "Correct answer: $correctText", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        val explanation = sanitizeText(current.explanation ?: "")
+                        if (explanation.isNotBlank()) {
+                            Text(text = explanation, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            )
+            // Auto-advance after a short, click-speed-based delay
+            val nowMs = System.currentTimeMillis()
+            val delta = prevAnswerMs?.let { nowMs - it } ?: 600L
+            val autoDelayMs = kotlin.math.max(200L, kotlin.math.min(1200L, (delta * 6) / 10))
+            prevAnswerMs = nowMs
+            LaunchedEffect(current) {
+                kotlinx.coroutines.delay(autoDelayMs)
+                if (quizState.currentQuestion == current && quizState.showAnswer && !quizState.isQuizComplete) {
+                    viewModel.loadNextQuestion()
+                }
+            }
+        }
+
+        val showCompletionDialog = quizState.isQuizComplete && quizState.showAnswer
+        if (showCompletionDialog) {
+            AlertDialog(
+                onDismissRequest = { /* require explicit action */ },
+                confirmButton = {
+                    Button(onClick = { viewModel.exitQuiz(); onExitQuiz() }) { Text("Exit") }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { viewModel.resetQuiz() }) { Text("Restart") }
+                },
+                title = { Text("Quiz Complete") },
+                text = {
+                    val total = quizState.totalQuestions
+                    val score = quizState.score
+                    val percentage = if (total > 0) (score * 100) / total else 0
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "Score: $score / $total", style = MaterialTheme.typography.titleMedium)
+                        Text(text = "Accuracy: $percentage%", style = MaterialTheme.typography.bodyMedium)
+                        val performanceMessage = when {
+                            percentage >= 90 -> "🌟 Outstanding!"
+                            percentage >= 75 -> "👏 Excellent!"
+                            percentage >= 60 -> "👍 Good Job!"
+                            percentage >= 40 -> "💪 Keep Practicing!"
+                            else -> "🙌 Don't Give Up!"
+                        }
+                        Text(text = performanceMessage, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            )
+        }
+    }
+
+    // Auto-scroll behavior
+    // Scroll to top when a new question loads
+    LaunchedEffect(quizState.currentQuestion) {
+        scrollState.scrollTo(0)
+    }
+    // Scroll to bottom when answer is shown to reveal explanation/buttons
+    LaunchedEffect(quizState.showAnswer) {
+        if (quizState.showAnswer) {
+            kotlinx.coroutines.delay(100)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+}
+
+@Composable
+private fun CompletionSplashOverlay(score: Int, total: Int) {
+    val scale = remember { Animatable(0.8f) }
+    LaunchedEffect(Unit) {
+        scale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(min = 300.dp)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val percentage = if (total > 0) (score * 100) / total else 0
+                val performanceMessage = when {
+                    percentage >= 90 -> "🎉 Outstanding!"
+                    percentage >= 75 -> "🌟 Excellent!"
+                    percentage >= 60 -> "👍 Good Job!"
+                    percentage >= 40 -> "💪 Keep Practicing!"
+                    else -> "💫 Don't Give Up!"
+                }
+
+                Text(
+                    text = performanceMessage,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    fontSize = 24.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "$score",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 56.sp
+                )
+
+                Text(
+                    text = "out of $total",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "$percentage% Accuracy",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        percentage >= 80 -> Color(0xFF4CAF50)
+                        percentage >= 60 -> Color(0xFFFFA726)
+                        else -> Color(0xFFFF5252)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Redirecting to home...",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun QuestionCard(
+    question: com.aipoweredgita.app.data.QuizQuestion,
+    selectedAnswerIndex: Int?,
+    showAnswer: Boolean,
+    showCorrectAnswer: Boolean = false,
+    onAnswerSelected: (Int) -> Unit,
+    onSubmitOpenEnded: (String) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = sanitizeText(question.question),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            when (question.type) {
+                com.aipoweredgita.app.data.QuestionType.MCQ, com.aipoweredgita.app.data.QuestionType.COMPARISON -> {
+                    question.options.forEachIndexed { index, option ->
+                        AnswerOption(
+                            option = sanitizeText(option),
+                            index = index,
+                            isSelected = selectedAnswerIndex == index,
+                            isCorrect = index == question.correctAnswerIndex,
+                            showAnswer = showAnswer && showCorrectAnswer,
+                            onClick = { onAnswerSelected(index) }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+                com.aipoweredgita.app.data.QuestionType.ESSAY, com.aipoweredgita.app.data.QuestionType.APPLICATION -> {
+                    var textState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+                    OutlinedTextField(
+                        value = textState.value,
+                        onValueChange = { textState.value = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp),
+                        placeholder = { Text("Write your answer...") }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = {
+                        if (!showAnswer && textState.value.isNotBlank()) {
+                            onSubmitOpenEnded(sanitizeText(textState.value))
+                        }
+                    }, enabled = textState.value.isNotBlank()) {
+                        Text("Submit Answer")
+                    }
+                    if (showAnswer) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        val passText = if (showCorrectAnswer) "Good answer" else "Needs improvement"
+                        Text(
+                            text = passText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (showCorrectAnswer) Color(0xFF2E7D32) else Color(0xFFC62828)
+                        )
+                    }
+                    if (question.explanation != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val sanitizedExplanation = sanitizeText(question.explanation)
+                        Text(
+                            text = "Guidance: $sanitizedExplanation",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (showAnswer) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Explanation:",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                val explanation = sanitizeText(question.explanation ?: "No explanation provided.")
+                Text(
+                    text = explanation,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AnswerOption(
+    option: String,
+    index: Int,
+    isSelected: Boolean,
+    isCorrect: Boolean,
+    showAnswer: Boolean,
+    onClick: () -> Unit
+) {
+    val optionColors = remember {
+        listOf(
+            Color(0xFF6366F1),
+            Color(0xFFEC4899),
+            Color(0xFF10B981),
+            Color(0xFFF59E0B),
+            Color(0xFF8B5CF6),
+            Color(0xFF06B6D4)
+        )
+    }
+
+    val baseColor = remember(index) { optionColors[index % optionColors.size] }
+
+    val backgroundColor = when {
+        showAnswer && isCorrect -> Color(0xFF4CAF50).copy(alpha = 0.3f)
+        showAnswer && isSelected && !isCorrect -> Color(0xFFFF5252).copy(alpha = 0.3f)
+        isSelected -> baseColor.copy(alpha = 0.3f)
+        else -> baseColor.copy(alpha = 0.1f)
+    }
+
+    val borderColor = when {
+        showAnswer && isCorrect -> Color(0xFF4CAF50)
+        showAnswer && isSelected && !isCorrect -> Color(0xFFFF5252)
+        isSelected -> baseColor
+        else -> baseColor.copy(alpha = 0.3f)
+    }
+
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(showAnswer, isSelected) {
+        if (showAnswer && isSelected) {
+            scale.animateTo(1.1f)
+            scale.animateTo(1f)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor, RoundedCornerShape(8.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(8.dp))
+            .clickable(enabled = !showAnswer) { onClick() }
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${('A' + index)}. ",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = option,
+                    fontSize = 16.sp
+                )
+            }
+
+            AnimatedVisibility(visible = showAnswer, enter = scaleIn(), exit = scaleOut()) {
+                Text(
+                    text = when {
+                        isCorrect -> "✅"
+                        isSelected && !isCorrect -> "❌"
+                        else -> ""
+                    },
+                    fontSize = 24.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(error: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Oops!",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) { Text("Retry") }
+    }
+}

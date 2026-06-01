@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.R
+<<<<<<< HEAD
 import com.aipoweredgita.app.ui.components.AmbientOrbs
 import com.aipoweredgita.app.ui.components.GlassCard
 import androidx.compose.ui.graphics.graphicsLayer
@@ -38,6 +39,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+=======
+import com.aipoweredgita.app.ui.components.GradientActionCard
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Shuffle
@@ -101,6 +105,10 @@ fun HomeScreen(
         }
     }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     // Define all mode items
     val modeItems = listOf(
         ModeItem(
@@ -145,6 +153,10 @@ fun HomeScreen(
             gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
             onClick = onNavigateToProfile
         ),
+<<<<<<< HEAD
+=======
+
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ModeItem(
             title = "Random Sloka",
             description = "Get inspired by a random verse",
@@ -154,6 +166,7 @@ fun HomeScreen(
         )
     )
 
+<<<<<<< HEAD
     val isDark = isSystemInDarkTheme()
     val appBg = MaterialTheme.colorScheme.background
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
@@ -236,6 +249,75 @@ fun HomeScreen(
                             onClick = item.onClick
                         )
                     }
+=======
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Header
+        Column(
+            modifier = Modifier.padding(vertical = if (isTablet && isLandscape) 16.dp else 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Bhagavad Gita",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = "Choose Your Learning Mode",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        
+        // Yoga Progression Bar - always show with default if null
+        YogaProgressionBar(
+            progression = progression ?: com.aipoweredgita.app.database.YogaProgression(),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Adaptive grid layout based on device and orientation
+        if (isTablet && columns > 1) {
+            // Tablet: Use LazyVerticalGrid for better performance
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                horizontalArrangement = Arrangement.spacedBy(screenConfig.itemSpacing.dp),
+                verticalArrangement = Arrangement.spacedBy(screenConfig.itemSpacing.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(modeItems) { item ->
+                    ModeCard(
+                        title = item.title,
+                        description = item.description,
+                        icon = item.icon,
+                        gradient = item.gradient,
+                        onClick = item.onClick
+                    )
+                }
+            }
+        } else {
+            // Phone: Use scrollable Column
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(screenConfig.itemSpacing.dp)
+            ) {
+                modeItems.forEach { item ->
+                    ModeCard(
+                        title = item.title,
+                        description = item.description,
+                        icon = item.icon,
+                        gradient = item.gradient,
+                        onClick = item.onClick
+                    )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
             }
         }
@@ -252,6 +334,7 @@ fun ModeCard(
     screenConfigViewModel: ScreenConfigViewModel = viewModel()
 ) {
     val screenConfig by screenConfigViewModel.screenConfig.collectAsState()
+<<<<<<< HEAD
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -340,4 +423,29 @@ fun ModeCard(
             )
         }
     }
+=======
+
+    GradientActionCard(
+        title = title,
+        description = description,
+        icon = icon,
+        gradient = gradient,
+        onClick = {
+            try {
+                onClick()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(screenConfig.cardHeight.dp),
+        cornerRadius = 16.dp,
+        iconSize = 48.dp,
+        contentPadding = 20.dp,
+        elevation = 4.dp,
+        titleFontSizeSp = 20,
+        descriptionFontSizeSp = 14
+    )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 }

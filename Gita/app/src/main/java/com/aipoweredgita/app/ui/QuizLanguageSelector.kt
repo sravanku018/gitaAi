@@ -1,6 +1,9 @@
 package com.aipoweredgita.app.ui
 
+<<<<<<< HEAD
 import androidx.compose.foundation.background
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,12 +12,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+<<<<<<< HEAD
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.ui.components.GlassCard
 import com.aipoweredgita.app.ui.theme.GoldSpark
+=======
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 @Composable
 fun QuizLanguageDialog(
@@ -27,8 +36,12 @@ fun QuizLanguageDialog(
             Text(
                 "Select Quiz Language",
                 fontWeight = FontWeight.Bold,
+<<<<<<< HEAD
                 fontSize = 20.sp,
                 color = GoldSpark
+=======
+                fontSize = 20.sp
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         },
         text = {
@@ -38,18 +51,26 @@ fun QuizLanguageDialog(
                 Text(
                     "Choose the language for quiz questions and options:",
                     fontSize = 14.sp,
+<<<<<<< HEAD
                     color = Color.White.copy(alpha = 0.7f)
+=======
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // English Option
+<<<<<<< HEAD
                 LanguageOptionCard(
                     flag = "🇺🇸",
                     language = "English",
                     description = "Quiz in English",
                     onClick = { onLanguageSelected("en") }
                 )
+=======
+
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
                 // Telugu Option
                 LanguageOptionCard(
@@ -63,11 +84,19 @@ fun QuizLanguageDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onCancel) {
+<<<<<<< HEAD
                 Text("Cancel", color = Color(0xFFE57373))
             }
         },
         containerColor = Color(0xFF140F0A),
         shape = MaterialTheme.shapes.large
+=======
+                Text("Cancel", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
 }
 
@@ -78,6 +107,7 @@ fun LanguageOptionCard(
     description: String,
     onClick: () -> Unit
 ) {
+<<<<<<< HEAD
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -125,6 +155,53 @@ fun LanguageOptionCard(
                     modifier = Modifier.size(20.dp)
                 )
             }
+=======
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = flag,
+                fontSize = 28.sp
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = language,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = description,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Select",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 }

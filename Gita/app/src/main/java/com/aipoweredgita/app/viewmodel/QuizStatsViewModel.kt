@@ -21,8 +21,11 @@ data class QuizSizeStats(
 
 class QuizStatsViewModel(application: Application) : AndroidViewModel(application) {
     private val quizAttemptDao = GitaDatabase.getDatabase(application).quizAttemptDao()
+<<<<<<< HEAD
     private val userStatsDao = GitaDatabase.getDatabase(application).userStatsDao()
     private val readVerseDao = GitaDatabase.getDatabase(application).readVerseDao()
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     private val _attempts = MutableStateFlow<List<QuizAttempt>>(emptyList())
     val attempts: StateFlow<List<QuizAttempt>> = _attempts.asStateFlow()
@@ -46,6 +49,7 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
     private val _selectedQuizSize = MutableStateFlow<Int?>(null)
     val selectedQuizSize: StateFlow<Int?> = _selectedQuizSize.asStateFlow()
 
+<<<<<<< HEAD
     private val _userStats = MutableStateFlow<com.aipoweredgita.app.database.UserStats?>(null)
     val userStats: StateFlow<com.aipoweredgita.app.database.UserStats?> = _userStats.asStateFlow()
 
@@ -88,6 +92,11 @@ class QuizStatsViewModel(application: Application) : AndroidViewModel(applicatio
                 _jnanaYogaCount.value = count
             }
         }
+=======
+    init {
+        loadStats()
+        loadGroupedStats()
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     fun selectQuizSize(size: Int?) {

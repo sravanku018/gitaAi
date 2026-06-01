@@ -15,6 +15,7 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
+<<<<<<< HEAD
         versionCode = 6
         versionName = "1.8.0"
 
@@ -30,6 +31,13 @@ android {
 
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
+=======
+        versionCode = 4
+        versionName = "1.6"
+
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     buildTypes {
@@ -158,10 +166,13 @@ dependencies {
     // Compose LiveData runtime for observeAsState on LiveData
     implementation("androidx.compose.runtime:runtime-livedata:1.7.5")
 
+<<<<<<< HEAD
     // Google ML Kit Translation for On-Device local translation
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
+=======
+>>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     // Fix for InvalidFragmentVersionForActivityResult lint error
     implementation("androidx.fragment:fragment-ktx:1.8.5")
 
