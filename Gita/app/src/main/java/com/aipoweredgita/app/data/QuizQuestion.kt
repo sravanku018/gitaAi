@@ -34,5 +34,7 @@ data class QuizState(
     val difficultyLevel: Int = 5,
     val questionTimeLeftSeconds: Int = 30,
     val isTimerRunning: Boolean = false,
-    val language: String = "en"
+    val language: String = "en",
+    val coinsEarned: Int = 0,
+    val segmentCorrectAnswers: Map<String, Int> = emptyMap()
 )

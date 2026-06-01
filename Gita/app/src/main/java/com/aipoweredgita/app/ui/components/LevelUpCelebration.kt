@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.ui.ConfettiBurst
+import com.aipoweredgita.app.ui.theme.GoldSpark
 
 @Composable
 fun LevelUpCelebration(
@@ -31,7 +32,7 @@ fun LevelUpCelebration(
     val levelColor = when (newLevel) {
         1 -> Color(0xFFE91E63) // Pink for Bhakti
         2 -> Color(0xFF2196F3) // Blue for Jnana
-        3 -> Color(0xFFFFD700) // Gold for Moksha
+        3 -> GoldSpark // Gold for Moksha
         else -> Color(0xFFFF9800)
     }
     
@@ -143,3 +144,4 @@ fun LevelUpCelebration(
         }
     }
 }
+

@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -99,13 +100,25 @@ fun AmbientOrbs(modifier: Modifier = Modifier) {
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 24.dp,
+    cornerRadius: Dp = 32.dp,
     tint: Color = Color.White.copy(alpha = 0.055f),
     border: Color = Color.White.copy(alpha = 0.13f),
+    elevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val shadowModifier = if (elevation > 0.dp) {
+        Modifier.shadow(
+            elevation = elevation,
+            shape = RoundedCornerShape(cornerRadius),
+            clip = false,
+            ambientColor = Color.Black.copy(alpha = 0.5f),
+            spotColor = Color.Black.copy(alpha = 0.5f)
+        )
+    } else Modifier
+
     Box(
         modifier = modifier
+            .then(shadowModifier)
             .clip(RoundedCornerShape(cornerRadius))
             .background(tint)
             .border(1.dp, border, RoundedCornerShape(cornerRadius))

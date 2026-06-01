@@ -14,8 +14,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SpacedRepetitionItem::class, LearningStyle::class, YogaProgression::class, RandomVerseHistory::class,
         VoiceChatMessage::class, TranslationCache::class
     ],
-    version = 23,
-    exportSchema = false
+    version = 32,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class GitaDatabase : RoomDatabase() {
@@ -454,6 +454,73 @@ abstract class GitaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE user_stats ADD COLUMN krishnaCoins INTEGER NOT NULL DEFAULT 50")
+            }
+        }
+
+        private val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE daily_activity ADD COLUMN coinsEarned INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE quiz_attempts ADD COLUMN coinsEarned INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE user_stats ADD COLUMN segmentCoins TEXT NOT NULL DEFAULT '{}'")
+            }
+        }
+
+        private val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // No-op migration to resolve version 28 bump
+            }
+        }
+
+        private val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE user_stats ADD COLUMN daysActive INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("""
+                    UPDATE user_stats 
+                    SET daysActive = COALESCE(
+                        (SELECT COUNT(*) FROM daily_activity), 
+                        1
+                    )
+                    WHERE id = 1
+                """)
+                database.execSQL("UPDATE user_stats SET daysActive = 1 WHERE id = 1 AND daysActive = 0")
+            }
+        }
+
+        private val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE user_stats ADD COLUMN userId TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Local coin columns removed from entities — extra DB columns are ignored by Room
+            }
+        }
+
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add missing performance-critical indices
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_question_performance_questionId ON question_performance(questionId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_patterns_lastUpdated ON learning_patterns(lastUpdated)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_voice_chat_messages_timestamp ON voice_chat_messages(timestamp)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_bookmarks_bookmarkType ON bookmarks(bookmarkType)")
+            }
+        }
+
         fun getDatabase(context: Context): GitaDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -461,8 +528,11 @@ abstract class GitaDatabase : RoomDatabase() {
                     GitaDatabase::class.java,
                     "gita_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
-                    .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32)
+                // Safety net: if a migration path is missing, fall back to destructive
+                // on downgrade only (not missing upgrades). Prevents crash on rollback.
+                .fallbackToDestructiveMigrationOnDowngrade()
+
                     .build()
                 INSTANCE = instance
                 instance

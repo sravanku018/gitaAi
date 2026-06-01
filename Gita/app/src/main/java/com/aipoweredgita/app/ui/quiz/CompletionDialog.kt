@@ -15,12 +15,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.aipoweredgita.app.R
+import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.*
 
 @Composable
 fun CompletionDialog(
     score: Int,
     total: Int,
+    coins: Int = 0,
     onExit: () -> Unit,
     onRestart: () -> Unit
 ) {
@@ -36,7 +38,7 @@ fun CompletionDialog(
     Dialog(onDismissRequest = { }) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.3f))
         ) {
@@ -95,13 +97,36 @@ fun CompletionDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
+                if (coins > 0) {
+                    Surface(
+                        color = GoldSpark.copy(alpha = 0.15f),
+                        shape = MaterialTheme.shapes.large,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark.copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text("🪙", fontSize = 20.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Earned $coins Krishna Coins!",
+                                fontWeight = FontWeight.Bold,
+                                color = GoldSpark,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = onExit,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text(stringResource(id = R.string.quiz_exit), fontWeight = FontWeight.Bold)
                 }

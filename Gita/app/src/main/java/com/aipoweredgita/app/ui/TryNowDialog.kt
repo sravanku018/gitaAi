@@ -154,7 +154,7 @@ private fun TryNowDialogContent(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     color = if (isOnWiFi) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Row(
@@ -191,7 +191,7 @@ private fun TryNowDialogContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .clip(MaterialTheme.shapes.extraSmall),
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -223,7 +223,7 @@ private fun TryNowDialogContent(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = MaterialTheme.shapes.small
                             ) {
                                 Text(
                                     "✓ Downloading in background. You can minimize the app and continue using other features.",
@@ -255,7 +255,7 @@ private fun TryNowDialogContent(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = MaterialTheme.shapes.small
                             ) {
                                 Text(
                                     "You're on mobile data. Download will continue in background even if you minimize the app.",
@@ -299,7 +299,7 @@ private fun TryNowDialogContent(
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp)
+        shape = MaterialTheme.shapes.large
     )
 }
 
@@ -339,7 +339,7 @@ private fun MobileDataConfirmationDialogContent(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (cellularGen != null) {
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = MaterialTheme.shapes.small) {
                         Text(
                             "Network: ${if (cellularGen == com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
                             modifier = Modifier.padding(12.dp),
@@ -369,7 +369,7 @@ private fun MobileDataConfirmationDialogContent(
             TextButton(onClick = onCancel) { Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp)
+        shape = MaterialTheme.shapes.large
     )
 }
 

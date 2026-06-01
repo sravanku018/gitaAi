@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -32,6 +34,10 @@ import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.ui.components.GlassCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.aipoweredgita.app.ui.theme.GoldSpark
+import androidx.compose.ui.graphics.luminance
+import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.ui.LocalUiConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,35 +68,51 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
         label = "card_flip"
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (topic.isBlank()) "Flashcards" else "Flashcards: $topic") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
+    val isDark = isSystemInDarkTheme()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val gold = if (isDark) GoldSpark else Saffron
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(appBg)
+    ) {
+        if (isDark) {
+            com.aipoweredgita.app.ui.components.AmbientOrbs(modifier = Modifier.fillMaxSize())
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
+
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(if (topic.isBlank()) "Flashcards" else "Flashcards: $topic", color = textPrimary) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = gold
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = textPrimary,
+                        navigationIconContentColor = textPrimary
                     )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
             if (cards.isEmpty()) {
                 // Empty state
                 Column(
@@ -120,9 +142,10 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                         .width(340.dp)
                         .wrapContentHeight()
                         .padding(24.dp),
-                    cornerRadius = 24.dp,
-                    tint = Color.White.copy(alpha = 0.08f),
-                    border = Color.White.copy(alpha = 0.2f)
+                    cornerRadius = 32.dp,
+                    elevation = 8.dp,
+                    tint = cardBg,
+                    border = cardBorder
                 ) {
                     Column(
                         modifier = Modifier
@@ -136,13 +159,14 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                             text = "Deck Completed!",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = gold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "You got $correctCount correct out of ${cards.size}!",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
+                            color = textPrimary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -151,7 +175,9 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                         ) {
                             OutlinedButton(
                                 onClick = onBack,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = textPrimary),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, cardBorder)
                             ) {
                                 Text("Back")
                             }
@@ -162,7 +188,8 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                     deckCompleted = false
                                     correctCount = 0
                                 },
-                                modifier = Modifier.weight(1.2f)
+                                modifier = Modifier.weight(1.2f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Saffron)
                             ) {
                                 Text("Study Again")
                             }
@@ -189,7 +216,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                 text = "Card ${currentIndex + 1} of ${cards.size}",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = textPrimary
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             val progressValue = (currentIndex.toFloat() + 1) / cards.size
@@ -198,7 +225,9 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp))
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = gold,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
 
@@ -219,18 +248,19 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                         rotationY = rotation
                                         cameraDistance = 8f * density
                                     }
+                                    .shadow(8.dp, MaterialTheme.shapes.extraLarge)
                                     .border(
                                         width = 1.5.dp,
                                         brush = Brush.horizontalGradient(
                                             colors = listOf(
-                                                Color(0xFFE08A1E), // Gold
-                                                Color(0xFFC2410C)  // Terracotta
+                                                gold,
+                                                Saffron
                                             )
                                         ),
-                                        shape = RoundedCornerShape(24.dp)
+                                        shape = MaterialTheme.shapes.extraLarge
                                     )
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(MaterialTheme.colorScheme.surface)
+                                    .clip(MaterialTheme.shapes.extraLarge)
+                                    .background(cardBg)
                                     .clickable { isFlipped = !isFlipped }
                             ) {
                                 if (rotation <= 90f) {
@@ -246,7 +276,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                             text = "QUESTION",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFC2410C),
+                                            color = if (isDark) GoldSpark else Color(0xFFC2410C),
                                             letterSpacing = 1.5.sp
                                         )
                                         Spacer(modifier = Modifier.height(16.dp))
@@ -256,6 +286,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                                 fontFamily = FontFamily.Serif
                                             ),
                                             fontWeight = FontWeight.Medium,
+                                            color = textPrimary,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 28.sp
                                         )
@@ -263,7 +294,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                         Text(
                                             text = "Tap to reveal translation",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            color = textSecondary
                                         )
                                     }
                                 } else {
@@ -284,7 +315,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                                 text = "TRANSLATION",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF2D5016),
+                                                color = if (isDark) Color(0xFF81C784) else Color(0xFF2D5016),
                                                 letterSpacing = 1.5.sp
                                             )
                                             Spacer(modifier = Modifier.height(12.dp))
@@ -296,6 +327,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                                 Text(
                                                     text = card.backText,
                                                     style = MaterialTheme.typography.bodyLarge,
+                                                    color = textPrimary,
                                                     textAlign = TextAlign.Center,
                                                     lineHeight = 22.sp
                                                 )
@@ -306,14 +338,14 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                                     text = "Bhagavad Gita ${card.chapterNo}.${card.verseNo}",
                                                     style = MaterialTheme.typography.labelMedium,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFE08A1E)
+                                                    color = gold
                                                 )
                                             }
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Text(
                                                 text = "Tap to flip back",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                color = textSecondary
                                             )
                                         }
                                     }
@@ -362,7 +394,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(52.dp),
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = MaterialTheme.shapes.medium
                                     ) {
                                         Text("Need Practice 🔄", fontWeight = FontWeight.Bold)
                                     }
@@ -393,7 +425,7 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(52.dp),
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = MaterialTheme.shapes.medium
                                     ) {
                                         Text("Got It! 🎯", fontWeight = FontWeight.Bold)
                                     }
@@ -405,4 +437,5 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
             }
         }
     }
+}
 }

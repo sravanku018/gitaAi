@@ -66,6 +66,32 @@ private fun MandalaCanvas(
     auraAlpha: Float,
     modifier: Modifier = Modifier
 ) {
+    val outerCos = remember { floatArrayOf(1f, 0.7071f, 0f, -0.7071f, -1f, -0.7071f, 0f, 0.7071f) }
+    val outerSin = remember { floatArrayOf(0f, 0.7071f, 1f, 0.7071f, 0f, -0.7071f, -1f, -0.7071f) }
+    val innerCos = remember {
+        FloatArray(8) { i ->
+            cos((i * 45f + 22.5f) * (Math.PI / 180f).toFloat())
+        }
+    }
+    val innerSin = remember {
+        FloatArray(8) { i ->
+            sin((i * 45f + 22.5f) * (Math.PI / 180f).toFloat())
+        }
+    }
+    val spokeCos = remember {
+        FloatArray(12) { i ->
+            cos((i * 30f) * (Math.PI / 180f).toFloat())
+        }
+    }
+    val spokeSin = remember {
+        FloatArray(12) { i ->
+            sin((i * 30f) * (Math.PI / 180f).toFloat())
+        }
+    }
+    val radialGlowBrush = remember { Brush.radialGradient(listOf(SaffronAura, Color.Transparent)) }
+    val haloScales = remember { floatArrayOf(0.28f, 0.50f, 0.72f, 0.95f) }
+    val strokeCached = remember { Stroke(width = 0.8f) }
+
     Canvas(modifier = modifier) {
         val cx = size.center.x
         val cy = size.center.y
@@ -73,24 +99,17 @@ private fun MandalaCanvas(
 
         // Outer radial aura glow
         drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    SaffronAura.copy(alpha = auraAlpha * 0.35f),
-                    Color.Transparent
-                ),
-                center = Offset(cx, cy),
-                radius = r * 1.6f
-            ),
+            brush = radialGlowBrush,
             radius = r * 1.6f,
-            center = Offset(cx, cy)
+            center = Offset(cx, cy),
+            alpha = auraAlpha * 0.35f
         )
 
         // Rotating outer petal ring (8 petals)
         rotate(rotationDeg, pivot = Offset(cx, cy)) {
-            repeat(8) { i ->
-                val angle  = (i * 45f) * (PI / 180f).toFloat()
-                val px     = cx + r * cos(angle)
-                val py     = cy + r * sin(angle)
+            for (i in 0 until 8) {
+                val px     = cx + r * outerCos[i]
+                val py     = cy + r * outerSin[i]
                 drawCircle(
                     color  = GoldFlame.copy(alpha = 0.18f),
                     radius = r * 0.14f,
@@ -101,10 +120,9 @@ private fun MandalaCanvas(
 
         // Rotating inner petal ring (8 petals, counter)
         rotate(-rotationDeg * 0.6f, pivot = Offset(cx, cy)) {
-            repeat(8) { i ->
-                val angle  = (i * 45f + 22.5f) * (PI / 180f).toFloat()
-                val px     = cx + r * 0.62f * cos(angle)
-                val py     = cy + r * 0.62f * sin(angle)
+            for (i in 0 until 8) {
+                val px     = cx + r * 0.62f * innerCos[i]
+                val py     = cy + r * 0.62f * innerSin[i]
                 drawCircle(
                     color  = GoldDusk.copy(alpha = 0.22f),
                     radius = r * 0.09f,
@@ -114,23 +132,22 @@ private fun MandalaCanvas(
         }
 
         // Concentric circle halos
-        listOf(0.28f, 0.50f, 0.72f, 0.95f).forEach { scale ->
+        for (i in 0 until 4) {
             drawCircle(
                 color  = GoldFlame.copy(alpha = 0.10f),
-                radius = r * scale,
+                radius = r * haloScales[i],
                 center = Offset(cx, cy),
-                style  = Stroke(width = 0.8f)
+                style  = strokeCached
             )
         }
 
         // 12-spoke radial lines
         rotate(rotationDeg * 0.3f, pivot = Offset(cx, cy)) {
-            repeat(12) { i ->
-                val angle = (i * 30f) * (PI / 180f).toFloat()
+            for (i in 0 until 12) {
                 drawLine(
                     color       = GoldAsh.copy(alpha = 0.15f),
-                    start       = Offset(cx + r * 0.3f * cos(angle), cy + r * 0.3f * sin(angle)),
-                    end         = Offset(cx + r * 0.95f * cos(angle), cy + r * 0.95f * sin(angle)),
+                    start       = Offset(cx + r * 0.3f * spokeCos[i], cy + r * 0.3f * spokeSin[i]),
+                    end         = Offset(cx + r * 0.95f * spokeCos[i], cy + r * 0.95f * spokeSin[i]),
                     strokeWidth = 0.6f
                 )
             }
@@ -143,12 +160,15 @@ private data class Particle(val x: Float, val y: Float, val radius: Float, val p
 
 @Composable
 private fun ParticleField(modifier: Modifier = Modifier) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
     val particles = remember {
         List(42) {
+            val radiusDp = (2..6).random() / 10f + 0.5f
+            val radiusPx = with(density) { radiusDp.dp.toPx() }
             Particle(
                 x      = (0..1000).random() / 1000f,
                 y      = (0..1000).random() / 1000f,
-                radius = (2..6).random() / 10f + 0.5f,
+                radius = radiusPx,
                 phase  = (0..628).random() / 100f
             )
         }
@@ -169,7 +189,7 @@ private fun ParticleField(modifier: Modifier = Modifier) {
             val alpha = (sin(tick + p.phase) * 0.3f + 0.5f).coerceIn(0f, 1f)
             drawCircle(
                 color  = GoldGlow.copy(alpha = alpha),
-                radius = p.radius.dp.toPx(),
+                radius = p.radius,
                 center = Offset(size.width * p.x, size.height * p.y)
             )
         }
@@ -245,6 +265,23 @@ fun SplashScreen(
     var startAnimation by remember { mutableStateOf(false) }
     val uiCfg = LocalUiConfig.current
     val quote  = remember { gitaQuotes.random() }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val versionText = remember(context) {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val name = packageInfo.versionName ?: "1.7.0"
+            val code = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+            "v$name · Build $code"
+        } catch (e: java.lang.Exception) {
+            "v1.7.0 · Build 5"
+        }
+    }
 
     // Entry animations
     val alpha by animateFloatAsState(
@@ -411,7 +448,7 @@ fun SplashScreen(
             ) {
                 OmBadge()
                 Text(
-                    text          = "v1.6.0 · Build 4",
+                    text          = versionText,
                     fontSize      = 10.sp,
                     color         = StarDust,
                     letterSpacing = 1.8.sp,
@@ -488,7 +525,7 @@ fun ExitScreen(
             modifier = Modifier
                 .padding(horizontal = 28.dp)
                 .scale(cardScale),
-            shape  = RoundedCornerShape(24.dp),
+            shape  = MaterialTheme.shapes.extraLarge,
             color  = NightInk.copy(alpha = 0.92f),
             border = androidx.compose.foundation.BorderStroke(
                 0.8.dp, GoldFlame.copy(alpha = 0.30f)
@@ -563,7 +600,7 @@ fun ExitScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp),
-                        shape  = RoundedCornerShape(14.dp),
+                        shape  = MaterialTheme.shapes.medium,
                         border = androidx.compose.foundation.BorderStroke(
                             0.8.dp, GoldFlame.copy(alpha = 0.50f)
                         ),
@@ -586,7 +623,7 @@ fun ExitScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp),
-                        shape  = RoundedCornerShape(14.dp),
+                        shape  = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = TilakRed,
                             contentColor   = GoldGlow

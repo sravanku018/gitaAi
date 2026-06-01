@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +21,10 @@ import com.aipoweredgita.app.R
 import com.aipoweredgita.app.database.FavoriteVerse
 import com.aipoweredgita.app.viewmodel.FavoritesViewModel
 import com.aipoweredgita.app.ui.LocalUiConfig
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import com.aipoweredgita.app.ui.theme.*
+import androidx.compose.foundation.background
 
 @Composable
 fun FavoritesScreen(
@@ -31,40 +36,57 @@ fun FavoritesScreen(
     var showClearDialog by remember { mutableStateOf(false) }
     val uiCfg = LocalUiConfig.current
 
-    Column(
+    val isDark = rememberThemeIsDark()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+    val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(if (uiCfg.isLandscape) 24.dp else 16.dp)
+            .background(appBg)
     ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Favorite Verses",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (state.favorites.isNotEmpty()) {
-                TextButton(onClick = { showClearDialog = true }) {
-                    Text("Clear All", color = MaterialTheme.colorScheme.error)
-                }
-            }
+        if (isDark) {
+            com.aipoweredgita.app.ui.components.AmbientOrbs(modifier = Modifier.fillMaxSize())
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (uiCfg.isLandscape) 24.dp else 16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Favorite Verses",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
 
-        // Favorite count
-        Text(
-            text = "${state.favoriteCount} verse${if (state.favoriteCount != 1) "s" else ""} saved",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                if (state.favorites.isNotEmpty()) {
+                    TextButton(onClick = { showClearDialog = true }) {
+                        Text("Clear All", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Favorite count
+            Text(
+                text = "${state.favoriteCount} verse${if (state.favoriteCount != 1) "s" else ""} saved",
+                style = MaterialTheme.typography.bodyMedium,
+                color = textSecondary
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
         // Message display
         state.message?.let { message ->
@@ -109,19 +131,19 @@ fun FavoritesScreen(
                             imageVector = androidx.compose.material.icons.Icons.Outlined.FavoriteBorder,
                             contentDescription = "No favorites icon",
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = textTertiary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "No Favorite Verses Yet",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = textSecondary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Add verses to favorites to see them here",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = textItalicHint,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -146,6 +168,7 @@ fun FavoritesScreen(
                 }
             }
         }
+    }
     }
 
     // Clear all confirmation dialog
@@ -183,6 +206,12 @@ fun FavoriteVerseCard(
     onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val gold = if (isDark) GoldSpark else Saffron
     var showDeleteDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
@@ -190,8 +219,10 @@ fun FavoriteVerseCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = { expanded = !expanded },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            containerColor = cardBg
+        ),
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(1.dp, cardBorder)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -207,13 +238,13 @@ fun FavoriteVerseCard(
                         text = "Chapter ${favorite.chapterNo} : Verse ${favorite.verseNo}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = gold
                     )
                     if (favorite.chapterName.isNotEmpty()) {
                         Text(
                             text = favorite.chapterName,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = textSecondary
                         )
                     }
                 }
@@ -234,12 +265,13 @@ fun FavoriteVerseCard(
                 text = favorite.verse.take(150) + if (favorite.verse.length > 150) "..." else "",
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (expanded) Int.MAX_VALUE else 2,
+                color = textPrimary,
                 textAlign = TextAlign.Justify
             )
 
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider()
+                HorizontalDivider(color = cardBorder)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Translation/Meaning
@@ -248,12 +280,13 @@ fun FavoriteVerseCard(
                         text = "Meaning",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = gold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = favorite.translation,
                         style = MaterialTheme.typography.bodyMedium,
+                        color = textPrimary,
                         textAlign = TextAlign.Justify
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -265,12 +298,13 @@ fun FavoriteVerseCard(
                         text = "Explanation",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = gold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = favorite.explanation,
                         style = MaterialTheme.typography.bodyMedium,
+                        color = textPrimary,
                         textAlign = TextAlign.Justify
                     )
                 }
@@ -280,7 +314,9 @@ fun FavoriteVerseCard(
                 // Go to verse button
                 OutlinedButton(
                     onClick = onClick,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = gold),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, gold.copy(alpha = 0.5f))
                 ) {
                     Text("View Full Verse")
                 }

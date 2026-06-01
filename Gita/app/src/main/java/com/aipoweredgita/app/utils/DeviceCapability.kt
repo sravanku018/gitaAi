@@ -9,12 +9,20 @@ object DeviceCapability {
         return DeviceTierDetector.detect(context)
     }
 
-    fun getOptimalMaxTokens(context: Context): Int {
-        val tier = getDeviceTier(context)
-        return when (tier) {
-            DeviceTier.FLAGSHIP -> 16384
-            DeviceTier.HIGH_MID -> 8192
-            else -> 4096
+    fun getOptimalMaxTokens(context: Context, modelName: String? = null): Int {
+        return when {
+            // Qwen3 0.6B — small model, limited KV cache
+            modelName?.contains("qwen", ignoreCase = true) == true -> 4096
+            // Gemma 4 2B — larger but still constrained on mobile
+            modelName?.contains("gemma", ignoreCase = true) == true -> 8192
+            else -> {
+                val tier = getDeviceTier(context)
+                when (tier) {
+                    DeviceTier.FLAGSHIP -> 16384
+                    DeviceTier.HIGH_MID -> 8192
+                    else -> 4096
+                }
+            }
         }
     }
 

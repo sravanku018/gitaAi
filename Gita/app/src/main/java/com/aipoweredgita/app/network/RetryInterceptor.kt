@@ -16,10 +16,10 @@ class RetryInterceptor : Interceptor {
     // Circuit breaker state
     private val circuitBreaker = CircuitBreaker()
 
-    // Configuration
-    private val maxRetries = 3
+    // Configuration — capped delays to avoid thread-pool starvation
+    private val maxRetries = 2
     private val initialDelayMs = 100L
-    private val maxDelayMs = 10000L
+    private val maxDelayMs = 2000L  // cap at 2s to avoid holding OkHttp threads
     private val backoffMultiplier = 2.0
 
     override fun intercept(chain: Interceptor.Chain): Response {

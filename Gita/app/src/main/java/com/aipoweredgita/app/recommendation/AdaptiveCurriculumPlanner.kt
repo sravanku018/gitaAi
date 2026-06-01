@@ -25,8 +25,8 @@ class AdaptiveCurriculumPlanner(private val context: Context) {
 
         val items = mutableListOf<CurriculumItem>()
 
-        // 1) Start with preferred yoga level or current lotus level
-        val lotus = com.aipoweredgita.app.ui.components.LotusLevelManager.yogaLevelInfo(stats)
+        // 1) Start with preferred yoga level or current yoga level
+        val lotus = com.aipoweredgita.app.ui.components.YogaLevelManager.yogaLevelInfo(stats)
         val focusLevel = if ((prefs?.preferredYogaLevel ?: 0) > 0) (prefs?.preferredYogaLevel ?: lotus.level) else lotus.level
         items.add(CurriculumItem(type = "yogalevel", id = focusLevel.toString(), title = "Yoga Level $focusLevel", suggestedQuestions = prefs?.questionsPerSession ?: 10))
 

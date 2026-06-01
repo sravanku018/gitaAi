@@ -15,12 +15,14 @@ class QuizRepositoryImpl(
     override suspend fun saveQuizAttemptWithStats(
         attempt: QuizAttempt,
         score: Int,
-        totalQuestions: Int
-    ): Pair<Boolean, Int?> {
+        totalQuestions: Int,
+        segmentCorrectMap: Map<String, Int>
+    ): Triple<Boolean, Int?, Int> {
         return database.withTransaction {
-            quizAttemptDao.insertAttempt(attempt)
-            statsRepository.trackQuizCompletion(score, totalQuestions)
-            yogaProgressionRepository.updateFromQuiz(score, totalQuestions)
+            val coinsEarned = statsRepository.trackQuizCompletion(score, totalQuestions, segmentCorrectMap)
+            quizAttemptDao.insertAttempt(attempt.copy(coinsEarned = coinsEarned))
+            val (didLevelUp, newLevel) = yogaProgressionRepository.updateFromQuiz(score, totalQuestions)
+            Triple(didLevelUp, newLevel, coinsEarned)
         }
     }
 

@@ -13,7 +13,7 @@ import com.aipoweredgita.app.ui.DashboardScreen
 import com.aipoweredgita.app.ui.FavoritesScreen
 import com.aipoweredgita.app.ui.OfflineDownloadScreen
 import com.aipoweredgita.app.ui.ProfileScreen
-import com.aipoweredgita.app.ui.QuizStatsScreen
+
 import com.aipoweredgita.app.ui.ActivityHistoryScreen
 import com.aipoweredgita.app.ui.WidgetSettingsScreen
 import com.aipoweredgita.app.ui.BadgesScreen
@@ -45,6 +45,7 @@ sealed class Screen(val route: String) {
     object WidgetSettings : Screen("widget_settings")
     object Settings : Screen("settings")
     object Badges : Screen("badges")
+    object CoinHistory : Screen("coin_history")
     object Awakening : Screen("awakening")
     object DailyActivity : Screen("daily_activity")
     object Recommendations : Screen("recommendations")
@@ -91,7 +92,9 @@ fun NavGraph(
                 onNavigateToQuizMode = { navController.navigate(Screen.QuizSection.route) },
                 onNavigateToVoiceStudio = { navController.navigate(Screen.VoiceStudio.route) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
-                onNavigateToRandomSloka = { navController.navigate("random_sloka") }
+                onNavigateToRandomSloka = { navController.navigate("random_sloka") },
+                onNavigateToAwakening = { navController.navigate(Screen.Awakening.route) },
+                onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) }
             )
         }
 
@@ -215,7 +218,7 @@ fun NavGraph(
                 onThemeToggle = onThemeToggle,
                 // Add badge navigation callback
                 onNavigateToBadges = { navController.navigate(Screen.Badges.route) },
-                onNavigateToYogaLevels = { navController.navigate(Screen.DailyActivity.route) },
+                onNavigateToYogaLevels = { navController.navigate(Screen.Awakening.route) },
                 viewModel = profileViewModel
             )
         }
@@ -230,6 +233,12 @@ fun NavGraph(
 
         composable(Screen.Badges.route) {
             BadgesScreen()
+        }
+
+        composable(Screen.CoinHistory.route) {
+            com.aipoweredgita.app.ui.CoinHistoryScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Awakening.route) {

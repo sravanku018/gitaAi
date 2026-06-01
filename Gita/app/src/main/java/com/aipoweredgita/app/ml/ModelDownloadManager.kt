@@ -417,11 +417,11 @@ class ModelDownloadManager(private val context: Context) {
         val expectedTarget = measuredSizes[fileName] ?: modelTarget.expectedBytes
 
         val file = File(modelsDir, fileName)
-        if (file.exists() && file.length() > 0 && file.length() >= expectedTarget * 0.9f) return true
+        if (file.exists() && file.length() > 0 && file.length() >= expectedTarget * 0.99f) return true
 
         return try {
             val afd = context.assets.openFd("ml_models/$fileName")
-            afd.length > 0 && afd.length >= expectedTarget * 0.9f
+            afd.length > 0 && afd.length >= expectedTarget * 0.99f
         } catch (_: Exception) {
             false
         }

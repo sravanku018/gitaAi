@@ -65,7 +65,7 @@ fun ProgressionHeroSection() {
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(
                 brush = Brush.horizontalGradient(
                     listOf(
@@ -449,7 +449,7 @@ fun TimelineStepItem(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = if(status == TimelineStatus.LOCKED) 0.dp else 2.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = MaterialTheme.shapes.medium
         ) {
              Row(
                 modifier = Modifier

@@ -8,8 +8,9 @@ interface QuizRepository {
     suspend fun saveQuizAttemptWithStats(
         attempt: QuizAttempt,
         score: Int,
-        totalQuestions: Int
-    ): Pair<Boolean, Int?>
+        totalQuestions: Int,
+        segmentCorrectMap: Map<String, Int> = emptyMap()
+    ): Triple<Boolean, Int?, Int>
 
     suspend fun getCachedTranslation(originalText: String, languageCode: String): TranslationCache?
 

@@ -92,7 +92,7 @@ fun PremiumDashboardCard(
                         .size(56.dp)
                         .background(
                             color = Color.White.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = MaterialTheme.shapes.large
                         ),
                     contentAlignment = Alignment.Center
                 ) {

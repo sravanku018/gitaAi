@@ -83,6 +83,7 @@ fun ModelDownloadScreen(
         modelsStatus
     }
 
+    val isDark = rememberThemeIsDark()
     val headerGradient = Brush.verticalGradient(
         colors = listOf(Saffron.copy(alpha = 0.15f), Color.Transparent)
     )
@@ -90,7 +91,7 @@ fun ModelDownloadScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -113,7 +114,7 @@ fun ModelDownloadScreen(
                 Text(
                     text = "Private on-device artificial intelligence. No data is sent online.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextDim,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
@@ -129,8 +130,8 @@ fun ModelDownloadScreen(
             // Storage Information Card
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Surface1),
-                shape = RoundedCornerShape(12.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -148,12 +149,12 @@ fun ModelDownloadScreen(
                             text = "Available Storage: $freeSpaceGb",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = TextWhite
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Requires 1.5x model size to safely unpack and install.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextDim
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -169,7 +170,7 @@ fun ModelDownloadScreen(
                         containerColor = CrimsonDeep.copy(alpha = 0.15f)
                     ),
                     border = BorderStroke(1.dp, CrimsonDeep),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -184,14 +185,14 @@ fun ModelDownloadScreen(
                         Text(
                             text = error,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextWhite,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = { viewModel.clearError() }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Dismiss",
-                                tint = TextWhite
+                                tint = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -211,11 +212,11 @@ fun ModelDownloadScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Surface1),
-                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = MaterialTheme.shapes.large,
                     border = BorderStroke(
                         width = 1.dp,
-                        color = if (isThisModelDownloading) Saffron else Surface2
+                        color = if (isThisModelDownloading) Saffron else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                     )
                 ) {
                     Column(
@@ -241,7 +242,7 @@ fun ModelDownloadScreen(
                                     Surface(
                                         color = if (isQwen) Saffron.copy(alpha = 0.2f) else DeepBrown,
                                         contentColor = if (isQwen) Saffron else GoldPale,
-                                        shape = RoundedCornerShape(4.dp)
+                                        shape = MaterialTheme.shapes.extraSmall
                                     ) {
                                         Text(
                                             text = if (isQwen) "Mandatory" else "Optional",
@@ -254,7 +255,7 @@ fun ModelDownloadScreen(
                                 Text(
                                     text = if (isQwen) "Core Offline Translation & Study" else "Voice Studio & Advanced Counsel",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextDim
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Text(
@@ -275,7 +276,7 @@ fun ModelDownloadScreen(
                                 "Provides fully natural, conversational audio chat with your spiritual guide, and contextual deep-dive queries."
                             },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextWhite.copy(alpha = 0.85f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -297,7 +298,7 @@ fun ModelDownloadScreen(
                                     Text(
                                         text = "${downloadProgress.currentBytes / (1024 * 1024)} MB / ${downloadProgress.totalBytes / (1024 * 1024)} MB",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextDim
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -306,9 +307,9 @@ fun ModelDownloadScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp)),
+                                        .clip(MaterialTheme.shapes.extraSmall),
                                     color = Saffron,
-                                    trackColor = Surface2
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Row(
@@ -351,14 +352,14 @@ fun ModelDownloadScreen(
                                         Icon(
                                             imageVector = Icons.Default.Info,
                                             contentDescription = "Not Downloaded",
-                                            tint = TextDim,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = "Not downloaded",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = TextDim
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
@@ -367,9 +368,9 @@ fun ModelDownloadScreen(
                                         enabled = !isDownloading,
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = if (isQwen) Saffron else DeepBrown,
-                                            contentColor = TextWhite
+                                            contentColor = Color.White
                                         ),
-                                        shape = RoundedCornerShape(8.dp)
+                                        shape = MaterialTheme.shapes.small
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.CloudDownload,
@@ -392,8 +393,8 @@ fun ModelDownloadScreen(
             if (isDownloading && !perFileProgress.none { it.percentage < 100 }) {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Surface1),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -409,12 +410,12 @@ fun ModelDownloadScreen(
                             progress = { overallProgress / 100f },
                             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                             color = GoldSpark,
-                            trackColor = Surface2
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         Text(
                             text = "Overall progress: $overallProgress%",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextDim
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

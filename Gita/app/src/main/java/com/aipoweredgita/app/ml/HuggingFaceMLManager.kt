@@ -10,6 +10,7 @@ import com.aipoweredgita.app.data.LearningSegment
 import com.aipoweredgita.app.data.SegmentWeightageSystem
 import com.aipoweredgita.app.ml.AppFeature
 import kotlin.random.Random
+import kotlin.jvm.Volatile
 
 class HuggingFaceMLManager(private val context: Context) {
 
@@ -17,6 +18,7 @@ class HuggingFaceMLManager(private val context: Context) {
     private val gson = Gson()
     private val engine by lazy { ModelInferenceEngine(context) }
     private val voiceChatEngine by lazy { LiteRtLmVoiceChatEngine(context) }
+    @Volatile
     private var isLlmReady = false
     private val translationManager = TranslationManager()
     
@@ -185,14 +187,18 @@ class HuggingFaceMLManager(private val context: Context) {
     suspend fun initializeModels() = withContext(Dispatchers.IO) {
         try {
             val ma = com.aipoweredgita.app.ml.ModelAvailability.getInstance(context)
-            val modelPath = ma.getResolvedModelPath(AppFeature.QUIZ)
+            val decision = ma.getRuntimeDecision(AppFeature.QUIZ)
+            val modelPath = decision.modelPath
 
             Log.d(TAG, "=== AI Model Initialization ===")
-            Log.d(TAG, "Selected model path: $modelPath")
+            Log.d(TAG, "Runtime decision: ${decision.displayName}, path=$modelPath")
             Log.d(TAG, "Device category: ${com.aipoweredgita.app.utils.DeviceUtils.getDeviceCategory(context)}")
             Log.d(TAG, "Device RAM: ${com.aipoweredgita.app.utils.DeviceUtils.getFormattedRAM(context)}")
 
-            if (modelPath != null) {
+            if (decision.useProxy) {
+                Log.d(TAG, "Cloud proxy selected for quiz path. Keeping on-device LLM disabled.")
+                isLlmReady = false
+            } else if (modelPath != null) {
                 Log.d(TAG, "Attempting to initialize LLM...")
                 val samplerParams = com.aipoweredgita.app.utils.DeviceCapability.getOptimalSampler(modelPath)
                 val sampler = com.google.ai.edge.litertlm.SamplerConfig(
@@ -728,12 +734,16 @@ class HuggingFaceMLManager(private val context: Context) {
         // Adjust question index based on difficulty (harder = different questions)
         val questionIndex = Math.abs((hash + desiredDifficulty * 1000) % questionTemplates.size)
         val optionIndex = Math.abs((hash / 7 + matchedTopics.size * 3 + desiredDifficulty) % optionSets.size)
-        val correctIndex = Math.abs((hash / 13) % 4)
 
         val selectedOptions = optionSets[optionIndex].toMutableList()
         val correctAnswer = selectedOptions[0]
         selectedOptions.removeAt(0)
-        selectedOptions.add(correctIndex, correctAnswer)
+        selectedOptions.shuffled().toMutableList().also { shuffled ->
+            shuffled.add(0, correctAnswer)
+            selectedOptions.clear()
+            selectedOptions.addAll(shuffled)
+        }
+        val correctIndex = 0  // correctAnswer is always at index 0 after add(0, answer)
 
         val difficultyLabel = when (desiredDifficulty) {
             1, 2 -> "Easy"

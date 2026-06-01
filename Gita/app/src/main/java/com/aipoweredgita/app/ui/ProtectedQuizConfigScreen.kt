@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -54,7 +56,7 @@ fun ProtectedQuizConfigScreen(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BgDark)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -102,7 +104,7 @@ fun SacredQuizConfigScreen(
 
     Box(
         modifier = modifier
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .drawBehind {
                 // Ambient saffron glow bottom-centre
                 drawCircle(
@@ -167,7 +169,7 @@ fun SacredQuizConfigScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .scale(btnScale)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(MaterialTheme.shapes.large)
                     .background(
                         Brush.horizontalGradient(listOf(GoldSpark, Saffron, GoldSpark))
                     )
@@ -320,14 +322,14 @@ private fun OrnamentalHeader(language: String = "tel") {
             text  = translateConfigText("Gita Quiz", language),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = TextWhite,
+            color = MaterialTheme.colorScheme.onBackground,
             letterSpacing = 1.sp
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text      = translateConfigText("Test your knowledge of the sacred scripture", language),
             fontSize  = 13.sp,
-            color     = TextWhite.copy(alpha = 0.4f),
+            color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             fontStyle = FontStyle.Italic,
             textAlign = TextAlign.Center
         )
@@ -349,7 +351,7 @@ private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit, language: S
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(MaterialTheme.shapes.extraLarge)
                     .background(
                         if (isActive)
                             Brush.linearGradient(listOf(Surface2, Surface2))
@@ -362,15 +364,16 @@ private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit, language: S
                             Brush.linearGradient(listOf(GoldSpark, Saffron))
                         else
                             Brush.linearGradient(listOf(GoldSpark.copy(0.2f), GoldSpark.copy(0.2f))),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.extraLarge
                     )
+                    .shadow(if (isActive) 6.dp else 0.dp, MaterialTheme.shapes.extraLarge)
                     .clickable { onSelect(count) }
                     .padding(vertical = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // Big number with animated color
-                    val numColor = if (isActive) GoldBright else TextWhite.copy(0.35f)
+                    val numColor = if (isActive) GoldBright else MaterialTheme.colorScheme.onSurface.copy(0.35f)
                     Text(
                         text       = "$count",
                         fontSize   = 42.sp,
@@ -382,7 +385,7 @@ private fun QuestionCountRow(selected: Int, onSelect: (Int) -> Unit, language: S
                     Text(
                         text     = translateConfigText(label, language),
                         fontSize = 11.sp,
-                        color    = if (isActive) GoldPale.copy(0.8f) else TextWhite.copy(0.3f),
+                        color    = if (isActive) GoldPale.copy(0.8f) else MaterialTheme.colorScheme.onSurface.copy(0.3f),
                         letterSpacing = 1.5.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -407,9 +410,10 @@ private fun LanguageBadgeCard(language: String = "tel") {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Surface1)
-            .border(0.5.dp, GoldSpark.copy(0.25f), RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(0.5.dp, GoldSpark.copy(0.25f), MaterialTheme.shapes.extraLarge)
+            .shadow(4.dp, MaterialTheme.shapes.extraLarge)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -418,7 +422,7 @@ private fun LanguageBadgeCard(language: String = "tel") {
             Text(
                 text      = translateConfigText("LANGUAGE", language),
                 fontSize  = 10.sp,
-                color     = TextWhite.copy(0.35f),
+                color     = MaterialTheme.colorScheme.onSurface.copy(0.45f),
                 letterSpacing = 1.8.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -427,15 +431,15 @@ private fun LanguageBadgeCard(language: String = "tel") {
                 text       = "తెలుగు  ·  Telugu",
                 fontSize   = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color      = TextWhite
+                color      = MaterialTheme.colorScheme.onSurface
             )
         }
         // Flag badge
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(Forest.copy(0.5f))
-                .border(0.5.dp, ForestMid.copy(0.5f), RoundedCornerShape(8.dp))
+                .border(0.5.dp, ForestMid.copy(0.5f), MaterialTheme.shapes.small)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Text("🇮🇳", fontSize = 22.sp)
@@ -449,16 +453,17 @@ private fun FeatureHighlightsCard(language: String = "tel") {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface1)
-            .border(0.5.dp, GoldSpark.copy(0.2f), RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(0.5.dp, GoldSpark.copy(0.2f), MaterialTheme.shapes.extraLarge)
+            .shadow(3.dp, MaterialTheme.shapes.extraLarge)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text      = translateConfigText("WHAT TO EXPECT", language),
             fontSize  = 10.sp,
-            color     = GoldSpark.copy(0.6f),
+            color     = GoldSpark.copy(0.8f),
             letterSpacing = 1.8.sp,
             fontWeight = FontWeight.Medium
         )
@@ -476,7 +481,7 @@ private fun FeatureHighlightsCard(language: String = "tel") {
                 Text(
                     text     = translateConfigText(text, language),
                     fontSize = 13.sp,
-                    color    = TextWhite.copy(0.65f)
+                    color    = MaterialTheme.colorScheme.onSurface.copy(0.85f)
                 )
             }
         }
@@ -501,7 +506,7 @@ private fun SectionLabel(text: String, language: String = "tel") {
             text       = translateConfigText(text, language).uppercase(),
             fontSize   = 11.sp,
             fontWeight = FontWeight.Bold,
-            color      = TextWhite.copy(0.55f),
+            color      = MaterialTheme.colorScheme.onBackground.copy(0.6f),
             letterSpacing = 1.5.sp
         )
     }
@@ -588,8 +593,8 @@ fun AIDownloadDialogContent(
 
     AlertDialog(
         onDismissRequest = onCancel,
-        containerColor   = Surface1,
-        shape            = RoundedCornerShape(24.dp),
+        containerColor   = MaterialTheme.colorScheme.surface,
+        shape            = MaterialTheme.shapes.extraLarge,
         title = {
             Column {
                 Text(
@@ -604,7 +609,7 @@ fun AIDownloadDialogContent(
                     text = translateConfigText("Download AI Engine", language),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 20.sp,
-                    color      = TextWhite,
+                    color      = MaterialTheme.colorScheme.onSurface,
                     textAlign  = TextAlign.Center,
                     modifier   = Modifier.fillMaxWidth()
                 )
@@ -618,9 +623,9 @@ fun AIDownloadDialogContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Forest.copy(0.3f))
-                            .border(0.5.dp, ForestMid.copy(0.5f), RoundedCornerShape(12.dp))
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(Forest.copy(0.2f))
+                            .border(0.5.dp, ForestMid.copy(0.5f), MaterialTheme.shapes.medium)
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -629,7 +634,7 @@ fun AIDownloadDialogContent(
                         Text(
                             text = translateConfigText("All models ready", language),
                             fontSize   = 14.sp,
-                            color      = Color(0xFFC0DD97),
+                            color      = if (rememberThemeIsDark()) Color(0xFFC0DD97) else Forest,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -637,22 +642,22 @@ fun AIDownloadDialogContent(
                     Text(
                         text = translateConfigText("Select a model to download:", language),
                         fontSize = 13.sp,
-                        color    = TextWhite.copy(0.55f)
+                        color    = MaterialTheme.colorScheme.onSurface.copy(0.6f)
                     )
                     missingModels.forEach { model ->
                         val isSelected = selectedModel == model.name
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (isSelected) Surface2 else BgDark)
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.background)
                                 .border(
                                     width = if (isSelected) 1.dp else 0.5.dp,
                                     brush = if (isSelected)
                                         Brush.linearGradient(listOf(GoldSpark, Saffron))
                                     else
                                         Brush.linearGradient(listOf(GoldSpark.copy(0.15f), GoldSpark.copy(0.15f))),
-                                    shape = RoundedCornerShape(14.dp)
+                                    shape = MaterialTheme.shapes.medium
                                 )
                                 .clickable { onModelSelect(model.name) }
                                 .padding(14.dp),
@@ -663,7 +668,7 @@ fun AIDownloadDialogContent(
                                 onClick  = { onModelSelect(model.name) },
                                 colors   = RadioButtonDefaults.colors(
                                     selectedColor   = GoldSpark,
-                                    unselectedColor = TextWhite.copy(0.25f)
+                                    unselectedColor = MaterialTheme.colorScheme.onSurface.copy(0.3f)
                                 )
                             )
                             Spacer(Modifier.width(10.dp))
@@ -672,13 +677,13 @@ fun AIDownloadDialogContent(
                                     model.name,
                                     fontWeight = FontWeight.Bold,
                                     fontSize   = 14.sp,
-                                    color      = if (isSelected) GoldPale else TextWhite
+                                    color      = if (isSelected) GoldSpark else MaterialTheme.colorScheme.onSurface
                                 )
                                 if (model.size.isNotEmpty()) {
                                     Text(
                                         "Size: ${model.size}",
                                         fontSize = 12.sp,
-                                        color    = TextWhite.copy(0.4f)
+                                        color    = MaterialTheme.colorScheme.onSurface.copy(0.5f)
                                     )
                                 }
                             }
@@ -690,16 +695,16 @@ fun AIDownloadDialogContent(
                 Column(
                      modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BgDark)
-                        .border(0.5.dp, GoldSpark.copy(0.2f), RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.background)
+                        .border(0.5.dp, GoldSpark.copy(0.2f), MaterialTheme.shapes.medium)
                         .padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         text = translateConfigText("UNLOCKS", language),
                         fontSize      = 10.sp,
-                        color         = GoldSpark.copy(0.6f),
+                        color         = GoldSpark.copy(0.8f),
                         letterSpacing = 2.sp,
                         fontWeight    = FontWeight.Bold
                     )
@@ -719,7 +724,7 @@ fun AIDownloadDialogContent(
                                     .clip(CircleShape)
                                     .background(ForestMid)
                             )
-                            Text(translateConfigText(feat, language), fontSize = 12.sp, color = TextWhite.copy(0.6f))
+                            Text(translateConfigText(feat, language), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.8f))
                         }
                     }
                 }
@@ -727,7 +732,7 @@ fun AIDownloadDialogContent(
                 Text(
                     text = translateConfigText("Download once, quiz anytime — fully offline.", language),
                     fontSize  = 12.sp,
-                    color     = GoldPale.copy(0.55f),
+                    color     = GoldPale.copy(0.75f),
                     fontStyle = FontStyle.Italic,
                     textAlign = TextAlign.Center,
                     modifier  = Modifier.fillMaxWidth()
@@ -737,7 +742,7 @@ fun AIDownloadDialogContent(
         confirmButton = {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(
                         if (selectedModel != null)
                             Brush.horizontalGradient(listOf(GoldSpark, Saffron))
@@ -759,7 +764,7 @@ fun AIDownloadDialogContent(
         },
         dismissButton = {
             TextButton(onClick = onCancel) {
-                Text(translateConfigText("Not now", language), color = TextWhite.copy(0.4f), fontSize = 13.sp)
+                Text(translateConfigText("Not now", language), color = MaterialTheme.colorScheme.onSurface.copy(0.5f), fontSize = 13.sp)
             }
         }
     )
@@ -835,7 +840,7 @@ fun QuizNotReadyScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
             .drawBehind {
                 // Draw pulsing rings from center
                 val cx = size.width / 2f
@@ -897,7 +902,7 @@ fun QuizNotReadyScreenContent(
                 text = translateConfigText("The Arena Prepares", language),
                 fontSize   = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color      = TextWhite,
+                color      = MaterialTheme.colorScheme.onBackground,
                 textAlign  = TextAlign.Center
             )
 
@@ -905,7 +910,7 @@ fun QuizNotReadyScreenContent(
             Text(
                 text = translateConfigText("AI models are downloading to power your quiz experience. This happens only once.", language),
                 fontSize   = 13.sp,
-                color      = TextWhite.copy(0.4f),
+                color      = MaterialTheme.colorScheme.onBackground.copy(0.6f),
                 textAlign  = TextAlign.Center,
                 lineHeight = 22.sp
             )
@@ -928,16 +933,16 @@ fun QuizNotReadyScreenContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Surface1)
-                    .border(0.5.dp, GoldSpark.copy(0.18f), RoundedCornerShape(16.dp))
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(0.5.dp, GoldSpark.copy(0.18f), MaterialTheme.shapes.large)
                     .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = translateConfigText("AWAITING YOU", language),
                     fontSize = 10.sp,
-                    color    = GoldSpark.copy(0.55f),
+                    color    = GoldSpark.copy(0.8f),
                     letterSpacing = 1.8.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -952,7 +957,7 @@ fun QuizNotReadyScreenContent(
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Text(icon, color = Saffron, fontSize = 11.sp)
-                        Text(translateConfigText(text, language), fontSize = 13.sp, color = TextWhite.copy(0.6f))
+                        Text(translateConfigText(text, language), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.8f))
                     }
                 }
             }
@@ -963,11 +968,11 @@ fun QuizNotReadyScreenContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .border(
                         width = 1.dp,
                         brush = Brush.horizontalGradient(listOf(GoldSpark.copy(0.4f), Saffron.copy(0.4f))),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     )
                     .background(Color.Transparent)
                     .clickable(onClick = onBackClick)
@@ -986,44 +991,12 @@ fun QuizNotReadyScreenContent(
             Text(
                 text = translateConfigText("Please wait until models finish downloading.", language),
                 fontSize  = 11.sp,
-                color     = TextWhite.copy(0.25f),
+                color     = MaterialTheme.colorScheme.onBackground.copy(0.4f),
                 textAlign = TextAlign.Center,
                 fontStyle = FontStyle.Italic
             )
         }
     }
-}
-
-// ── Download progress card ──────────────────────────────────────────────────
-@Composable
-private fun DownloadProgressCard(
-    viewModel: ModelDownloadViewModel,
-    context  : android.content.Context,
-    language : String = "tel"
-) {
-    val mgr = remember { ModelDownloadManager(context) }
-    var remMb by remember { mutableStateOf<Int?>(null) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            try {
-                remMb = (mgr.getRemainingDownloadSizeBytes() / (1024 * 1024)).toInt()
-            } catch (e: Exception) {
-                android.util.Log.w("QuizNotReadyScreen", "size error", e)
-            }
-            kotlinx.coroutines.delay(1000)
-        }
-    }
-
-    val perFileProgress by viewModel.fileProgressList.collectAsState()
-    val filesRemaining  by viewModel.filesRemaining.collectAsState()
-
-    DownloadProgressCardContent(
-        remainingMb = remMb,
-        perFileProgress = perFileProgress,
-        filesRemaining = filesRemaining,
-        language = language
-    )
 }
 
 @Composable
@@ -1036,9 +1009,9 @@ fun DownloadProgressCardContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface2)
-            .border(0.5.dp, GoldSpark.copy(0.25f), RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(0.5.dp, GoldSpark.copy(0.25f), MaterialTheme.shapes.large)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -1050,15 +1023,15 @@ fun DownloadProgressCardContent(
             Text(
                 text = translateConfigText("DOWNLOAD PROGRESS", language),
                 fontSize = 10.sp,
-                color    = GoldSpark.copy(0.55f),
+                color    = GoldSpark.copy(0.8f),
                 letterSpacing = 1.8.sp,
                 fontWeight = FontWeight.Bold
             )
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(MaterialTheme.shapes.large)
                     .background(Saffron.copy(0.15f))
-                    .border(0.5.dp, Saffron.copy(0.35f), RoundedCornerShape(20.dp))
+                    .border(0.5.dp, Saffron.copy(0.35f), MaterialTheme.shapes.large)
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 val mbLeftText = if (language == "tel") {
@@ -1069,7 +1042,7 @@ fun DownloadProgressCardContent(
                 Text(
                     text = mbLeftText,
                     fontSize   = 11.sp,
-                    color      = GoldPale.copy(0.8f),
+                    color      = if (rememberThemeIsDark()) GoldPale else Saffron,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -1084,7 +1057,7 @@ fun DownloadProgressCardContent(
             Text(
                 text = filesRemainingText,
                 fontSize = 13.sp,
-                color    = TextWhite.copy(0.5f)
+                color    = MaterialTheme.colorScheme.onSurface.copy(0.6f)
             )
             perFileProgress.forEachIndexed { idx, p ->
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -1096,12 +1069,12 @@ fun DownloadProgressCardContent(
                         Text(
                             text = fileLabel,
                             fontSize = 12.sp,
-                            color    = TextWhite.copy(0.45f)
+                            color    = MaterialTheme.colorScheme.onSurface.copy(0.55f)
                         )
                         Text(
                             text = "${p.percentage}%",
                             fontSize   = 12.sp,
-                            color      = GoldPale,
+                            color      = if (rememberThemeIsDark()) GoldPale else Saffron,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1111,7 +1084,7 @@ fun DownloadProgressCardContent(
                             .fillMaxWidth()
                             .height(5.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(BgDark)
+                            .background(MaterialTheme.colorScheme.surface)
                     ) {
                         Box(
                             modifier = Modifier
@@ -1138,7 +1111,7 @@ fun DownloadProgressCardContent(
                     .fillMaxWidth()
                     .height(5.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(BgDark)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 Box(
                     modifier = Modifier
@@ -1156,7 +1129,7 @@ fun DownloadProgressCardContent(
             Text(
                 text = translateConfigText("Preparing download…", language),
                 fontSize  = 12.sp,
-                color     = TextWhite.copy(0.3f),
+                color     = MaterialTheme.colorScheme.onSurface.copy(0.4f),
                 fontStyle = FontStyle.Italic
             )
         }
@@ -1190,7 +1163,7 @@ fun FeatureRow(text: String) {
                 .clip(CircleShape)
                 .background(GoldSpark)
         )
-        Text(text, fontSize = 13.sp, color = TextWhite.copy(0.6f))
+        Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.8f))
     }
 }
 

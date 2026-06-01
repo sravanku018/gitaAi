@@ -24,7 +24,7 @@ private val DarkColorScheme = darkColorScheme(
     background = BgDark,
     surface = Surface1,
     onPrimary = Color.Black,
-    onSecondary = Color.White,
+    onSecondary = Color.Black,
     onBackground = TextWhite,
     onSurface = TextWhite,
     surfaceVariant = Surface2,
@@ -40,7 +40,7 @@ private val LightColorScheme = lightColorScheme(
     background = Color(0xFFFFFBF0),
     surface = Color.White,
     onPrimary = Color.Black,
-    onSecondary = Color.White,
+    onSecondary = Color.Black,
     onBackground = Color(0xFF1C1B1F),
     onSurface = Color(0xFF1C1B1F),
     surfaceVariant = Color(0xFFF5F5F5),
@@ -91,6 +91,7 @@ fun GitaLearningTheme(
     MaterialTheme(
         colorScheme = scheme,
         typography = Typography,
+        shapes = GitaShapes,
         content = content
     )
 }

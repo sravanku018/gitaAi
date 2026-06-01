@@ -34,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import com.aipoweredgita.app.ui.components.CoinOverlay
 import com.aipoweredgita.app.navigation.NavGraph
 import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.ui.SplashScreen
@@ -91,6 +92,12 @@ class MainActivity : ComponentActivity() {
                 // Initialize database and ensure UserStats record exists
                 val database = GitaDatabase.getDatabase(applicationContext)
                 database.userStatsDao().initializeStatsIfNeeded()
+                
+                // User sync to cloud happens lazily via ensureUserSynced() on first coin API call
+                val stats = database.userStatsDao().getUserStatsOnce()
+                if (stats != null) {
+                    android.util.Log.d("MainActivity", "User ID: ${stats.userId}")
+                }
                 
                 // Check and apply yoga progression decay for inactivity
                 val yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
@@ -168,6 +175,9 @@ class MainActivity : ComponentActivity() {
                 accentName = accent
             ) {
                 UiConfigProvider {
+                // Global Coin Animation Overlay
+                CoinOverlay()
+
                 when {
                     showSplash -> {
                         SplashScreen(onSplashFinished = { showSplash = false })

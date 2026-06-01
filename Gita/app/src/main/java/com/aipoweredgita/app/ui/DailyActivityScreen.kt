@@ -1,4 +1,4 @@
-﻿package com.aipoweredgita.app.ui
+package com.aipoweredgita.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,7 +31,7 @@ import java.util.Locale
 
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.aipoweredgita.app.ui.components.LotusLevelManager
+import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.ui.components.LotusBadge
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,10 +66,10 @@ fun ActivityScreen(
 
     // Profile Stats
     val stats by viewModel.stats.collectAsState()
-    val yogaLevel = LotusLevelManager.levelFor(stats)
-    val yogaStep = LotusLevelManager.stepFor(stats)
-    val yogaInfo = LotusLevelManager.yogaLevelInfo(stats)
-    val breakdown = LotusLevelManager.compositeBreakdown(stats)
+    val yogaLevel = YogaLevelManager.levelFor(stats)
+    val yogaStep = YogaLevelManager.stepFor(stats)
+    val yogaInfo = YogaLevelManager.yogaLevelInfo(stats)
+    val breakdown = YogaLevelManager.compositeBreakdown(stats)
 
     LaunchedEffect(dates) {
         val map = mutableMapOf<String, DailyActivity?>()
@@ -115,7 +115,7 @@ fun ActivityScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onNavigateToProgression),
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             )
@@ -146,7 +146,7 @@ fun ActivityScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "🕉️",
+                            text = "???",
                             fontSize = 40.sp
                         )
                     }
@@ -191,23 +191,23 @@ fun ActivityScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onNavigateToProgression),
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Your Yoga Progression", style = MaterialTheme.typography.titleMedium)
-                Text(text = "${yogaInfo.emoji} ${yogaInfo.yogaName} - Level $yogaLevel / 5", fontWeight = FontWeight.Bold)
+                Text(text = if (yogaLevel > 1) "${yogaInfo.emoji} ${yogaInfo.yogaName} - Level $yogaLevel / 5" else "${yogaInfo.emoji} ${yogaInfo.yogaName} - Seeker", fontWeight = FontWeight.Bold)
                 Text(text = yogaInfo.yogaDescription, style = MaterialTheme.typography.bodySmall)
                 Text(text = "Step: $yogaStep / 19", style = MaterialTheme.typography.bodyMedium)
                 
                 // Simplified breakdown for activity screen
                 LinearProgressIndicator(
-                    progress = { LotusLevelManager.progressInLevel(stats) },
-                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                    progress = { YogaLevelManager.progressInLevel(stats) },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(MaterialTheme.shapes.extraSmall),
                 )
-                Text(text = "Progress to next level: ${((LotusLevelManager.progressInLevel(stats)) * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                Text(text = "Progress to next level: ${((YogaLevelManager.progressInLevel(stats)) * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -319,7 +319,7 @@ fun ActivityScreen(
                         )
                         if (versesList.size > 12) {
                             Text(
-                                text = "… and ${versesList.size - 12} more",
+                                text = "� and ${versesList.size - 12} more",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -467,9 +467,9 @@ private fun SquareDateCalendar(
             Box(
                 modifier = Modifier
                     .size(cellSize)
-                    .background(color = bg, shape = RoundedCornerShape(4.dp))
+                    .background(color = bg, shape = MaterialTheme.shapes.extraSmall)
                     .then(
-                         if (border != null) Modifier.border(1.dp, border, RoundedCornerShape(4.dp)) else Modifier
+                         if (border != null) Modifier.border(1.dp, border, MaterialTheme.shapes.extraSmall) else Modifier
                     )
                     .clickable { onSelect(date) },
                 contentAlignment = Alignment.Center

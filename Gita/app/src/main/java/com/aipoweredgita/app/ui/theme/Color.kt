@@ -22,12 +22,12 @@ val InkDeep       = Color(0xFF1A1A1A)
 val InkSoft       = Color(0xFF4A4A4A)
 val Cream         = Color(0xFFFFFBF0)
 val ParchmentDark = Color(0xFFEADFCA)
-val Gold          = Color(0xFFFFD700) // Alias for GoldSpark
+val Gold          = GoldSpark // Alias for GoldSpark
 
 // Light theme colors - Saffron/Orange theme
 val SaffronLegacy = Color(0xFFFF6B35)
 val OrangeLight = Color(0xFFFFA500)
-val GoldLight = Color(0xFFFFD700)
+val GoldLight = GoldSpark
 val SaffronDark = Color(0xFFE85A25)
 
 // Dark theme colors - Deep spiritual tones

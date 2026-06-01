@@ -13,8 +13,3 @@
 .externalNativeBuild
 .cxx
 local.properties
-# .gitignore లో add చేయి
-app/release/
-app/debug/
-*.apk
-*.aab

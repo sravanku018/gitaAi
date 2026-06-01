@@ -65,8 +65,8 @@ class RecommendationEngine(private val context: Context) {
                 )
             )
 
-            // Recommend yoga level focus based on Lotus level
-            val yogaLevelInfo = com.aipoweredgita.app.ui.components.LotusLevelManager.yogaLevelInfo(stats)
+            // Recommend yoga level focus based on Yoga level
+            val yogaLevelInfo = com.aipoweredgita.app.ui.components.YogaLevelManager.yogaLevelInfo(stats)
             recDao.insert(
                 RecommendationData(
                     recommendationType = "yogalevel",
@@ -75,7 +75,7 @@ class RecommendationEngine(private val context: Context) {
                     priority = 9,
                     confidenceScore = 75f,
                     relevanceScore = 80f,
-                    reason = "Progress towards next lotus level",
+                    reason = "Progress towards next yoga level",
                     baseReason = "progression",
                     expectedBenefit = 80f,
                     urgencyLevel = "high"

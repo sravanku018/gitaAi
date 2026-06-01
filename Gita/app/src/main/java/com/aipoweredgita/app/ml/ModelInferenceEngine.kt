@@ -5,6 +5,8 @@ import android.util.Log
 import org.tensorflow.lite.Interpreter
 import java.io.Closeable
 import java.io.File
+import java.io.FileInputStream
+import java.lang.reflect.Method
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import kotlin.math.sqrt
@@ -13,6 +15,8 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
 
     private val TAG = "ModelInferenceEngine"
     private var interpreter: Interpreter? = null
+    private var mappedBuffer: MappedByteBuffer? = null  // tracked for explicit unmap
+    private var fileChannel: FileChannel? = null         // tracked for proper close
 
     @Synchronized
     fun loadModel(fileName: String): Boolean {
@@ -75,13 +79,29 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
     override fun close() {
         interpreter?.close()
         interpreter = null
+        // Force-unmap the MappedByteBuffer to free native memory on Android
+        mappedBuffer?.let { buffer ->
+            try {
+                val cleanerMethod: Method = buffer.javaClass.getMethod("cleaner")
+                cleanerMethod.isAccessible = true
+                val cleaner = cleanerMethod.invoke(buffer)
+                cleaner?.javaClass?.getMethod("clean")?.invoke(cleaner)
+            } catch (_: Exception) {
+                // Unmap failed — GC will eventually reclaim, but native memory lingers
+                Log.w(TAG, "Buffer unmap failed; relying on GC")
+            }
+            mappedBuffer = null
+        }
+        fileChannel?.close()
+        fileChannel = null
     }
 
     private fun mapModelFile(file: File): MappedByteBuffer {
-        return java.io.FileInputStream(file).use { input ->
-            input.channel.use { channel ->
-                channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
-            }
+        val input = FileInputStream(file)
+        val channel = input.channel
+        fileChannel = channel  // track for close()
+        return channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size()).also {
+            mappedBuffer = it  // track for explicit unmap
         }
     }
 
@@ -89,7 +109,9 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
         return try {
             context.assets.openFd(assetPath).use { afd ->
                 java.io.FileInputStream(afd.fileDescriptor).use { input ->
-                    input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length)
+                    input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length).also {
+                        mappedBuffer = it  // track for explicit unmap in close()
+                    }
                 }
             }
         } catch (e: Exception) {

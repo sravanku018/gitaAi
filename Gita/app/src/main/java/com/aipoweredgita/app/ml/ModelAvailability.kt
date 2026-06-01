@@ -14,6 +14,15 @@ import java.io.File
  */
 enum class AppFeature { VOICE, QUIZ }
 
+data class ModelRuntimeDecision(
+    val feature: AppFeature,
+    val selectedPreference: String,
+    val tierLabel: String,
+    val useProxy: Boolean,
+    val modelPath: String?,
+    val displayName: String
+)
+
 /**
  * Manages model availability for different features.
  *
@@ -56,45 +65,75 @@ class ModelAvailability(appContext: Context) {
     fun getQwen3Path(): String? = validatedPath("qwen3-0.6b-int4.litertlm", qwen3MinSize)
     fun getGemma4Path(): String? = validatedPath("gemma-4-E2B-it.litertlm", gemma4MinSize)
 
-    /**
-     * Resolve the best model path for a feature based on current user preference and availability.
-     */
-    fun getResolvedModelPath(feature: AppFeature): String? {
-        val selected = _selectedModel.value
+    private fun resolveModelPath(feature: AppFeature, selected: String): String? {
         val qwen3Path = getQwen3Path()
         val gemma4Path = getGemma4Path()
         val qwen3Exists = qwen3Path != null
         val gemma4Exists = gemma4Path != null
 
-        val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
-        // High-Mid devices (~7-10L Antutu) are also considered "high-end" for Voice Chat
-        val isHighEnd = tier == com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP || 
-                        tier == com.aipoweredgita.app.utils.DeviceTier.HIGH_MID
-
         val resolved = when {
             selected.contains("Groq", ignoreCase = true) -> null
-            selected.contains("Qwen3") && qwen3Exists -> qwen3Path
+            selected.contains("Qwen3") && qwen3Exists -> {
+                if (feature == AppFeature.QUIZ) qwen3Path else null
+            }
             selected.contains("Gemma 4") && gemma4Exists -> gemma4Path
             else -> {
                 if (feature == AppFeature.QUIZ) {
                     qwen3Path ?: gemma4Path
                 } else {
-                    if (isHighEnd) {
-                        gemma4Path ?: qwen3Path
-                    } else {
-                        qwen3Path ?: gemma4Path
-                    }
+                    // VOICE uses only Gemma; Qwen removed from chat path.
+                    // null → ViewModel falls back to Groq proxy gracefully.
+                    gemma4Path
                 }
             }
         }
 
-        Log.d(TAG, "Resolved model for $feature: ${resolved?.let { File(it).name } ?: "NONE"} " +
-                   "(Selected: $selected, Tier: ${tier.label}, Qwen3: $qwen3Exists, Gemma4: $gemma4Exists)")
         return resolved
     }
 
+    fun getRuntimeDecision(feature: AppFeature): ModelRuntimeDecision {
+        val selected = _selectedModel.value
+        val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
+        val useProxy = when {
+            selected.contains("Groq", ignoreCase = true) -> true
+            feature == AppFeature.VOICE &&
+                (tier == com.aipoweredgita.app.utils.DeviceTier.LOW || tier == com.aipoweredgita.app.utils.DeviceTier.LOW_MID) -> true
+            else -> false
+        }
+        val modelPath = if (useProxy) null else resolveModelPath(feature, selected)
+        val displayName = when {
+            useProxy -> "Cloud Proxy (Groq)"
+            modelPath == null -> "No local model"
+            modelPath.contains("qwen3", ignoreCase = true) -> "Qwen3 0.6B"
+            modelPath.contains("gemma", ignoreCase = true) -> "Gemma 4 2B (Advanced)"
+            else -> File(modelPath).name
+        }
+
+        Log.d(
+            TAG,
+            "Runtime decision for $feature: display=$displayName useProxy=$useProxy " +
+                "selected=$selected tier=${tier.label} path=${modelPath?.let { File(it).name } ?: "NONE"}"
+        )
+
+        return ModelRuntimeDecision(
+            feature = feature,
+            selectedPreference = selected,
+            tierLabel = tier.label,
+            useProxy = useProxy,
+            modelPath = modelPath,
+            displayName = displayName
+        )
+    }
+
+    /**
+     * Resolve the best model path for a feature based on current user preference and availability.
+     */
+    fun getResolvedModelPath(feature: AppFeature): String? {
+        return getRuntimeDecision(feature).modelPath
+    }
+
     fun isGemmaRunning(feature: AppFeature): Boolean {
-        val path = getResolvedModelPath(feature)
+        val path = getRuntimeDecision(feature).modelPath
         return path != null && path.contains("gemma", ignoreCase = true)
     }
 
@@ -102,7 +141,7 @@ class ModelAvailability(appContext: Context) {
      * Get the best model for TEXT features (quiz, Studio) respecting user preference.
      */
     fun getResolvedTextModelPath(selectedPreference: String): String? {
-        return getResolvedModelPath(AppFeature.QUIZ)
+        return resolveModelPath(AppFeature.QUIZ, selectedPreference)
     }
 
     /**

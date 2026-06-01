@@ -1,12 +1,12 @@
 package com.aipoweredgita.app.ui
 
+import android.widget.Toast
 import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,10 +23,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +77,12 @@ fun NormalModeScreen(
     var showVerseDialog   by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    LaunchedEffect(viewModel.events) {
+        viewModel.events.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     val isNetworkAvailable by com.aipoweredgita.app.utils.NetworkUtils
         .networkStatusFlow(context)
         .collectAsStateWithLifecycle(
@@ -97,10 +106,11 @@ fun NormalModeScreen(
         )
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    val isDark = rememberThemeIsDark()
+    com.aipoweredgita.app.ui.background.AppBackground(
+        pattern = com.aipoweredgita.app.ui.background.BgPattern.ORBS_MANDALA,
+        intensity = 0.4f,
+        isDark = isDark
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -123,11 +133,20 @@ fun NormalModeScreen(
                 state.verse != null   -> {
                     val verse = state.verse!!
 
+                    val verseAnim by animateFloatAsState(
+                        targetValue = if (state.verse != null) 1f else 0f,
+                        animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springExpressive<Float>(),
+                        label = "verse_enter"
+                    )
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 18.dp)
+                            .graphicsLayer {
+                                alpha = verseAnim
+                                translationY = (1f - verseAnim) * 20f
+                            }
                     ) {
                         Spacer(Modifier.height(16.dp))
 
@@ -218,20 +237,28 @@ private fun ChapterVerseHeroCard(
     onChapterTap: () -> Unit,
     onVerseTap: () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+    val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+
     val verseDisplay = if (combinedNos.size > 1) {
         "${combinedNos.minOrNull()}–${combinedNos.maxOrNull()}"
     } else verse.toString()
 
     val chapterName = chapterNames[chapter] ?: ""
 
-    val numberColor = MaterialTheme.colorScheme.secondary
+    val numberColor = if (isDark) GoldSpark else Saffron
 
-    val accentColor = MaterialTheme.colorScheme.primary
+    val accentColor = Saffron
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(cardBg)
+            .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
+            .shadow(4.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
                 // Subtle warm glow bottom-left
                 drawCircle(
@@ -252,7 +279,7 @@ private fun ChapterVerseHeroCard(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.5.sp,
-                color    = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                color    = if (isDark) GoldSpark.copy(alpha = 0.7f) else Saffron
             )
 
             Spacer(Modifier.height(14.dp))
@@ -266,8 +293,8 @@ private fun ChapterVerseHeroCard(
                 // Chapter block
                 Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                        .clip(MaterialTheme.shapes.large)
+                        .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
                         .clickable(onClick = onChapterTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -276,7 +303,7 @@ private fun ChapterVerseHeroCard(
                         text  = "CHAPTER",
                         fontSize = 9.sp,
                         letterSpacing = 2.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        color = textTertiary,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
@@ -295,7 +322,7 @@ private fun ChapterVerseHeroCard(
                             modifier = Modifier
                                 .size(if (i == 2) 6.dp else 3.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = if (i == 2) 0.8f else 0.3f))
+                                .background(numberColor.copy(alpha = if (i == 2) 0.8f else 0.3f))
                         )
                         if (i < 4) Spacer(Modifier.height(4.dp))
                     }
@@ -304,8 +331,8 @@ private fun ChapterVerseHeroCard(
                 // Verse block
                 Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                        .clip(MaterialTheme.shapes.large)
+                        .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
                         .clickable(onClick = onVerseTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -314,7 +341,7 @@ private fun ChapterVerseHeroCard(
                         text  = "VERSE",
                         fontSize = 9.sp,
                         letterSpacing = 2.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        color = textTertiary,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
@@ -336,7 +363,7 @@ private fun ChapterVerseHeroCard(
                     .height(1.dp)
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Color.Transparent, MaterialTheme.colorScheme.secondary.copy(0.6f), Color.Transparent)
+                            listOf(Color.Transparent, numberColor.copy(0.6f), Color.Transparent)
                         )
                     )
             )
@@ -347,14 +374,14 @@ private fun ChapterVerseHeroCard(
                 Text(
                     text      = "ॐ",
                     fontSize  = 16.sp,
-                    color     = MaterialTheme.colorScheme.secondary,
+                    color     = numberColor,
                     fontStyle = FontStyle.Normal
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text      = "Tap chapter or verse to navigate",
                     fontSize  = 11.sp,
-                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                    color     = textItalicHint,
                     fontStyle = FontStyle.Italic
                 )
             }
@@ -367,26 +394,32 @@ private fun ChapterVerseHeroCard(
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun IlluminatedVerseCard(text: String) {
-    val gold = MaterialTheme.colorScheme.secondary
-    val primary = MaterialTheme.colorScheme.primary
+    val isDark = rememberThemeIsDark()
+    val gold = if (isDark) GoldSpark else Saffron
+    val primary = Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
             .border(
-                width = 1.dp,
+                width = 1.5.dp,
                 brush = Brush.linearGradient(listOf(gold.copy(0.6f), primary.copy(0.4f), gold.copy(0.6f))),
-                shape = RoundedCornerShape(20.dp)
+                shape = MaterialTheme.shapes.extraLarge
             )
-            .background(
-                Brush.verticalGradient(
-                    if (isSystemInDarkTheme()) {
-                        listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
-                    } else {
-                        listOf(Color(0xFFFFF9F0), Color(0xFFFDF3DC))
-                    }
+            .background(cardBg)
+            .shadow(6.dp, MaterialTheme.shapes.extraLarge)
+            .drawBehind {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.02f), Color.Transparent),
+                        startY = 0f,
+                        endY = size.height * 0.45f
+                    )
                 )
-            )
+            }
     ) {
         // Left gold accent bar
         Box(
@@ -404,7 +437,7 @@ private fun IlluminatedVerseCard(text: String) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .background(gold.copy(alpha = 0.15f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
@@ -413,7 +446,7 @@ private fun IlluminatedVerseCard(text: String) {
                         fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
-                        color      = MaterialTheme.colorScheme.onSurfaceVariant
+                        color      = gold
                     )
                 }
                 Spacer(Modifier.width(10.dp))
@@ -441,7 +474,7 @@ private fun IlluminatedVerseCard(text: String) {
                 fontStyle  = FontStyle.Italic,
                 fontWeight = FontWeight.Light,
                 lineHeight = 28.sp,
-                color      = MaterialTheme.colorScheme.onSurface,
+                color      = textPrimary,
                 textAlign  = TextAlign.Justify
             )
         }
@@ -453,19 +486,26 @@ private fun IlluminatedVerseCard(text: String) {
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun MeaningCard(text: String) {
+    val isDark = rememberThemeIsDark()
+    val greenAccent = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFEAF3DE))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(cardBg)
+            .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
+            .shadow(2.dp, MaterialTheme.shapes.extraLarge)
     ) {
         // Left stripe
         Box(
             modifier = Modifier
                 .width(4.dp)
                 .fillMaxHeight()
-                .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else ForestMid)
+                .background(greenAccent)
         )
 
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
@@ -473,7 +513,7 @@ private fun MeaningCard(text: String) {
                 Icon(
                     imageVector        = Icons.Filled.Favorite,
                     contentDescription = null,
-                    tint               = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else ForestMid,
+                    tint               = greenAccent,
                     modifier           = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(6.dp))
@@ -482,7 +522,7 @@ private fun MeaningCard(text: String) {
                     fontSize   = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    color      = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.tertiary else Forest
+                    color      = greenAccent
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -490,7 +530,7 @@ private fun MeaningCard(text: String) {
                 text      = text,
                 fontSize  = 14.sp,
                 lineHeight = 24.sp,
-                color     = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSurface else Color(0xFF173404),
+                color     = textPrimary,
                 textAlign = TextAlign.Justify
             )
         }
@@ -502,32 +542,29 @@ private fun MeaningCard(text: String) {
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun ExplanationCard(text: String) {
+    val isDark = rememberThemeIsDark()
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                if (isSystemInDarkTheme()) 
-                    MaterialTheme.colorScheme.surface 
-                else 
-                    Color(0xFFFDF6EC) // Warm light parchment
-            )
-            .border(
-                1.dp, 
-                if (isSystemInDarkTheme()) Color.Transparent else Gold.copy(0.2f), 
-                RoundedCornerShape(18.dp)
-            )
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(cardBg)
+            .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
+            .shadow(2.dp, MaterialTheme.shapes.extraLarge)
             .padding(20.dp)
     ) {
         // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Small decorative diamond row
             repeat(3) {
                 Box(
                     modifier = Modifier
                         .size(5.dp)
                         .clip(RoundedCornerShape(1.dp))
-                        .background(MaterialTheme.colorScheme.secondary.copy(0.7f))
+                        .background(gold.copy(0.7f))
                 )
                 if (it < 2) Spacer(Modifier.width(4.dp))
             }
@@ -537,7 +574,7 @@ private fun ExplanationCard(text: String) {
                 fontSize   = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
-                color      = MaterialTheme.colorScheme.secondary
+                color      = gold
             )
         }
 
@@ -549,7 +586,7 @@ private fun ExplanationCard(text: String) {
                 .fillMaxWidth()
                 .height(1.dp)
                 .background(
-                    Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.secondary.copy(0.5f), Color.Transparent))
+                    Brush.horizontalGradient(listOf(gold.copy(0.5f), Color.Transparent))
                 )
         )
 
@@ -559,7 +596,7 @@ private fun ExplanationCard(text: String) {
             text      = text,
             fontSize  = 14.sp,
             lineHeight = 24.sp,
-            color     = MaterialTheme.colorScheme.onSurface,
+            color     = textPrimary,
             textAlign = TextAlign.Justify
         )
     }
@@ -570,22 +607,28 @@ private fun ExplanationCard(text: String) {
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 private fun VerseNoteCard(note: String) {
+    val isDark = rememberThemeIsDark()
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val textSecondary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFFAEEDA))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
+            .background(cardBg)
+            .border(1.dp, cardBorder, MaterialTheme.shapes.medium)
             .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Text("◆", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
+        Text("◆", fontSize = 12.sp, color = gold, modifier = Modifier.padding(top = 2.dp))
         Spacer(Modifier.width(10.dp))
         Text(
             text      = note,
             fontSize  = 12.sp,
             lineHeight = 20.sp,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            color     = textSecondary,
             fontStyle = FontStyle.Italic
         )
     }
@@ -612,7 +655,7 @@ private fun OfflineBanner(onReadOfflineClick: () -> Unit) {
         TextButton(
             onClick = onReadOfflineClick,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(Color.White.copy(0.12f))
         ) {
             Text(
@@ -639,9 +682,10 @@ private fun BottomActionBar(
     onPrev          : () -> Unit,
     onNext          : () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
     Surface(
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        modifier = Modifier.border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(0.dp))
     ) {
         Column(
             modifier = Modifier
@@ -659,12 +703,12 @@ private fun BottomActionBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(
                             if (isFavorite)
                                 Brush.horizontalGradient(listOf(CrimsonDeep, Color(0xFFC62828)))
                             else
-                                Brush.horizontalGradient(listOf(Gold, Saffron))
+                                Brush.horizontalGradient(listOf(GoldSpark, Saffron))
                         )
                         .clickable(onClick = onFavoriteToggle),
                     contentAlignment = Alignment.Center
@@ -690,9 +734,9 @@ private fun BottomActionBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(1.dp, Gold.copy(0.6f), RoundedCornerShape(14.dp))
-                        .background(Color.Transparent)
+                        .clip(MaterialTheme.shapes.medium)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .clickable(onClick = onShare),
                     contentAlignment = Alignment.Center
                 ) {
@@ -700,7 +744,7 @@ private fun BottomActionBar(
                         Icon(
                             imageVector        = Icons.Filled.Share,
                             contentDescription = null,
-                            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint               = MaterialTheme.colorScheme.onSurface,
                             modifier           = Modifier.size(18.dp)
                         )
                         Text(
@@ -714,6 +758,7 @@ private fun BottomActionBar(
             }
 
             // Fav confirmation message
+            val msgColor = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
             AnimatedVisibility(
                 visible = !favoriteMessage.isNullOrBlank(),
                 enter   = fadeIn() + slideInVertically(),
@@ -722,7 +767,7 @@ private fun BottomActionBar(
                 Text(
                     text      = favoriteMessage ?: "",
                     fontSize  = 12.sp,
-                    color     = ForestMid,
+                    color     = msgColor,
                     textAlign = TextAlign.Center,
                     modifier  = Modifier.fillMaxWidth().padding(top = 6.dp),
                     fontStyle = FontStyle.Italic
@@ -763,13 +808,14 @@ private fun NavArrowButton(
     modifier : Modifier = Modifier,
     onClick  : () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
     val alpha = if (enabled) 1f else 0.35f
     Row(
         modifier = modifier
             .height(44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha))
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f * alpha), RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f * alpha))
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f * alpha), MaterialTheme.shapes.medium)
             .clickable(enabled = enabled, onClick = onClick),
         verticalAlignment   = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -778,7 +824,7 @@ private fun NavArrowButton(
             Icon(
                 imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 modifier           = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(6.dp))
@@ -787,14 +833,14 @@ private fun NavArrowButton(
             text       = label,
             fontSize   = 14.sp,
             fontWeight = FontWeight.Medium,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+            color      = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
         )
         if (isForward) {
             Spacer(Modifier.width(6.dp))
             Icon(
                 imageVector        = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 modifier           = Modifier.size(16.dp)
             )
         }
@@ -835,7 +881,7 @@ private fun GitaErrorScreen(message: String, onRetry: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(Brush.horizontalGradient(listOf(Gold, Saffron)))
                     .clickable(onClick = onRetry)
                     .padding(horizontal = 28.dp, vertical = 12.dp),
@@ -859,7 +905,7 @@ fun ChapterSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor   = MaterialTheme.colorScheme.surface,
-        shape            = RoundedCornerShape(24.dp),
+        shape            = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
                 "Select Chapter",
@@ -879,7 +925,7 @@ fun ChapterSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .background(if (isActive) Gold.copy(0.12f) else Color.Transparent)
                             .clickable { onChapterSelected(ch) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -937,7 +983,7 @@ fun VerseSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor   = MaterialTheme.colorScheme.surface,
-        shape            = RoundedCornerShape(24.dp),
+        shape            = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
                 "Select Verse  ·  1–$maxVerses",
@@ -972,7 +1018,7 @@ fun VerseSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .background(if (isActive) Gold.copy(0.12f) else Color.Transparent)
                             .clickable { onVerseSelected(target) }
                             .padding(horizontal = 14.dp, vertical = 11.dp),

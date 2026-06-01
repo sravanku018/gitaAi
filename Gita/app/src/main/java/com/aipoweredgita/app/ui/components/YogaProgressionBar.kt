@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aipoweredgita.app.database.YogaProgression
+import com.aipoweredgita.app.ui.theme.GoldSpark
 
 @Composable
 fun YogaProgressionBar(
@@ -39,7 +40,7 @@ fun YogaProgressionBar(
         0 -> Color(0xFFFF9800) // Orange for Karma
         1 -> Color(0xFFE91E63) // Pink for Bhakti
         2 -> Color(0xFF2196F3) // Blue for Jnana
-        3 -> Color(0xFFFFD700) // Gold for Moksha
+        3 -> GoldSpark // Gold for Moksha
         else -> Color.Gray
     }
     
@@ -82,14 +83,14 @@ fun YogaProgressionBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(animatedProgress)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
@@ -153,3 +154,4 @@ private fun StatItem(
         )
     }
 }
+

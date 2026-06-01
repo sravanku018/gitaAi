@@ -12,11 +12,16 @@ class GitaApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
 
-        // Runs once, cached after first call
         val tier = DeviceTierDetector.detect(this)
         deviceProfile = DeviceProfile.from(tier)
 
         Log.d("GitaApp", "Device tier=$tier profile=$deviceProfile")
+    }
+
+    companion object {
+        lateinit var instance: GitaApp
+            private set
     }
 }

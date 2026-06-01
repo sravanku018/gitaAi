@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,9 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aipoweredgita.app.ui.components.GlassCard
+import com.aipoweredgita.app.ui.theme.GoldSpark
 
 @Composable
 fun QuizLanguageDialog(
@@ -23,7 +27,8 @@ fun QuizLanguageDialog(
             Text(
                 "Select Quiz Language",
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
+                fontSize = 20.sp,
+                color = GoldSpark
             )
         },
         text = {
@@ -33,7 +38,7 @@ fun QuizLanguageDialog(
                 Text(
                     "Choose the language for quiz questions and options:",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.White.copy(alpha = 0.7f)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -58,11 +63,11 @@ fun QuizLanguageDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onCancel) {
-                Text("Cancel", color = MaterialTheme.colorScheme.error)
+                Text("Cancel", color = Color(0xFFE57373))
             }
         },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp)
+        containerColor = Color(0xFF140F0A),
+        shape = MaterialTheme.shapes.large
     )
 }
 
@@ -73,51 +78,53 @@ fun LanguageOptionCard(
     description: String,
     onClick: () -> Unit
 ) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            cornerRadius = 12.dp,
+            tint = Color.White.copy(alpha = 0.05f),
+            border = Color.White.copy(alpha = 0.12f)
         ) {
-            Text(
-                text = flag,
-                fontSize = 28.sp
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = language,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = flag,
+                    fontSize = 28.sp
                 )
-                Text(
-                    text = description,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = language,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = description,
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
+
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Select",
+                    tint = GoldSpark,
+                    modifier = Modifier.size(20.dp)
                 )
             }
-
-            Icon(
-                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "Select",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }

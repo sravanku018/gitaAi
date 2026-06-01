@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.ui
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +29,12 @@ fun QuizScreen(
 ) {
     val quizState by viewModel.quizState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(viewModel.events) {
+        viewModel.events.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (quizState.currentQuestion == null && !quizState.isLoading) {
@@ -113,6 +120,7 @@ fun QuizScreen(
         CompletionDialog(
             score = quizState.score,
             total = quizState.totalQuestions,
+            coins = quizState.coinsEarned,
             onExit = onExitQuiz,
             onRestart = { 
                 viewModel.restartQuiz() 

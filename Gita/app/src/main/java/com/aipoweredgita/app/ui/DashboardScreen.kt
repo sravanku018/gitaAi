@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
@@ -31,20 +32,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.ui.components.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
-import com.aipoweredgita.app.recommendation.RecommendationEngine
-import com.aipoweredgita.app.recommendation.AdaptiveCurriculumPlanner
-import com.aipoweredgita.app.recommendation.YogaAdvisor
-import com.aipoweredgita.app.recommendation.predictNext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.first
 import android.content.Context
+import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.ui.LocalUiConfig
+import com.aipoweredgita.app.ui.components.DailyRewardsStrip
 import com.aipoweredgita.app.ui.components.WelcomeDialog
 import com.aipoweredgita.app.ui.components.MandalaBackground
 import com.aipoweredgita.app.ui.components.PremiumDashboardCard
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.quiz.OrnamentRule
+import com.aipoweredgita.app.util.TimeUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -55,11 +52,22 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun AnimatedItem(
@@ -84,210 +92,63 @@ fun AnimatedItem(
 }
 
 @Composable
-fun MandalaHeroSection() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        Saffron,
-                        Saffron.copy(alpha = 0.7f)
-                    )
-                )
-            )
-    ) {
-        // Background Pattern
-        MandalaBackground(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(300.dp)
-                .offset(x = 100.dp),
-            color = Color.White.copy(alpha = 0.15f)
-        )
-        
-        MandalaBackground(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(150.dp)
-                .offset(x = (-40).dp, y = (-40).dp),
-            color = Color.White.copy(alpha = 0.1f)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "🙏 Namaste",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Continue your spiritual journey",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.9f)
-            )
-        }
-    }
-}
-
-private fun clean(s: String?): String? {
-    if (s == null) return null
-    var t = s
-    val map = mapOf(
-        "â€¢" to "•", "â€“" to "–", "â€”" to "—", "â€˜" to "‘", "â€™" to "’",
-        "â€œ" to "“", "â€ " to "”", "â€¦" to "…", "Ã—" to "×", "Â" to "",
-        "ðŸ" to "", "dY" to "", "" to ""
-    )
-    for ((k, v) in map) t = t?.replace(k, v)
-    t = t?.replace(Regex("[\\u0000-\\u001F\\u007F]"), "")
-    return t
-}
-
-@Composable
 fun DashboardScreen(
     onNavigateToNormalMode: () -> Unit,
     onNavigateToQuizMode: () -> Unit,
     onNavigateToVoiceStudio: () -> Unit = {},
     onNavigateToRecommendations: () -> Unit,
     onNavigateToRandomSloka: () -> Unit = {},
+    onNavigateToAwakening: () -> Unit = {},
+    onNavigateToCoinHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val stats by viewModel.stats.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
+    val statsRepository = remember {
+        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+        com.aipoweredgita.app.repository.StatsRepository(
+            userStatsDao = db.userStatsDao(),
+            dailyActivityDao = db.dailyActivityDao(),
+            appContext = context.applicationContext
+        )
+    }
     val language = remember { prefs.getString("quiz_language", "eng") ?: "eng" }
-    val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-    var versesToday by remember { mutableStateOf(0) }
-    var quizzesToday by remember { mutableStateOf(0) }
-    var normalToday by remember { mutableStateOf(0L) }
-    var quizToday by remember { mutableStateOf(0L) }
-    var studioToday by remember { mutableStateOf(0L) }
-    var versesListToday by remember { mutableStateOf<List<com.aipoweredgita.app.database.ReadVerse>>(emptyList()) }
 
-    // Read initial cached values synchronously to avoid visual flicker during load
-    val initialNextStepRaw = remember { prefs.getString("next_step_label", null) }
-    val initialNextLevel = remember { prefs.getInt("next_level", -1) }
-    val initialNextReasonRaw = remember { prefs.getString("next_reason", null) }
-
-    var nextStep by remember { mutableStateOf<String?>(clean(initialNextStepRaw)) }
-    var nextLevel by remember { mutableIntStateOf(initialNextLevel) }
-    var nextReason by remember { mutableStateOf<String?>(clean(initialNextReasonRaw)) }
+    val daily by viewModel.dailyActivity.collectAsState()
+    val nextAction by viewModel.nextAction.collectAsState()
+    val coinBalance by viewModel.coinBalance.collectAsState()
 
     // Welcome Dialog State
     var showWelcomeDialog by remember { mutableStateOf(false) }
+
+
     LaunchedEffect(Unit) {
-        val hasSeenWelcome = prefs.getBoolean("has_seen_welcome", false)
-        if (!hasSeenWelcome) {
+        val lastSeenVersion = prefs.getInt("last_seen_version", 0)
+        val currentVersion = 6 // Version 1.8.0
+        if (lastSeenVersion < currentVersion) {
             showWelcomeDialog = true
         }
     }
 
-
     LaunchedEffect(Unit) {
-        val today = java.time.LocalDate.now().toString()
-        // Move DB work off the main thread
-        try {
-            val (vt, vlist) = withContext(Dispatchers.IO) {
-                val vtCount = db.readVerseDao().totalReadToday(today)
-                val vlistData = db.readVerseDao().getByDate(today)
-                vtCount to vlistData
-            }
-            versesToday = vt
-            versesListToday = vlist
-        } catch (e: Exception) {
-            android.util.Log.w("DashboardScreen", "Failed to load stats", e)
-        }
-
-        // M1-style next step predictor (reset daily)
-        try {
-            val lastSugDate = prefs.getString("next_suggestion_date", "")
-            if (lastSugDate != today) {
-                val suggestion = withContext(Dispatchers.IO) { predictNext(db) }
-                val cleanedStep = clean(suggestion.nextStep)
-                val cleanedReason = clean(suggestion.reason)
-                withContext(Dispatchers.IO) {
-                    prefs.edit()
-                        .putString("next_step_label", cleanedStep)
-                        .putInt("next_level", suggestion.nextLevel)
-                        .putString("next_reason", cleanedReason)
-                        .putString("next_suggestion_date", today)
-                        .apply()
-                }
-                nextStep = cleanedStep
-                nextLevel = suggestion.nextLevel
-                nextReason = cleanedReason
-            } else {
-                val rawStep = prefs.getString("next_step_label", null)
-                val rawReason = prefs.getString("next_reason", null)
-                val cleanedStep = clean(rawStep)
-                val cleanedReason = clean(rawReason)
-                if (cleanedStep != rawStep || cleanedReason != rawReason) {
-                    withContext(Dispatchers.IO) {
-                        prefs.edit().apply {
-                            if (cleanedStep != rawStep) putString("next_step_label", cleanedStep)
-                            if (cleanedReason != rawReason) putString("next_reason", cleanedReason)
-                        }.apply()
-                    }
-                }
-                nextStep = cleanedStep
-                nextLevel = prefs.getInt("next_level", -1)
-                nextReason = cleanedReason
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("DashboardScreen", "Failed to load stats week", e)
-        }
-        try {
-            val row = withContext(Dispatchers.IO) { db.dailyActivityDao().getByDate(today) }
-            row?.let {
-                normalToday = it.normalSeconds
-                quizToday = it.quizSeconds
-                studioToday = it.voiceStudioTimeSeconds
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("DashboardScreen", "Failed to load favorites", e)
-        }
-        try {
-            // Get attempts count once on IO to avoid long-running collection on UI
-            val count = withContext(Dispatchers.IO) {
-                val flow = db.quizAttemptDao().getAttemptsByDate(today)
-                val attempts = flow.first()
-                attempts.size
-            }
-            quizzesToday = count
-        } catch (e: Exception) {
-            android.util.Log.w("DashboardScreen", "Failed to load attempts", e)
-        }
-
-        // Generate recommendations and curriculum at most once per day
-        try {
-            val lastRun = prefs.getString("last_rec_gen", "")
-            if (lastRun != today) {
-                // Run on IO; engines already use IO internally as well
-                withContext(Dispatchers.IO) {
-                    RecommendationEngine(context).generateRecommendations()
-                    AdaptiveCurriculumPlanner(context).buildPlan()
-                }
-                prefs.edit().putString("last_rec_gen", today).apply()
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("DashboardScreen", "Failed to load last verse", e)
-        }
+        viewModel.loadDashboardData(context)
     }
+
+    val isDark = rememberThemeIsDark()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF080400))
+            .background(appBg)
     ) {
-        AmbientOrbs(modifier = Modifier.fillMaxSize())
+        if (isDark) {
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
+        }
 
         LazyColumn(
             modifier = Modifier
@@ -317,7 +178,7 @@ fun DashboardScreen(
                                 text = greeting,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFFFFAA3C).copy(alpha = 0.75f),
+                                color = if (isDark) GoldSpark.copy(alpha = 0.8f) else Saffron,
                                 letterSpacing = 0.4.sp
                             )
                             Spacer(modifier = Modifier.height(2.dp))
@@ -325,15 +186,44 @@ fun DashboardScreen(
                                 text = "Bhagavad Gita",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White.copy(alpha = 0.95f),
+                                color = textPrimary,
                                 letterSpacing = (-0.6).sp
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "🪙 $coinBalance",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldSpark,
+                                    modifier = Modifier.clickable { onNavigateToCoinHistory() }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                val level = YogaLevelManager.levelFor(stats)
+                                val multiplier = YogaLevelManager.getCoinMultiplier(stats)
+                                if (level > 1) {
+                                    Text(
+                                        text = "Level $level (${multiplier}x Bonus)",
+                                        fontSize = 12.sp,
+                                        color = textSecondary,
+                                        modifier = Modifier.clickable { onNavigateToAwakening() }
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Seeker (${multiplier}x Bonus)",
+                                        fontSize = 12.sp,
+                                        color = textSecondary,
+                                        modifier = Modifier.clickable { onNavigateToAwakening() }
+                                    )
+                                }
+                            }
                         }
                         
+                        val omBadgeColor = if (isDark) Color(0xFFFF6E00) else Saffron
                         GlassCard(
                             modifier = Modifier.size(46.dp),
-                            tint = Color(0xFFFF6E00).copy(alpha = 0.15f),
-                            border = Color(0xFFFF8228).copy(alpha = 0.3f),
+                            tint = omBadgeColor.copy(alpha = 0.15f),
+                            border = omBadgeColor.copy(alpha = 0.3f),
                             cornerRadius = 16.dp
                         ) {
                             Box(
@@ -343,10 +233,10 @@ fun DashboardScreen(
                                 Text(
                                     text = "ॐ",
                                     fontSize = 22.sp,
-                                    color = Color.White,
+                                    color = if (isDark) Color.White else Saffron,
                                     style = androidx.compose.ui.text.TextStyle(
                                         shadow = Shadow(
-                                            color = Color(0xFFFF7800).copy(alpha = 0.5f),
+                                            color = omBadgeColor.copy(alpha = 0.5f),
                                             offset = Offset(0f, 0f),
                                             blurRadius = 8f
                                         )
@@ -364,18 +254,22 @@ fun DashboardScreen(
                 AnimatedItem(index = 1) {
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        tint = Color(0xFFC85000).copy(alpha = 0.22f),
-                        border = Color(0xFFFF8C28).copy(alpha = 0.28f),
-                        cornerRadius = 28.dp
+                        tint = if (isDark) Color(0xFFC85000).copy(alpha = 0.22f) else Saffron.copy(alpha = 0.08f),
+                        border = if (isDark) Color(0xFFFF8C28).copy(alpha = 0.28f) else Saffron.copy(alpha = 0.2f),
+                        cornerRadius = 32.dp,
+                        elevation = 8.dp
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .drawBehind {
                                     val brush = Brush.linearGradient(
-                                        colors = listOf(
+                                        colors = if (isDark) listOf(
                                             Color(0xFFFF7800).copy(alpha = 0.18f),
                                             Color(0xFF962800).copy(alpha = 0.12f),
+                                            Color.Transparent
+                                        ) else listOf(
+                                            Saffron.copy(alpha = 0.06f),
                                             Color.Transparent
                                         ),
                                         start = Offset(0f, 0f),
@@ -389,7 +283,7 @@ fun DashboardScreen(
                                     .align(Alignment.CenterEnd)
                                     .size(140.dp)
                                     .offset(x = 10.dp, y = (-10).dp),
-                                color = Color.White.copy(alpha = 0.07f)
+                                color = if (isDark) Color.White.copy(alpha = 0.07f) else Saffron.copy(alpha = 0.06f)
                             )
 
                             Column {
@@ -407,13 +301,13 @@ fun DashboardScreen(
                                             text = "Namaste",
                                             fontSize = 22.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.White.copy(alpha = 0.97f),
+                                            color = if (isDark) Color.White.copy(alpha = 0.97f) else textPrimary,
                                             letterSpacing = (-0.5).sp
                                         )
                                         Text(
                                             text = "Continue your spiritual journey",
                                             fontSize = 12.sp,
-                                            color = Color(0xFFFFDCA0).copy(alpha = 0.75f)
+                                            color = if (isDark) Color(0xFFFFDCA0).copy(alpha = 0.75f) else textSecondary,
                                         )
                                     }
                                     val rotationChevron by animateFloatAsState(
@@ -423,13 +317,13 @@ fun DashboardScreen(
                                     Box(
                                         modifier = Modifier
                                             .size(28.dp)
-                                            .clip(RoundedCornerShape(9.dp))
-                                            .background(Color.White.copy(alpha = 0.1f))
-                                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(9.dp))
+                                            .clip(MaterialTheme.shapes.small)
+                                            .background(if (isDark) Color.White.copy(alpha = 0.1f) else Saffron.copy(alpha = 0.1f))
+                                            .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Saffron.copy(alpha = 0.25f), MaterialTheme.shapes.small)
                                             .graphicsLayer { rotationZ = rotationChevron },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(text = "⌄", fontSize = 13.sp, color = Color(0xFFFFC864).copy(alpha = 0.8f))
+                                        Text(text = "⌄", fontSize = 13.sp, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.8f) else Saffron)
                                     }
                                 }
 
@@ -447,30 +341,30 @@ fun DashboardScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(1.dp)
-                                                .background(Color.White.copy(alpha = 0.1f))
+                                                .background(if (isDark) Color.White.copy(alpha = 0.1f) else Saffron.copy(alpha = 0.15f))
                                         )
                                         Spacer(modifier = Modifier.height(13.dp))
-                                        Pill(text = "NEXT BEST ACTION")
+                                        Pill(text = "NEXT BEST ACTION", textColor = if (isDark) Color(0xFFFFB450).copy(alpha = 0.9f) else Saffron)
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = if (nextStep != null && nextLevel > 0) {
-                                                "${nextStep ?: ""} at Level $nextLevel · ${nextReason ?: "Balance your modes"}"
+                                            text = if (nextAction.nextStep != null && nextAction.nextLevel > 0) {
+                                                "${nextAction.nextStep ?: ""} at Level ${nextAction.nextLevel} · ${nextAction.nextReason ?: "Balance your modes"}"
                                             } else {
                                                 "Read at Level 1 · Keep consistent"
                                             },
                                             fontSize = 13.sp,
-                                            color = Color(0xFFFFEBC8).copy(alpha = 0.75f),
+                                            color = if (isDark) Color(0xFFFFEBC8).copy(alpha = 0.75f) else textSecondary,
                                             lineHeight = 18.sp
                                         )
                                         Spacer(modifier = Modifier.height(14.dp))
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            val actionText = when (nextStep) {
+                                            val actionText = when (nextAction.nextStep) {
                                                 "Read" -> "Start Reading"
                                                 "Quiz" -> "Start Quiz"
                                                 "Studio" -> if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A"
                                                 else -> "Explore"
                                             }
-                                            val actionClick = when (nextStep) {
+                                            val actionClick = when (nextAction.nextStep) {
                                                 "Read" -> onNavigateToNormalMode
                                                 "Quiz" -> onNavigateToQuizMode
                                                 "Studio" -> onNavigateToVoiceStudio
@@ -479,20 +373,22 @@ fun DashboardScreen(
                                             
                                             Button(
                                                 onClick = actionClick,
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f)),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = if (isDark) Color.White.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary
+                                                ),
                                                 shape = RoundedCornerShape(50.dp),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.18f) else Color.Transparent)
                                             ) {
-                                                Text(text = actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.92f))
+                                                Text(text = actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.White.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onPrimary)
                                             }
                                             
                                             Button(
                                                 onClick = onNavigateToRecommendations,
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                                                 shape = RoundedCornerShape(50.dp),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFC864).copy(alpha = 0.2f))
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color(0xFFFFC864).copy(alpha = 0.2f) else Saffron.copy(alpha = 0.4f))
                                             ) {
-                                                Text(text = "View Plan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFFFFC864).copy(alpha = 0.7f))
+                                                Text(text = "View Plan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.7f) else Saffron)
                                             }
                                         }
                                     }
@@ -515,7 +411,7 @@ fun DashboardScreen(
                             text = "Today's Stats",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White.copy(alpha = 0.88f),
+                            color = textPrimary,
                             letterSpacing = (-0.3).sp
                         )
                         var showToday by remember { mutableStateOf(false) }
@@ -525,12 +421,7 @@ fun DashboardScreen(
                         if (showToday) {
                             TodaySummaryDialog(
                                 onDismiss = { showToday = false },
-                                verses = versesToday,
-                                quizzes = quizzesToday,
-                                normalTime = normalToday,
-                                quizTime = quizToday,
-                                studioTime = studioToday,
-                                versesList = versesListToday,
+                                stats = TodayStats(daily),
                                 onReadMore = onNavigateToNormalMode,
                                 onTakeQuiz = onNavigateToQuizMode
                             )
@@ -539,38 +430,50 @@ fun DashboardScreen(
                 }
             }
 
-            // Stats Cards Row
+            // Stats Cards Row — Day Streak & Share Streak
             item {
                 AnimatedItem(index = 3) {
                     GlassStatRow(
-                        timeValue = stats?.timeSpentFormatted ?: "0m",
-                        streakValue = "${stats?.currentStreak ?: 0}d"
+                        stats = StatsData(
+                            dayStreak = stats?.currentStreak ?: 0,
+                            coins = coinBalance
+                        )
                     )
                 }
             }
 
-            // Learning Modes section label & Lotus Level badge
+            // Daily Rewards Strip
             item {
                 AnimatedItem(index = 4) {
+                    com.aipoweredgita.app.ui.components.DailyRewardsStrip(
+                        tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context),
+                        context = context,
+                        isDark = isDark,
+                        onEarnCoins = { _, _ ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                statsRepository.trackCheckinClaimed()
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Learning Modes section label
+            item {
+                AnimatedItem(index = 5) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "Learning Modes",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White.copy(alpha = 0.88f),
+                            color = textPrimary,
                             letterSpacing = (-0.3).sp
-                        )
-                        val level = LotusLevelManager.levelFor(stats)
-                        Pill(
-                            text = "Lotus · Lv $level",
-                            color = Color.White.copy(alpha = 0.06f),
-                            textColor = Color.White.copy(alpha = 0.35f)
                         )
                     }
                 }
@@ -578,43 +481,65 @@ fun DashboardScreen(
 
             // 2x2 Square Mode Cards
             item {
-                AnimatedItem(index = 5) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AnimatedItem(index = 6) {
+                    val gridColumns = if (LocalUiConfig.current.isLandscape) 4 else 2
+                    if (gridColumns == 4) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             DashboardModeCard(
-                                emoji = "🎓",
-                                title = "Take Quiz",
-                                sub = "Text & Voice · 10m",
+                                card = ModeCardData("🎓", "Take Quiz", "Text & Voice"),
                                 bgContent = { QuizCardBg() },
                                 onClick = onNavigateToQuizMode,
                                 modifier = Modifier.weight(1f)
                             )
                             DashboardModeCard(
-                                emoji = "🎙",
-                                title = if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A",
-                                sub = "AI Wisdom · Live",
+                                card = ModeCardData("🎙", if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A", "AI Wisdom"),
                                 bgContent = { VoiceCardBg() },
                                 onClick = onNavigateToVoiceStudio,
                                 modifier = Modifier.weight(1f)
                             )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             DashboardModeCard(
-                                emoji = "✦",
-                                title = "Random Sloka",
-                                sub = "Daily inspiration",
+                                card = ModeCardData("✦", "Random Sloka", "Daily"),
                                 bgContent = { SlokaCardBg() },
                                 onClick = onNavigateToRandomSloka,
                                 modifier = Modifier.weight(1f)
                             )
                             DashboardModeCard(
-                                emoji = "📖",
-                                title = "Read Verses",
-                                sub = "Sacred texts",
+                                card = ModeCardData("📖", "Read Verses", "Sacred"),
                                 bgContent = { ReadCardBg() },
                                 onClick = onNavigateToNormalMode,
                                 modifier = Modifier.weight(1f)
                             )
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            DashboardModeCard(
+                                card = ModeCardData("🎓", "Take Quiz", "Text & Voice"),
+                                bgContent = { QuizCardBg() },
+                                onClick = onNavigateToQuizMode,
+                                modifier = Modifier.weight(1f)
+                            )
+                            DashboardModeCard(
+                                card = ModeCardData("🎙", if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A", "AI Wisdom"),
+                                onClick = onNavigateToVoiceStudio,
+                                bgContent = { VoiceCardBg() },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                DashboardModeCard(
+                                    card = ModeCardData("✦", "Random Sloka", "Daily inspiration"),
+                                    bgContent = { SlokaCardBg() },
+                                    onClick = onNavigateToRandomSloka,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                DashboardModeCard(
+                                    card = ModeCardData("📖", "Read Verses", "Sacred texts"),
+                                    bgContent = { ReadCardBg() },
+                                    onClick = onNavigateToNormalMode,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
                 }
@@ -623,13 +548,14 @@ fun DashboardScreen(
             // Recommendations — Collapsible
             item {
                 var recoOpen by remember { mutableStateOf(true) }
-                val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
+                val recs by viewModel.recommendations.collectAsState()
                 
-                AnimatedItem(index = 6) {
+                AnimatedItem(index = 7) {
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        tint = Color.White.copy(alpha = 0.03f),
-                        cornerRadius = 24.dp
+                        tint = if (isDark) Color.White.copy(alpha = 0.03f) else Saffron.copy(alpha = 0.05f),
+                        cornerRadius = 32.dp,
+                        elevation = 4.dp
                     ) {
                         Column {
                             Row(
@@ -651,9 +577,9 @@ fun DashboardScreen(
                                 
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
+                                        .clip(MaterialTheme.shapes.large)
                                         .background(Color(0xFFFF9628).copy(alpha = 0.15f))
-                                        .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                                        .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.25f), MaterialTheme.shapes.large)
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
@@ -672,9 +598,9 @@ fun DashboardScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(26.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color.White.copy(alpha = 0.07f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                        .clip(MaterialTheme.shapes.small)
+                                        .background(if (isDark) Color.White.copy(alpha = 0.07f) else Color.Black.copy(alpha = 0.04f))
+                                        .border(1.dp, if (isDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f), MaterialTheme.shapes.small)
                                         .graphicsLayer { rotationZ = rotationChevron },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -688,14 +614,14 @@ fun DashboardScreen(
                                         .fillMaxWidth()
                                         .height(1.dp)
                                         .padding(horizontal = 16.dp)
-                                        .background(Color.White.copy(alpha = 0.06f))
+                                        .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.06f))
                                 )
                             }
                             
                             AnimatedVisibility(
-                                visible = recoOpen,
-                                enter = expandVertically(animationSpec = tween(400)) + fadeIn(animationSpec = tween(300)),
-                                exit = shrinkVertically(animationSpec = tween(400)) + fadeOut(animationSpec = tween(300))
+                                  visible = recoOpen,
+                                  enter = expandVertically(animationSpec = tween(400)) + fadeIn(animationSpec = tween(300)),
+                                  exit = shrinkVertically(animationSpec = tween(400)) + fadeOut(animationSpec = tween(300))
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -704,15 +630,14 @@ fun DashboardScreen(
                                 ) {
                                     if (recs.isEmpty()) {
                                         val fallbackRecs = listOf(
-                                            Triple("Continue in Quiz Mode", "🎓", "Quiz"),
-                                            Triple("Review Chapter 1", "📖", "Read"),
-                                            Triple("Focus on Yoga Level 1", "🧘", "Level")
+                                            RecommendationItem("Continue in Quiz Mode", "🎓", "Quiz"),
+                                            RecommendationItem("Review Chapter 1", "📖", "Read"),
+                                            RecommendationItem("Focus on Yoga Level 1", "🧘", "Level")
                                         )
                                         fallbackRecs.forEachIndexed { i, item ->
                                             RecommendationRow(
-                                                text = item.first,
-                                                icon = item.second,
-                                                tag = item.third,
+                                                item = item,
+                                                isDark = isDark,
                                                 showDivider = i < fallbackRecs.size - 1
                                             )
                                         }
@@ -726,9 +651,8 @@ fun DashboardScreen(
                                                 else -> "✦" to "Gita"
                                             }
                                             RecommendationRow(
-                                                text = r.recommendationTitle,
-                                                icon = emoji,
-                                                tag = tag,
+                                                item = RecommendationItem(r.recommendationTitle, emoji, tag),
+                                                isDark = isDark,
                                                 showDivider = i < recs.size.coerceAtMost(3) - 1
                                             )
                                         }
@@ -741,22 +665,22 @@ fun DashboardScreen(
                                             onClick = onNavigateToQuizMode,
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = MaterialTheme.shapes.large,
                                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9628).copy(alpha = 0.35f)),
                                             contentPadding = PaddingValues(vertical = 11.dp)
                                         ) {
-                                            Text("Start Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            Text("Start Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.White else textPrimary)
                                         }
                                         
                                         Button(
                                             onClick = onNavigateToRecommendations,
                                             modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.06f)),
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
+                                            colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f)),
+                                            shape = MaterialTheme.shapes.large,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.09f) else Color.Black.copy(alpha = 0.06f)),
                                             contentPadding = PaddingValues(vertical = 11.dp)
                                         ) {
-                                            Text("View All", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = 0.45f))
+                                            Text("View All", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDark) Color.White.copy(alpha = 0.45f) else textPrimary.copy(alpha = 0.5f))
                                         }
                                     }
                                 }
@@ -772,126 +696,35 @@ fun DashboardScreen(
         WelcomeDialog(
             onDismiss = {
                 showWelcomeDialog = false
-                prefs.edit().putBoolean("has_seen_welcome", true).apply()
+                prefs.edit().putInt("last_seen_version", 6).apply()
             }
         )
     }
+
 }
 
-@Composable
-fun DashboardStatCard(
-    title: String,
-    value: String,
-    icon: String,
-    color: Color,
-    modifier: Modifier = Modifier
+data class TodayStats(
+    val verses: Int,
+    val quizzes: Int,
+    val normalTime: Long,
+    val quizTime: Long,
+    val studioTime: Long,
+    val versesList: List<com.aipoweredgita.app.database.ReadVerse>
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = icon,
-                fontSize = 32.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun QuickActionCard(
-    title: String,
-    description: String,
-    icon: @Composable (() -> Unit),
-    gradient: List<Color>,
-    onClick: () -> Unit
-) {
-    GradientActionCard(
-        title = title,
-        description = description,
-        icon = icon,
-        gradient = gradient,
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp),
-        cornerRadius = 16.dp,
-        iconSize = 40.dp,
-        contentPadding = 20.dp,
-        elevation = 0.dp,
-        titleFontSizeSp = 18,
-        descriptionFontSizeSp = 14
-    )
-}
-
-// Adaptive helpers using global orientation config
-data class StatItem(
-    val title: String,
-    val value: String,
-    val icon: String,
-    val color: Color,
-)
-
-@Composable
-fun AdaptiveStatRow(items: List<StatItem>) {
-    val uiCfg = LocalUiConfig.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (uiCfg.isLandscape) Arrangement.SpaceBetween else Arrangement.spacedBy(12.dp)
-    ) {
-        items.forEach { it ->
-            DashboardStatCard(
-                title = it.title,
-                value = it.value,
-                icon = it.icon,
-                color = it.color,
-                modifier = if (uiCfg.isLandscape) Modifier.width(180.dp) else Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun AdaptiveQuickActionsRow(content: @Composable RowScope.() -> Unit) {
-    val uiCfg = LocalUiConfig.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (uiCfg.isLandscape) Arrangement.SpaceBetween else Arrangement.spacedBy(12.dp),
-        content = content
+    constructor(daily: ProfileViewModel.DailyActivityData) : this(
+        verses = daily.versesToday,
+        quizzes = daily.quizzesToday,
+        normalTime = daily.normalToday,
+        quizTime = daily.quizToday,
+        studioTime = daily.studioToday,
+        versesList = daily.versesListToday
     )
 }
 
 @Composable
 fun TodaySummaryDialog(
     onDismiss: () -> Unit,
-    verses: Int,
-    quizzes: Int,
-    normalTime: Long,
-    quizTime: Long,
-    studioTime: Long = 0,
-    versesList: List<com.aipoweredgita.app.database.ReadVerse> = emptyList(),
+    stats: TodayStats,
     onReadMore: () -> Unit = {},
     onTakeQuiz: () -> Unit = {}
 ) {
@@ -902,32 +735,23 @@ fun TodaySummaryDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Verses viewed: $verses", color = MaterialTheme.colorScheme.onSurface)
-                Text("Quizzes taken: $quizzes", color = MaterialTheme.colorScheme.onSurface)
-                Text("Normal Mode: ${formatTime(normalTime)}", color = MaterialTheme.colorScheme.onSurface)
-                Text("Quiz Mode: ${formatTime(quizTime)}", color = MaterialTheme.colorScheme.onSurface)
-                Text("Voice Studio: ${formatTime(studioTime)}", color = MaterialTheme.colorScheme.onSurface)
-                if (versesList.isNotEmpty()) {
+                Text("Verses viewed: ${stats.verses}", color = MaterialTheme.colorScheme.onSurface)
+                Text("Quizzes taken: ${stats.quizzes}", color = MaterialTheme.colorScheme.onSurface)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 4.dp))
+                Text("Normal Mode: ${TimeUtils.formatTime(stats.normalTime)}", color = MaterialTheme.colorScheme.onSurface)
+                Text("Quiz Mode: ${TimeUtils.formatTime(stats.quizTime)}", color = MaterialTheme.colorScheme.onSurface)
+                Text("Voice Studio: ${TimeUtils.formatTime(stats.studioTime)}", color = MaterialTheme.colorScheme.onSurface)
+
+                if (stats.versesList.isNotEmpty()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Verses today:", color = GoldSpark)
-                    val items = versesList.take(10).joinToString { "${it.chapterNo}:${it.verseNo}" }
+                    val items = stats.versesList.take(10).joinToString { "${it.chapterNo}:${it.verseNo}" }
                     Text(items, color = MaterialTheme.colorScheme.onSurface)
-                    if (versesList.size > 10) Text("…and ${versesList.size - 10} more", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (stats.versesList.size > 10) Text("…and ${stats.versesList.size - 10} more", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
     )
-}
-
-private fun formatTime(seconds: Long): String {
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    return when {
-        h > 0 -> "${h}h ${m}m"
-        m > 0 -> "${m}m ${s}s"
-        else -> "${s}s"
-    }
 }
 
 @Composable
@@ -938,9 +762,9 @@ fun Pill(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(color)
-            .border(1.dp, textColor.copy(alpha = 0.27f), RoundedCornerShape(20.dp))
+            .border(1.dp, textColor.copy(alpha = 0.27f), MaterialTheme.shapes.large)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
         Text(
@@ -955,9 +779,7 @@ fun Pill(
 
 @Composable
 fun DashboardModeCard(
-    emoji: String,
-    title: String,
-    sub: String,
+    card: ModeCardData,
     bgContent: @Composable BoxScope.() -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -1024,7 +846,7 @@ fun DashboardModeCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = emoji,
+                    text = card.emoji,
                     fontSize = 22.sp,
                     style = androidx.compose.ui.text.TextStyle(
                         shadow = Shadow(
@@ -1037,7 +859,7 @@ fun DashboardModeCard(
             }
             Column {
                 Text(
-                    text = title,
+                    text = card.title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.97f),
@@ -1052,7 +874,7 @@ fun DashboardModeCard(
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = sub,
+                    text = card.sub,
                     fontSize = 10.sp,
                     color = Color.White.copy(alpha = 0.5f),
                     letterSpacing = 0.2.sp,
@@ -1069,10 +891,53 @@ fun DashboardModeCard(
     }
 }
 
+class DiamondShape : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val path = Path().apply {
+            moveTo(size.width / 2f, 0f)
+            lineTo(size.width, size.height / 2f)
+            lineTo(size.width / 2f, size.height)
+            lineTo(0f, size.height / 2f)
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+data class StatsData(
+    val dayStreak: Int,
+    val coins: Int
+) {
+    val dayStreakDisplay: String get() = "$dayStreak"
+    val coinsDisplay: String get() = "🪙 $coins"
+}
+
+data class StatCardData(
+    val emoji: String,
+    val value: String,
+    val label: String,
+    val valueColor: Color = Color.White
+)
+
+data class RecommendationItem(
+    val text: String,
+    val icon: String,
+    val tag: String
+)
+
+data class ModeCardData(
+    val emoji: String,
+    val title: String,
+    val sub: String
+)
+
 @Composable
 fun GlassStatRow(
-    timeValue: String,
-    streakValue: String
+    stats: StatsData
 ) {
     val uiCfg = LocalUiConfig.current
     Row(
@@ -1080,70 +945,95 @@ fun GlassStatRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         val itemModifier = if (uiCfg.isLandscape) Modifier.width(180.dp) else Modifier.weight(1f)
-        
-        GlassCard(
-            modifier = itemModifier,
-            tint = Color.White.copy(alpha = 0.04f)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 16.dp)
-            ) {
-                Text("⏱", fontSize = 22.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = timeValue,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFFF7828)
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                Text(
-                    text = "Time Today",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.3f),
-                    letterSpacing = 0.4.sp
-                )
-            }
-        }
+        val diamondShape = remember { DiamondShape() }
 
-        GlassCard(
+        DiamondStatCard(
             modifier = itemModifier,
-            tint = Color.White.copy(alpha = 0.04f)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 16.dp)
-            ) {
-                Text("🔥", fontSize = 22.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = streakValue,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFFFBE28)
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-                Text(
-                    text = "Day Streak",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.3f),
-                    letterSpacing = 0.4.sp
-                )
+            diamondShape = diamondShape,
+            card = StatCardData(
+                emoji = "🔥",
+                value = stats.dayStreakDisplay,
+                label = "Day Streak",
+                valueColor = Color(0xFFFFBE28)
+            )
+        )
+
+        DiamondStatCard(
+            modifier = itemModifier,
+            diamondShape = diamondShape,
+            card = StatCardData(
+                emoji = "📤",
+                value = stats.coinsDisplay,
+                label = "Share Streak",
+                valueColor = Color(0xFF64D8FF)
+            )
+        )
+    }
+}
+
+@Composable
+private fun DiamondStatCard(
+    modifier: Modifier,
+    diamondShape: DiamondShape,
+    card: StatCardData
+) {
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .shadow(6.dp, shape = diamondShape, clip = false)
+            .clip(diamondShape)
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.13f), diamondShape)
+            .drawBehind {
+                val dp = Path().apply {
+                    moveTo(size.width / 2f, 0f)
+                    lineTo(size.width, size.height / 2f)
+                    lineTo(size.width / 2f, size.height)
+                    lineTo(0f, size.height / 2f)
+                    close()
+                }
+                clipPath(dp) {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        )
+                    )
+                }
             }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(card.emoji, fontSize = 22.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = card.value,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = card.valueColor
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = card.label,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.3f),
+                letterSpacing = 0.4.sp
+            )
         }
     }
 }
 
 @Composable
 fun RecommendationRow(
-    text: String,
-    icon: String,
-    tag: String,
+    item: RecommendationItem,
+    isDark: Boolean,
     showDivider: Boolean
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1157,30 +1047,30 @@ fun RecommendationRow(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White.copy(alpha = 0.06f))
-                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(10.dp)),
+                    .clip(MaterialTheme.shapes.small)
+                    .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+                    .border(1.dp, if (isDark) Color.White.copy(alpha = 0.09f) else Color.Black.copy(alpha = 0.06f), MaterialTheme.shapes.small),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = icon, fontSize = 15.sp)
+                Text(text = item.icon, fontSize = 15.sp)
             }
             
             Text(
-                text = text,
+                text = item.text,
                 fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.65f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.weight(1f)
             )
             
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(Color(0xFFFF9628).copy(alpha = 0.1f))
-                    .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.15f), MaterialTheme.shapes.medium)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = tag,
+                    text = item.tag,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFFFA532),
@@ -1191,7 +1081,7 @@ fun RecommendationRow(
             Text(
                 text = "›",
                 fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.18f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         }
         
@@ -1200,7 +1090,7 @@ fun RecommendationRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
             )
         }
     }

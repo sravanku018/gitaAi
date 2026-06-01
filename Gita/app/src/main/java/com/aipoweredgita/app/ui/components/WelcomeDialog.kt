@@ -58,7 +58,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "🙏 Welcome to Bhagavad Gita",
+                    text = "✨ What's New in v1.8.0",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -69,7 +69,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Discover the timeless wisdom of the Bhagavad Gita in Telugu",
+                    text = "We've introduced the Krishna Coin system and expanded Yoga Levels!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -83,33 +83,33 @@ fun WelcomeDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     FeatureItem(
-                        icon = "📖",
-                        title = "Read Verses",
-                        description = "Explore all 700 verses with translations"
+                        icon = "🪙",
+                        title = "Krishna Coins",
+                        description = "Earn coins by sharing random sloka every day and completing chapters."
                     )
                     
                     FeatureItem(
-                        icon = "🎯",
-                        title = "Test Your Knowledge",
-                        description = "AI-powered quizzes to deepen understanding"
+                        icon = "🧘",
+                        title = "Yoga Levels & Bonuses",
+                        description = "Progress from Seeker to Top Tier. Higher levels unlock coin multipliers!"
                     )
                     
                     FeatureItem(
-                        icon = "💬",
-                        title = "Ask Questions",
-                        description = "Get relevant verses for your spiritual queries"
+                        icon = "🎙️",
+                        title = "Sacred Inquiries",
+                        description = "Use your coins in Voice Studio for deep spiritual guidance from Krishna."
                     )
                     
                     FeatureItem(
                         icon = "📊",
-                        title = "Track Progress",
-                        description = "Yoga progression system with 4 levels"
+                        title = "Progress Tracking",
+                        description = "New detailed breakdown of coins earned by spiritual segment."
                     )
                     
                     FeatureItem(
-                        icon = "🔔",
-                        title = "Daily Reminders",
-                        description = "Receive daily verses and reflections"
+                        icon = "✨",
+                        title = "New Animations",
+                        description = "Global animations for earning coins, burning energy, and leveling up."
                     )
                 }
                 

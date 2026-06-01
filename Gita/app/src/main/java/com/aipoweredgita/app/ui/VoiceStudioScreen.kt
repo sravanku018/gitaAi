@@ -53,20 +53,56 @@ import com.aipoweredgita.app.viewmodel.VoiceChatViewModel
 import com.aipoweredgita.app.viewmodel.ChatMessage
 import com.aipoweredgita.app.viewmodel.VoiceChatState
 import com.aipoweredgita.app.ui.theme.*
+import com.aipoweredgita.app.ui.components.AmbientOrbs
+import com.aipoweredgita.app.ui.components.GlassCard
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 
-// ── Shared Sacred Gold Palette ──────────────────────────
+private class VoiceStudioColors(
+    val IsDark: Boolean,
+    val AppBg: Color,
+    val Border: Color,
+    val BorderHi: Color,
+    val TextPrimary: Color,
+    val TextSecondary: Color,
+    val TextMuted: Color,
+    val ListenRed: Color,
+    val SpeakGreen: Color,
+    val UserBubbleBg: Color,
+    val UserBubbleBdr: Color,
+    val RevolvingYellow: Color
+)
+
 @Composable
-private fun getVoiceStudioColors() = object {
-    val Border        = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-    val BorderHi      = MaterialTheme.colorScheme.outline
-    val TextPrimary   = MaterialTheme.colorScheme.onSurface
-    val TextSecondary = MaterialTheme.colorScheme.onSurfaceVariant
-    val TextMuted     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
-    val ListenRed     = CrimsonDeep
-    val SpeakGreen    = Forest
-    val UserBubbleBg  = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    val UserBubbleBdr = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
-    val RevolvingYellow = MaterialTheme.colorScheme.secondary
+private fun getVoiceStudioColors(): VoiceStudioColors {
+    val isDark = rememberThemeIsDark()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val textMuted = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+    val gold = if (isDark) GoldSpark else Saffron
+    val border = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val borderHi = gold
+    val userBubbleBg = Saffron.copy(alpha = if (isDark) 0.12f else 0.08f)
+    val userBubbleBdr = gold.copy(alpha = 0.25f)
+    val appBg = MaterialTheme.colorScheme.background
+    
+    return remember(isDark, textPrimary, textSecondary, textMuted, gold, border, borderHi, userBubbleBg, userBubbleBdr, appBg) {
+        VoiceStudioColors(
+            IsDark = isDark,
+            AppBg = appBg,
+            Border = border,
+            BorderHi = borderHi,
+            TextPrimary = textPrimary,
+            TextSecondary = textSecondary,
+            TextMuted = textMuted,
+            ListenRed = Color(0xFFE57373),
+            SpeakGreen = Color(0xFF81C784),
+            UserBubbleBg = userBubbleBg,
+            UserBubbleBdr = userBubbleBdr,
+            RevolvingYellow = gold
+        )
+    }
 }
 
 @Composable
@@ -83,7 +119,12 @@ fun VoiceStudioScreen(
         onDispose { voiceChatViewModel.onStopSession() }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val colors = getVoiceStudioColors()
+
+    Box(modifier = modifier.fillMaxSize().background(colors.AppBg)) {
+        if (colors.IsDark) {
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
+        }
         VoiceChatTab(
             voiceChatViewModel = voiceChatViewModel,
             onExit = onExit
@@ -113,6 +154,8 @@ private fun VoiceChatTab(
         onRefreshModelStatus   = { voiceChatViewModel.refreshModelStatus() },
         onSetLanguageMode      = { voiceChatViewModel.setLanguageMode(it) },
         onUpdateSelectedModel  = { com.aipoweredgita.app.ml.ModelAvailability.getInstance(context).updateSelectedModel(it) },
+        onConfirmSend          = { voiceChatViewModel.confirmAndSendMessage() },
+        onDismissConfirmation  = { voiceChatViewModel.dismissCoinConfirmation() },
         onExit                 = onExit
     )
 }
@@ -134,6 +177,8 @@ private fun VoiceChatContent(
     onRefreshModelStatus: () -> Unit,
     onSetLanguageMode: (com.aipoweredgita.app.utils.LanguageMode) -> Unit,
     onUpdateSelectedModel: (String) -> Unit,
+    onConfirmSend: () -> Unit,
+    onDismissConfirmation: () -> Unit,
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
@@ -142,7 +187,7 @@ private fun VoiceChatContent(
     val isBusy = state.isThinking || state.isSpeaking || state.isListening || !canInteract
     val colors = getVoiceStudioColors()
     var showModelMenu by remember { mutableStateOf(false) }
-    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
+    val modelOptions = listOf("Auto (Recommended)", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
 
 
 
@@ -175,11 +220,15 @@ private fun VoiceChatContent(
                 onClick = onExit,
                 modifier = Modifier
                     .size(36.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    .border(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.3f), CircleShape)
+                    .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
+                    .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Back",
-                    tint = colors.RevolvingYellow, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.Close, 
+                    contentDescription = "Back",
+                    tint = colors.TextPrimary.copy(alpha = 0.9f), 
+                    modifier = Modifier.size(16.dp)
+                )
             }
 
             Column(
@@ -187,14 +236,30 @@ private fun VoiceChatContent(
                     .weight(1f)
                     .padding(horizontal = 12.dp)
             ) {
-                Text(
-                    text = "Sacred conversations",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Normal,
-                        color = colors.TextPrimary,
-                        letterSpacing = 0.2.sp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Sacred conversations",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Normal,
+                            color = colors.TextPrimary,
+                            letterSpacing = 0.2.sp
+                        )
                     )
-                )
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        color = GoldSpark.copy(alpha = 0.15f),
+                        shape = MaterialTheme.shapes.medium,
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "Coins ${state.coinBalance}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = GoldSpark,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 Text(
                     text = "Active Model: ${state.currentModelName}",
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -212,31 +277,34 @@ private fun VoiceChatContent(
                     onClick = { showModelMenu = true },
                     modifier = Modifier
                         .size(36.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        .border(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.3f), CircleShape)
+                        .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
+                        .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
                 ) {
-                    Icon(Icons.Default.SmartToy, contentDescription = "Select Model",
-                        tint = colors.RevolvingYellow, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Default.SmartToy, 
+                        contentDescription = "Select Model",
+                        tint = colors.RevolvingYellow, 
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
                 
                 DropdownMenu(
                     expanded = showModelMenu,
                     onDismissRequest = { showModelMenu = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    modifier = Modifier.background(if (colors.IsDark) Color(0xFF140F0A) else Color(0xFFFFFDF8))
                 ) {
 
                     modelOptions.forEach { option ->
                         val ma = com.aipoweredgita.app.ml.ModelAvailability.getInstance(context)
                         val isAvailable = when {
-                            option.contains("Qwen3") -> ma.isQwen3Available()
                             option.contains("Gemma 4") -> ma.isGemma4Available()
-                            else -> true // Auto is always "available" (it picks what it can)
+                            else -> true // Auto/Groq are always "available"
                         }
                         
                         DropdownMenuItem(
                             text = { 
                                 Column {
-                                    Text(option, style = MaterialTheme.typography.bodyMedium)
+                                    Text(option, style = MaterialTheme.typography.bodyMedium, color = colors.TextPrimary)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         if (state.currentModelName != "Unknown" && option.contains(state.currentModelName.split("-")[0], ignoreCase = true)) {
                                             Text("Active", style = MaterialTheme.typography.labelSmall, color = colors.SpeakGreen)
@@ -317,7 +385,7 @@ private fun VoiceChatContent(
                     Spacer(Modifier.height(10.dp))
 
                     Text(
-                        text = "Speak or write your question — the Gita holds answers to every struggle of the human soul.",
+                        text = "Speak or write your question � each inquiry costs 1 Krishna Coin. The Gita holds answers to every struggle of the human soul.",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = colors.TextSecondary,
                             lineHeight = 22.sp
@@ -338,22 +406,25 @@ private fun VoiceChatContent(
                                 SuggestionChip(
                                     onClick = { if (!isBusy) onSendMessage(suggestion) },
                                     enabled = !isBusy,
-                                    label = { Text(suggestion, fontSize = 12.sp) },
+                                    label = { Text(suggestion, fontSize = 12.sp, color = colors.TextPrimary) },
                                     colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        labelColor = colors.TextSecondary,
-                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        disabledLabelColor = colors.TextMuted
+                                        containerColor = if (colors.IsDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
+                                        labelColor = colors.TextPrimary,
+                                        disabledContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.02f) else Color.Black.copy(alpha = 0.01f),
+                                        disabledLabelColor = colors.TextPrimary.copy(alpha = 0.3f)
                                     ),
                                     border = SuggestionChipDefaults.suggestionChipBorder(
-                                        borderColor = colors.Border, enabled = true,
-                                        disabledBorderColor = colors.Border
+                                        borderColor = if (colors.IsDark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+                                        enabled = true,
+                                        disabledBorderColor = if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f)
                                     ),
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = MaterialTheme.shapes.large,
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
                     }
+
+
                 }
             } else {
                 LazyColumn(
@@ -387,9 +458,9 @@ private fun VoiceChatContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 6.dp),
-                color = Color(0x1AEA4335),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0x4DEA4335))
+                color = if (colors.IsDark) Color(0x1AEA4335) else Color(0x0DEA4335),
+                shape = MaterialTheme.shapes.medium,
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, if (colors.IsDark) Color(0x4DEA4335) else Color(0x28EA4335))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -399,7 +470,7 @@ private fun VoiceChatContent(
                     Icon(Icons.Default.Error, contentDescription = null,
                         tint = Color(0xFFE57373), modifier = Modifier.size(15.dp))
                     Text(state.error ?: "An error occurred", modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2)))
+                        style = MaterialTheme.typography.bodySmall.copy(color = if (colors.IsDark) Color(0xFFFFCDD2) else Color(0xFFC62828)))
                     Text(
                         text = "Retry",
                         modifier = Modifier.clickable { onClearError(); onRefreshModelStatus() },
@@ -412,10 +483,10 @@ private fun VoiceChatContent(
         }
 
         // ── Bottom panel ──────────────────────────────────────────────────────
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
-            tonalElevation = 0.dp
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.AppBg.copy(alpha = 0.85f))
         ) {
             Column(
                 modifier = Modifier
@@ -441,17 +512,20 @@ private fun VoiceChatContent(
                             .weight(1f)
                             .heightIn(min = 42.dp),
                         placeholder = {
-                            Text("Share your search for truth...",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextMuted))
+                            Text("Ask Krishna (Costs 1 coin)...",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextSecondary.copy(alpha = 0.7f)))
                         },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.TextPrimary),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colors.RevolvingYellow,
-                            unfocusedBorderColor = colors.Border,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledBorderColor = colors.Border
+                            unfocusedBorderColor = if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.12f),
+                            focusedContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
+                            unfocusedContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f),
+                            disabledContainerColor = if (colors.IsDark) Color.White.copy(alpha = 0.02f) else Color.Black.copy(alpha = 0.01f),
+                            disabledBorderColor = if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f),
+                            focusedTextColor = colors.TextPrimary,
+                            unfocusedTextColor = colors.TextPrimary,
+                            disabledTextColor = colors.TextMuted
                         ),
                         shape = RoundedCornerShape(21.dp),
                         singleLine = false,
@@ -468,9 +542,10 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
-                                if (state.isListening) colors.ListenRed else MaterialTheme.colorScheme.surfaceVariant,
+                                if (state.isListening) colors.ListenRed.copy(alpha = 0.25f) else (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)),
                                 CircleShape
                             )
+                            .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
                     ) {
                         Icon(Icons.Default.Mic, contentDescription = "Voice Input",
                             tint = if (state.isListening) colors.ListenRed else colors.RevolvingYellow,
@@ -484,14 +559,19 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
-                                if (canSend) colors.RevolvingYellow else MaterialTheme.colorScheme.surfaceVariant,
+                                if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)),
+                                CircleShape
+                            )
+                            .border(
+                                1.dp,
+                                if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
                                 CircleShape
                             )
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
-                            tint = if (canSend) MaterialTheme.colorScheme.background else colors.TextMuted,
+                            tint = if (canSend) MaterialTheme.colorScheme.surface else colors.TextPrimary.copy(alpha = 0.3f),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -501,13 +581,59 @@ private fun VoiceChatContent(
                         onClick = { if (canInteract) onClearChat() },
                         modifier = Modifier
                             .size(42.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                            .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
+                            .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = "Clear",
                             tint = colors.RevolvingYellow, modifier = Modifier.size(18.dp))
                     }
                 }
             }
+        }
+
+        if (state.showCoinConfirmation) {
+            AlertDialog(
+                onDismissRequest = onDismissConfirmation,
+                containerColor   = colors.AppBg,
+                shape            = MaterialTheme.shapes.extraLarge,
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text("ॐ", fontSize = 24.sp, color = colors.RevolvingYellow)
+                        Text("Sacred Inquiry", fontWeight = FontWeight.Bold, color = colors.TextPrimary)
+                    }
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "Guided spiritual inquiries require divine energy. This search will consume your accumulated Krishna Coins.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.TextSecondary
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Caution: Guidance is limited by your current mastery.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.ListenRed,
+                            fontStyle = FontStyle.Italic
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = onConfirmSend,
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.RevolvingYellow)
+                    ) {
+                        Text("Spend ${state.pendingCost} coin(s)", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismissConfirmation) {
+                        Text("Cancel", color = colors.TextMuted)
+                    }
+                }
+            )
         }
     }
 }
@@ -602,18 +728,29 @@ private fun ChatBubble(
             Spacer(Modifier.width(10.dp))
         }
 
-        Surface(
-            modifier = Modifier.widthIn(max = 260.dp),
-            shape = if (isUser)
-                RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
-            else
-                RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
-            color = if (isUser) colors.UserBubbleBg else MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(
-                0.5.dp,
-                if (isUser) colors.UserBubbleBdr else colors.Border
-            ),
-            tonalElevation = if (isUser) 0.dp else 1.dp
+        val bubbleShape = if (isUser)
+            RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
+        else
+            RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
+        
+        val bubbleBg = if (isUser) colors.UserBubbleBg else (if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.03f))
+        val bubbleBdrColor = if (isUser) colors.UserBubbleBdr else (if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f))
+
+        Box(
+            modifier = Modifier
+                .widthIn(max = 260.dp)
+                .clip(bubbleShape)
+                .background(bubbleBg)
+                .border(0.5.dp, bubbleBdrColor, bubbleShape)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf((if (colors.IsDark) Color.White else Color.Black).copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        )
+                    )
+                }
         ) {
             Text(
                 text = message.text,
@@ -718,10 +855,24 @@ private fun ThinkingBubble() {
             }
         }
         Spacer(Modifier.width(10.dp))
-        Surface(
-            shape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp),
-            color = colors.RevolvingYellow.copy(alpha = 0.10f),
-            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.RevolvingYellow.copy(alpha = 0.22f))
+        val bubbleShape = RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
+        val bubbleBg = if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.03f)
+        val bubbleBdrColor = if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f)
+
+        Box(
+            modifier = Modifier
+                .clip(bubbleShape)
+                .background(bubbleBg)
+                .border(0.5.dp, bubbleBdrColor, bubbleShape)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf((if (colors.IsDark) Color.White else Color.Black).copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        )
+                    )
+                }
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -751,11 +902,26 @@ private fun ListeningBubble(liveTranscript: String) {
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.Top
     ) {
-        Surface(
-            modifier = Modifier.widthIn(min = 60.dp, max = 260.dp).scale(scale),
-            shape = RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp),
-            color = colors.UserBubbleBg,
-            border = androidx.compose.foundation.BorderStroke(1.dp, colors.ListenRed.copy(alpha = 0.5f))
+        val bubbleShape = RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
+        val bubbleBg = if (colors.IsDark) Color(0xFFFF6400).copy(alpha = 0.12f) else Color(0xFFFF6400).copy(alpha = 0.08f)
+        val bubbleBdrColor = colors.ListenRed.copy(alpha = 0.5f)
+
+        Box(
+            modifier = Modifier
+                .widthIn(min = 60.dp, max = 260.dp)
+                .scale(scale)
+                .clip(bubbleShape)
+                .background(bubbleBg)
+                .border(1.dp, bubbleBdrColor, bubbleShape)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf((if (colors.IsDark) Color.White else Color.Black).copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        )
+                    )
+                }
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -806,6 +972,8 @@ fun PreviewVoiceStudioIdle() {
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {},
                 onUpdateSelectedModel = {},
+                onConfirmSend = {},
+                onDismissConfirmation = {},
                 onExit = {}
             )
         }
@@ -817,7 +985,7 @@ fun PreviewVoiceStudioIdle() {
 fun PreviewVoiceStudioChat() {
     val msgs = listOf(
         ChatMessage(text = "What is karma?", isUser = true),
-        ChatMessage(text = "Karma is the law of cause and effect — every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
+        ChatMessage(text = "Karma is the law of cause and effect � every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
     )
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
@@ -828,6 +996,8 @@ fun PreviewVoiceStudioChat() {
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {},
                 onUpdateSelectedModel = {},
+                onConfirmSend = {},
+                onDismissConfirmation = {},
                 onExit = {}
             )
         }
@@ -846,6 +1016,8 @@ fun PreviewVoiceStudioListening() {
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {},
                 onUpdateSelectedModel = {},
+                onConfirmSend = {},
+                onDismissConfirmation = {},
                 onExit = {}
             )
         }
@@ -867,8 +1039,11 @@ fun PreviewVoiceStudioThinking() {
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {},
                 onUpdateSelectedModel = {},
+                onConfirmSend = {},
+                onDismissConfirmation = {},
                 onExit = {}
             )
         }
     }
 }
+

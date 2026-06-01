@@ -127,8 +127,15 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            downloadService = null
             isBound = false
-            Log.d(TAG, "Service disconnected")
+            Log.d(TAG, "Service disconnected unexpectedly")
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            downloadService = null
+            isBound = false
+            Log.w(TAG, "Service binding died — service process crashed")
         }
     }
 
@@ -286,10 +293,14 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     override fun onCleared() {
         super.onCleared()
-        if (isBound) {
+        try {
             getApplication<Application>().unbindService(serviceConnection)
-            isBound = false
+        } catch (_: IllegalArgumentException) {
+            // Already unbound — ignore
+            Log.d(TAG, "Service already unbound in onCleared")
         }
+        isBound = false
+        downloadService = null
         Log.d(TAG, "ViewModel cleared")
     }
 }

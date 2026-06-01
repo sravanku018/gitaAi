@@ -41,14 +41,16 @@ import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.QuizAttempt
 import com.aipoweredgita.app.database.ReadVerse
 import com.aipoweredgita.app.database.UserStats
-import com.aipoweredgita.app.ui.components.LotusLevelManager
+import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.viewmodel.ActivityHistoryViewModel
+import com.aipoweredgita.app.util.TimeUtils
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.aipoweredgita.app.ui.theme.GoldSpark
 
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 @Composable
@@ -154,7 +156,7 @@ private fun OverviewTab(userStats: UserStats?) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
@@ -213,7 +215,7 @@ private fun OverviewTab(userStats: UserStats?) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = formatTimeCompact(totalTime),
+                                text = TimeUtils.formatTimeCompact(totalTime),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -272,13 +274,13 @@ private fun OverviewTab(userStats: UserStats?) {
         }
 
         // ── Yoga Level Card ──
-        val yogaInfo = LotusLevelManager.yogaLevelInfo(userStats)
-        val yogaLevel = LotusLevelManager.levelFor(userStats)
-        val progress = LotusLevelManager.progressInLevel(userStats)
+        val yogaInfo = YogaLevelManager.yogaLevelInfo(userStats)
+        val yogaLevel = YogaLevelManager.levelFor(userStats)
+        val progress = YogaLevelManager.progressInLevel(userStats)
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
         ) {
             Column(
@@ -311,7 +313,7 @@ private fun OverviewTab(userStats: UserStats?) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .clip(MaterialTheme.shapes.extraSmall),
                 )
                 Text(
                     text = "Progress: ${(progress * 100).toInt()}%",
@@ -373,7 +375,7 @@ private fun TimeDistributionLegendItem(label: String, seconds: Long, color: Colo
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = formatTimeCompact(seconds),
+                text = TimeUtils.formatTimeCompact(seconds),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -513,7 +515,7 @@ private fun QuizTab(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 AHPerformanceCard(
-                    title = "Total Attempts",
+                    title = "Attempts",
                     value = "${displayAttempts.size}",
                     icon = "📝",
                     color = MaterialTheme.colorScheme.tertiary,
@@ -522,8 +524,8 @@ private fun QuizTab(
                 AHPerformanceCard(
                     title = "Accuracy",
                     value = "${userStats?.accuracyPercentage?.toInt() ?: 0}%",
-                    icon = "🎓",
-                    color = MaterialTheme.colorScheme.primary,
+                    icon = "🎯",
+                    color = Color(0xFF8B5CF6),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -636,7 +638,7 @@ private fun AHQuizAttemptCard(attempt: QuizAttempt) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = bgColor)
     ) {
         Row(
@@ -664,6 +666,13 @@ private fun AHQuizAttemptCard(attempt: QuizAttempt) {
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "🪙 +${attempt.coinsEarned}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldSpark
                     )
                 }
                 Text(
@@ -714,7 +723,7 @@ private fun AHPerformanceTrendChart(attempts: List<QuizAttempt>) {
         modifier = Modifier
             .fillMaxWidth()
             .height(260.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -892,9 +901,9 @@ private fun AHTooltip(
             .offset(x = xDp - 50.dp, y = yDp - 65.dp)
             .background(
                 color = MaterialTheme.colorScheme.inverseSurface,
-                shape = RoundedCornerShape(8.dp)
+                shape = MaterialTheme.shapes.small
             )
-            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+            .border(1.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small)
             .padding(8.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -957,7 +966,7 @@ private fun AHSpiritualPathRadarChart(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
@@ -1230,9 +1239,9 @@ private fun CalendarTab() {
                         Box(
                             modifier = Modifier
                                 .size(cellSize)
-                                .background(color = bg, shape = RoundedCornerShape(4.dp))
+                                .background(color = bg, shape = MaterialTheme.shapes.extraSmall)
                                 .then(
-                                    if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(4.dp)) else Modifier
+                                    if (borderColor != null) Modifier.border(1.dp, borderColor, MaterialTheme.shapes.extraSmall) else Modifier
                                 )
                                 .clickable { selectedDate = date },
                             contentAlignment = Alignment.Center
@@ -1280,9 +1289,9 @@ private fun CalendarTab() {
                     val normal = dailyRow?.normalSeconds ?: 0L
                     val quiz = dailyRow?.quizSeconds ?: 0L
                     val studio = dailyRow?.voiceStudioTimeSeconds ?: 0L
-                    Text("📖 Reading: ${formatTimeCompact(normal)}")
-                    Text("📝 Quiz: ${formatTimeCompact(quiz)}")
-                    Text("💬 Chat: ${formatTimeCompact(studio)}")
+                    Text("📖 Reading: ${TimeUtils.formatTimeCompact(normal)}")
+                    Text("📝 Quiz: ${TimeUtils.formatTimeCompact(quiz)}")
+                    Text("💬 Chat: ${TimeUtils.formatTimeCompact(studio)}")
                     HorizontalDivider()
                     Text("Verses viewed: ${versesList.size}", fontWeight = FontWeight.Bold)
                     if (versesList.isNotEmpty()) {
@@ -1378,17 +1387,6 @@ private fun AHEmptyState(message: String) {
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
-private fun formatTimeCompact(seconds: Long): String {
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    return when {
-        h > 0 -> "${h}h ${m}m"
-        m > 0 -> "${m}m ${s}s"
-        else -> "${s}s"
-    }
-}
-
 private fun formatDisplayDate(dateStr: String): String {
     return try {
         val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -1411,3 +1409,4 @@ private fun generateDatesForMonth(month: YearMonth): List<String> {
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     return (1..month.lengthOfMonth()).map { day -> month.atDay(day).format(formatter) }
 }
+

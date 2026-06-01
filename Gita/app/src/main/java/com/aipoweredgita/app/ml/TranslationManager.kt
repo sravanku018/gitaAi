@@ -306,4 +306,9 @@ class TranslationManager {
             text // fallback
         }
     }
+
+    fun close() {
+        teluguToEnglishTranslator.close()
+        englishToTeluguTranslator.close()
+    }
 }

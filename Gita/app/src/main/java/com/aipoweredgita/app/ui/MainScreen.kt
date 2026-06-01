@@ -2,6 +2,9 @@ package com.aipoweredgita.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -33,6 +37,10 @@ import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.navigation.NavGraph
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
+import com.aipoweredgita.app.ui.theme.GoldSpark
+import com.aipoweredgita.app.ui.theme.Saffron
+import androidx.compose.foundation.border
+import androidx.compose.runtime.CompositionLocalProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,10 +57,20 @@ fun MainScreen(
     val profileViewModel: ProfileViewModel = viewModel()
     val stats by profileViewModel.stats.collectAsState()
 
+    // Fetch coin balance from API when userId becomes available
+    LaunchedEffect(stats) {
+        if (stats?.userId?.isNotEmpty() == true) {
+            profileViewModel.refreshCoinBalance()
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
                 DrawerContent(
                     isDarkTheme = isDarkTheme,
                     onThemeToggle = onThemeToggle,
@@ -84,11 +102,20 @@ fun MainScreen(
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Profile.route)
                     },
+                    onNavigateToYogaLevels = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Awakening.route)
+                    },
                     onNavigateToSettings = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Settings.route)
                     },
-                    stats = stats
+                    onNavigateToCoinHistory = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.CoinHistory.route)
+                    },
+                    stats = stats,
+                    coinBalance = profileViewModel.coinBalance.collectAsState().value
                 )
             }
         }
@@ -119,12 +146,12 @@ fun MainScreen(
                             Icon(
                                 imageVector = Icons.Filled.Menu,
                                 contentDescription = "Menu",
-                                tint = MaterialTheme.colorScheme.onSurface
+                                tint = GoldSpark
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                         navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
                         actionIconContentColor = MaterialTheme.colorScheme.onSurface
@@ -135,6 +162,7 @@ fun MainScreen(
             bottomBar = {
                 BottomNavigationBar(
                     currentRoute = currentRoute,
+                    isDarkTheme = isDarkTheme,
                     onNavigate = { route ->
                         // Only navigate if not already on that route
                         if (currentRoute != route) {
@@ -164,41 +192,80 @@ fun MainScreen(
 @Composable
 fun BottomNavigationBar(
     currentRoute: String?,
+    isDarkTheme: Boolean,
     onNavigate: (String) -> Unit
 ) {
+    val springSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 500f)
+    val springColor = spring<Color>(dampingRatio = 0.7f, stiffness = 400f)
+
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
+        containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.extraLarge),
+        tonalElevation = 4.dp
     ) {
-        NavigationBarItem(
-            selected = currentRoute == Screen.Home.route,
-            onClick = { onNavigate(Screen.Home.route) },
-            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Home") },
-            label = { Text("Home") }
+        val navItems = listOf(
+            Screen.Home.route to Icons.Filled.Home to "Home",
+            Screen.ChapterSelection.route to Icons.AutoMirrored.Filled.MenuBook to "Read",
+            Screen.QuizSection.route to Icons.Filled.School to "Quiz",
+            Screen.VoiceStudio.route to Icons.Filled.Mic to "Voice",
+            Screen.Profile.route to Icons.Filled.Person to "Profile"
         )
-        NavigationBarItem(
-            selected = currentRoute == Screen.ChapterSelection.route || currentRoute?.startsWith("normal_mode") == true,
-            onClick = { onNavigate(Screen.ChapterSelection.route) },
-            icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
-            label = { Text("Read") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.QuizSection.route || currentRoute == Screen.QuizConfig.route || currentRoute == Screen.QuizMode.route,
-            onClick = { onNavigate(Screen.QuizSection.route) },
-            icon = { Icon(imageVector = Icons.Filled.School, contentDescription = "Quiz") },
-            label = { Text("Quiz") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.VoiceStudio.route,
-            onClick = { onNavigate(Screen.VoiceStudio.route) },
-            icon = { Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voice") },
-            label = { Text("Voice") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.Profile.route,
-            onClick = { onNavigate(Screen.Profile.route) },
-            icon = { Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile") },
-            label = { Text("Profile") }
-        )
+        
+        navItems.forEach { (routeAndIcon, label) ->
+            val route = routeAndIcon.first
+            val icon = routeAndIcon.second
+            val isSelected = when (route) {
+                Screen.Home.route -> currentRoute == Screen.Home.route
+                Screen.ChapterSelection.route -> currentRoute == Screen.ChapterSelection.route || currentRoute?.startsWith("normal_mode") == true
+                Screen.QuizSection.route -> currentRoute == Screen.QuizSection.route || currentRoute == Screen.QuizConfig.route || currentRoute == Screen.QuizMode.route
+                Screen.VoiceStudio.route -> currentRoute == Screen.VoiceStudio.route
+                Screen.Profile.route -> currentRoute == Screen.Profile.route
+                else -> false
+            }
+
+            val iconScale by animateFloatAsState(
+                targetValue = if (isSelected) 1f else 0.9f,
+                animationSpec = springSpec,
+                label = "nav_scale_$label"
+            )
+            val iconColor by animateColorAsState(
+                targetValue = if (isSelected) GoldSpark else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                animationSpec = springColor,
+                label = "nav_color_$label"
+            )
+            val textColor by animateColorAsState(
+                targetValue = if (isSelected) GoldSpark else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                animationSpec = springColor,
+                label = "nav_text_$label"
+            )
+
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onNavigate(route) },
+                icon = {
+                    Box(modifier = Modifier.scale(iconScale)) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = iconColor
+                        )
+                    }
+                },
+                label = {
+                    Text(
+                        label,
+                        color = textColor,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                )
+            )
+        }
     }
 }
 
@@ -213,19 +280,23 @@ fun DrawerContent(
     onNavigateToQuizStats: () -> Unit,
     onNavigateToOfflineDownload: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToYogaLevels: () -> Unit,
+    onNavigateToCoinHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    stats: com.aipoweredgita.app.database.UserStats?
+    stats: com.aipoweredgita.app.database.UserStats?,
+    coinBalance: Int = 0
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Profile Section at Top (Twitter-style)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primaryContainer)
+                .background(Saffron.copy(alpha = 0.05f))
+                .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(0.dp))
                 .padding(20.dp)
         ) {
             // Profile Avatar
@@ -233,7 +304,8 @@ fun DrawerContent(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(Color(0xFFFF6400).copy(alpha = 0.15f))
+                    .border(1.dp, GoldSpark.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -248,7 +320,8 @@ fun DrawerContent(
             Text(
                 text = "Gita Student",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -260,13 +333,26 @@ fun DrawerContent(
                 Text(
                     text = "${stats?.totalQuizzesTaken ?: 0} Quizzes",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Text(
                     text = "${stats?.currentStreak ?: 0}🔥 Streak",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
+                Surface(
+                    color = GoldSpark.copy(alpha = 0.1f),
+                    shape = MaterialTheme.shapes.medium,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = "🪙 $coinBalance",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GoldSpark,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -274,60 +360,89 @@ fun DrawerContent(
         Column(
             modifier = Modifier
                 .weight(1f)
+                .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Home") },
                 title = "Home",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToHome
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read Verses") },
                 title = "Read Verses",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToRead
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.School, contentDescription = "Quiz") },
                 title = "Quiz",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToQuiz
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Favorite, contentDescription = "Favorites") },
                 title = "Favorites",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToFavorites
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Activity History") },
                 title = "Activity History",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToQuizStats
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.CloudDownload, contentDescription = "Offline Mode") },
                 title = "Offline Mode",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToOfflineDownload
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile") },
                 title = "Profile",
+                isDarkTheme = isDarkTheme,
                 onClick = onNavigateToProfile
             )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            TwitterMenuItem(
+                icon = { Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { Text("🪙", fontSize = 22.sp) } },
+                title = "Coin History",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToCoinHistory
+            )
+
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = "Yoga Levels") },
+                title = "Yoga Levels",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToYogaLevels
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f))
 
             // Settings section
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Menu, contentDescription = "Appearance & Theme") },
                 title = "Appearance & Theme",
+                isDarkTheme = isDarkTheme,
                 trailing = {
                     Switch(
                         checked = isDarkTheme,
-                        onCheckedChange = onThemeToggle
+                        onCheckedChange = onThemeToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = GoldSpark,
+                            checkedTrackColor = Saffron.copy(alpha = 0.5f),
+                            uncheckedThumbColor = Color.Black.copy(alpha = 0.4f),
+                            uncheckedTrackColor = Color.Black.copy(alpha = 0.1f)
+                        )
                     )
                 },
                 onClick = onNavigateToSettings
@@ -362,6 +477,7 @@ fun QuickStatItem(
 fun TwitterMenuItem(
     icon: @Composable (() -> Unit),
     title: String,
+    isDarkTheme: Boolean,
     onClick: () -> Unit,
     trailing: @Composable (() -> Unit)? = null
 ) {
@@ -372,7 +488,13 @@ fun TwitterMenuItem(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) { icon() }
+        Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+            CompositionLocalProvider(
+                LocalContentColor provides GoldSpark
+            ) {
+                icon()
+            }
+        }
 
         Spacer(modifier = Modifier.width(20.dp))
 
@@ -380,6 +502,7 @@ fun TwitterMenuItem(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
 

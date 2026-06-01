@@ -39,8 +39,14 @@ data class UserStats(
     val longestStreak: Int = 0,
     val lastActiveDate: String = "", // Format: "YYYY-MM-DD"
 
+    // Unique user ID for API (UUID, generated on first launch)
+    val userId: String = "",
+
     // First use
-    val firstOpenTimestamp: Long = System.currentTimeMillis()
+    val firstOpenTimestamp: Long = System.currentTimeMillis(),
+
+    // Active days count
+    val daysActive: Int = 1
 ) {
     // Computed properties
     val accuracyPercentage: Float
@@ -75,11 +81,6 @@ data class UserStats(
         }
     }
 
-    val daysActive: Int
-        get() {
-            val daysSinceFirst = (System.currentTimeMillis() - firstOpenTimestamp) / (1000 * 60 * 60 * 24)
-            return daysSinceFirst.toInt() + 1
-        }
 
     val age: Int
         get() {

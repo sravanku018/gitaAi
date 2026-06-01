@@ -114,12 +114,14 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                 append("<|im_end|>\n")
                 append("<|im_start|>assistant\n")
             } else {
-                append("<start_of_turn>user\n")
+                // Gemma 4 chat template
+                append("<|turn>system\n")
                 append(systemInstruction.trim())
-                append("\n\n")
+                append("<turn|>\n")
+                append("<|turn>user\n")
                 append(prompt.trim().take(MAX_PROMPT_CHARS))
-                append("<end_of_turn>\n")
-                append("<start_of_turn>model\n")
+                append("<turn|>\n")
+                append("<|turn>model\n")
             }
         }
 
@@ -184,7 +186,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
             Log.d(TAG, "RAW:\n$rawFinal")
 
             // Extract answer after last thinking marker
-            val markers = listOf("</think>", "</thought>", "<end_of_turn>", "<start_of_turn>")
+            val markers = listOf("</think>", "</thought>", "<turn|>", "<|turn>", "<end_of_turn>", "<start_of_turn>")
             var lastMarker = -1
             for (m in markers) {
                 val idx = rawFinal.lastIndexOf(m)
@@ -246,6 +248,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         .replace("<think>", "").replace("</think>", "")
         .replace("<thought>", "").replace("</thought>", "")
         .replace("<start_of_turn>", "").replace("<end_of_turn>", "")
+        .replace("<|turn>", "").replace("<turn|>", "")
         .replace("<|im_start|>", "").replace("<|im_end|>", "")
         .replace("system\n", "").replace("assistant\n", "")
         .replace("model\n", "").replace("user\n", "")
@@ -288,7 +291,18 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         modelPath?.let { initialize(it) }
     }
 
+    /**
+     * Non-blocking close — dispatches cleanup to engine scope.
+     * Caller must NOT rely on immediate completion; use [closeBlocking] if needed.
+     */
     fun close() {
+        cleanerScope.launch {
+            engineMutex.withLock { closeInternal() }
+        }
+    }
+
+    /** Blocking close for lifecycle-critical paths only (e.g. onCleared on IO thread). */
+    fun closeBlocking() {
         runBlocking { engineMutex.withLock { closeInternal() } }
     }
 

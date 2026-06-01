@@ -65,8 +65,8 @@ fun AnswerOptionItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor, RoundedCornerShape(8.dp))
-            .border(2.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(backgroundColor, MaterialTheme.shapes.small)
+            .border(2.dp, borderColor, MaterialTheme.shapes.small)
             .clickable(enabled = !showAnswer) { onClick() }
             .padding(16.dp)
     ) {

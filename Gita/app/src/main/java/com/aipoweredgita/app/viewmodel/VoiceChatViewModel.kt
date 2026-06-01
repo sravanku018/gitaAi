@@ -17,9 +17,15 @@ import com.aipoweredgita.app.utils.AiTurnManager
 import com.aipoweredgita.app.utils.DeviceCapability
 import com.aipoweredgita.app.utils.LanguageMode
 import com.aipoweredgita.app.utils.VoiceManager
+import com.aipoweredgita.app.ui.components.CoinAnimationManager
+import com.aipoweredgita.app.ui.components.CoinEvent
+import com.aipoweredgita.app.ui.components.CoinEventType
+import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.repository.ModeType
 import com.aipoweredgita.app.repository.StatsRepository
-import com.aipoweredgita.app.ml.TranslationManager
+import com.aipoweredgita.app.prompt.GitaPromptEngine
+import com.aipoweredgita.app.prompt.VerseContext
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,8 +47,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import com.aipoweredgita.app.utils.DeviceTier
-import com.aipoweredgita.app.utils.DeviceTierDetector
 
 // ─── Data Models ──────────────────────────────────────────────────────────────
 
@@ -65,12 +69,19 @@ data class VoiceChatState(
     val isLlmReady     : Boolean            = false,
     val error          : String?            = null,
     val errorType      : VoiceChatErrorType? = null,
-    val currentModelName: String             = "Unknown"
+    val currentModelName: String             = "Unknown",
+    val coinBalance     : Int                = 0,
+    val coinError       : CoinError?         = null,
+    val showCoinConfirmation: Boolean       = false,
+    val pendingMessage  : String?           = null,
+    val pendingCost     : Int                = 0
 )
 
 enum class VoiceChatErrorType {
     MODEL_INIT, LLM_INFERENCE, STT, TTS, NETWORK, CRASH_RECOVERY
 }
+
+enum class CoinError { NETWORK_ERROR, UNKNOWN_ERROR }
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
 
@@ -82,11 +93,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     val state: StateFlow<VoiceChatState> = _state.asStateFlow()
 
     private val database        = GitaDatabase.getDatabase(application)
-    private val chatMessageDao  = database.voiceChatMessageDao()
-    private val statsRepository = StatsRepository(database.userStatsDao())
+    private val chatRepo = com.aipoweredgita.app.repository.ChatRepository(database.voiceChatMessageDao())
+    private val statsRepository = StatsRepository(database.userStatsDao(), database.dailyActivityDao(), application)
     private val voiceManager    = VoiceManager(application)
     private val voiceChatEngine = LiteRtLmVoiceChatEngine(application)
-    private val translationManager = TranslationManager()
 
     private var useProxy = false
     private val okHttpClient = OkHttpClient.Builder()
@@ -94,61 +104,90 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    private suspend fun fetchGroqReply(groundedPrompt: String, history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
-        val systemPrompt = currentLanguageMode.systemInstruction
-        val json = JSONObject()
+    /**
+     * Converts current chat messages to (role, content) pairs for the engine.
+     */
+    private fun buildHistory(): List<Pair<String, String>> =
+        _state.value.messages
+            .takeLast(10)
+            .map { msg -> (if (msg.isUser) "user" else "assistant") to msg.text }
+
+    /**
+     * Builds and sends the full message chain to the Deno proxy.
+     * System prompt comes from GitaPromptEngine — verse context is a
+     * separate system message so it doesn't pollute the soul prompt.
+     */
+    private suspend fun fetchGroqReply(
+        groundedPrompt: String,
+        history: List<ChatMessage>,
+        verseReference: String? = null
+    ): String = withContext(Dispatchers.IO) {
+
         val messagesArray = JSONArray()
-        
-        val systemMsg = JSONObject()
-            .put("role", "system")
-            .put("content", systemPrompt)
-        messagesArray.put(systemMsg)
-        
-        val historyToSend = history.filter { it.text.isNotEmpty() }
-        if (historyToSend.isNotEmpty()) {
-            for (i in 0 until historyToSend.size - 1) {
-                val msg = historyToSend[i]
-                val role = if (msg.isUser) "user" else "assistant"
+
+        // 1. Krishna soul + format rules (GitaPromptEngine)
+        messagesArray.put(
+            JSONObject()
+                .put("role", "system")
+                .put("content", GitaPromptEngine.groqSystemPrompt())
+        )
+
+        // 2. Verse reference context — separate system message
+        if (!verseReference.isNullOrBlank()) {
+            messagesArray.put(
+                JSONObject()
+                    .put("role", "system")
+                    .put("content", verseReference)
+            )
+        }
+
+        // 3. Conversation history (skip last — that's groundedPrompt)
+        history
+            .filter { it.text.isNotEmpty() }
+            .dropLast(1)
+            .takeLast(6)
+            .forEach { msg ->
                 messagesArray.put(
                     JSONObject()
-                        .put("role", role)
+                        .put("role", if (msg.isUser) "user" else "assistant")
                         .put("content", msg.text)
                 )
             }
-            messagesArray.put(
-                JSONObject()
-                    .put("role", "user")
-                    .put("content", groundedPrompt)
-            )
-        } else {
-            messagesArray.put(
-                JSONObject()
-                    .put("role", "user")
-                    .put("content", groundedPrompt)
-            )
-        }
-        
-        json.put("messages", messagesArray)
-        
-        val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-        
+
+        // 4. Current user question (wrapped with reflective instructions)
+        val fullUserPrompt = GitaPromptEngine.buildUserInstructPrompt(
+            userMessage = groundedPrompt,
+            hasVerseContext = !verseReference.isNullOrBlank(),
+            langSuffix = ""
+        )
+        messagesArray.put(
+            JSONObject()
+                .put("role", "user")
+                .put("content", fullUserPrompt)
+        )
+
+        val body = JSONObject()
+            .put("messages", messagesArray)
+            .toString()
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+
         val request = Request.Builder()
             .url("https://noisy-sheep-76.sravanku018.deno.net/")
             .post(body)
             .build()
-            
+
         okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw java.io.IOException("Unexpected code $response")
+                throw java.io.IOException("Proxy error: $response")
             }
-            val responseString = response.body?.string() ?: throw java.io.IOException("Empty response body")
-            val jsonResponse = JSONObject(responseString)
-            jsonResponse.getString("reply")
+            val responseString = response.body?.string()
+                ?: throw java.io.IOException("Empty response")
+            JSONObject(responseString).getString("reply")
         }
     }
 
     private val aiDispatcher = Dispatchers.Default.limitedParallelism(1)
-    private val aiScope      = CoroutineScope(aiDispatcher + SupervisorJob())
+    private lateinit var aiScope: CoroutineScope
     private val initMutex    = Mutex()
 
     private var startTime     = 0L
@@ -162,18 +201,36 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     // ─── Current Verse State ──────────────────────────────────────────────────
     private var currentCachedVerse : CachedVerse? = null
     private var currentGitaVerse   : GitaVerse?   = null
+    private var activeVerse       : VerseContext? = null
 
     init {
+        // aiScope is child of viewModelScope — cancels automatically on clearance
+        aiScope = CoroutineScope(aiDispatcher + SupervisorJob(viewModelScope.coroutineContext[Job]))
         setupVoiceManagerErrorForwarding()
         loadMessages()
         observeModelChanges()
+        observeUserStats()
         refreshModelStatus()
-        viewModelScope.launch {
-            translationManager.downloadModelsIfNeeded()
-        }
     }
 
     // ─── Setup ────────────────────────────────────────────────────────────────
+
+    private fun observeUserStats() {
+        viewModelScope.launch {
+            database.userStatsDao().getUserStats().collect { stats ->
+                val uid = stats?.userId
+                if (uid != null && uid.isNotEmpty()) {
+                    try {
+                        val balance = CoinApi.retrofitService.getBalance(uid).krishna_coins
+                        _state.update { it.copy(coinBalance = balance, coinError = null) }
+                    } catch (e: Exception) {
+                        Log.e(tag, "Failed to fetch coin balance", e)
+                        _state.update { it.copy(coinError = CoinError.NETWORK_ERROR) }
+                    }
+                }
+            }
+        }
+    }
 
     private fun setupVoiceManagerErrorForwarding() {
         voiceManager.onError = { errorMsg ->
@@ -194,7 +251,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun loadMessages() {
         viewModelScope.launch(Dispatchers.IO) {
-            val dbMessages = chatMessageDao.getAllMessages()
+            val dbMessages = chatRepo.getAllMessages()
             withContext(Dispatchers.Main) {
                 _state.update {
                     it.copy(messages = dbMessages.map { dbm ->
@@ -209,19 +266,17 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun refreshModelStatus() {
         val context = getApplication<Application>()
-        val tier = DeviceTierDetector.detect(context)
-        val isLowTier = tier == DeviceTier.LOW || tier == DeviceTier.LOW_MID
 
         val ma = ModelAvailability.getInstance(context)
-        val selected = ma.selectedModel.value
+        val decision = ma.getRuntimeDecision(AppFeature.VOICE)
 
-        if (isLowTier || selected.contains("Groq", ignoreCase = true)) {
-            Log.d(tag, "Low-tier device detected (${tier.label}) or Cloud Proxy selected. Forcing Deno proxy fallback.")
+        if (decision.useProxy) {
+            Log.d(tag, "Using proxy runtime for voice chat. tier=${decision.tierLabel} selected=${decision.selectedPreference}")
             useProxy = true
             _state.update {
                 it.copy(
                     isLlmReady = true,
-                    currentModelName = "Cloud Proxy (Groq)",
+                    currentModelName = decision.displayName,
                     error = null,
                     errorType = null
                 )
@@ -230,12 +285,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         try {
-            val ma        = ModelAvailability.getInstance(context)
-            val modelPath = ma.getResolvedModelPath(AppFeature.VOICE)
+            val modelPath = decision.modelPath
 
             if (modelPath != null) {
-                // ✅ Adaptive config based on device RAM tier
-                val maxTokens  = DeviceCapability.getOptimalMaxTokens(context)
+                val maxTokens  = DeviceCapability.getOptimalMaxTokens(context, decision.displayName)
                 val timeoutMs  = DeviceCapability.getOptimalTimeout(context)
                 val samplerParams = DeviceCapability.getOptimalSampler(modelPath)
                 val sampler    = com.google.ai.edge.litertlm.SamplerConfig(
@@ -244,12 +297,11 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                     temperature = samplerParams.temperature.toDouble()
                 )
 
-                val modelName = File(modelPath).name
-                Log.d(tag, "Using model: $modelName on Device tier: ${tier.label} " +
+                Log.d(tag, "Using model: ${decision.displayName} on Device tier: ${decision.tierLabel} " +
                            "tokens=$maxTokens timeout=${timeoutMs}ms " +
                            "topK=${samplerParams.topK} temp=${samplerParams.temperature}")
 
-                _state.update { it.copy(currentModelName = modelName) }
+                _state.update { it.copy(currentModelName = decision.displayName) }
 
                 aiScope.launch {
                     initMutex.withLock {
@@ -261,7 +313,9 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 sampler   = sampler
                             )
                             if (success) {
-                                voiceChatEngine.updateSystemInstruction(currentLanguageMode.systemInstruction)
+                                voiceChatEngine.updateSystemInstruction(
+                                    GitaPromptEngine.gemmaSystemPrompt(activeVerse)
+                                )
                                 crashCount = 0
                                 useProxy = false
                                 withContext(Dispatchers.Main) {
@@ -329,60 +383,6 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // ─── Grounded Prompt Builder ──────────────────────────────────────────────
-
-    /**
-     * Sweet spot prompt builder:
-     * — No verse context → Krishna answers freely from Gita wisdom
-     * — Verse context available → grounded answer using only provided data
-     */
-    private fun buildGroundedPrompt(
-        userText    : String,
-        cachedVerse : CachedVerse? = null,
-        gitaVerse   : GitaVerse?   = null,
-        forceTelugu : Boolean      = false
-    ): String {
-        val langSuffix = if (forceTelugu) " You MUST respond ENTIRELY in Telugu (తెలుగు). Do not use English." else ""
-
-        // No verse context — let Krishna answer freely
-        if (cachedVerse == null && gitaVerse == null) {
-            return buildString {
-                appendLine("Question: $userText")
-                appendLine()
-                val sentences = DeviceCapability.getOptimalSentenceCount(getApplication())
-                appendLine("If the Question is just a simple greeting (e.g., 'hello', 'hi', 'hey', 'namaste', 'namste', 'నమస్తే', 'నమస్కారం', etc.), respond with a warm, brief Krishna-style greeting (1 sentence max) asking how you can guide them. Do not provide a long sermon or explanation.")
-                append("Otherwise, answer the Question as Krishna in $sentences sentences from Bhagavad Gita wisdom.$langSuffix")
-            }
-        }
-        // Verse context available — ground the answer
-        return buildString {
-            appendLine("Use ONLY the verse data below. Do not invent any text.")
-            appendLine()
-
-            // Merge both sources — gitaVerse (API) takes priority,
-            // cachedVerse (Room) fills missing fields
-            val chapterNo   = gitaVerse?.chapterNo   ?: cachedVerse?.chapterNo
-            val verseNo     = gitaVerse?.verseNo     ?: cachedVerse?.verseNo
-            val verseText   = gitaVerse?.verse?.takeIf       { it.isNotBlank() } ?: cachedVerse?.verse
-            val translation = gitaVerse?.translation?.takeIf { it.isNotBlank() } ?: cachedVerse?.translation
-            val explanationLimit = DeviceCapability.getOptimalExplanationLength(getApplication())
-            val explanation = gitaVerse?.purport?.firstOrNull()?.takeIf { it.isNotBlank() }?.take(explanationLimit)
-                              ?: cachedVerse?.explanation?.take(explanationLimit)
-
-            if (chapterNo != null && verseNo != null)
-                appendLine("Chapter: $chapterNo, Verse: $verseNo")
-            verseText?.let   { appendLine("Verse: $it") }
-            translation?.let { appendLine("Translation: $it") }
-            explanation?.let { appendLine("Explanation: $it") }
-
-            appendLine()
-            appendLine("Question: $userText")
-            appendLine()
-            val sentences = DeviceCapability.getOptimalSentenceCount(getApplication())
-            append("Explain this verse by telling a unique, creative, and non-repetitive mini-story or practical analogy in $sentences sentences. Keep it simple, engaging, and easy to understand. Do not use complex jargon. Do not rewrite the verse itself.$langSuffix")
-        }
-    }
-
     // ─── Messaging ────────────────────────────────────────────────────────────
 
     fun updateUserInput(input: String) {
@@ -392,7 +392,8 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     fun sendMessage(
         text        : String?      = null,
         cachedVerse : CachedVerse? = null,
-        gitaVerse   : GitaVerse?   = null
+        gitaVerse   : GitaVerse?   = null,
+        confirmed   : Boolean      = true
     ) {
         val messageText = text ?: _state.value.userInput
         if (messageText.isBlank()) return
@@ -417,6 +418,20 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         _state.update { it.copy(messages = it.messages + userMessage, error = null, errorType = null, isThinking = true) }
         saveMessage(userMessage)
 
+        viewModelScope.launch(Dispatchers.IO) {
+            statsRepository.spendCoins(messageText)
+            val uid = database.userStatsDao().getUserStatsOnce()?.userId
+            if (uid != null && uid.isNotEmpty()) {
+                try {
+                    val balance = CoinApi.retrofitService.getBalance(uid).krishna_coins
+                    _state.update { it.copy(coinBalance = balance, coinError = null) }
+                } catch (e: Exception) {
+                    Log.e(tag, "Failed to fetch balance after spend", e)
+                    _state.update { it.copy(coinError = CoinError.NETWORK_ERROR) }
+                }
+            }
+        }
+
         aiScope.launch {
             val aiMessageId = UUID.randomUUID().toString()
 
@@ -431,37 +446,16 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                 AiTurnManager.mutex.withLock {
                     stopAll()
 
-                    val isTeluguMode = currentLanguageMode.sttLocale.contains("te", ignoreCase = true)
-                    val ma           = ModelAvailability.getInstance(getApplication())
-                    val isUsingGemma = ma.isGemmaRunning(AppFeature.VOICE)
-                    val useMlKit     = isTeluguMode && !isUsingGemma && !useProxy
-
-                    val processedUserText = if (useMlKit) {
-                        withContext(Dispatchers.Main) {
-                            _state.update { s ->
-                                s.copy(messages = s.messages.map { m ->
-                                    if (m.id == aiMessageId) m.copy(text = "") else m
-                                })
-                            }
-                        }
-                        translationManager.translateTeluguToEnglish(messageText)
-                    } else {
-                        messageText
-                    }
-
-                    // ✅ FIX: grounded prompt using English (if ML Kit) or forced Telugu (if native)
-                    val groundedPrompt = buildGroundedPrompt(
-                        userText    = processedUserText,
-                        cachedVerse = cachedVerse ?: currentCachedVerse,
-                        gitaVerse   = gitaVerse   ?: currentGitaVerse,
-                        forceTelugu = isTeluguMode && !useMlKit // Use native Telugu for Gemma 4
-                    )
-                    Log.d(tag, "GROUNDED PROMPT:\n$groundedPrompt")
-
                     if (useProxy) {
-                        val reply = fetchGroqReply(groundedPrompt, _state.value.messages)
-                        val basicCleaned = com.aipoweredgita.app.util.TextUtils.cleanLlmOutput(reply)
-                        val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(basicCleaned)
+                        val verseRef = activeVerse?.let { v ->
+                            "[Chapter ${v.chapter}, Verse ${v.verse}]\nTranslation: ${v.translation}\nDepth: ${v.explanation}"
+                        }
+                        val reply = fetchGroqReply(
+                            groundedPrompt = messageText,
+                            history = _state.value.messages,
+                            verseReference = verseRef
+                        )
+                        val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
 
                         withContext(Dispatchers.Main) {
                             _state.update { s ->
@@ -483,11 +477,15 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                             }
                         }
                     } else {
+                        val gemmaMessage = GitaPromptEngine.buildGemmaUserContent(
+                            userMessage = messageText,
+                            verse = activeVerse
+                        )
                         voiceChatEngine.sendMessage(
-                            prompt    = groundedPrompt,
+                            prompt    = gemmaMessage,
                             onPartial = { partial ->
                                 val nowMs = System.currentTimeMillis()
-                                if (nowMs - lastUpdate > 64) { // ~15fps throttle
+                                if (nowMs - lastUpdate > 64) {
                                     lastUpdate = nowMs
                                     viewModelScope.launch(Dispatchers.Main) {
                                         _state.update { s ->
@@ -500,18 +498,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                             },
                             onCleaned = { deepCleaned ->
                                 aiScope.launch {
-                                    val finalAnswer = if (useMlKit) {
-                                        withContext(Dispatchers.Main) {
-                                            _state.update { s ->
-                                                s.copy(messages = s.messages.map { m ->
-                                                    if (m.id == aiMessageId) m.copy(text = deepCleaned) else m
-                                                })
-                                            }
-                                        }
-                                        translationManager.translateEnglishToTelugu(deepCleaned)
-                                    } else {
-                                        deepCleaned
-                                    }
+                                    val finalAnswer = deepCleaned
 
                                     withContext(Dispatchers.Main) {
                                         _state.update { s ->
@@ -519,7 +506,8 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                                 messages   = s.messages.map { m ->
                                                     if (m.id == aiMessageId) m.copy(text = finalAnswer) else m
                                                 },
-                                                isThinking = false  // ✅ cleared here on happy path
+                                                isThinking = false,
+                                                coinError  = null
                                             )
                                         }
                                         saveMessage(ChatMessage(id = aiMessageId, text = finalAnswer, isUser = false))
@@ -569,9 +557,18 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun dismissCoinConfirmation() {
+        _state.update { it.copy(showCoinConfirmation = false, pendingMessage = null) }
+    }
+
+    fun confirmAndSendMessage() {
+        val pending = _state.value.pendingMessage
+        sendMessage(text = pending, confirmed = true)
+    }
+
     private fun saveMessage(message: ChatMessage) {
         viewModelScope.launch(Dispatchers.IO) {
-            chatMessageDao.insertMessage(
+            chatRepo.insertMessage(
                 VoiceChatMessage(
                     id        = message.id,
                     text      = message.text,
@@ -586,7 +583,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun clearChat() {
         viewModelScope.launch(Dispatchers.IO) {
-            chatMessageDao.deleteAllMessages()
+            chatRepo.deleteAllMessages()
             voiceChatEngine.resetConversation()
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(messages = emptyList()) }
@@ -626,8 +623,9 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun speakResponse(text: String) {
+        val cleaned = GitaPromptEngine.cleanForVoice(text)
         _state.update { it.copy(isSpeaking = true) }
-        voiceManager.speak(text, flush = true) {
+        voiceManager.speak(cleaned, flush = true) {
             _state.update { it.copy(isSpeaking = false) }
         }
     }
@@ -655,13 +653,33 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     ) {
         currentCachedVerse = cachedVerse
         currentGitaVerse   = gitaVerse
+        activeVerse = (gitaVerse ?: cachedVerse?.toGitaVerse())?.let { v ->
+            VerseContext(
+                chapter = v.chapterNo,
+                verse = v.verseNo,
+                sanskrit = v.verse,
+                translation = v.translation,
+                explanation = v.explanation
+            )
+        }
         Log.d(tag, "Verse set — chapter=${gitaVerse?.chapterNo ?: cachedVerse?.chapterNo} verse=${gitaVerse?.verseNo ?: cachedVerse?.verseNo}")
-        aiScope.launch { voiceChatEngine.resetConversation() }
+        aiScope.launch {
+            voiceChatEngine.resetConversation()
+            voiceChatEngine.updateSystemInstruction(
+                GitaPromptEngine.gemmaSystemPrompt(activeVerse)
+            )
+        }
     }
 
     fun clearCurrentVerse() {
         currentCachedVerse = null
         currentGitaVerse   = null
+        activeVerse = null
+        aiScope.launch {
+            voiceChatEngine.updateSystemInstruction(
+                GitaPromptEngine.gemmaSystemPrompt(null)
+            )
+        }
     }
 
     // ─── Language Mode ────────────────────────────────────────────────────────

@@ -39,10 +39,13 @@
 # Room Database
 -keep class androidx.room.** { *; }
 -keep @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao class * { *; }
+-keep @androidx.room.Dao interface * { *; }
 -keepclassmembers class * {
     @androidx.room.* <methods>;
 }
+-keep class **_Impl { *; }
+-keep class **_DefaultImpl { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
 
 # DataStore
 -keep class androidx.datastore.** { *; }
@@ -56,6 +59,10 @@
 -keep interface com.google.ai.edge.litertlm.** { *; }
 -keepclassmembers class com.google.ai.edge.litertlm.** { *; }
 -dontwarn com.google.ai.edge.litertlm.**
+-keep class org.tensorflow.** { *; }
+-keepclassmembers class org.tensorflow.** { *; }
+-keep class com.google.flatbuffers.** { *; }
+-dontwarn org.tensorflow.**
 
 # App specific models and entities
 -keep class com.aipoweredgita.app.data.** { *; }
@@ -63,6 +70,11 @@
 -keep class com.aipoweredgita.app.ml.** { *; }
 -keep class com.aipoweredgita.app.network.** { *; }
 -keep class com.aipoweredgita.app.repository.** { *; }
+-keep class com.aipoweredgita.app.coin.** { *; }
+-keep class com.aipoweredgita.app.prompt.** { *; }
+-keep class com.aipoweredgita.app.notifications.** { *; }
+-keep class com.aipoweredgita.app.services.** { *; }
+-keep class com.aipoweredgita.app.navigation.** { *; }
 -keep class com.aipoweredgita.app.util.TextUtils { *; }
 
 # Keep ViewModels

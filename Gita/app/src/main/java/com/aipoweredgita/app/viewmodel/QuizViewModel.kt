@@ -30,6 +30,10 @@ import com.aipoweredgita.app.ml.TranslationManager
 import com.aipoweredgita.app.util.TimeTracker
 import com.aipoweredgita.app.util.VerseCacheManager
 import com.aipoweredgita.app.utils.QuizPreferences
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import com.aipoweredgita.app.data.LearningSegment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +47,9 @@ import kotlin.random.Random
 class QuizViewModel(app: Application) : AndroidViewModel(app) {
     private val _quizState = MutableStateFlow(QuizState())
     val quizState: StateFlow<QuizState> = _quizState.asStateFlow()
+
+    private val _events = MutableSharedFlow<String>()
+    val events: SharedFlow<String> = _events.asSharedFlow()
 
     private val statsRepository: StatsRepository
     private val quizAttemptDao: QuizAttemptDao
@@ -58,6 +65,18 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     private val usedQuestions = mutableSetOf<String>() // Track used chapter-verse combinations
     private val recentlyAskedQuestions = mutableSetOf<String>() // Track recently asked across sessions
     private val verseCache = VerseCacheManager(maxSizeKb = com.aipoweredgita.app.util.GitaConstants.VERSE_CACHE_MAX_SIZE_KB) // Bounded LRU cache (configurable)
+    
+    // Segment mapping for coin attribution
+    private val segmentVerseMap = mapOf(
+        LearningSegment.KARMA_YOGA to listOf(Pair(2, 47), Pair(3, 27), Pair(4, 18), Pair(18, 46)),
+        LearningSegment.BHAKTI_YOGA to listOf(Pair(7, 17), Pair(11, 55), Pair(12, 13), Pair(18, 65)),
+        LearningSegment.JNANA_YOGA to listOf(Pair(4, 34), Pair(4, 38), Pair(13, 24), Pair(15, 11)),
+        LearningSegment.DHYANA_YOGA to listOf(Pair(6, 10), Pair(6, 35), Pair(6, 47), Pair(18, 51)),
+        LearningSegment.MOKSHA_YOGA to listOf(Pair(2, 72), Pair(4, 23), Pair(5, 25), Pair(18, 78)),
+        LearningSegment.WARRIOR_CODE to listOf(Pair(2, 31), Pair(18, 17), Pair(18, 47), Pair(2, 18)),
+        LearningSegment.DIVINE_NATURE to listOf(Pair(16, 1), Pair(16, 3), Pair(16, 6), Pair(16, 22)),
+        LearningSegment.SURRENDER to listOf(Pair(18, 66), Pair(9, 34), Pair(12, 6), Pair(2, 38))
+    )
 
     // Adaptive difficulty engine
     private val difficultyEngine = AdaptiveDifficultyEngine()
@@ -145,37 +164,37 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
         
         android.util.Log.d("QuizViewModel", "Loaded ${questionQueue.size} questions (LLM Ratio: ${String.format("%.2f", llmRatio)})")
         
-        // FINAL ISSUE 2: HARD FALLBACK CHAIN
+        // FALLBACK CHAIN: auto-download → seed → emergency
         if (questionQueue.isEmpty()) {
             llmGenerationMutex.withLock {
                 if (questionQueue.isEmpty()) {
                     val hasNetwork = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(getApplication())
-                    
-                    if (hasNetwork && !isLLMRateLimited()) {
-                        telemetry.llmCalls++
-                        val instantQuestion = generateAndSaveSingleQuestion()
-                        if (instantQuestion != null) {
-                            val dbQ = convertToDbQuestion(instantQuestion)
-                            questionQueue.add(dbQ)
-                            lastValidQuestion = dbQ
-                            recordLLMCall()
-                        } else {
-                            telemetry.llmFailures++
+
+                    // 1. Auto-import from HuggingFace dataset (most reliable)
+                    if (hasNetwork && qaImporter != null) {
+                        try {
+                            android.util.Log.d("QuizViewModel", "Auto-importing questions from dataset...")
+                            qaImporter.importDataset(language = "english", batchSize = 500)
+                            // Reload from DB
+                            val dbQuestions = questionBankDao.getNextQuestions(1, 10, 100)
+                            questionQueue.addAll(dbQuestions)
+                            android.util.Log.d("QuizViewModel", "Auto-import loaded ${dbQuestions.size} questions")
+                        } catch (e: Exception) {
+                            android.util.Log.w("QuizViewModel", "Auto-import failed: ${e.message}")
                         }
                     }
-                    
-                    // Fallback to Seed Questions if LLM fails or no network
+
+                    // 2. Seed questions from assets
                     if (questionQueue.isEmpty()) {
                         android.util.Log.d("QuizViewModel", "Falling back to seed questions...")
                         telemetry.seedFallbackUsage++
-                        seedQuestionsFromAssets() // This populates questionQueue
+                        seedQuestionsFromAssets()
                     }
-                    
-                    // Final HARD Fallback: Cached Last Good Question (Never return null)
+
+                    // 3. Emergency question (never return null)
                     if (questionQueue.isEmpty()) {
-                        android.util.Log.w("QuizViewModel", "FINAL HARD FALLBACK triggered")
+                        android.util.Log.w("QuizViewModel", "Using emergency question")
                         lastValidQuestion?.let { questionQueue.add(it) } ?: run {
-                            // If even lastValid is null, use a hardcoded emergency question
                             questionQueue.add(getEmergencyQuestion())
                         }
                     }
@@ -225,7 +244,12 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
         if (offlineSeeded) return
         
         try {
-            val jsonContent = getApplication<Application>().assets.open("seed_questions.json").bufferedReader().use { it.readText() }
+            val jsonContent = try {
+                getApplication<Application>().assets.open("seed_questions.json").bufferedReader().use { it.readText() }
+            } catch (e: java.io.FileNotFoundException) {
+                android.util.Log.w("QuizViewModel", "No seed_questions.json in assets — skipping")
+                return
+            }
             val gson = com.google.gson.Gson()
             val seedQuestions = gson.fromJson(jsonContent, Array<SeedQuestion>::class.java)
             
@@ -530,7 +554,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
             android.util.Log.w("QuizViewModel", "LLM validation failed (${validationResult.error}), using raw output")
             QuizQuestionBank(
                 questionHash = "${chapter}:${verseNum}:${aiQuizData.question.hashCode()}",
-                questionType = aiQuizData.type ?: "MCQ",
+                questionType = aiQuizData.type,
                 difficulty = userState.skillLevel.coerceIn(1, 10),
                 question = aiQuizData.question,
                 chapter = chapter,
@@ -542,8 +566,8 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                 optionD = aiQuizData.options.getOrNull(3) ?: "",
                 correctAnswer = aiQuizData.options.getOrNull(aiQuizData.correctOptionIndex) ?: "",
                 explanation = aiQuizData.explanation ?: "",
-                keywords = aiQuizData.rubricKeywords?.joinToString(",") ?: "",
-                topics = aiQuizData.theme ?: "",
+                keywords = aiQuizData.rubricKeywords.joinToString(","),
+                topics = aiQuizData.theme,
                 generatedBy = if (mlManager.isLlmInitialized()) "LLM" else "Template",
                 generationMethod = "AI_generated",
                 qualityScore = validationResult.qualityScore,
@@ -630,7 +654,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                 // Convert to DB format
                 val dbQuestion = QuizQuestionBank(
                     questionHash = "${chapter}:${verseNum}:${aiQuizData.question.hashCode()}",
-                    questionType = aiQuizData.type ?: "MCQ",
+                questionType = aiQuizData.type,
                     difficulty = userState.skillLevel.coerceIn(1, 10),
                     question = aiQuizData.question,
                     chapter = chapter,
@@ -686,7 +710,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         val database = GitaDatabase.getDatabase(getApplication())
-        statsRepository = StatsRepository(database.userStatsDao())
+        statsRepository = StatsRepository(database.userStatsDao(), database.dailyActivityDao(), app)
         quizAttemptDao = database.quizAttemptDao()
         questionPerformanceDao = database.questionPerformanceDao()
         yogaProgressionRepository = YogaProgressionRepository(database.yogaProgressionDao())
@@ -702,7 +726,16 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
         mlManager = HuggingFaceMLManager(getApplication())
         offlineCacheRepository = OfflineCacheRepository(database.cachedVerseDao())
 
-        // Load telemetry from preferences if needed (optional)
+        // Auto-schedule question download if insufficient questions available
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val qCount = database.quizQuestionBankDao().getTotalCount()
+                if (qCount < 50) {
+                    com.aipoweredgita.app.services.QuestionIngestionWorker.schedule(getApplication())
+                    android.util.Log.d("QuizViewModel", "Auto-scheduled question ingestion ($qCount existing)")
+                }
+            } catch (_: Exception) {}
+        }
 
         // Start time tracking
         timeTracker.start()
@@ -753,11 +786,16 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                         totalQuestions = currentState.totalQuestions,
                         timeSpentSeconds = timeSpentSeconds
                     )
-                    quizRepository.saveQuizAttemptWithStats(
+                    val (didLevelUp, newLevel, coins) = quizRepository.saveQuizAttemptWithStats(
                         attempt = quizAttempt,
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions
                     )
+                    _quizState.value = _quizState.value.copy(coinsEarned = coins)
+                    
+                    if (didLevelUp && newLevel != null) {
+                        com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(getApplication(), newLevel)
+                    }
 
                     // Clear persisted state after successful save
                     quizPreferences.clearQuizState()
@@ -768,6 +806,7 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
         }
         timeTracker.stop()
         mlManager.close()
+        translationManager.close()
     }
 
     fun setError(message: String) {
@@ -891,7 +930,13 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
 
                 // Load queue if empty
                 if (questionQueue.isEmpty()) {
-                    loadQuestionQueue()
+                    try {
+                        loadQuestionQueue()
+                    } catch (e: Exception) {
+                        android.util.Log.e("QuizViewModel", "Question load failed: ${e.message}")
+                        com.aipoweredgita.app.services.QuestionIngestionWorker.schedule(getApplication())
+                        setError("Downloading questions for offline use...")
+                    }
                 }
 
                 // Try in-memory queue first (fastest)
@@ -996,11 +1041,15 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
             totalQuestions = currentState.totalQuestions,
             timeSpentSeconds = timeSpentSeconds
         )
-        val (didLevelUp, newLevel) = quizRepository.saveQuizAttemptWithStats(
+        val (didLevelUp, newLevel, coins) = quizRepository.saveQuizAttemptWithStats(
             attempt = quizAttempt,
             score = currentState.score,
-            totalQuestions = currentState.totalQuestions
+            totalQuestions = currentState.totalQuestions,
+            segmentCorrectMap = currentState.segmentCorrectAnswers
         )
+        
+        _quizState.value = _quizState.value.copy(coinsEarned = coins)
+
         if (didLevelUp && newLevel != null) {
             com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(
                 getApplication(),
@@ -1062,21 +1111,26 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     fun selectAnswer(index: Int) {
         stopQuestionTimer()
         // Only MCQ/comparison have indexed answers
-        val isCorrect = index == _quizState.value.currentQuestion?.correctAnswerIndex
+        val currentQ = _quizState.value.currentQuestion
+        val isCorrect = index == currentQ?.correctAnswerIndex
 
         _quizState.value = _quizState.value.copy(
             selectedAnswerIndex = index,
             showAnswer = true,
             showCorrectAnswer = isCorrect
         )
-        // Mark answer time
-        answerMs = System.currentTimeMillis()
-
+        
         if (isCorrect) {
+            val segment = findSegmentForVerse(currentQ.verse.chapterNo, currentQ.verse.verseNo)
+            val updatedMap = _quizState.value.segmentCorrectAnswers.toMutableMap()
+            updatedMap[segment] = (updatedMap[segment] ?: 0) + 1
             _quizState.value = _quizState.value.copy(
-                score = _quizState.value.score + 1
+                score = _quizState.value.score + 1,
+                segmentCorrectAnswers = updatedMap
             )
         }
+        
+        // Mark answer time
 
         adjustDifficulty(isCorrect)
 
@@ -1156,11 +1210,22 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
         stopQuestionTimer()
         val q = _quizState.value.currentQuestion ?: return
         _quizState.value = _quizState.value.copy(openEndedAnswer = text)
-        // Simple evaluation: count rubric keywords present
+        // EVALUATION evaluation: count rubric keywords present
         val matched = q.rubricKeywords.count { kw -> text.lowercase().contains(kw.lowercase()) }
         val passThreshold = maxOf(1, q.rubricKeywords.size / 2)
         val isPass = matched >= passThreshold
-        _quizState.value = _quizState.value.copy(showAnswer = true, showCorrectAnswer = isPass, score = _quizState.value.score + (if (isPass) 1 else 0))
+        
+        if (isPass) {
+            val segment = findSegmentForVerse(q.verse.chapterNo, q.verse.verseNo)
+            val updatedMap = _quizState.value.segmentCorrectAnswers.toMutableMap()
+            updatedMap[segment] = (updatedMap[segment] ?: 0) + 1
+            _quizState.value = _quizState.value.copy(
+                score = _quizState.value.score + 1,
+                segmentCorrectAnswers = updatedMap
+            )
+        }
+        
+        _quizState.value = _quizState.value.copy(showAnswer = true, showCorrectAnswer = isPass)
         // Mark answer time
         answerMs = System.currentTimeMillis()
         adjustDifficulty(isPass)
@@ -1211,11 +1276,22 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                         totalQuestions = currentState.totalQuestions,
                         timeSpentSeconds = timeSpentSeconds
                     )
-                    quizRepository.saveQuizAttemptWithStats(
+                    val (didLevelUp, newLevel, coins) = quizRepository.saveQuizAttemptWithStats(
                         attempt = quizAttempt,
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions
                     )
+                    _quizState.value = _quizState.value.copy(coinsEarned = coins)
+        
+        if (coins > 0) {
+            viewModelScope.launch {
+                _events.emit("Quiz Complete! 🪙 Earned $coins Krishna Coins")
+            }
+        }
+                    
+                    if (didLevelUp && newLevel != null) {
+                        com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(getApplication(), newLevel)
+                    }
 
                     // Clear persisted state after saving results
                     quizPreferences.clearQuizState()
@@ -1245,11 +1321,22 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                         totalQuestions = currentState.totalQuestions,
                         timeSpentSeconds = timeSpentSeconds
                     )
-                    quizRepository.saveQuizAttemptWithStats(
+                    val (didLevelUp, newLevel, coins) = quizRepository.saveQuizAttemptWithStats(
                         attempt = quizAttempt,
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions
                     )
+                    _quizState.value = _quizState.value.copy(coinsEarned = coins)
+        
+        if (coins > 0) {
+            viewModelScope.launch {
+                _events.emit("Quiz Complete! 🪙 Earned $coins Krishna Coins")
+            }
+        }
+                    
+                    if (didLevelUp && newLevel != null) {
+                        com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(getApplication(), newLevel)
+                    }
 
                     // Clear persisted state before resetting
                     quizPreferences.clearQuizState()
@@ -1290,6 +1377,18 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
     fun setLanguage(lang: String) {
         setQuizLanguage(lang)
     }
+
+    private fun findSegmentForVerse(chapter: Int, verse: Int): String {
+        for ((segment, verses) in segmentVerseMap) {
+            if (verses.contains(Pair(chapter, verse))) return segment.displayName
+        }
+        // Fallback based on chapters if not in specific map
+        return when (chapter) {
+            in 1..6 -> LearningSegment.KARMA_YOGA.displayName
+            in 7..12 -> LearningSegment.BHAKTI_YOGA.displayName
+            else -> LearningSegment.JNANA_YOGA.displayName
+        }
+    }
     
     fun restartQuiz() {
         val currentState = _quizState.value
@@ -1311,7 +1410,10 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
                 quizStartTime = System.currentTimeMillis()
                 
                 // Reload question queue from DB (or generate via LLM)
-                loadQuestionQueue()
+                try { loadQuestionQueue() } catch (e: Exception) {
+                    android.util.Log.e("QuizViewModel", "Question reload failed: ${e.message}")
+                    com.aipoweredgita.app.services.QuestionIngestionWorker.schedule(getApplication())
+                }
                 loadNextQuestion()
             }
         } else {
@@ -1326,7 +1428,10 @@ class QuizViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 quizPreferences.clearQuizState()
                 // Reload question queue from DB (or generate via LLM)
-                loadQuestionQueue()
+                try { loadQuestionQueue() } catch (e: Exception) {
+                    android.util.Log.e("QuizViewModel", "Question reload failed: ${e.message}")
+                    com.aipoweredgita.app.services.QuestionIngestionWorker.schedule(getApplication())
+                }
                 loadNextQuestion()
             }
         }

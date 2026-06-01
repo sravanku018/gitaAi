@@ -2,149 +2,82 @@ package com.aipoweredgita.app.utils
 
 import android.app.ActivityManager
 import android.content.Context
-import android.opengl.EGL14
-import android.opengl.GLES20
 import android.os.Build
 import android.util.Log
 
 enum class DeviceTier(val label: String) {
-    FLAGSHIP("Flagship  ~10L+ AnTuTu"),
-    HIGH_MID("High-Mid  ~7–10L AnTuTu"),
-    MID     ("Mid       ~4–7L  AnTuTu"),
-    LOW_MID ("Low-Mid   ~2–4L  AnTuTu"),
-    LOW     ("Low       <2L   AnTuTu")
+    FLAGSHIP("Flagship"),
+    HIGH_MID("High-Mid"),
+    MID("Mid"),
+    LOW_MID("Low-Mid"),
+    LOW("Low")
 }
 
 /**
- * Universal device tier detector.
+ * Device tier detector using four independent axes:
  *
- * Design principles:
- *  - Zero string/chip-name matching — every signal is capability-based or measured.
- *  - No maintenance required when new SoCs ship.
- *  - GPU detection deferred until an EGL context exists (call updateGpuSignals() from
- *    your renderer/GLSurfaceView after the first frame).
- *  - CPU bench runs off the main thread to avoid cold-start throttle pollution.
+ *  **CPU**    — core count, peak frequency, ARM ISA version, cluster topology
+ *  **GPU**    — Vulkan API level, OpenCL availability
+ *  **RAM**    — total memory capacity
+ *  **AnTuTu** — v10 benchmark (SoC name lookup or HW-based estimation)
  *
- * Deleted: boardHint() — string matching, contributed only ±3/100, actively wrong
- *          on devices whose BOARD codename belongs to a different chip family
- *          (e.g. Nord 4 reports BOARD=pineapple which is the SD 8 Gen 3 codename).
+ *  No blocking micro-benchmarks or GL context creation.
+ *  Every signal is available synchronously without blocking the calling thread.
  */
 object DeviceTierDetector {
 
     private const val TAG = "DeviceTier"
-
-    // ── State ─────────────────────────────────────────────────────
     @Volatile private var cached: DeviceTier? = null
-    @Volatile private var gpuSignals: GpuSignals? = null   // set after EGL context exists
-    @Volatile private var refinedBench: Long? = null        // set after async bench completes
 
-    fun invalidate() {
-        cached = null
-        gpuSignals = null
-        refinedBench = null
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  PUBLIC API
-    // ─────────────────────────────────────────────────────────────
+    fun invalidate() { cached = null }
 
     /**
-     * Synchronous best-effort detection. Safe to call on any thread.
-     * Returns immediately using whatever signals are available.
-     * If called before GPU/async bench are ready, result may be conservative.
+     * Synchronous detection. Safe to call on any thread — no blocking I/O or
+     * micro-benchmarks. Returns a cached result on subsequent calls.
      */
     fun detect(context: Context): DeviceTier {
         cached?.let { return it }
         val signals = collectSignals(context)
-        log(signals)
         return classify(signals).also { cached = it }
     }
 
-    /**
-     * Preferred entry point. Returns a quick estimate immediately via [onQuickResult],
-     * then re-classifies with the accurate async bench and calls [onRefinedResult]
-     * once complete (~100ms later on a background thread).
-     *
-     * If GPU signals are already available (updateGpuSignals() was called) the
-     * refined result will also include GPU score.
-     */
-    fun detectAsync(
-        context: Context,
-        onQuickResult: (DeviceTier) -> Unit,
-        onRefinedResult: (DeviceTier) -> Unit
-    ) {
-        // Quick pass — bench may be polluted but everything else is accurate
-        val quick = detect(context)
-        onQuickResult(quick)
+    // ─── signal types ───────────────────────────────────────────────
 
-        Thread {
-            // Warm-up pass to flush scheduler noise
-            cpuMicroBench(warmupOnly = true)
-            // Real measurement
-            val bench = cpuMicroBench(warmupOnly = false)
-            refinedBench = bench
-            cached = null  // force re-classify with accurate bench
-            val refined = detect(context)
-            onRefinedResult(refined)
-            Log.d(TAG, "Async refined bench=${bench / 1_000_000}ms → $refined")
-        }.apply { name = "DeviceTierBench"; isDaemon = true }.start()
-    }
-
-    /**
-     * Call this from your GLSurfaceView.Renderer.onSurfaceCreated() or equivalent,
-     * AFTER an EGL context exists. This provides the GPU capability signals.
-     * Automatically invalidates the cached tier so next detect() uses GPU data.
-     */
-    fun updateGpuSignals() {
-        val signals = readGpuSignals()
-        if (signals.glesVersion > 0) {
-            gpuSignals = signals
-            cached = null  // re-classify with GPU data
-            Log.d(TAG, "GPU signals updated: $signals")
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  SIGNAL TYPES
-    // ─────────────────────────────────────────────────────────────
-
-    data class HardwareSignals(
-        val ramGb       : Float,
-        val bigCoreFreq : Int,      // highest cluster freq in MHz
-        val clusterCount: Int,      // 1=symmetric, 2=big.LITTLE, 3=tri-cluster
-        val coreCount   : Int,
-        val armVersion  : Int,      // 8 or 9
-        val cpuScore    : Long,     // nanoseconds — lower = faster
-        val vulkanTier  : Int,      // 0–4
-        val gpu         : GpuSignals?
+    data class CpuSignals(
+        val coreCount: Int,
+        val bigCoreFreq: Int,    // MHz
+        val armVersion: Int,     // 8 or 9
+        val clusterCount: Int    // 1, 2, or 3
     )
 
     data class GpuSignals(
-        val glesVersion : Int,      // 30, 31, 32
-        val hasAstcLdr  : Boolean,  // mid-range+ GPU
-        val hasAstcHdr  : Boolean,  // high-end GPU
-        val hasGeomShdr : Boolean,  // high-end
-        val hasTessShdr : Boolean,  // flagship
-        val hasEtc2     : Boolean,  // baseline — almost universal
-        val gpuScore    : Int       // 0–10 composite
+        val vulkanTier: Int,   // 0–4
+        val hasOpenCL: Boolean
     )
 
-    // ─────────────────────────────────────────────────────────────
-    //  SIGNAL COLLECTION
-    // ─────────────────────────────────────────────────────────────
-
-    private fun collectSignals(context: Context) = HardwareSignals(
-        ramGb        = totalRamGb(context),
-        bigCoreFreq  = bigClusterFreqMhz(),
-        clusterCount = detectClusterCount(),
-        coreCount    = Runtime.getRuntime().availableProcessors(),
-        armVersion   = armVersion(),
-        cpuScore     = refinedBench ?: cpuMicroBench(warmupOnly = false),
-        vulkanTier   = vulkanTier(context),
-        gpu          = gpuSignals
+    data class HardwareSignals(
+        val ramGb: Float,
+        val cpu: CpuSignals,
+        val gpu: GpuSignals,
+        val antutuScore: Int     // AnTuTu v10 benchmark score (0–2_000_000+)
     )
 
-    // ── RAM ───────────────────────────────────────────────────────
+    // ─── collection ─────────────────────────────────────────────────
+
+    private fun collectSignals(context: Context): HardwareSignals {
+        val ram = totalRamGb(context)
+        val cpu = collectCpuSignals()
+        val gpu = collectGpuSignals(context)
+        return HardwareSignals(
+            ramGb = ram,
+            cpu   = cpu,
+            gpu   = gpu,
+            antutuScore = resolveAntutuScore(cpu, gpu, ram)
+        )
+    }
+
+    // ─── RAM ────────────────────────────────────────────────────────
+
     private fun totalRamGb(context: Context): Float {
         val mi = ActivityManager.MemoryInfo()
         (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
@@ -152,7 +85,19 @@ object DeviceTierDetector {
         return mi.totalMem / 1_073_741_824f
     }
 
-    // ── CPU frequencies ───────────────────────────────────────────
+    // ─── CPU axis ───────────────────────────────────────────────────
+
+    private fun collectCpuSignals(): CpuSignals {
+        val freqs = allCoreFreqsMhz()
+        val cores = Runtime.getRuntime().availableProcessors()
+        return CpuSignals(
+            coreCount    = cores,
+            bigCoreFreq  = freqs.maxOrNull() ?: 0,
+            armVersion   = armVersion(),
+            clusterCount = detectClusterCount(freqs)
+        )
+    }
+
     private fun allCoreFreqsMhz(): List<Int> =
         java.io.File("/sys/devices/system/cpu")
             .listFiles { f -> f.name.matches(Regex("cpu\\d+")) }
@@ -165,25 +110,18 @@ object DeviceTierDetector {
             ?.sorted()
             ?: emptyList()
 
-    private fun bigClusterFreqMhz(): Int {
-        val freqs = allCoreFreqsMhz().ifEmpty { return 0 }
-        val peak = freqs.max()
-        return freqs.filter { peak - it <= 200 }.max()
-    }
-
-    private fun detectClusterCount(): Int {
-        val freqs = allCoreFreqsMhz().toSortedSet()
-        if (freqs.size <= 1) return 1
+    private fun detectClusterCount(freqs: List<Int>): Int {
+        val distinct = freqs.toSortedSet()
+        if (distinct.size <= 1) return 1
         var clusters = 1
-        var prev = freqs.first()
-        for (f in freqs.drop(1)) {
+        var prev = distinct.first()
+        for (f in distinct.drop(1)) {
             if (f - prev > 300) clusters++
             prev = f
         }
         return clusters
     }
 
-    // ── ARM ISA version ───────────────────────────────────────────
     private fun armVersion(): Int = runCatching {
         val info = java.io.File("/proc/cpuinfo").readText()
         if (info.contains("ARMv9", ignoreCase = true) ||
@@ -194,34 +132,21 @@ object DeviceTierDetector {
             Build.VERSION.SDK_INT >= 34) 9 else 8
     }.getOrDefault(8)
 
-    // ── CPU bench ────────────────────────────────────────────────
-    /**
-     * Two-phase bench:
-     *  warmupOnly=true  → 5M iterations to flush cold-start scheduler noise
-     *  warmupOnly=false → 50M measured iterations
-     *
-     * Always call warmupOnly=true first on a background thread, then measure.
-     */
-    private fun cpuMicroBench(warmupOnly: Boolean): Long {
-        val iterations = if (warmupOnly) 5_000_000L else 50_000_000L
-        var x = 1L
-        val start = System.nanoTime()
-        for (i in 0 until iterations) {
-            x = x * 6364136223846793005L + 1442695040888963407L
-        }
-        val elapsed = System.nanoTime() - start
-        if (x == 0L) Log.v(TAG, "bench anti-opt")
-        return if (warmupOnly) 0L else elapsed
-    }
+    // ─── GPU axis ───────────────────────────────────────────────────
 
-    // ── Vulkan feature level (universal GPU generation proxy) ─────
+    private fun collectGpuSignals(context: Context) = GpuSignals(
+        vulkanTier = vulkanTier(context),
+        hasOpenCL  = openCLAvailable()
+    )
+
     /**
-     * Vulkan version maps cleanly to GPU generation without any chip names:
-     *   1.3 → SD 8 Gen 2+ / Dimensity 9200+ / Exynos 2300+  (flagship)
-     *   1.2 → SD 8 Gen 1 / SD 7+ Gen 2+ / Dimensity 9000    (high-mid)
-     *   1.1 → SD 695 / Dimensity 700 / mid-range             (mid)
-     *   1.0 → older mid / low-mid
-     *    0  → no Vulkan (budget / very old)
+     * Vulkan version is the best single GPU generation proxy available
+     * without requiring an EGL/GL context:
+     *   1.3 → Adreno 7xx / Immortalis-G925  (flagship)
+     *   1.2 → Adreno 6xx / Mali-G710+       (high-mid)
+     *   1.1 → Adreno 5xx / Mali-G57+         (mid)
+     *   1.0 → older GPUs                     (low-mid)
+     *   0   → no Vulkan                      (budget)
      */
     private fun vulkanTier(context: Context): Int {
         if (Build.VERSION.SDK_INT < 24) return 0
@@ -236,182 +161,258 @@ object DeviceTierDetector {
         }
     }
 
-    // ── GPU capability signals (requires EGL context) ─────────────
+    /** OpenCL availability — critical for LiteRT GPU delegate on many SoCs. */
+    private fun openCLAvailable(): Boolean = try {
+        java.io.File("/system/lib64/libOpenCL.so").exists() ||
+        java.io.File("/vendor/lib64/libOpenCL.so").exists() ||
+        java.io.File("/system/lib/libOpenCL.so").exists() ||
+        java.io.File("/vendor/lib/libOpenCL.so").exists()
+    } catch (_: Exception) { false }
+
+    // ─── AnTuTu v10 score ──────────────────────────────────────────
+
     /**
-     * Reads GPU capability via OpenGL extensions — fully universal.
-     * Extension support maps to GPU tier without any renderer string matching:
+     * Resolves AnTuTu v10 score in two ways:
+     *  1. SoC name lookup (Build.SOC_MODEL on API 31+ or sysfs fallback)
+     *  2. CPU/GPU characteristic estimation if SoC is unknown
      *
-     *   ASTC HDR + tessellation → flagship (Adreno 7xx, Immortalis-G925)
-     *   ASTC LDR + geometry     → high-end (Adreno 6xx+, Mali-G710+)
-     *   ASTC LDR only           → mid-range (Adreno 6xx, Mali-G57+)
-     *   ETC2 only               → budget (any modern GPU)
-     *   None                    → very old
-     *
-     * GLES version is the most reliable single signal:
-     *   3.2 → high-end+, 3.1 → mid+, 3.0 → low-mid+
+     * Every device gets a score — no device left at zero unless truly entry-level.
      */
-    private fun readGpuSignals(): GpuSignals {
-        val ext     = GLES20.glGetString(GLES20.GL_EXTENSIONS) ?: ""
-        val version = GLES20.glGetString(GLES20.GL_VERSION)    ?: ""
-
-        val glesVersion = when {
-            version.contains("OpenGL ES 3.2") -> 32
-            version.contains("OpenGL ES 3.1") -> 31
-            version.contains("OpenGL ES 3.0") -> 30
-            version.contains("OpenGL ES 2.0") -> 20
-            else -> 0
+    private fun resolveAntutuScore(cpu: CpuSignals, gpu: GpuSignals, ramGb: Float): Int {
+        val soc = detectSocName()
+        if (soc != null) {
+            // Exact match first
+            ANTUTU_DATABASE[soc]?.let { return it }
+            // Then partial match (e.g. "Snapdragon 7+ Gen 3" matches "Snapdragon 7+ Gen 3")
+            ANTUTU_DATABASE.entries.firstOrNull { (key) ->
+                soc.contains(key, ignoreCase = true)
+            }?.let { return it.value }
         }
-
-        val hasAstcLdr  = ext.contains("GL_KHR_texture_compression_astc_ldr")
-        val hasAstcHdr  = ext.contains("GL_KHR_texture_compression_astc_hdr")
-        val hasGeomShdr = ext.contains("GL_EXT_geometry_shader")
-        val hasTessShdr = ext.contains("GL_EXT_tessellation_shader")
-        val hasEtc2     = ext.contains("GL_OES_compressed_ETC1_RGB8_texture") ||
-                glesVersion >= 30  // ETC2 mandatory in GLES 3.0+
-
-        // Composite GPU score 0–10
-        var score = 0
-        score += when (glesVersion) {
-            32   -> 3
-            31   -> 2
-            30   -> 1
-            else -> 0
-        }
-        if (hasAstcLdr)  score += 2   // mid-range and above
-        if (hasAstcHdr)  score += 2   // high-end only
-        if (hasGeomShdr) score += 1   // high-end
-        if (hasTessShdr) score += 2   // flagship only
-
-        return GpuSignals(
-            glesVersion  = glesVersion,
-            hasAstcLdr   = hasAstcLdr,
-            hasAstcHdr   = hasAstcHdr,
-            hasGeomShdr  = hasGeomShdr,
-            hasTessShdr  = hasTessShdr,
-            hasEtc2      = hasEtc2,
-            gpuScore     = score.coerceIn(0, 10)
-        )
+        return estimateScore(cpu, gpu, ramGb)
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  CLASSIFICATION
-    // ─────────────────────────────────────────────────────────────
+    /** Detect SoC model name from system properties or sysfs. */
+    private fun detectSocName(): String? {
+        if (Build.VERSION.SDK_INT >= 31) {
+            @Suppress("InlinedApi")
+            val soc = Build.SOC_MODEL
+            if (!soc.isNullOrBlank()) return soc.trim()
+        }
+        return readSocFromSys()
+    }
 
+    /** Read SoC identifier from sysfs (common on Qualcomm, MediaTek, Exynos). */
+    private fun readSocFromSys(): String? {
+        val paths = listOf(
+            "/sys/devices/soc0/machine",
+            "/sys/devices/soc0/family",
+            "/sys/devices/system/soc/soc0/machine"
+        )
+        for (path in paths) {
+            try {
+                val name = java.io.File(path).readText().trim()
+                if (name.isNotBlank()) return name
+            } catch (_: Exception) { /* try next path */ }
+        }
+        return null
+    }
+
+    /**
+     * Estimate AnTuTu v10 score from CPU/GPU capability when SoC is unknown.
+     * Used for devices not in the lookup database or running on older Android.
+     */
+    private fun estimateScore(cpu: CpuSignals, gpu: GpuSignals, ramGb: Float): Int {
+        var score = 0
+        // ARM v9 ISA → modern cores (Cortex-X4/A720/A520)
+        score += if (cpu.armVersion >= 9) 250_000 else 100_000
+        // Peak CPU frequency → higher = faster single-thread
+        score += (cpu.bigCoreFreq * 200).coerceAtMost(400_000)
+        // Core count → more = better multi-thread
+        score += (cpu.coreCount * 50_000).coerceAtMost(400_000)
+        // Cluster topology → 3 clusters = prime+mid+LITTLE
+        score += when (cpu.clusterCount) {
+            3    -> 200_000
+            2    -> 100_000
+            else -> 0
+        }
+        // GPU capability
+        score += when (gpu.vulkanTier) {
+            4    -> 300_000  // Vulkan 1.3 = modern GPU
+            3    -> 200_000  // Vulkan 1.2 = capable
+            2    -> 100_000  // Vulkan 1.1 = moderate
+            else -> 50_000
+        }
+        if (gpu.hasOpenCL) score += 100_000
+        // RAM capacity proxy
+        score += (ramGb * 30_000).toInt()
+        // Clamp to realistic range
+        return score.coerceIn(0, 2_000_000)
+    }
+
+    /**
+     * AnTuTu v10 estimated scores for common mobile SoCs.
+     * Keys match Build.SOC_MODEL output (API 31+) and common sysfs identifiers.
+     * Values are realistic average AnTuTu v10 scores.
+     */
+    private val ANTUTU_DATABASE = mapOf(
+            // ── Qualcomm Snapdragon 8-series (flagship) ──────────────
+            "Snapdragon 8 Elite"            to 2_200_000,
+            "Snapdragon 8 Gen 3"            to 1_900_000,
+            "Snapdragon 8 Gen 2"            to 1_550_000,
+            "Snapdragon 8+ Gen 1"           to 1_350_000,
+            "Snapdragon 8 Gen 1"            to 1_050_000,
+            "Snapdragon 888"                to   800_000,
+            "Snapdragon 870"                to   700_000,
+            "Snapdragon 865"                to   640_000,
+            "Snapdragon 855"                to   540_000,
+            "Snapdragon 845"                to   380_000,
+            "Snapdragon 835"                to   240_000,
+
+            // ── Qualcomm Snapdragon 7-series (upper-mid) ────────────
+            "Snapdragon 7+ Gen 3"           to 1_150_000,  // OnePlus Nord 4
+            "Snapdragon 7 Gen 3"            to   780_000,
+            "Snapdragon 7+ Gen 2"           to 1_050_000,
+            "Snapdragon 7 Gen 1"            to   650_000,
+            "Snapdragon 778G"               to   560_000,
+            "Snapdragon 782G"               to   600_000,
+            "Snapdragon 7s Gen 2"           to   610_000,
+
+            // ── Qualcomm Snapdragon 6-series (mid) ──────────────────
+            "Snapdragon 6 Gen 1"            to   520_000,
+            "Snapdragon 695"                to   410_000,
+            "Snapdragon 680"                to   340_000,
+            "Snapdragon 678"                to   330_000,
+            "Snapdragon 675"                to   310_000,
+            "Snapdragon 665"                to   280_000,
+
+            // ── MediaTek Dimensity ───────────────────────────────────
+            "Dimensity 9400"                to 2_400_000,
+            "Dimensity 9300"                to 1_950_000,
+            "Dimensity 9200"                to 1_250_000,
+            "Dimensity 8300"                to 1_350_000,
+            "Dimensity 8200"                to   900_000,
+            "Dimensity 8100"                to   850_000,
+            "Dimensity 8050"                to   750_000,
+            "Dimensity 7300"                to   620_000,
+            "Dimensity 7200"                to   600_000,
+            "Dimensity 7000"                to   500_000,
+            "Dimensity 1080"                to   550_000,
+            "Dimensity 900"                 to   500_000,
+            "Dimensity 810"                 to   420_000,
+            "Dimensity 700"                 to   320_000,
+
+            // ── MediaTek Helio ───────────────────────────────────────
+            "Helio G99"                     to   410_000,
+            "Helio G96"                     to   380_000,
+            "Helio G95"                     to   370_000,
+            "Helio G88"                     to   280_000,
+            "Helio G85"                     to   270_000,
+            "Helio G80"                     to   260_000,
+            "Helio G70"                     to   250_000,
+            "Helio P65"                     to   200_000,
+
+            // ── Samsung Exynos ───────────────────────────────────────
+            "Exynos 2400"                   to 1_720_000,
+            "Exynos 2200"                   to 1_020_000,
+            "Exynos 2100"                   to   780_000,
+            "Exynos 1480"                   to   650_000,
+            "Exynos 1380"                   to   550_000,
+            "Exynos 1280"                   to   450_000,
+            "Exynos 990"                    to   520_000,
+            "Exynos 9820"                   to   450_000,
+            "Exynos 9611"                   to   280_000,
+            "Exynos 850"                    to   200_000,
+
+            // ── Google Tensor ────────────────────────────────────────
+            "Tensor G4"                     to 1_600_000,
+            "Tensor G3"                     to 1_450_000,
+            "Tensor G2"                     to 1_050_000,
+            "Tensor"                        to   800_000,
+
+            // ── Huawei Kirin ─────────────────────────────────────────
+            "Kirin 9000"                    to   750_000,
+            "Kirin 990"                     to   480_000,
+            "Kirin 810"                     to   330_000,
+
+            // ── UNISOC ───────────────────────────────────────────────
+            "T760"                          to   420_000,
+            "T616"                          to   260_000,
+            "T612"                          to   240_000,
+            "T610"                          to   230_000,
+            "T606"                          to   220_000
+        )
+
+    // ─── classification ─────────────────────────────────────────────
+
+    /**
+     * Four-axis scoring:
+     *
+     *  **CPU** (max 10):    core count (0-2) + peak freq (0-3) + ARM ISA (0-2) + clusters (0-3)
+     *  **GPU** (max 6):     vulkan tier (0-4) + OpenCL (0-2)
+     *  **RAM** (max 3):     capacity gate for on-device LLM
+     *  **AnTuTu** (max 5):  v10 benchmark — lookup or HW-estimated score
+     *
+     *  Total max = 24.
+     */
     private fun classify(s: HardwareSignals): DeviceTier {
-
-        // ── A. RAM (0–4) ──────────────────────────────────────────
-        val ramPts = when {
-            s.ramGb >= 11.5f -> 4   // 12 GB+
-            s.ramGb >=  7.5f -> 3   // 8 GB
-            s.ramGb >=  5.5f -> 2   // 6 GB
-            s.ramGb >=  3.5f -> 1   // 4 GB
-            else             -> 0   // 2–3 GB
+        // ── CPU score ──────────────────────────────────────────────
+        val corePts = when {
+            s.cpu.coreCount >= 8 -> 2
+            s.cpu.coreCount >= 6 -> 1
+            else                 -> 0
         }
-
-        // ── B. Big-cluster CPU frequency (0–5) ───────────────────
-        // Reading from cpuinfo_max_freq can be thermally throttled.
-        // We give one bucket of leniency (+200MHz tolerance) to avoid
-        // penalising devices that report their sustained rather than peak freq.
         val freqPts = when {
-            s.bigCoreFreq >= 3000 -> 5   // SD 8 Gen 3 / Dimensity 9400 prime
-            s.bigCoreFreq >= 2800 -> 4   // SD 8 Gen 2 / SD 7+ Gen 3 (Nord 4)
-            s.bigCoreFreq >= 2500 -> 3   // SD 8 Gen 1 / SD 7 Gen 3
-            s.bigCoreFreq >= 2200 -> 2   // SD 7 Gen 1-2 / G99
-            s.bigCoreFreq >= 1800 -> 1   // SD 695 / Dimensity 700
-            else                  -> 0
+            s.cpu.bigCoreFreq >= 3000 -> 3
+            s.cpu.bigCoreFreq >= 2500 -> 2
+            s.cpu.bigCoreFreq >= 2000 -> 1
+            else                      -> 0
         }
-
-        // ── C. Cluster topology (0–2) ─────────────────────────────
-        val clusterPts = when (s.clusterCount) {
-            3    -> 2   // tri-cluster = flagship architecture
+        val armPts     = if (s.cpu.armVersion >= 9) 2 else 0
+        val clusterPts = when (s.cpu.clusterCount) {
+            3    -> 3   // tri-cluster = flagship CPU topology
             2    -> 1   // big.LITTLE = mainstream
             else -> 0
         }
+        val cpuScore = corePts + freqPts + armPts + clusterPts
 
-        // ── D. ARM ISA generation (0–2) ──────────────────────────
-        val armPts = if (s.armVersion >= 9) 2 else 0
+        // ── GPU score ──────────────────────────────────────────────
+        val gpuScore = s.gpu.vulkanTier + (if (s.gpu.hasOpenCL) 2 else 0)
 
-        // ── E. CPU bench (0–4) ───────────────────────────────────
-        // Thresholds calibrated for 50M LCG iterations on background thread
-        // after warmup. Main-thread cold values are clamped to min 1 to avoid
-        // catastrophic misclassification from scheduler noise.
-        val rawBenchPts = when {
-            s.cpuScore < 40_000_000L  -> 4   // <40ms  flagship
-            s.cpuScore < 70_000_000L  -> 3   // 40–70ms high-mid
-            s.cpuScore < 110_000_000L -> 2   // 70–110ms mid
-            s.cpuScore < 250_000_000L -> 1   // 110–250ms low-mid (extended from 180ms)
-            else                      -> 0
-        }
-        // If bench hasn't been run async yet, don't let a cold-start value of
-        // >250ms crater the score — floor at 1 when we lack a refined reading.
-        val benchPts = if (refinedBench == null) rawBenchPts.coerceAtLeast(1) else rawBenchPts
-
-        // ── F. Vulkan tier (0–4) ─────────────────────────────────
-        // Universal GPU generation proxy — no chip names needed
-        val vulkanPts = s.vulkanTier  // 0–4
-
-        // ── G. GPU capability score (0–4, skipped if no GL context) ──
-        // Maps 0–10 raw score → 0–4 points
-        val gpuPts: Int
-        val gpuWeight: Int
-        if (s.gpu != null && s.gpu.glesVersion > 0) {
-            gpuPts   = (s.gpu.gpuScore / 2.5f).toInt().coerceIn(0, 4)
-            gpuWeight = 4
-        } else {
-            gpuPts   = 0
-            gpuWeight = 0
+        // ── RAM score ──────────────────────────────────────────────
+        val ramPts = when {
+            s.ramGb >= 11.5f -> 3   // 12 GB+
+            s.ramGb >=  7.5f -> 2   // 8 GB
+            s.ramGb >=  5.5f -> 1   // 6 GB
+            else             -> 0
         }
 
-        // ── Weighted total → normalised 0–100 ────────────────────
-        //
-        // Weights reflect reliability and independence:
-        //   freq    ×5  most reliable, directly measured hardware
-        //   bench   ×4  measured throughput, independent of freq
-        //   vulkan  ×4  universal GPU generation, no names needed
-        //   ram     ×3  necessary but not sufficient
-        //   gpu cap ×4  capability-based, added when GL context available
-        //   cluster ×2  architecture topology
-        //   arm ISA ×2  ISA generation
-        //
-        val weighted = (freqPts  * 5) +
-                (benchPts * 4) +
-                (vulkanPts* 4) +
-                (ramPts   * 3) +
-                (gpuPts   * gpuWeight) +
-                (clusterPts * 2) +
-                (armPts   * 2)
+        // ── AnTuTu score ───────────────────────────────────────────
+        val antutuPts = when {
+            s.antutuScore >= 1_500_000 -> 5   // true flagship (8 Gen 3, D9300+)
+            s.antutuScore >= 1_000_000 -> 4   // upper-mid flagship (7+ Gen 3, D8300)
+            s.antutuScore >=   600_000 -> 3   // solid mid-range
+            s.antutuScore >=   350_000 -> 2   // lower-mid
+            s.antutuScore >=   200_000 -> 1   // entry
+            else                       -> 0
+        }
 
-        val maxPossible = (5 * 5) + (4 * 4) + (4 * 4) + (3 * 4) +
-                (gpuWeight * 4) + (2 * 2) + (2 * 2)
-
-        val score = (weighted * 100f / maxPossible).toInt()
+        val total = cpuScore + gpuScore + ramPts + antutuPts
 
         Log.d(TAG, buildString {
-            append("freqPts=$freqPts benchPts=$benchPts vulkanPts=$vulkanPts ")
-            append("ramPts=$ramPts gpuPts=$gpuPts clusterPts=$clusterPts armPts=$armPts ")
-            append("→ score=$score/100")
+            append("cores=${s.cpu.coreCount} freq=${s.cpu.bigCoreFreq}MHz ")
+            append("ARMv${s.cpu.armVersion} clusters=${s.cpu.clusterCount} ")
+            append("vulkan=${s.gpu.vulkanTier} openCL=${s.gpu.hasOpenCL} ")
+            append("ram=%.1fGB ".format(s.ramGb))
+            append("antutu=${s.antutuScore} ")
+            append("→ CPU=$cpuScore GPU=$gpuScore RAM=$ramPts NTU=$antutuPts total=$total/24")
         })
 
         return when {
-            score >= 75 -> DeviceTier.FLAGSHIP
-            score >= 55 -> DeviceTier.HIGH_MID
-            score >= 36 -> DeviceTier.MID
-            score >= 20 -> DeviceTier.LOW_MID
+            total >= 19 -> DeviceTier.FLAGSHIP
+            total >= 14 -> DeviceTier.HIGH_MID
+            total >=  9 -> DeviceTier.MID
+            total >=  5 -> DeviceTier.LOW_MID
             else        -> DeviceTier.LOW
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  LOGGING
-    // ─────────────────────────────────────────────────────────────
-
-    private fun log(s: HardwareSignals) {
-        Log.d("DeviceTier", "BOARD=${Build.BOARD} HARDWARE=${Build.HARDWARE} DEVICE=${Build.DEVICE} MODEL=${Build.MODEL}")
-        Log.d("DeviceTier", "FINGERPRINT=${Build.FINGERPRINT}")
-        
-        Log.d(TAG, "RAM=%.1fGB bigFreq=${s.bigCoreFreq}MHz cores=${s.coreCount} ".format(s.ramGb) +
-                "clusters=${s.clusterCount} ARMv${s.armVersion} " +
-                "bench=${s.cpuScore / 1_000_000}ms vulkan=${s.vulkanTier} " +
-                "gpu=${s.gpu?.gpuScore ?: "pending"} gles=${s.gpu?.glesVersion ?: "pending"}")
     }
 }

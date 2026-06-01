@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,9 +26,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +42,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.ui.theme.GitaLearningTheme
+import com.aipoweredgita.app.ui.components.GlassCard
+import com.aipoweredgita.app.ui.components.AmbientOrbs
+import com.aipoweredgita.app.ui.theme.GoldSpark
+import com.aipoweredgita.app.ui.theme.Saffron
 
 @Composable
 fun QuizSectionScreen(
@@ -56,7 +63,25 @@ fun QuizSectionScreen(
     var isStarted by remember(selectedTab) { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
-    // Remove auto-start logic from LaunchedEffect to allow manual start
+    // Auto-download questions on first open
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(ctx)
+                val count = db.quizQuestionBankDao().getTotalCount()
+                if (count < 50) {
+                    android.util.Log.d("QuizSection", "Auto-downloading questions...")
+                    val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(ctx, db.quizQuestionBankDao())
+                    importer.importDataset(language = "english", batchSize = 500)
+                    android.util.Log.d("QuizSection", "Auto-download complete")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("QuizSection", "Auto-download failed: ${e.message}")
+            }
+        }
+    }
+
     LaunchedEffect(selectedTab) {
         // Pre-configure but don't start
         when (selectedTab) {
@@ -65,114 +90,138 @@ fun QuizSectionScreen(
         }
     }
 
-    Column(
+    val isDark = isSystemInDarkTheme()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(appBg)
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(
-                onClick = onExit,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
-                    .size(40.dp)
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
-            }
-
-            Text(
-                text = translateLandingText("Quiz Section", language),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.size(40.dp))
+        if (isDark) {
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
         }
 
-        // Tab Row
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            shadowElevation = 2.dp
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                indicator = { tabPositions ->
-                    if (selectedTab < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            height = 3.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                divider = {}
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.School,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = translateLandingText(title, language),
-                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedTab == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                )
-                            }
-                        }
+                IconButton(
+                    onClick = onExit,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape)
+                        .size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Back",
+                        tint = textPrimary.copy(alpha = 0.9f)
                     )
                 }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Content
-        AnimatedContent(
-            targetState = selectedTab to isStarted,
-            transitionSpec = {
-                fadeIn(tween(400)) togetherWith fadeOut(tween(300))
-            },
-            label = "tab_content"
-        ) { (tab, started) ->
-            if (!started) {
-                QuizStartLanding(
-                    title = if (tab == 0) "15 Question Marathon" else "25 Question Challenge",
-                    description = if (tab == 0) 
-                        "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths."
-                        else "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?",
-                    onStart = {
-                        showLanguageDialog = true
-                    },
-                    language = language
+                Text(
+                    text = translateLandingText("Quiz Section", language),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = gold
+                    )
                 )
-            } else {
-                QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
+
+                Spacer(modifier = Modifier.size(40.dp))
+            }
+
+            // Tab Row
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                cornerRadius = 24.dp,
+                elevation = 4.dp,
+                tint = cardBg,
+                border = cardBorder
+            ) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = textPrimary,
+                    indicator = { tabPositions ->
+                        if (selectedTab < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                height = 3.dp,
+                                color = gold
+                            )
+                        }
+                    },
+                    divider = {}
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.School,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (selectedTab == index) gold else textPrimary.copy(alpha = 0.5f)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = translateLandingText(title, language),
+                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selectedTab == index) textPrimary else textPrimary.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Content
+            AnimatedContent(
+                targetState = selectedTab to isStarted,
+                transitionSpec = {
+                    fadeIn(tween(400)) togetherWith fadeOut(tween(300))
+                },
+                label = "tab_content",
+                modifier = Modifier.weight(1f)
+            ) { (tab, started) ->
+                if (!started) {
+                    QuizStartLanding(
+                        title = if (tab == 0) "15 Question Marathon" else "25 Question Challenge",
+                        description = if (tab == 0) 
+                            "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths."
+                            else "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?",
+                        onStart = {
+                            showLanguageDialog = true
+                        },
+                        language = language
+                    )
+                } else {
+                    QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
+                }
             }
         }
 
@@ -213,6 +262,11 @@ private fun QuizStartLanding(
     onStart: () -> Unit,
     language: String = "tel"
 ) {
+    val isDark = isSystemInDarkTheme()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val gold = if (isDark) GoldSpark else Saffron
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -220,39 +274,41 @@ private fun QuizStartLanding(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                .border(2.dp, Brush.linearGradient(listOf(gold, Saffron)), CircleShape)
+                .shadow(8.dp, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.Default.School,
-                    contentDescription = null,
-                    modifier = Modifier.size(60.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            Icon(
+                Icons.Default.School,
+                contentDescription = null,
+                modifier = Modifier.size(60.dp),
+                tint = gold
+            )
         }
 
         Spacer(Modifier.height(32.dp))
 
         Text(
             text = translateLandingText(title, language),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = gold
+            )
         )
 
         Spacer(Modifier.height(12.dp))
 
         Text(
             text = translateLandingText(description, language),
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                textAlign = TextAlign.Center,
+                color = textSecondary
+            ),
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
@@ -262,23 +318,42 @@ private fun QuizStartLanding(
             onClick = onStart,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(16.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                .height(56.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Saffron, gold)
+                    ),
+                    shape = MaterialTheme.shapes.large
+                ),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            contentPadding = PaddingValues(),
+            shape = MaterialTheme.shapes.large,
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(translateLandingText("Start Quiz", language), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    translateLandingText("Start Quiz", language),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+            }
         }
         
         Spacer(Modifier.height(16.dp))
         
         Text(
             text = translateLandingText("Every question is a step closer to self-realization.", language),
-            style = MaterialTheme.typography.labelSmall,
-            fontStyle = FontStyle.Italic,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontStyle = FontStyle.Italic,
+                color = textSecondary.copy(alpha = 0.7f)
+            )
         )
     }
 }

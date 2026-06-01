@@ -183,7 +183,6 @@ fun QuizContent(
                             onClick = {
                                 onSelect(index)
                                 val correct = index == correctIndex
-                                vm?.selectAnswer(index)
                                 showResult = correct
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -277,8 +276,7 @@ fun QuizContent(
             }
         }
 
-        CelebrationOverlay(show = showResult == true)
-        WrongOverlay(show = showResult == false)
+        AnswerOverlay(show = showResult != null, isCorrect = showResult == true)
     }
 }
 
@@ -309,8 +307,8 @@ private fun QuizTimerHeader(
     val progress = if (maxTime > 0) timeLeft.toFloat() / maxTime else 0f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
-        label = "timer_progress"
+        animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springSmooth<Float>(),
+        label = "progress"
     )
 
     val timerColor = when {
@@ -318,7 +316,11 @@ private fun QuizTimerHeader(
         timeLeft > 5 -> Saffron
         else -> MaterialTheme.colorScheme.error
     }
-    val animatedTimerColor by animateColorAsState(targetValue = timerColor, label = "timer_color")
+    val animatedTimerColor by animateColorAsState(
+        targetValue = timerColor,
+        animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springSmooth<androidx.compose.ui.graphics.Color>(),
+        label = "timer_color"
+    )
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

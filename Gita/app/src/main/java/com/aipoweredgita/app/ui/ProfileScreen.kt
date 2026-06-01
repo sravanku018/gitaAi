@@ -16,12 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.quiz.OrnamentRule
+import com.aipoweredgita.app.ui.components.AmbientOrbs
+import com.aipoweredgita.app.ui.components.GlassCard
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
@@ -50,8 +53,8 @@ fun ProfileScreen(
     onNavigateToYogaLevels: () -> Unit = {}
 ) {
     val stats by viewModel.stats.collectAsState()
-    val yogaInfo = com.aipoweredgita.app.ui.components.LotusLevelManager.yogaLevelInfo(stats)
-    val levelProgress = com.aipoweredgita.app.ui.components.LotusLevelManager.progressInLevel(stats)
+    val yogaInfo = com.aipoweredgita.app.ui.components.YogaLevelManager.yogaLevelInfo(stats)
+    val levelProgress = com.aipoweredgita.app.ui.components.YogaLevelManager.progressInLevel(stats)
     
     var name by remember { mutableStateOf(stats?.userName ?: "") }
     var dob by remember { mutableStateOf(stats?.dateOfBirth ?: "") }
@@ -65,7 +68,15 @@ fun ProfileScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    val isDark = rememberThemeIsDark()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val gold = if (isDark) GoldSpark else Saffron
+
+    Box(modifier = modifier.fillMaxSize().background(appBg)) {
+        if (isDark) {
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -73,7 +84,7 @@ fun ProfileScreen(
                 .padding(bottom = 32.dp)
         ) {
             // ── Header Section ───────────────────────────────────────────────
-            ProfileHeader(name, stats?.age ?: 0, yogaInfo, levelProgress, onNavigateToYogaLevels)
+            ProfileHeader(ProfileInfo(name, stats?.age ?: 0), yogaInfo, levelProgress, onNavigateToYogaLevels)
 
             Spacer(Modifier.height(24.dp))
 
@@ -111,7 +122,7 @@ fun ProfileScreen(
             Text(
                 text = "Sacred Journey Stats",
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = GoldSpark,
+                    color = gold,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
                 ),
@@ -122,8 +133,9 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                SmallStatItem("Time", stats?.timeSpentFormatted ?: "0m", Icons.Default.Timer, Modifier.weight(1f))
-                SmallStatItem("Verses", "${stats?.versesRead ?: 0}", Icons.AutoMirrored.Filled.MenuBook, Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Time", stats?.timeSpentFormatted ?: "0m", Icons.Default.Timer), Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Verses", "${stats?.versesRead ?: 0}", Icons.AutoMirrored.Filled.MenuBook), Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Quizzes", "${stats?.totalQuizzesTaken ?: 0}", Icons.Default.Quiz), Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(12.dp))
@@ -132,8 +144,8 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                SmallStatItem("Streak", "${stats?.currentStreak ?: 0} 🔥", Icons.Default.Whatshot, Modifier.weight(1f))
-                SmallStatItem("Badges", "${stats?.totalFavorites ?: 0}", Icons.Default.EmojiEvents, Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Streak", "${stats?.currentStreak ?: 0} days", Icons.Default.Whatshot), Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Badges", "${stats?.totalFavorites ?: 0}", Icons.Default.EmojiEvents), Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(24.dp))
@@ -148,14 +160,14 @@ fun ProfileScreen(
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = "Best Score: ${stats?.bestScore ?: 0}/${stats?.bestScoreOutOf ?: 0}",
-                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.bodyLarge.copy(color = textPrimary.copy(alpha = 0.9f), fontWeight = FontWeight.Bold)
                         )
                         Text(
                             text = "Accuracy: ${stats?.accuracyPercentage?.toInt() ?: 0}%",
-                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            style = MaterialTheme.typography.bodySmall.copy(color = textPrimary.copy(alpha = 0.6f))
                         )
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GoldSpark)
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = gold)
                 }
             }
 
@@ -163,42 +175,43 @@ fun ProfileScreen(
 
             // ── Appearance ───────────────────────────────────────────────────
             CreativeCard(title = "Appearance", icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Dark Mode", style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface))
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = onThemeToggle,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = GoldSpark,
-                            checkedTrackColor = GoldSpark.copy(alpha = 0.3f),
-                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                }
+                Text(
+                    text = "Theme mode is controlled from Settings, where System, Light, and Dark are all available.",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = textPrimary.copy(alpha = 0.9f))
+                )
             }
         }
     }
 }
 
+private data class ProfileInfo(
+    val name: String,
+    val age: Int
+)
+
 @Composable
 private fun ProfileHeader(
-    name: String,
-    age: Int,
-    yogaInfo: com.aipoweredgita.app.ui.components.LotusLevelManager.YogaLevelInfo,
+    profile: ProfileInfo,
+    yogaInfo: com.aipoweredgita.app.ui.components.YogaLevelManager.YogaLevelInfo,
     levelProgress: Float,
     onClick: () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val gold = if (isDark) GoldSpark else Saffron
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp)
             .background(
-                Brush.verticalGradient(listOf(GoldSpark.copy(alpha = 0.15f), MaterialTheme.colorScheme.background))
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFFF9628).copy(alpha = if (isDark) 0.15f else 0.25f),
+                        Color.Transparent
+                    )
+                )
             )
             .clickable(onClick = onClick, indication = null, interactionSource = remember { MutableInteractionSource() }),
         contentAlignment = Alignment.Center
@@ -209,14 +222,14 @@ private fun ProfileHeader(
                 // Progress Arc
                 androidx.compose.foundation.Canvas(modifier = Modifier.size(110.dp)) {
                     drawArc(
-                        color = GoldSpark.copy(alpha = 0.2f),
+                        color = gold.copy(alpha = 0.2f),
                         startAngle = 0f,
                         sweepAngle = 360f,
                         useCenter = false,
                         style = Stroke(width = 4.dp.toPx())
                     )
                     drawArc(
-                        color = GoldSpark,
+                        color = gold,
                         startAngle = -90f,
                         sweepAngle = 360f * levelProgress,
                         useCenter = false,
@@ -228,8 +241,8 @@ private fun ProfileHeader(
                 Box(
                     modifier = Modifier
                         .size(90.dp)
-                        .background(MaterialTheme.colorScheme.surface, CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -242,34 +255,34 @@ private fun ProfileHeader(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = name.ifEmpty { "Arjuna" },
+                text = profile.name.ifEmpty { "Arjuna" },
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = textPrimary.copy(alpha = 0.95f),
                     fontWeight = FontWeight.Bold
                 )
             )
 
             Surface(
-                color = GoldSpark.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp),
+                color = gold.copy(alpha = 0.1f),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.padding(top = 6.dp)
             ) {
                 Text(
-                    text = "${yogaInfo.yogaName} — Step ${yogaInfo.step}",
+                    text = "${yogaInfo.yogaName} � Step ${yogaInfo.step}",
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = GoldSpark,
+                        color = gold,
                         fontWeight = FontWeight.SemiBold
                     )
                 )
             }
 
-            if (age > 0) {
+            if (profile.age > 0) {
                 Text(
-                    text = "$age Year Old Seeker",
+                    text = "${profile.age} Year Old Seeker",
                     modifier = Modifier.padding(top = 4.dp),
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = textSecondary,
                         fontStyle = FontStyle.Italic
                     )
                 )
@@ -285,23 +298,31 @@ private fun CreativeCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Surface(
+    val isDark = rememberThemeIsDark()
+    val textLabel = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+
+    val clickModifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
+    GlassCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+            .then(clickModifier),
+        cornerRadius = 32.dp,
+        elevation = 4.dp,
+        tint = cardBg,
+        border = cardBorder
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = GoldSpark, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = null, tint = gold, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = textLabel,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.8.sp
                     )
@@ -313,23 +334,38 @@ private fun CreativeCard(
     }
 }
 
+private data class SmallStatData(
+    val label: String,
+    val value: String,
+    val icon: ImageVector
+)
+
 @Composable
-private fun SmallStatItem(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.height(85.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+private fun SmallStatItem(stat: SmallStatData, modifier: Modifier = Modifier) {
+    val uiCfg = LocalUiConfig.current
+    val isDark = rememberThemeIsDark()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+
+    GlassCard(
+        modifier = modifier.height(if (uiCfg.isLandscape) 75.dp else 90.dp),
+        cornerRadius = 24.dp,
+        elevation = 2.dp,
+        tint = cardBg,
+        border = cardBorder
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(12.dp),
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(icon, contentDescription = null, tint = GoldSpark.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
+            Icon(stat.icon, contentDescription = null, tint = gold.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
             Column {
-                Text(value, style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold))
-                Text(label, style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp))
+                Text(stat.value, style = MaterialTheme.typography.titleMedium.copy(color = textPrimary.copy(alpha = 0.9f), fontWeight = FontWeight.Bold))
+                Text(stat.label, style = MaterialTheme.typography.labelSmall.copy(color = textSecondary, fontSize = 9.sp))
             }
         }
     }
@@ -345,7 +381,7 @@ private fun ProfileDisplayInfo(name: String, dob: String, age: Int, onEdit: () -
             onClick = onEdit,
             modifier = Modifier.fillMaxWidth().height(40.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Saffron),
-            shape = RoundedCornerShape(10.dp)
+            shape = MaterialTheme.shapes.small
         ) {
             Text("Edit Profile", color = Color.White, fontWeight = FontWeight.Bold)
         }
@@ -358,28 +394,37 @@ private fun ProfileEditForm(
     dob: String, onDobChange: (String) -> Unit,
     onSave: () -> Unit, onCancel: () -> Unit
 ) {
+    val isDark = rememberThemeIsDark()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val gold = if (isDark) GoldSpark else Saffron
+
     Column {
         OutlinedTextField(
             value = name, onValueChange = onNameChange,
-            label = { Text("Spiritual Name", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("Spiritual Name", color = textSecondary) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = GoldSpark,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                focusedBorderColor = gold,
+                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
+                focusedTextColor = textPrimary,
+                unfocusedTextColor = textPrimary,
+                focusedLabelColor = gold,
+                unfocusedLabelColor = textSecondary
             )
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = dob, onValueChange = onDobChange,
-            label = { Text("DOB (YYYY-MM-DD)", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("DOB (YYYY-MM-DD)", color = textSecondary) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = GoldSpark,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                focusedBorderColor = gold,
+                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
+                focusedTextColor = textPrimary,
+                unfocusedTextColor = textPrimary,
+                focusedLabelColor = gold,
+                unfocusedLabelColor = textSecondary
             )
         )
         Spacer(Modifier.height(16.dp))
@@ -387,8 +432,8 @@ private fun ProfileEditForm(
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.weight(1f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, GoldSpark),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldSpark)
+                border = androidx.compose.foundation.BorderStroke(1.dp, gold),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = gold)
             ) { Text("Cancel") }
             Button(
                 onClick = onSave,
@@ -401,11 +446,15 @@ private fun ProfileEditForm(
 
 @Composable
 private fun ProfileInfoRow(label: String, value: String) {
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
-        Text(value, style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold))
+        Text(label, style = MaterialTheme.typography.bodySmall.copy(color = textSecondary))
+        Text(value, style = MaterialTheme.typography.bodyMedium.copy(color = textPrimary.copy(alpha = 0.9f), fontWeight = FontWeight.SemiBold))
     }
 }
+

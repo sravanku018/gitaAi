@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aipoweredgita.app.ui.theme.GoldSpark
 
 data class YogaLevel(
     val level: Int,
@@ -39,7 +40,7 @@ fun VerticalProgressRoad(
         YogaLevel(1, "Bhakti Yoga", "🔥", Color(0xFFE91E63)),
         YogaLevel(2, "Jnana Yoga", "🧠", Color(0xFF2196F3)),
         YogaLevel(3, "Dhyana Yoga", "🌬️", Color(0xFF9C27B0)),
-        YogaLevel(4, "Moksha", "🌺", Color(0xFFFFD700))
+        YogaLevel(4, "Moksha", "🌺", GoldSpark)
     )
     
     // Animated progress
@@ -215,3 +216,4 @@ fun VerticalProgressRoad(
         }
     }
 }
+

@@ -10,7 +10,7 @@ data class YogaAdvice(
 
 object YogaAdvisor {
     fun suggest(stats: UserStats?): YogaAdvice {
-        val level = com.aipoweredgita.app.ui.components.LotusLevelManager.levelFor(stats)
+        val level = com.aipoweredgita.app.ui.components.YogaLevelManager.levelFor(stats)
         val next = listOf((level + 1).coerceAtMost(5), level) // keep current and next
         val tips = listOf(
             "Practice detachment (Vairagya) while performing duties",

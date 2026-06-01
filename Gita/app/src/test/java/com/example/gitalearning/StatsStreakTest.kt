@@ -19,14 +19,26 @@ class FakeUserStatsDao : UserStatsDao {
     override suspend fun addQuestionsAnswered(count: Int) {}
     override suspend fun addCorrectAnswers(count: Int) {}
     override suspend fun incrementVersesRead() {}
+    override suspend fun incrementChaptersCompleted() {}
+    override suspend fun addCoins(amount: Int) {
+        stats = (stats ?: UserStats()).copy(krishnaCoins = (stats?.krishnaCoins ?: 0) + amount)
+    }
+    override suspend fun deductCoins(amount: Int) {
+        stats = (stats ?: UserStats()).copy(krishnaCoins = ((stats?.krishnaCoins ?: 0) - amount).coerceAtLeast(0))
+    }
+    override suspend fun updateSegmentCoins(segmentCoins: Map<String, Int>) {
+        stats = (stats ?: UserStats()).copy(segmentCoins = segmentCoins)
+    }
     override suspend fun updateDistinctVersesRead(count: Int) {}
     override suspend fun addTimeSpent(seconds: Long) {}
     override suspend fun addNormalModeTime(seconds: Long) {}
     override suspend fun addQuizModeTime(seconds: Long) {}
+    override suspend fun addVoiceStudioTime(seconds: Long) {}
     override suspend fun updateLastActive(timestamp: Long, date: String) {
         stats = (stats ?: UserStats()).copy(lastActiveTimestamp = timestamp, lastActiveDate = date)
     }
     override suspend fun updateCurrentStreak(streak: Int) { stats = (stats ?: UserStats()).copy(currentStreak = streak) }
+    override suspend fun updateDaysActive(count: Int) { stats = (stats ?: UserStats()).copy(daysActive = count) }
     override suspend fun updateLongestStreak(streak: Int) { stats = (stats ?: UserStats()).copy(longestStreak = streak) }
     override suspend fun updateBestScore(score: Int, outOf: Int) {}
     override suspend fun updateFavoritesCount(count: Int) {}

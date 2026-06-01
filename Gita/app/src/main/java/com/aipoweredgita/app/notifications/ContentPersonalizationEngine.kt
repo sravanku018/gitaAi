@@ -4,7 +4,7 @@ import android.content.Context
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.data.LearningSegment
-import com.aipoweredgita.app.data.SegmentReport
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
