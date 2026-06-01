@@ -1,5 +1,58 @@
 # Android build outputs
 *.apk
 *.aab
+*.dex
 app/release/
 app/debug/
+*/build/
+
+# Keystore & signing files (SECURITY RISK)
+*.jks
+*.keystore
+*.p12
+*.pfx
+release-key*
+signing.properties
+
+# Log files
+*.log
+test_log*.txt
+build_log*.txt
+temp_*.txt
+ksp_error.log
+ksp_full_log.txt
+build_error.txt
+
+# Temp / debug files
+temp_*.txt
+fix_*.txt
+check_*.ps1
+resize_logo.py
+
+# ML model files
+*.bin
+*.tflite
+*.gguf
+*.task
+*.ot
+*.onnx
+*.pt
+*.pkl
+app/src/main/assets/models/
+
+# Gradle
+.gradle/
+local.properties
+gradle/wrapper/gradle-wrapper.jar
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE (user-specific)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/caches/
+.idea/libraries/
+.idea/navEditor.xml
