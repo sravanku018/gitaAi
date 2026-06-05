@@ -33,12 +33,8 @@ data class QuizState(
     val isQuizComplete: Boolean = false,
     val difficultyLevel: Int = 5,
     val questionTimeLeftSeconds: Int = 30,
-<<<<<<< HEAD
     val isTimerRunning: Boolean = false,
     val language: String = "en",
     val coinsEarned: Int = 0,
     val segmentCorrectAnswers: Map<String, Int> = emptyMap()
-=======
-    val isTimerRunning: Boolean = false
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 )

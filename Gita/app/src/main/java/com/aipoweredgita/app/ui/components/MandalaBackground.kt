@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-<<<<<<< HEAD
 import androidx.compose.runtime.remember
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -37,11 +34,8 @@ fun MandalaBackground(
         label = "rotation"
     )
 
-<<<<<<< HEAD
     val cachedPath = remember { Path() }
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     Canvas(modifier = modifier) {
         val center = center
         val radius = size.minDimension / 2.5f
@@ -64,50 +58,26 @@ fun MandalaBackground(
             val petals = 12
             val angleStep = (2 * PI / petals).toFloat()
             
-<<<<<<< HEAD
             cachedPath.reset()
-=======
-            val path = Path()
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             for (i in 0 until petals) {
                 val angle = i * angleStep
                 val x = center.x + cos(angle) * (radius * 0.8f)
                 val y = center.y + sin(angle) * (radius * 0.8f)
                 
-<<<<<<< HEAD
                 cachedPath.moveTo(center.x, center.y)
-=======
-                // Draw a curve to connecting subsequent points?
-                // Actually, let's draw distinct petal lobes
-                // Start from center
-                path.moveTo(center.x, center.y)
-                // Curve to edge
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val controlAngle1 = angle - angleStep / 3
                 val cp1x = center.x + cos(controlAngle1) * (radius * 0.5f)
                 val cp1y = center.y + sin(controlAngle1) * (radius * 0.5f)
                 
-<<<<<<< HEAD
                 cachedPath.quadraticBezierTo(cp1x, cp1y, x.toFloat(), y.toFloat())
                 
-=======
-                path.quadraticBezierTo(cp1x, cp1y, x.toFloat(), y.toFloat())
-                
-                // Curve back
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val controlAngle2 = angle + angleStep / 3
                 val cp2x = center.x + cos(controlAngle2) * (radius * 0.5f)
                 val cp2y = center.y + sin(controlAngle2) * (radius * 0.5f)
                 
-<<<<<<< HEAD
                 cachedPath.quadraticBezierTo(cp2x, cp2y, center.x, center.y)
             }
             drawPath(cachedPath, color.copy(alpha = color.alpha * 0.5f), style = Stroke(width = 1.dp.toPx()))
-=======
-                path.quadraticBezierTo(cp2x, cp2y, center.x, center.y)
-            }
-            drawPath(path, color.copy(alpha = color.alpha * 0.5f), style = Stroke(width = 1.dp.toPx()))
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 }

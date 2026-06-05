@@ -8,16 +8,12 @@ import com.google.gson.reflect.TypeToken
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-<<<<<<< HEAD
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-=======
-import retrofit2.http.GET
-import retrofit2.http.Path
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import java.util.concurrent.TimeUnit
 
 private const val BASE_URL = com.aipoweredgita.app.util.GitaConstants.API_BASE_URL
@@ -75,16 +71,16 @@ object GitaApi {
     val retrofitService: GitaApiService by lazy {
         retrofit.create(GitaApiService::class.java)
     }
+
+    /** Shared OkHttpClient with retry and circuit-breaker — reuse in VoiceChat etc. */
+    val sharedOkHttpClient: OkHttpClient by lazy { okHttpClient }
 }
-<<<<<<< HEAD
 
 // ── Coin API (reuses shared okHttpClient + gson) ─────────────────────────────────
 
-private const val COIN_API_BASE_URL = "https://prime-gorilla-49.sravanku018.deno.net/"
-
 private val coinRetrofit = Retrofit.Builder()
     .addConverterFactory(GsonConverterFactory.create(gson))
-    .baseUrl(COIN_API_BASE_URL)
+    .baseUrl(com.aipoweredgita.app.util.GitaConstants.COIN_API_BASE_URL)
     .client(okHttpClient)
     .build()
 
@@ -108,6 +104,27 @@ data class ShareSlokaRequest(
     val sloka_id: String? = null,
     val chapter: Int? = null,
     val verse: Int? = null
+)
+
+data class ClaimGuestRequest(
+    val guest_id: String,
+    val real_user_id: String,
+    val name: String = "",
+    val email: String = ""
+)
+
+// ── Auth Request Models ──────────────────────────────────────────────────────
+
+data class AuthRegisterRequest(
+    val user_id: String,
+    val password: String,
+    val name: String = "",
+    val email: String = ""
+)
+
+data class AuthLoginRequest(
+    val user_id: String,
+    val password: String
 )
 
 // ── Coin API Response Models ─────────────────────────────────────────────────────
@@ -136,6 +153,29 @@ data class CoinSpendResponse(
 data class CreateUserResponse(
     val success: Boolean = false,
     val coins: Int = 0
+)
+
+data class CreateGuestResponse(
+    val guest_id: String = "",
+    val coins: Int = 50
+)
+
+data class ClaimGuestResponse(
+    val success: Boolean = false,
+    val user_id: String = "",
+    val sync_bonus: Int = 150,
+    val error: String? = null
+)
+
+// ── Auth Response Models ─────────────────────────────────────────────────────
+
+data class AuthResponse(
+    val success: Boolean = false,
+    val user_id: String = "",
+    val token: String = "",
+    val coins: Int = 0,
+    val yoga_level: Int = 1,
+    val error: String? = null
 )
 
 data class CheckinResponse(
@@ -215,6 +255,26 @@ interface CoinApiService {
     @POST("users/create")
     suspend fun createUser(@Body request: CreateUserRequest): CreateUserResponse
 
+    @POST("guest/create")
+    suspend fun createGuest(): CreateGuestResponse
+
+    @POST("guest/claim")
+    suspend fun claimGuest(@Body request: ClaimGuestRequest): ClaimGuestResponse
+
+    // ── Auth Endpoints ───────────────────────────────────────────────────
+
+    @POST("auth/register")
+    suspend fun register(@Body request: AuthRegisterRequest): AuthResponse
+
+    @POST("auth/login")
+    suspend fun login(@Body request: AuthLoginRequest): AuthResponse
+
+    @POST("auth/logout")
+    suspend fun logout(@Header("Authorization") token: String): AuthResponse
+
+    @POST("auth/delete")
+    suspend fun deleteAccount(@Header("Authorization") token: String): AuthResponse
+
     @GET("yoga/stages")
     suspend fun getYogaStages(): YogaStagesResponse
 }
@@ -224,5 +284,3 @@ object CoinApi {
         coinRetrofit.create(CoinApiService::class.java)
     }
 }
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

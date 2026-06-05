@@ -25,6 +25,8 @@ import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.CoinHistoryEntry
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
+import com.aipoweredgita.app.coin.CoinTransactionLogger
+import com.aipoweredgita.app.utils.AuthPreferences
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,16 +37,45 @@ fun CoinHistoryScreen(
     onBack: () -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val stats by viewModel.stats.collectAsState()
     val coinBalance by viewModel.coinBalance.collectAsState()
     var allHistory by remember { mutableStateOf<List<CoinHistoryEntry>>(emptyList()) }
     var activeFilter by remember { mutableStateOf("all") }
+    var isGuest by remember { mutableStateOf(false) }
 
     // Fetch history and balance from API when userId becomes available
     LaunchedEffect(stats) {
         val uid = stats?.userId
         if (uid != null && uid.isNotEmpty()) {
-            try { allHistory = CoinApi.retrofitService.getHistory(uid) } catch (e: Exception) { android.util.Log.e("CoinHistory", "Failed to load history: ${e.message}") }
+            val authPrefs = AuthPreferences.getInstance(context)
+            isGuest = authPrefs.isGuestUser
+
+            if (isGuest) {
+                // For guests: show local transactions from CoinTransactionLogger
+                val localTx = CoinTransactionLogger.getHistory(context).map { tx ->
+                    CoinHistoryEntry(
+                        amount = tx.amount,
+                        type = tx.type.name,
+                        source = tx.description.lowercase().let { desc ->
+                            when {
+                                desc.contains("welcome") -> "signup"
+                                desc.contains("quiz") -> "quiz_completion"
+                                desc.contains("check") -> "checkin_day"
+                                desc.contains("share") -> "share_sloka"
+                                desc.contains("voice") -> "voice_chat"
+                                desc.contains("chapter") -> "chapter_completion"
+                                else -> "other"
+                            }
+                        },
+                        description = tx.description,
+                        created_at = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(java.util.Date(tx.timestamp))
+                    )
+                }
+                allHistory = localTx
+            } else {
+                try { allHistory = CoinApi.retrofitService.getHistory(uid) } catch (e: Exception) { android.util.Log.e("CoinHistory", "Failed to load history: ${e.message}") }
+            }
             try { viewModel.refreshCoinBalance() } catch (e: Exception) { android.util.Log.e("CoinHistory", "Failed to load balance: ${e.message}") }
         }
     }

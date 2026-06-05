@@ -81,14 +81,12 @@ If it belongs in this moment, let it breathe through your words naturally."""
     //  This is what stops the numbered list / bold markdown problem
     // --------------------------------------------------------
     private const val FORMAT_RULES = """
-
---- Format (STRICT — never break these)
-Respond in 3 sentences maximum. Never more.
-Never use numbered lists, bullet points, or dashes.
-Never use bold, italic, or any markdown formatting.
-No headers. No labels. No structure.
+ 
+--- Format
+Keep your response concise and natural, like a real conversation.
+Avoid numbered lists, bullet points, or markdown formatting.
 Speak the way a person speaks — plain words, warm tone.
-One thought. One breath. That is enough."""
+One or two sentences is often enough, but let the moment guide you."""
 
     // --------------------------------------------------------
     //  GROQ — system prompt
@@ -223,8 +221,6 @@ No anime catchphrases. No manga speech patterns. Pure Telugu."""
             .take(1500)  // guard against excessively long input
             .replace(Regex("(?i)ignore (all )?(previous|above) instructions?"), "[blocked]")
             .replace(Regex("(?i)(reveal|dump|print|show|tell me) (the )?(system prompt|your instructions|your rules|your guidelines)"), "[blocked]")
-            .replace(Regex("(?i)you are (not|no longer)"), "[blocked]")
-            .replace(Regex("(?i)(from now on |now )?you (are|act as|will|must|should|shall)"), "[blocked]")
             .replace(Regex("(?i)(system:|<\\|im_start\\|>|<\\|im_end\\|>|<\\|turn\\|>)"), "[blocked]")
     }
 }

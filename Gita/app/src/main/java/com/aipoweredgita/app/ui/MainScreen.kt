@@ -2,12 +2,9 @@ package com.aipoweredgita.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-<<<<<<< HEAD
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,21 +14,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-<<<<<<< HEAD
 import androidx.compose.ui.draw.scale
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,13 +33,11 @@ import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.navigation.NavGraph
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
-<<<<<<< HEAD
 import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.utils.AuthPreferences
 import androidx.compose.foundation.border
 import androidx.compose.runtime.CompositionLocalProvider
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,11 +53,22 @@ fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
     val profileViewModel: ProfileViewModel = viewModel()
     val stats by profileViewModel.stats.collectAsState()
+    val authPrefs = remember { AuthPreferences.getInstance(navController.context) }
+    // User is guest if: explicitly guest OR not logged in with real credentials
+    // Use a key that changes when auth state changes so the UI recomposes
+    var authVersion by remember { mutableStateOf(0) }
+    val isGuest = remember(authVersion) { authPrefs.isGuestUser }
 
-<<<<<<< HEAD
     // Fetch coin balance from API when userId becomes available
     LaunchedEffect(stats) {
         if (stats?.userId?.isNotEmpty() == true) {
+            profileViewModel.refreshCoinBalance()
+        }
+    }
+
+    // Refresh coin balance after login/register (authVersion changes)
+    LaunchedEffect(authVersion) {
+        if (authVersion > 0) {
             profileViewModel.refreshCoinBalance()
         }
     }
@@ -81,12 +80,6 @@ fun MainScreen(
                 drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
                 drawerContainerColor = MaterialTheme.colorScheme.surface
             ) {
-=======
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 DrawerContent(
                     isDarkTheme = isDarkTheme,
                     onThemeToggle = onThemeToggle,
@@ -108,11 +101,7 @@ fun MainScreen(
                     },
                     onNavigateToQuizStats = {
                         scope.launch { drawerState.close() }
-<<<<<<< HEAD
                         navController.navigate(Screen.ActivityHistory.route)
-=======
-                        navController.navigate(Screen.QuizStats.route)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     },
                     onNavigateToOfflineDownload = {
                         scope.launch { drawerState.close() }
@@ -122,27 +111,42 @@ fun MainScreen(
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Profile.route)
                     },
-<<<<<<< HEAD
                     onNavigateToYogaLevels = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Awakening.route)
                     },
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     onNavigateToSettings = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Settings.route)
                     },
-<<<<<<< HEAD
                     onNavigateToCoinHistory = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.CoinHistory.route)
                     },
+                    onNavigateToLogin = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Login.route)
+                    },
+                    onLogout = {
+                        scope.launch {
+                            drawerState.close()
+                            val authManager = com.aipoweredgita.app.repository.AuthManager.getInstance(navController.context)
+                            authManager.logout()
+                            
+                            // Reset Room DB user stats
+                            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(navController.context)
+                            db.userStatsDao().updateUserId("")
+                            db.userStatsDao().updateProfile("", "")
+                            
+                            authVersion++
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Home.route) { inclusive = true }
+                            }
+                        }
+                    },
                     stats = stats,
-                    coinBalance = profileViewModel.coinBalance.collectAsState().value
-=======
-                    stats = stats
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
+                    coinBalance = profileViewModel.coinBalance.collectAsState().value,
+                    isGuest = isGuest
                 )
             }
         }
@@ -173,20 +177,12 @@ fun MainScreen(
                             Icon(
                                 imageVector = Icons.Filled.Menu,
                                 contentDescription = "Menu",
-<<<<<<< HEAD
                                 tint = GoldSpark
-=======
-                                tint = MaterialTheme.colorScheme.onSurface
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-<<<<<<< HEAD
                         containerColor = MaterialTheme.colorScheme.surface,
-=======
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                         navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
                         actionIconContentColor = MaterialTheme.colorScheme.onSurface
@@ -197,10 +193,7 @@ fun MainScreen(
             bottomBar = {
                 BottomNavigationBar(
                     currentRoute = currentRoute,
-<<<<<<< HEAD
                     isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     onNavigate = { route ->
                         // Only navigate if not already on that route
                         if (currentRoute != route) {
@@ -221,7 +214,8 @@ fun MainScreen(
                 navController = navController,
                 modifier = Modifier.padding(innerPadding),
                 isDarkTheme = isDarkTheme,
-                onThemeToggle = onThemeToggle
+                onThemeToggle = onThemeToggle,
+                onAuthChanged = { authVersion++ }
             )
         }
     }
@@ -230,7 +224,6 @@ fun MainScreen(
 @Composable
 fun BottomNavigationBar(
     currentRoute: String?,
-<<<<<<< HEAD
     isDarkTheme: Boolean,
     onNavigate: (String) -> Unit
 ) {
@@ -305,43 +298,6 @@ fun BottomNavigationBar(
                 )
             )
         }
-=======
-    onNavigate: (String) -> Unit
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        NavigationBarItem(
-            selected = currentRoute == Screen.Home.route,
-            onClick = { onNavigate(Screen.Home.route) },
-            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Home") },
-            label = { Text("Home") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.ChapterSelection.route || currentRoute?.startsWith("normal_mode") == true,
-            onClick = { onNavigate(Screen.ChapterSelection.route) },
-            icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
-            label = { Text("Read") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.QuizSection.route || currentRoute == Screen.QuizConfig.route || currentRoute == Screen.QuizMode.route,
-            onClick = { onNavigate(Screen.QuizSection.route) },
-            icon = { Icon(imageVector = Icons.Filled.School, contentDescription = "Quiz") },
-            label = { Text("Quiz") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.VoiceStudio.route,
-            onClick = { onNavigate(Screen.VoiceStudio.route) },
-            icon = { Icon(imageVector = Icons.Filled.Mic, contentDescription = "Voice") },
-            label = { Text("Voice") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == Screen.Profile.route,
-            onClick = { onNavigate(Screen.Profile.route) },
-            icon = { Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile") },
-            label = { Text("Profile") }
-        )
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 }
 
@@ -356,36 +312,26 @@ fun DrawerContent(
     onNavigateToQuizStats: () -> Unit,
     onNavigateToOfflineDownload: () -> Unit,
     onNavigateToProfile: () -> Unit,
-<<<<<<< HEAD
     onNavigateToYogaLevels: () -> Unit,
     onNavigateToCoinHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToLogin: () -> Unit = {},
+    onLogout: () -> Unit = {},
     stats: com.aipoweredgita.app.database.UserStats?,
-    coinBalance: Int = 0
-=======
-    onNavigateToSettings: () -> Unit,
-    stats: com.aipoweredgita.app.database.UserStats?
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
+    coinBalance: Int = 0,
+    isGuest: Boolean = false
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-<<<<<<< HEAD
             .background(MaterialTheme.colorScheme.background)
-=======
-            .background(MaterialTheme.colorScheme.surface)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     ) {
         // Profile Section at Top (Twitter-style)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-<<<<<<< HEAD
                 .background(Saffron.copy(alpha = 0.05f))
                 .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(0.dp))
-=======
-                .background(MaterialTheme.colorScheme.primaryContainer)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 .padding(20.dp)
         ) {
             // Profile Avatar
@@ -393,12 +339,8 @@ fun DrawerContent(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-<<<<<<< HEAD
                     .background(Color(0xFFFF6400).copy(alpha = 0.15f))
                     .border(1.dp, GoldSpark.copy(alpha = 0.25f), CircleShape),
-=======
-                    .background(MaterialTheme.colorScheme.primary),
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -409,17 +351,92 @@ fun DrawerContent(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Name
-            Text(
-                text = "Gita Student",
-                style = MaterialTheme.typography.titleLarge,
-<<<<<<< HEAD
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-=======
-                fontWeight = FontWeight.Bold
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
-            )
+            // Name + Guest badge row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (isGuest) "Guest User" else (stats?.userName?.takeIf { it.isNotEmpty() } ?: "Gita Student"),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isGuest) {
+                    Surface(
+                        color = GoldSpark.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.4f))
+                    ) {
+                        Text(
+                            text = "Guest",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = GoldSpark,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            // Sign In / Logout button dynamically based on auth status
+            if (isGuest) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    onClick = onNavigateToLogin,
+                    color = GoldSpark,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Login,
+                            contentDescription = "Sign In",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Sign In",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    onClick = onLogout,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Logout,
+                            contentDescription = "Logout",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Logout",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -430,16 +447,11 @@ fun DrawerContent(
                 Text(
                     text = "${stats?.totalQuizzesTaken ?: 0} Quizzes",
                     style = MaterialTheme.typography.bodySmall,
-<<<<<<< HEAD
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-=======
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 )
                 Text(
                     text = "${stats?.currentStreak ?: 0}🔥 Streak",
                     style = MaterialTheme.typography.bodySmall,
-<<<<<<< HEAD
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Surface(
@@ -455,10 +467,6 @@ fun DrawerContent(
                         fontWeight = FontWeight.Bold
                     )
                 }
-=======
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
 
@@ -466,78 +474,54 @@ fun DrawerContent(
         Column(
             modifier = Modifier
                 .weight(1f)
-<<<<<<< HEAD
                 .background(MaterialTheme.colorScheme.background)
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 .verticalScroll(rememberScrollState())
         ) {
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Home") },
                 title = "Home",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToHome
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read Verses") },
                 title = "Read Verses",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToRead
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.School, contentDescription = "Quiz") },
                 title = "Quiz",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToQuiz
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Favorite, contentDescription = "Favorites") },
                 title = "Favorites",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToFavorites
             )
 
             TwitterMenuItem(
-<<<<<<< HEAD
                 icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Activity History") },
                 title = "Activity History",
                 isDarkTheme = isDarkTheme,
-=======
-                icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Statistics") },
-                title = "Statistics",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToQuizStats
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.CloudDownload, contentDescription = "Offline Mode") },
                 title = "Offline Mode",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onClick = onNavigateToOfflineDownload
             )
 
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile") },
                 title = "Profile",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToProfile
             )
@@ -557,18 +541,11 @@ fun DrawerContent(
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f))
-=======
-                onClick = onNavigateToProfile
-            )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
             // Settings section
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Menu, contentDescription = "Appearance & Theme") },
                 title = "Appearance & Theme",
-<<<<<<< HEAD
                 isDarkTheme = isDarkTheme,
                 trailing = {
                     Switch(
@@ -580,12 +557,6 @@ fun DrawerContent(
                             uncheckedThumbColor = Color.Black.copy(alpha = 0.4f),
                             uncheckedTrackColor = Color.Black.copy(alpha = 0.1f)
                         )
-=======
-                trailing = {
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = onThemeToggle
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     )
                 },
                 onClick = onNavigateToSettings
@@ -595,35 +566,10 @@ fun DrawerContent(
 }
 
 @Composable
-fun QuickStatItem(
-    value: String,
-    label: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
 fun TwitterMenuItem(
     icon: @Composable (() -> Unit),
     title: String,
-<<<<<<< HEAD
     isDarkTheme: Boolean,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     onClick: () -> Unit,
     trailing: @Composable (() -> Unit)? = null
 ) {
@@ -634,7 +580,6 @@ fun TwitterMenuItem(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-<<<<<<< HEAD
         Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
             CompositionLocalProvider(
                 LocalContentColor provides GoldSpark
@@ -642,9 +587,6 @@ fun TwitterMenuItem(
                 icon()
             }
         }
-=======
-        Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) { icon() }
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
         Spacer(modifier = Modifier.width(20.dp))
 
@@ -652,10 +594,7 @@ fun TwitterMenuItem(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
-<<<<<<< HEAD
             color = MaterialTheme.colorScheme.onSurface,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             modifier = Modifier.weight(1f)
         )
 
@@ -665,52 +604,3 @@ fun TwitterMenuItem(
     }
 }
 
-@Composable
-fun DrawerMenuItem(
-    iconRes: Int,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}

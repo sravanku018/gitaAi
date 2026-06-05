@@ -1,9 +1,13 @@
 package com.aipoweredgita.app.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "learning_patterns")
+@Entity(
+    tableName = "learning_patterns",
+    indices = [Index(value = ["lastUpdated"], name = "idx_learning_patterns_lastUpdated")]
+)
 data class LearningPattern(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

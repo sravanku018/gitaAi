@@ -15,20 +15,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.aipoweredgita.app.R
-<<<<<<< HEAD
 import com.aipoweredgita.app.ui.theme.GoldSpark
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import com.aipoweredgita.app.ui.theme.*
 
 @Composable
 fun CompletionDialog(
     score: Int,
     total: Int,
-<<<<<<< HEAD
     coins: Int = 0,
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     onExit: () -> Unit,
     onRestart: () -> Unit
 ) {
@@ -44,11 +38,7 @@ fun CompletionDialog(
     Dialog(onDismissRequest = { }) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-<<<<<<< HEAD
             shape = MaterialTheme.shapes.extraLarge,
-=======
-            shape = RoundedCornerShape(28.dp),
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(0.3f))
         ) {
@@ -107,7 +97,6 @@ fun CompletionDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-<<<<<<< HEAD
                 if (coins > 0) {
                     Surface(
                         color = GoldSpark.copy(alpha = 0.15f),
@@ -131,19 +120,13 @@ fun CompletionDialog(
                     }
                 }
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = onExit,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-<<<<<<< HEAD
                     shape = MaterialTheme.shapes.medium
-=======
-                    shape = RoundedCornerShape(12.dp)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 ) {
                     Text(stringResource(id = R.string.quiz_exit), fontWeight = FontWeight.Bold)
                 }

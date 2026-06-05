@@ -236,11 +236,7 @@ private fun InstructionStep(number: String, text: String) {
     ) {
         Surface(
             modifier = Modifier.size(28.dp),
-<<<<<<< HEAD
             shape = MaterialTheme.shapes.medium,
-=======
-            shape = RoundedCornerShape(14.dp),
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             color = MaterialTheme.colorScheme.primary
         ) {
             Box(contentAlignment = Alignment.Center) {

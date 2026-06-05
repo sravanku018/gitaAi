@@ -4,6 +4,8 @@ object GitaConstants {
     const val DEFAULT_LANGUAGE = "tel"
     const val MAX_CHAPTERS = 18
     const val API_BASE_URL = "https://gita-api.vercel.app/"
+    const val COIN_API_BASE_URL = "https://prime-gorilla-49.sravanku018.deno.net/"
+    const val VOICE_PROXY_URL = "https://noisy-sheep-76.sravanku018.deno.net/"
     const val NETWORK_CONNECT_TIMEOUT_SEC = 15L
     const val NETWORK_READ_TIMEOUT_SEC = 20L
     const val NETWORK_WRITE_TIMEOUT_SEC = 10L

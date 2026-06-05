@@ -7,7 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-<<<<<<< HEAD
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -16,11 +15,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import com.aipoweredgita.app.GitaApp
-=======
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import kotlinx.coroutines.isActive
 
 private data class ConfettiParticle(
@@ -29,21 +23,17 @@ private data class ConfettiParticle(
     var vx: Float,
     var vy: Float,
     val color: Color,
-<<<<<<< HEAD
     val size: Float,
     val shape: Int, // 0 = rect, 1 = circle, 2 = triangle
     var rotation: Float,
     val rotationVelocity: Float,
     var alpha: Float = 1.0f
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 )
 
 @Composable
 fun ConfettiBurst(
     playId: Int,
     modifier: Modifier = Modifier,
-<<<<<<< HEAD
     count: Int = -1, // -1 means use device profile
     onFinished: () -> Unit = {},
 ) {
@@ -65,19 +55,10 @@ fun ConfettiBurst(
         }
     }
 
-=======
-    count: Int = 80,
-    onFinished: () -> Unit = {},
-) {
-    val particles = remember(playId) { mutableStateListOf<ConfettiParticle>() }
-    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     LaunchedEffect(playId) {
         particles.clear()
         val colors = listOf(
             Color(0xFFFF5252), Color(0xFF448AFF), Color(0xFFFFC107),
-<<<<<<< HEAD
             Color(0xFF4CAF50), Color(0xFFE040FB), Color(0xFFFF9800), Color(0xFF00BCD4)
         )
         repeat(finalCount) {
@@ -89,28 +70,15 @@ fun ConfettiBurst(
             val shapeVal = it % 3 // 0 = rect, 1 = circle, 2 = triangle
             val rot = (it % 360).toFloat()
             val rotV = -180f + (it % 9) * 40f
-=======
-            Color(0xFF4CAF50), Color(0xFFE040FB)
-        )
-        repeat(count) {
-            val angle = (it.toFloat() / count) * (Math.PI * 2).toFloat()
-            val speed = 200f + (it % 5) * 40f
-            val vx = (kotlin.math.cos(angle) * speed)
-            val vy = (kotlin.math.sin(angle) * speed) - 200f
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             particles.add(
                 ConfettiParticle(
                     x = 0f, y = 0f,
                     vx = vx, vy = vy,
-<<<<<<< HEAD
                     color = colors[it % colors.size],
                     size = sizeVal,
                     shape = shapeVal,
                     rotation = rot,
                     rotationVelocity = rotV
-=======
-                    color = colors[it % colors.size]
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 )
             )
         }
@@ -131,11 +99,8 @@ fun ConfettiBurst(
                     p.vy += g * dt
                     p.x += p.vx * dt
                     p.y += p.vy * dt
-<<<<<<< HEAD
                     p.rotation += p.rotationVelocity * dt
                     p.alpha = (1.0f - (elapsed / 3.0f)).coerceIn(0f, 1f)
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
                 if (canvasSize.height > 0) {
                     particles.removeAll { it.y > canvasSize.height + 40f }
@@ -146,7 +111,6 @@ fun ConfettiBurst(
     }
 
     Canvas(modifier.fillMaxSize().onSizeChanged { canvasSize = it }) {
-<<<<<<< HEAD
         drawParticles(particles, baseTrianglePath)
     }
 }
@@ -188,21 +152,3 @@ private fun DrawScope.drawParticles(
         }
     }
 }
-=======
-        drawParticles(particles)
-    }
-}
-
-private fun DrawScope.drawParticles(particles: List<ConfettiParticle>) {
-    val cx = size.width / 2f
-    val cy = size.height / 3f
-    particles.forEach { p ->
-        drawRect(
-            color = p.color,
-            topLeft = Offset(cx + p.x, cy + p.y),
-            size = Size(6f, 12f)
-        )
-    }
-}
-
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

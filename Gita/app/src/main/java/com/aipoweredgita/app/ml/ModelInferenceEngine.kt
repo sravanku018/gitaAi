@@ -5,11 +5,8 @@ import android.util.Log
 import org.tensorflow.lite.Interpreter
 import java.io.Closeable
 import java.io.File
-<<<<<<< HEAD
 import java.io.FileInputStream
 import java.lang.reflect.Method
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import kotlin.math.sqrt
@@ -18,11 +15,8 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
 
     private val TAG = "ModelInferenceEngine"
     private var interpreter: Interpreter? = null
-<<<<<<< HEAD
     private var mappedBuffer: MappedByteBuffer? = null  // tracked for explicit unmap
     private var fileChannel: FileChannel? = null         // tracked for proper close
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     @Synchronized
     fun loadModel(fileName: String): Boolean {
@@ -85,7 +79,6 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
     override fun close() {
         interpreter?.close()
         interpreter = null
-<<<<<<< HEAD
         // Force-unmap the MappedByteBuffer to free native memory on Android
         mappedBuffer?.let { buffer ->
             try {
@@ -109,15 +102,6 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
         fileChannel = channel  // track for close()
         return channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size()).also {
             mappedBuffer = it  // track for explicit unmap
-=======
-    }
-
-    private fun mapModelFile(file: File): MappedByteBuffer {
-        return java.io.FileInputStream(file).use { input ->
-            input.channel.use { channel ->
-                channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
-            }
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
     }
 
@@ -125,13 +109,9 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
         return try {
             context.assets.openFd(assetPath).use { afd ->
                 java.io.FileInputStream(afd.fileDescriptor).use { input ->
-<<<<<<< HEAD
                     input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length).also {
                         mappedBuffer = it  // track for explicit unmap in close()
                     }
-=======
-                    input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
             }
         } catch (e: Exception) {

@@ -44,13 +44,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-<<<<<<< HEAD
-=======
-// Premium color palette
-private val GradientSaffron = Color(0xFFFF8F00)
-private val GradientAmber = Color(0xFFFFC107)
-
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 @Composable
 fun TryNowDialog(
     onDismiss: () -> Unit,
@@ -78,15 +71,9 @@ fun TryNowDialog(
     var hasConfirmedMobileData by remember { mutableStateOf(false) }
     var isDownloadingInBackground by remember { mutableStateOf(false) }
 
-<<<<<<< HEAD
     val networkType = remember(context) { com.aipoweredgita.app.utils.NetworkUtils.getNetworkType(context) }
     val isOnMobileData = networkType == com.aipoweredgita.app.utils.NetworkUtils.NetworkType.CELLULAR
     val isOnWiFi = networkType == com.aipoweredgita.app.utils.NetworkUtils.NetworkType.WIFI
-=======
-    val networkType = remember(context) { NetworkUtils.getNetworkType(context) }
-    val isOnMobileData = networkType == NetworkUtils.NetworkType.CELLULAR
-    val isOnWiFi = networkType == NetworkUtils.NetworkType.WIFI
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     LaunchedEffect(isOnMobileData) {
         if (isOnMobileData && !hasConfirmedMobileData) {
@@ -152,11 +139,7 @@ private fun TryNowDialogContent(
                 Icon(
                     imageVector = Icons.Default.Download,
                     contentDescription = null,
-<<<<<<< HEAD
                     tint = MaterialTheme.colorScheme.primary,
-=======
-                    tint = GradientSaffron,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     modifier = Modifier.size(28.dp)
                 )
                 Text(
@@ -171,11 +154,7 @@ private fun TryNowDialogContent(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-<<<<<<< HEAD
                     shape = MaterialTheme.shapes.medium,
-=======
-                    shape = RoundedCornerShape(12.dp),
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     color = if (isOnWiFi) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Row(
@@ -186,11 +165,7 @@ private fun TryNowDialogContent(
                         Icon(
                             imageVector = if (isOnWiFi) Icons.Default.NetworkWifi else Icons.Default.NetworkCell,
                             contentDescription = null,
-<<<<<<< HEAD
                             tint = if (isOnWiFi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-=======
-                            tint = if (isOnWiFi) MaterialTheme.colorScheme.primary else GradientSaffron,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             modifier = Modifier.size(20.dp)
                         )
                         val sizeText = if (remainingBytes > 0) " (${remainingBytes / (1024 * 1024)} MB)" else ""
@@ -216,13 +191,8 @@ private fun TryNowDialogContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
-<<<<<<< HEAD
                                 .clip(MaterialTheme.shapes.extraSmall),
                             color = MaterialTheme.colorScheme.primary,
-=======
-                                .clip(RoundedCornerShape(4.dp)),
-                            color = GradientSaffron,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         Text(
@@ -237,11 +207,7 @@ private fun TryNowDialogContent(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(currentModel, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-<<<<<<< HEAD
                                 Text("$overallProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-=======
-                                Text("$overallProgress%", style = MaterialTheme.typography.bodySmall, color = GradientSaffron)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             }
                             LinearProgressIndicator(
                                 progress = { overallProgress / 100f },
@@ -249,11 +215,7 @@ private fun TryNowDialogContent(
                                     .fillMaxWidth()
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
-<<<<<<< HEAD
                                 color = MaterialTheme.colorScheme.primary,
-=======
-                                color = GradientSaffron,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
@@ -261,11 +223,7 @@ private fun TryNowDialogContent(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-<<<<<<< HEAD
                                 shape = MaterialTheme.shapes.small
-=======
-                                shape = RoundedCornerShape(8.dp)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             ) {
                                 Text(
                                     "✓ Downloading in background. You can minimize the app and continue using other features.",
@@ -297,11 +255,7 @@ private fun TryNowDialogContent(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
-<<<<<<< HEAD
                                 shape = MaterialTheme.shapes.small
-=======
-                                shape = RoundedCornerShape(8.dp)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             ) {
                                 Text(
                                     "You're on mobile data. Download will continue in background even if you minimize the app.",
@@ -319,11 +273,7 @@ private fun TryNowDialogContent(
             if (!isDownloading) {
                 Button(
                     onClick = onDownloadNow,
-<<<<<<< HEAD
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-=======
-                    colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron),
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     modifier = Modifier.height(48.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -349,11 +299,7 @@ private fun TryNowDialogContent(
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-<<<<<<< HEAD
         shape = MaterialTheme.shapes.large
-=======
-        shape = RoundedCornerShape(20.dp)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
 }
 
@@ -363,11 +309,7 @@ private fun MobileDataConfirmationDialog(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-<<<<<<< HEAD
     val cellularGen = com.aipoweredgita.app.utils.NetworkUtils.getCellularGeneration(context)
-=======
-    val cellularGen = NetworkUtils.getCellularGeneration(context)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     MobileDataConfirmationDialogContent(
         cellularGen = cellularGen,
         onConfirm = onConfirm,
@@ -377,11 +319,7 @@ private fun MobileDataConfirmationDialog(
 
 @Composable
 private fun MobileDataConfirmationDialogContent(
-<<<<<<< HEAD
     cellularGen: com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration?,
-=======
-    cellularGen: NetworkUtils.CellularGeneration?,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -401,15 +339,9 @@ private fun MobileDataConfirmationDialogContent(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (cellularGen != null) {
-<<<<<<< HEAD
                     Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = MaterialTheme.shapes.small) {
                         Text(
                             "Network: ${if (cellularGen == com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
-=======
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp)) {
-                        Text(
-                            "Network: ${if (cellularGen == NetworkUtils.CellularGeneration.FIVE_G) "5G" else "4G/LTE"}",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -429,11 +361,7 @@ private fun MobileDataConfirmationDialogContent(
             }
         },
         confirmButton = {
-<<<<<<< HEAD
             Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
-=======
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = GradientSaffron)) {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 Text("Continue", fontWeight = FontWeight.Bold)
             }
         },
@@ -441,11 +369,7 @@ private fun MobileDataConfirmationDialogContent(
             TextButton(onClick = onCancel) { Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-<<<<<<< HEAD
         shape = MaterialTheme.shapes.large
-=======
-        shape = RoundedCornerShape(20.dp)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     )
 }
 
@@ -465,11 +389,7 @@ private fun showDownloadNotification(context: Context, totalBytes: Long) {
     val notificationBuilder = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(android.R.drawable.stat_sys_download)
         .setContentTitle("Downloading AI Engine")
-<<<<<<< HEAD
         .setContentText("AI Engine model - ${totalBytes / (1024 * 1024)} MB")
-=======
-        .setContentText("Gemma 2B model - ${totalBytes / (1024 * 1024)} MB")
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setOngoing(true)
         .setOnlyAlertOnce(true)
@@ -601,11 +521,7 @@ fun PreviewTryNowDialogDownloading() {
         TryNowDialogContent(
             isDownloading = true,
             overallProgress = 45,
-<<<<<<< HEAD
             currentModel = "Gemma 4 2B",
-=======
-            currentModel = "Gemma 2B",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             remainingBytes = 1400 * 1024 * 1024L,
             isOnWiFi = true,
             isOnMobileData = false,
@@ -622,11 +538,7 @@ fun PreviewTryNowDialogDownloading() {
 fun PreviewMobileDataConfirmation() {
     GitaLearningTheme {
         MobileDataConfirmationDialogContent(
-<<<<<<< HEAD
             cellularGen = com.aipoweredgita.app.utils.NetworkUtils.CellularGeneration.FIVE_G,
-=======
-            cellularGen = NetworkUtils.CellularGeneration.FIVE_G,
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             onConfirm = {},
             onCancel = {}
         )

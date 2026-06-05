@@ -19,11 +19,7 @@ class QwenDownloadWorker(
         private const val TAG = "QwenDownloadWorker"
         private const val WORK_NAME_QWEN = "qwen_download"
 
-<<<<<<< HEAD
         fun scheduleImmediateDownload(context: Context, modelName: String = "Qwen3 0.6B") {
-=======
-        fun scheduleImmediateDownload(context: Context) {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresDeviceIdle(false)
@@ -33,15 +29,11 @@ class QwenDownloadWorker(
 
             val request = OneTimeWorkRequestBuilder<QwenDownloadWorker>()
                 .setConstraints(constraints)
-<<<<<<< HEAD
                 .setInputData(workDataOf("model_name" to modelName))
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
-<<<<<<< HEAD
                 WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"),
                 ExistingWorkPolicy.REPLACE,
                 request
@@ -73,46 +65,23 @@ class QwenDownloadWorker(
 
         fun cancelDownload(context: Context, modelName: String = "Qwen3 0.6B") {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
-=======
-                WORK_NAME_QWEN,
-                ExistingWorkPolicy.REPLACE,
-                request
-            )
-            Log.d(TAG, "Scheduled immediate Qwen download")
-        }
-
-        fun cancelDownload(context: Context) {
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_QWEN)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(7020)
             notificationManager.cancel(7021)
             Log.d(TAG, "Cancelled Qwen download")
         }
 
-<<<<<<< HEAD
         fun getDownloadStatusLive(context: Context, modelName: String = "Qwen3 0.6B"): androidx.lifecycle.LiveData<WorkInfo?> {
             val live = WorkManager.getInstance(context)
                 .getWorkInfosForUniqueWorkLiveData(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
-=======
-        fun getDownloadStatusLive(context: Context): androidx.lifecycle.LiveData<WorkInfo?> {
-            val live = WorkManager.getInstance(context)
-                .getWorkInfosForUniqueWorkLiveData(WORK_NAME_QWEN)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val out = androidx.lifecycle.MediatorLiveData<WorkInfo?>()
             out.addSource(live) { list -> out.value = list.firstOrNull() }
             return out
         }
 
-<<<<<<< HEAD
         fun isDownloading(context: Context, modelName: String = "Qwen3 0.6B"): Boolean {
             val workInfos = WorkManager.getInstance(context)
                 .getWorkInfosForUniqueWork(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
-=======
-        fun isDownloading(context: Context): Boolean {
-            val workInfos = WorkManager.getInstance(context)
-                .getWorkInfosForUniqueWork(WORK_NAME_QWEN)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 .get()
             return workInfos?.any {
                 it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
@@ -122,18 +91,11 @@ class QwenDownloadWorker(
 
     override suspend fun doWork(): Result {
         return try {
-<<<<<<< HEAD
             val modelName = inputData.getString("model_name") ?: "Qwen3 0.6B"
             Log.d(TAG, "QwenDownloadWorker started (attempt ${runAttemptCount + 1}) for $modelName")
 
             val manager = com.aipoweredgita.app.ml.ModelDownloadManager(applicationContext)
             val modelInfo = manager.getModelInfo(modelName) ?: return Result.failure()
-=======
-            Log.d(TAG, "QwenDownloadWorker started (attempt ${runAttemptCount + 1})")
-
-            val manager = com.aipoweredgita.app.ml.ModelDownloadManager(applicationContext)
-            val modelInfo = manager.getModelInfo("Qwen3 0.6B") ?: return Result.failure()
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             val qwenFile = File(applicationContext.filesDir, "ml_models/${modelInfo.fileName}")
             val minSize = (modelInfo.expectedBytes * 0.9).toLong()
 

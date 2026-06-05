@@ -17,7 +17,6 @@ val Forest      = Color(0xFF2D5016)
 val ForestMid   = Color(0xFF3E6B21)
 val CrimsonDeep = Color(0xFF8B1A1A)
 
-<<<<<<< HEAD
 // Neutral & Parchment tones for text/surfaces
 val InkDeep       = Color(0xFF1A1A1A)
 val InkSoft       = Color(0xFF4A4A4A)
@@ -29,12 +28,6 @@ val Gold          = GoldSpark // Alias for GoldSpark
 val SaffronLegacy = Color(0xFFFF6B35)
 val OrangeLight = Color(0xFFFFA500)
 val GoldLight = GoldSpark
-=======
-// Light theme colors - Saffron/Orange theme
-val SaffronLegacy = Color(0xFFFF6B35)
-val OrangeLight = Color(0xFFFFA500)
-val GoldLight = Color(0xFFFFD700)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 val SaffronDark = Color(0xFFE85A25)
 
 // Dark theme colors - Deep spiritual tones
@@ -54,7 +47,6 @@ val OceanPrimary = Color(0xFF06B6D4) // Cyan
 val OceanSecondary = Color(0xFF10B981) // Teal
 val OceanTertiary = Color(0xFF3B82F6) // Blue
 
-<<<<<<< HEAD
 // Shared spiritual tokens (migrated from SplashScreen)
 val NightInk   = Color(0xFF0A0812)  // near-black deep indigo
 val DeepVoid   = Color(0xFF110E1A)
@@ -70,13 +62,3 @@ val SlokaGoldEnd    = Color(0xD95A3200)
 val ReadBlueStart   = Color(0x8C1E5AC8)
 val ReadBlueEnd     = Color(0xD90A2878)
 
-=======
-// Legacy colors for compatibility
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

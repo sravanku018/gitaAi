@@ -24,14 +24,11 @@ interface DailyActivityDao {
 
     @Query("SELECT * FROM daily_activity WHERE date = :date LIMIT 1")
     suspend fun getByDate(date: String): DailyActivity?
-<<<<<<< HEAD
 
     @Query("SELECT * FROM daily_activity ORDER BY date DESC")
     fun getAllActivity(): kotlinx.coroutines.flow.Flow<List<DailyActivity>>
 
     @Query("SELECT * FROM daily_activity ORDER BY date DESC LIMIT :limit")
     suspend fun getRecentActivity(limit: Int): List<DailyActivity>
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 }
 

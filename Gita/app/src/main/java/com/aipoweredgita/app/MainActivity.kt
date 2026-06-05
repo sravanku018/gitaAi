@@ -34,10 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-<<<<<<< HEAD
 import com.aipoweredgita.app.ui.components.CoinOverlay
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import com.aipoweredgita.app.navigation.NavGraph
 import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.ui.SplashScreen
@@ -96,15 +93,12 @@ class MainActivity : ComponentActivity() {
                 val database = GitaDatabase.getDatabase(applicationContext)
                 database.userStatsDao().initializeStatsIfNeeded()
                 
-<<<<<<< HEAD
                 // User sync to cloud happens lazily via ensureUserSynced() on first coin API call
                 val stats = database.userStatsDao().getUserStatsOnce()
                 if (stats != null) {
                     android.util.Log.d("MainActivity", "User ID: ${stats.userId}")
                 }
                 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 // Check and apply yoga progression decay for inactivity
                 val yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
                 val (didLevelDecrease, oldLevel, newLevel) = yogaProgressionRepository.checkAndApplyDecay()
@@ -133,14 +127,9 @@ class MainActivity : ComponentActivity() {
                     scheduleDailyVerseWorker()
                     
                     // Automatically schedule model downloads and question ingestion on first run
-<<<<<<< HEAD
                     // Gemma 4 (Flagship only) download is disabled automatically per user request, wait for user instruction
                     // GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
                     QwenDownloadWorker.scheduleBackgroundDownload(applicationContext, "Qwen3 0.6B")
-=======
-                    GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
-                    QwenDownloadWorker.scheduleImmediateDownload(applicationContext)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     QuestionIngestionWorker.schedule(applicationContext)
                     com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(applicationContext)
                 }
@@ -186,12 +175,9 @@ class MainActivity : ComponentActivity() {
                 accentName = accent
             ) {
                 UiConfigProvider {
-<<<<<<< HEAD
                 // Global Coin Animation Overlay
                 CoinOverlay()
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 when {
                     showSplash -> {
                         SplashScreen(onSplashFinished = { showSplash = false })

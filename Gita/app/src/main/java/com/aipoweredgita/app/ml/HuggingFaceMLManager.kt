@@ -10,10 +10,7 @@ import com.aipoweredgita.app.data.LearningSegment
 import com.aipoweredgita.app.data.SegmentWeightageSystem
 import com.aipoweredgita.app.ml.AppFeature
 import kotlin.random.Random
-<<<<<<< HEAD
 import kotlin.jvm.Volatile
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 class HuggingFaceMLManager(private val context: Context) {
 
@@ -21,13 +18,9 @@ class HuggingFaceMLManager(private val context: Context) {
     private val gson = Gson()
     private val engine by lazy { ModelInferenceEngine(context) }
     private val voiceChatEngine by lazy { LiteRtLmVoiceChatEngine(context) }
-<<<<<<< HEAD
     @Volatile
     private var isLlmReady = false
     private val translationManager = TranslationManager()
-=======
-    private var isLlmReady = false
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     
     /** Public accessor for LLM readiness */
     fun isLlmInitialized(): Boolean = isLlmReady
@@ -194,7 +187,6 @@ class HuggingFaceMLManager(private val context: Context) {
     suspend fun initializeModels() = withContext(Dispatchers.IO) {
         try {
             val ma = com.aipoweredgita.app.ml.ModelAvailability.getInstance(context)
-<<<<<<< HEAD
             val decision = ma.getRuntimeDecision(AppFeature.QUIZ)
             val modelPath = decision.modelPath
 
@@ -218,18 +210,6 @@ class HuggingFaceMLManager(private val context: Context) {
                     path = modelPath,
                     sampler = sampler
                 )
-=======
-            val modelPath = ma.getResolvedModelPath(AppFeature.QUIZ)
-
-            Log.d(TAG, "=== AI Model Initialization ===")
-            Log.d(TAG, "Selected model path: $modelPath")
-            Log.d(TAG, "Device category: ${com.aipoweredgita.app.utils.DeviceUtils.getDeviceCategory(context)}")
-            Log.d(TAG, "Device RAM: ${com.aipoweredgita.app.utils.DeviceUtils.getFormattedRAM(context)}")
-
-            if (modelPath != null) {
-                Log.d(TAG, "Attempting to initialize LLM...")
-                isLlmReady = voiceChatEngine.initialize(modelPath)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 Log.d(TAG, "LLM initialization result: $isLlmReady")
             } else {
                 Log.w(TAG, "No models found. Please download from Settings > Manage AI Models")
@@ -415,11 +395,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Question Type 1: Show verse, ask user to guess the chapter
-<<<<<<< HEAD
     private suspend fun generateChapterGuessQuestion(
-=======
-    private fun generateChapterGuessQuestion(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         language: String,
         chapter: Int
@@ -461,11 +437,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Question Type 2: Fill in the blank - show verse with missing word, ask to complete
-<<<<<<< HEAD
     private suspend fun generateFillInTheBlankQuestion(
-=======
-    private fun generateFillInTheBlankQuestion(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         language: String
     ): QuizQuestionData {
@@ -522,11 +494,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Question Type 3: Show meaning/summary, ask which verse it's from
-<<<<<<< HEAD
     private suspend fun generateMeaningGuessQuestion(
-=======
-    private fun generateMeaningGuessQuestion(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         language: String,
         chapter: Int,
@@ -601,22 +569,14 @@ class HuggingFaceMLManager(private val context: Context) {
         language: String,
         chapter: Int,
         verseNum: Int,
-<<<<<<< HEAD
         desiredDifficulty: Int,
         userState: AdaptiveDifficultyEngine.UserState? = null
-=======
-        desiredDifficulty: Int
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     ): QuizQuestionData {
         // Always use LLM if available — it generates contextual questions
         // Falls back to templates only if LLM fails
         if (isLlmReady) {
             return try {
-<<<<<<< HEAD
                 generateQuizQuestionWithLlm(verseText, verseTranslation, chapter, verseNum, desiredDifficulty, userState)
-=======
-                generateQuizQuestionWithLlm(verseText, verseTranslation, chapter, verseNum, desiredDifficulty)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             } catch (e: Exception) {
                 Log.w(TAG, "LLM Quiz Gen failed, falling back to templates", e)
                 generateQuizQuestionWithBert(verseText, verseTranslation, language, chapter, verseNum, desiredDifficulty)
@@ -632,23 +592,15 @@ class HuggingFaceMLManager(private val context: Context) {
         verseTranslation: String,
         chapter: Int,
         verseNum: Int,
-<<<<<<< HEAD
         difficulty: Int = 5,
         userState: AdaptiveDifficultyEngine.UserState? = null
-=======
-        difficulty: Int = 5
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     ): QuizQuestionData {
         val prompt = AdaptiveDifficultyEngine().generateLLMPrompt(
             difficulty = difficulty,
             chapter = chapter,
             verseNum = verseNum,
-<<<<<<< HEAD
             translation = verseTranslation,
             user = userState
-=======
-            translation = verseTranslation
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         )
 
         val response = voiceChatEngine.sendMessage(prompt)
@@ -782,24 +734,16 @@ class HuggingFaceMLManager(private val context: Context) {
         // Adjust question index based on difficulty (harder = different questions)
         val questionIndex = Math.abs((hash + desiredDifficulty * 1000) % questionTemplates.size)
         val optionIndex = Math.abs((hash / 7 + matchedTopics.size * 3 + desiredDifficulty) % optionSets.size)
-<<<<<<< HEAD
-=======
-        val correctIndex = Math.abs((hash / 13) % 4)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
         val selectedOptions = optionSets[optionIndex].toMutableList()
         val correctAnswer = selectedOptions[0]
         selectedOptions.removeAt(0)
-<<<<<<< HEAD
         selectedOptions.shuffled().toMutableList().also { shuffled ->
             shuffled.add(0, correctAnswer)
             selectedOptions.clear()
             selectedOptions.addAll(shuffled)
         }
         val correctIndex = 0  // correctAnswer is always at index 0 after add(0, answer)
-=======
-        selectedOptions.add(correctIndex, correctAnswer)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
         val difficultyLabel = when (desiredDifficulty) {
             1, 2 -> "Easy"
@@ -821,11 +765,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Essay prompt (open-ended answer)
-<<<<<<< HEAD
     private suspend fun generateEssayPrompt(
-=======
-    private fun generateEssayPrompt(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         verseTranslation: String,
         language: String,
@@ -848,11 +788,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Comparison (MCQ)
-<<<<<<< HEAD
     private suspend fun generateComparisonQuestion(
-=======
-    private fun generateComparisonQuestion(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         verseTranslation: String,
         language: String,
@@ -881,11 +817,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Application scenario (open-ended)
-<<<<<<< HEAD
     private suspend fun generateApplicationScenario(
-=======
-    private fun generateApplicationScenario(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         verseText: String,
         verseTranslation: String,
         language: String,
@@ -908,11 +840,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Multi-language translation support
-<<<<<<< HEAD
     private suspend fun translateToLanguage(text: String, language: String): String {
-=======
-    private fun translateToLanguage(text: String, language: String): String {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         return when (language.lowercase()) {
             "tel" -> translateToTelugu(text)
             "hi" -> translateToHindi(text)
@@ -922,47 +850,9 @@ class HuggingFaceMLManager(private val context: Context) {
         }
     }
 
-<<<<<<< HEAD
     private suspend fun translateToTelugu(text: String): String {
         return translationManager.translateEnglishToTelugu(text)
     }
-=======
-    private fun translateToTelugu(text: String): String {
-        val translations = mapOf(
-            // New Question Type 1: Chapter Guess
-            "which chapter is this verse from?" to "ఈ శ్లోకం ఏ అధ్యాయం నుండి ఉంది?",
-            "chapter" to "అధ్యాయం",
-
-            // New Question Type 2: Fill in the Blank
-            "complete this verse:" to "ఈ శ్లోకాన్ని పూర్తి చేయండి:",
-
-            // New Question Type 3: Meaning to Verse
-            "which verse expresses this meaning?" to "ఈ అర్థం ఏ శ్లోకం వ్యక్తపరుస్తుంది?",
-            "bhagavad gita" to "భగవద్గీత",
-            "this verse teaches about performing one's duty with dedication and detachment" to "ఈ శ్లోకం సమర్పణ మరియు విచ్ఛిన్నత్వంతో కర్తవ్యం నిర్వహించడం గురించి నిర్దేశిస్తుంది",
-            "this verse emphasizes the importance of spiritual knowledge and wisdom" to "ఈ శ్లోకం ఆధ్యాత్మిక జ్ఞానం మరియు జ్ఞానం యొక్క ప్రాముఖ్యతను నొక్కిచెప్పుతుంది",
-            "this verse speaks about the path of devotion and surrender to the divine" to "ఈ శ్లోకం భక్తి మరియు దైవానికి సమర్పణ మార్గం గురించి చెబుతుంది",
-            "this verse discusses the practice of yoga and mental discipline" to "ఈ శ్లోకం యోగ అభ్యాసం మరియు మానసిక క్రమశిక్షణ గురించి చర్చిస్తుంది",
-            "this verse teaches about spiritual enlightenment and inner peace" to "ఈ శ్లోకం ఆధ్యాత్మిక జ్ఞానోదయం మరియు అంతర్గత శాంతి గురించి నిర్దేశిస్తుంది",
-
-            // Old Question Type translations (keeping for backward compatibility)
-            "how should one approach action according to this verse?" to "ఈ శ్లోకం ప్రకారం కర్మను ఎలా చేపట్టాలి?",
-            "with detachment and dedication" to "విచ్ఛిన్నంగా మరియు సమర్పణతో",
-            "by avoiding all responsibilities" to "అన్ని బాధ్యతలను నివారించడం",
-            "through force and compulsion" to "బలవంతం ద్వారా",
-            "without any spiritual purpose" to "ఆధ్యాత్మిక ఉద్దేశ్యం లేకుండా",
-            "what does this verse teach about one's duty?" to "ఈ శ్లోకం ఒకరి కర్తవ్యం గురించి ఏమి నిర్దేశిస్తుంది?",
-            "that duty is unimportant" to "కర్తవ్యం ముఖ్యమైనది కాదు",
-            "to escape from all duties" to "అన్ని కర్తవ్యాల నుండి విముక్తి",
-            "that duties cause suffering" to "కర్తవ్యాలు కష్టాన్ని కలిగిస్తాయి",
-            "what kind of knowledge does this verse emphasize?" to "ఈ శ్లోకం ఏ విధమైన జ్ఞానాన్ని ఒత్తిడిచేస్తుంది?",
-            "meditation" to "ధ్యానం",
-            "wisdom" to "జ్ఞానం"
-        )
-        return translations[text.lowercase()] ?: text
-    }
-
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     private fun translateToHindi(text: String): String {
         val translations = mapOf(
             "how should one approach action according to this verse?" to "इस श्लोक के अनुसार कर्म को कैसे करें?",
@@ -995,11 +885,7 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Create default question when generation fails
-<<<<<<< HEAD
     private suspend fun createDefaultQuestion(language: String = "tel"): QuizQuestionData {
-=======
-    private fun createDefaultQuestion(language: String = "tel"): QuizQuestionData {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         val question = translateToLanguage("What is the core spiritual message of this verse?", language)
         val options = listOf(
             "Duty and Dharma",
@@ -1051,8 +937,5 @@ data class VerseAnalysis(
     val sentiment: String = "Balanced",
     val summary: String = ""
 )
-<<<<<<< HEAD
 
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

@@ -1,9 +1,13 @@
 package com.aipoweredgita.app.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "question_performance")
+@Entity(
+    tableName = "question_performance",
+    indices = [Index(value = ["questionId"], name = "idx_question_performance_questionId")]
+)
 data class QuestionPerformance(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

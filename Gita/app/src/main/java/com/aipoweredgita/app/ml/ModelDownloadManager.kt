@@ -42,11 +42,7 @@ class ModelDownloadManager(private val context: Context) {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-<<<<<<< HEAD
     private val allModels = listOf(
-=======
-    private val models = listOf(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         ModelInfo(
             name = "Qwen3 0.6B",
             size = "580 MB",
@@ -61,7 +57,6 @@ class ModelDownloadManager(private val context: Context) {
         )
     )
 
-<<<<<<< HEAD
     val models: List<ModelInfo>
         get() = allModels
 
@@ -73,10 +68,6 @@ class ModelDownloadManager(private val context: Context) {
         val freeSpace = context.filesDir.freeSpace
         return freeSpace > (expectedBytes * 1.5)
     }
-=======
-    // Gemma 4 is the mandatory model for voice features
-    private val mandatoryModelFileName = "gemma-4-E2B-it.litertlm"
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     /**
      * Initialize model directories and migrate legacy models.
@@ -104,26 +95,15 @@ class ModelDownloadManager(private val context: Context) {
 
     /**
      * Check if all mandatory models are downloaded.
-<<<<<<< HEAD
      * High-end: requires Gemma 4. Others: requires Qwen3.
-=======
-     * Mandatory = Gemma 4 2B (required for voice features).
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
      * MUST be called from Dispatchers.IO.
      */
     suspend fun areAllModelsDownloaded(): Boolean = withContext(Dispatchers.IO) {
         initialize()
-<<<<<<< HEAD
         val target = mandatoryModelFileName
         val exists = modelExists(target)
         Log.d(TAG, "Mandatory model ($target) present: $exists")
         return@withContext exists
-=======
-        // FIX 2: Clearly documented — only Gemma 4 is mandatory
-        val gemma4Exists = modelExists(mandatoryModelFileName)
-        Log.d(TAG, "Mandatory model (Gemma 4 2B) present: $gemma4Exists")
-        return@withContext gemma4Exists
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     /** Whether to show download screen. MUST be called from Dispatchers.IO */
@@ -152,7 +132,6 @@ class ModelDownloadManager(private val context: Context) {
                     return@withContext false
                 }
 
-<<<<<<< HEAD
                 // Pre-flight space check
                 val neededBytes = targetModelInfo.expectedBytes
                 if (!hasEnoughSpaceForModel(neededBytes)) {
@@ -161,8 +140,6 @@ class ModelDownloadManager(private val context: Context) {
                     return@withContext false
                 }
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val manifest = loadManifest()
                 val url = manifest.urls[targetModelInfo.fileName]
                 if (url.isNullOrBlank()) {
@@ -209,7 +186,6 @@ class ModelDownloadManager(private val context: Context) {
                 Log.d(TAG, "Starting model download/verification...")
                 val manifest = loadManifest()
                 probeModelSizes(manifest)
-<<<<<<< HEAD
                 
                 // Only download Qwen3 automatically; do not download Gemma 4 automatically.
                 val targets = models.filter { !it.name.contains("Gemma 4") }
@@ -229,12 +205,6 @@ class ModelDownloadManager(private val context: Context) {
                 var baseDownloaded = computeAlreadyDownloaded(targets)
 
                 targets.forEach { model ->
-=======
-                val expectedTotal = getExpectedTotalSizeBytes()
-                var baseDownloaded = computeAlreadyDownloaded(models)
-
-                models.forEach { model ->
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     val outFile = File(modelsDir, model.fileName)
                     if (!modelExists(model.fileName)) {
                         val url = manifest.urls[model.fileName]
@@ -447,19 +417,11 @@ class ModelDownloadManager(private val context: Context) {
         val expectedTarget = measuredSizes[fileName] ?: modelTarget.expectedBytes
 
         val file = File(modelsDir, fileName)
-<<<<<<< HEAD
         if (file.exists() && file.length() > 0 && file.length() >= expectedTarget * 0.99f) return true
 
         return try {
             val afd = context.assets.openFd("ml_models/$fileName")
             afd.length > 0 && afd.length >= expectedTarget * 0.99f
-=======
-        if (file.exists() && file.length() > 0 && file.length() >= expectedTarget * 0.9f) return true
-
-        return try {
-            val afd = context.assets.openFd("ml_models/$fileName")
-            afd.length > 0 && afd.length >= expectedTarget * 0.9f
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         } catch (_: Exception) {
             false
         }
@@ -513,11 +475,7 @@ class ModelDownloadManager(private val context: Context) {
     }
 
     fun getModelInfo(name: String): ModelInfo? {
-<<<<<<< HEAD
         return allModels.find { it.name == name }
-=======
-        return models.find { it.name == name }
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     suspend fun getModelsStatus(): List<ModelStatus> = withContext(Dispatchers.IO) {

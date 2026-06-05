@@ -13,27 +13,21 @@ import com.aipoweredgita.app.ui.DashboardScreen
 import com.aipoweredgita.app.ui.FavoritesScreen
 import com.aipoweredgita.app.ui.OfflineDownloadScreen
 import com.aipoweredgita.app.ui.ProfileScreen
-<<<<<<< HEAD
 
 import com.aipoweredgita.app.ui.ActivityHistoryScreen
-=======
-import com.aipoweredgita.app.ui.QuizStatsScreen
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import com.aipoweredgita.app.ui.WidgetSettingsScreen
 import com.aipoweredgita.app.ui.BadgesScreen
 import com.aipoweredgita.app.ui.RandomSlokaScreen
 import com.aipoweredgita.app.ui.AwakeningPage
 import com.aipoweredgita.app.ui.DailyActivityScreen
 import com.aipoweredgita.app.ui.SettingsScreen
+import com.aipoweredgita.app.ui.LoginScreen
 import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.viewmodel.OfflineDownloadViewModel
-<<<<<<< HEAD
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
@@ -48,20 +42,15 @@ sealed class Screen(val route: String) {
     object OfflineDownload : Screen("offline_download")
     object Profile : Screen("profile")
     object QuizStats : Screen("quiz_stats")
-<<<<<<< HEAD
     object ActivityHistory : Screen("activity_history")
     object WidgetSettings : Screen("widget_settings")
     object Settings : Screen("settings")
     object Badges : Screen("badges")
     object CoinHistory : Screen("coin_history")
-=======
-    object WidgetSettings : Screen("widget_settings")
-    object Settings : Screen("settings")
-    object Badges : Screen("badges")
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     object Awakening : Screen("awakening")
     object DailyActivity : Screen("daily_activity")
     object Recommendations : Screen("recommendations")
+    object Login : Screen("login")
 
     object Flashcards : Screen("flashcards?topic={topic}")
     object RandomSloka : Screen("random_sloka?chapter={chapter}&verse={verse}")
@@ -72,7 +61,8 @@ fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     isDarkTheme: Boolean = false,
-    onThemeToggle: (Boolean) -> Unit = {}
+    onThemeToggle: (Boolean) -> Unit = {},
+    onAuthChanged: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -105,13 +95,9 @@ fun NavGraph(
                 onNavigateToQuizMode = { navController.navigate(Screen.QuizSection.route) },
                 onNavigateToVoiceStudio = { navController.navigate(Screen.VoiceStudio.route) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
-<<<<<<< HEAD
                 onNavigateToRandomSloka = { navController.navigate("random_sloka") },
                 onNavigateToAwakening = { navController.navigate(Screen.Awakening.route) },
                 onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) }
-=======
-                onNavigateToRandomSloka = { navController.navigate("random_sloka") }
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
         }
 
@@ -150,13 +136,9 @@ fun NavGraph(
             val quizViewModel: QuizViewModel = viewModel(
                 viewModelStoreOwner = parentEntry
             )
-<<<<<<< HEAD
             val quizState by quizViewModel.quizState.collectAsState()
             ProtectedQuizConfigScreen(
                 language = quizState.language,
-=======
-            ProtectedQuizConfigScreen(
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 onStartQuiz = { questionCount, language ->
                     quizViewModel.setQuizLimit(questionCount)
                     quizViewModel.setQuizLanguage(language)
@@ -201,13 +183,33 @@ fun NavGraph(
 
         composable(Screen.KrishnaTalks.route) {
             com.aipoweredgita.app.ui.VoiceStudioScreen(
-                onExit = { navController.popBackStack() }
+                onExit = { navController.popBackStack() },
+                onNavigateToQuiz = {
+                    navController.navigate(Screen.QuizSection.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onNavigateToRead = {
+                    navController.navigate(Screen.ChapterSelection.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
             )
         }
 
         composable(Screen.VoiceStudio.route) {
             com.aipoweredgita.app.ui.VoiceStudioScreen(
-                onExit = { navController.popBackStack() }
+                onExit = { navController.popBackStack() },
+                onNavigateToQuiz = {
+                    navController.navigate(Screen.QuizSection.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onNavigateToRead = {
+                    navController.navigate(Screen.ChapterSelection.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
             )
         }
 
@@ -237,13 +239,9 @@ fun NavGraph(
                 },
                 isDarkTheme = isDarkTheme,
                 onThemeToggle = onThemeToggle,
-                // Add badge navigation callback
                 onNavigateToBadges = { navController.navigate(Screen.Badges.route) },
-<<<<<<< HEAD
                 onNavigateToYogaLevels = { navController.navigate(Screen.Awakening.route) },
-=======
-                onNavigateToYogaLevels = { navController.navigate(Screen.DailyActivity.route) },
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) },
                 viewModel = profileViewModel
             )
         }
@@ -252,6 +250,26 @@ fun NavGraph(
             SettingsScreen(
                 themePreferences = com.aipoweredgita.app.utils.ThemePreferences(LocalContext.current),
                 isDarkTheme = isDarkTheme,
+                onBack = { navController.popBackStack() },
+                onAccountDeleted = {
+                    onAuthChanged()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onLoginSuccess = { _ ->
+                    onAuthChanged()
+                    navController.popBackStack()
+                },
+                onGuestLogin = {
+                    onAuthChanged()
+                    navController.popBackStack()
+                },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -260,21 +278,17 @@ fun NavGraph(
             BadgesScreen()
         }
 
-<<<<<<< HEAD
         composable(Screen.CoinHistory.route) {
             com.aipoweredgita.app.ui.CoinHistoryScreen(
                 onBack = { navController.popBackStack() }
             )
         }
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         composable(Screen.Awakening.route) {
             AwakeningPage()
         }
 
         composable(Screen.DailyActivity.route) {
-<<<<<<< HEAD
             ActivityHistoryScreen(initialTab = 2)
         }
 
@@ -284,15 +298,6 @@ fun NavGraph(
 
         composable(Screen.ActivityHistory.route) {
             ActivityHistoryScreen()
-=======
-            DailyActivityScreen(
-                onNavigateToProgression = { navController.navigate(Screen.Badges.route) }
-            )
-        }
-
-        composable(Screen.QuizStats.route) {
-            QuizStatsScreen()
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
         }
 
         composable(Screen.WidgetSettings.route) {

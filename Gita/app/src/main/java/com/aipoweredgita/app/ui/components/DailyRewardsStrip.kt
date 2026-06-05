@@ -33,14 +33,15 @@ fun DailyRewardsStrip(
     tracker: DailyRewardsTracker,
     context: android.content.Context,
     isDark: Boolean,
+    coinBalance: Int,
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> }
 ) {
-    val dailyState = remember { tracker.getDailyState() }
-    val weeklyState = remember { tracker.getWeeklyState() }
-    var claimedDay by remember { mutableStateOf(dailyState.todayClaimed) }
-    var claimedWeek by remember { mutableStateOf(weeklyState.claimed) }
-    var claimedCount by remember { mutableIntStateOf(if (dailyState.todayClaimed) dailyState.day else dailyState.day - 1) }
-    var weekCompleted by remember { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
+    val dailyState = remember(coinBalance) { tracker.getDailyState() }
+    val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
+    var claimedDay by remember(coinBalance) { mutableStateOf(dailyState.todayClaimed) }
+    var claimedWeek by remember(coinBalance) { mutableStateOf(weeklyState.claimed) }
+    var claimedCount by remember(coinBalance) { mutableIntStateOf(if (dailyState.todayClaimed) dailyState.day else dailyState.day - 1) }
+    var weekCompleted by remember(coinBalance) { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
     var dayBonusMessage by remember { mutableStateOf<String?>(null) }
     var claimedDayIndex by remember { mutableIntStateOf(-1) }
 
@@ -99,15 +100,24 @@ fun DailyRewardsStrip(
                             claimedDayIndex = d
                             val coins = tracker.claimDaily(); claimedDay = true; claimedCount++
                             if (coins > 0) {
-                                onEarnCoins(coins, "Day $d check-in")
                                 if (d == 7) {
                                     weekCompleted = true
                                     val bonus = tracker.claimDay7BonusIfEligible()
-                                    if (bonus > 0) { onEarnCoins(bonus, "7-day bonus")
-                                        val wk = tracker.claimWeekly()
-                                        if (wk > 0) { onEarnCoins(wk, "Week ${weeklyState.week} bonus"); claimedWeek = true }
-                                        dayBonusMessage = "Week ${weeklyState.week} done! +${coins}+${bonus + wk} bonus" }
-                                } else { dayBonusMessage = "+$coins coins" }
+                                    val wk = tracker.claimWeekly()
+                                    if (wk > 0) claimedWeek = true
+                                    val total = coins + bonus + wk
+                                    val desc = buildString {
+                                        append("Day 7 check-in")
+                                        if (bonus > 0) append(" + 7-day bonus")
+                                        if (wk > 0) append(" + Week ${weeklyState.week} bonus")
+                                        append(" = $total coins")
+                                    }
+                                    onEarnCoins(total, desc)
+                                    dayBonusMessage = "Week ${weeklyState.week} done! +$total bonus"
+                                } else {
+                                    onEarnCoins(coins, "Day $d check-in")
+                                    dayBonusMessage = "+$coins coins"
+                                }
                             } else { dayBonusMessage = "Protection used" }
                         },
                     contentAlignment = Alignment.Center
@@ -171,8 +181,8 @@ fun DailyRewardsStrip(
         }
 
         // ─── Share Rewards ──────────────────────────────────────────────
-        val shareState = remember { tracker.getShareState() }
-        var claimedShare by remember { mutableStateOf(shareState.todayClaimed) }
+        val shareState = remember(coinBalance) { tracker.getShareState() }
+        var claimedShare by remember(coinBalance) { mutableStateOf(shareState.todayClaimed) }
         HorizontalDivider(color = bd)
         Text("Daily Share Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {

@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-<<<<<<< HEAD
 import androidx.compose.runtime.remember
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -21,12 +18,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aipoweredgita.app.ui.theme.*
 
-<<<<<<< HEAD
 import androidx.compose.ui.tooling.preview.Preview
 import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 @Composable
 fun LotusBadge(
     level: Int, // 1..5 (5 Yoga levels)
@@ -47,17 +41,11 @@ fun LotusBadge(
         label = "lotus-openness"
     )
 
-<<<<<<< HEAD
     val colorPrimary = MaterialTheme.colorScheme.primary
     val colorSecondary = MaterialTheme.colorScheme.secondary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
 
     val cachedPath = remember { Path() }
-=======
-    val colorPrimary = Saffron
-    val colorSecondary = GoldSpark
-    val onPrimary = Color.White
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     Canvas(modifier.size(size)) {
         val w = this.size.width
@@ -82,7 +70,6 @@ fun LotusBadge(
             radius = outerR
         )
 
-<<<<<<< HEAD
         // Build the path once per frame
         cachedPath.reset()
         cachedPath.moveTo(cx, cy - innerR)
@@ -97,34 +84,11 @@ fun LotusBadge(
             cx, cy - innerR
         )
         cachedPath.close()
-=======
-        fun petalPath(): Path {
-            val p = Path()
-            // Build a leaf/teardrop shape pointing up (local coords, origin at center)
-            p.moveTo(cx, cy - innerR)
-            p.cubicTo(
-                cx + petalHalfW, cy - innerR,
-                cx + petalHalfW, cy - outerR * animatedOpenness,
-                cx, cy - outerR
-            )
-            p.cubicTo(
-                cx - petalHalfW, cy - outerR * animatedOpenness,
-                cx - petalHalfW, cy - innerR,
-                cx, cy - innerR
-            )
-            p.close()
-            return p
-        }
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
         val step = 360f / petals
         repeat(petals) { i ->
             rotate(degrees = step * i, pivot = Offset(cx, cy)) {
-<<<<<<< HEAD
                 drawPath(path = cachedPath, brush = brush)
-=======
-                drawPath(path = petalPath(), brush = brush)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             }
         }
 
@@ -136,7 +100,6 @@ fun LotusBadge(
         )
     }
 }
-<<<<<<< HEAD
 
 @Preview(showBackground = true, name = "Lotus Badge Light")
 @Composable
@@ -153,5 +116,3 @@ fun PreviewLotusBadgeDark() {
         LotusBadge(level = 3, size = 120.dp)
     }
 }
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

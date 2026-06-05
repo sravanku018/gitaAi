@@ -1,22 +1,15 @@
 package com.aipoweredgita.app.viewmodel
 
 import android.app.Application
-<<<<<<< HEAD
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.database.ReadVerse
 import com.aipoweredgita.app.database.RecommendationData
-=======
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.aipoweredgita.app.database.GitaDatabase
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.ml.AIBadgeSystem
 import com.aipoweredgita.app.ml.UserBadge
 import com.aipoweredgita.app.ml.UserLevel
-<<<<<<< HEAD
 import com.aipoweredgita.app.recommendation.AdaptiveCurriculumPlanner
 import com.aipoweredgita.app.recommendation.RecommendationEngine
 import com.aipoweredgita.app.recommendation.predictNext
@@ -46,17 +39,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val badgeSystem = AIBadgeSystem()
 
     // Badges & Level
-=======
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-
-class ProfileViewModel(application: Application) : AndroidViewModel(application) {
-    private val userStatsDao = GitaDatabase.getDatabase(application).userStatsDao()
-    private val badgeSystem = AIBadgeSystem()
-
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     private val _stats = MutableStateFlow<UserStats?>(null)
     val stats: StateFlow<UserStats?> = _stats.asStateFlow()
 
@@ -66,7 +48,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val _userLevel = MutableStateFlow<UserLevel?>(null)
     val userLevel: StateFlow<UserLevel?> = _userLevel.asStateFlow()
 
-<<<<<<< HEAD
     // Dashboard daily stats
     data class DailyActivityData(
         val versesToday: Int = 0,
@@ -100,6 +81,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     init {
         loadStats()
         loadRecommendations()
+        viewModelScope.launch {
+            statsRepository.coinBalance.collect { balance ->
+                _coinBalance.value = balance
+            }
+        }
     }
 
     private fun loadRecommendations() {
@@ -114,6 +100,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _coinBalance.value = statsRepository.getBalance()
         }
+    }
+
+    /** Set coin balance directly from local value (avoids server fetch overwrite). */
+    fun setCoinBalance(balance: Int) {
+        _coinBalance.value = balance
     }
 
     fun loadDashboardData(context: Context) {
@@ -209,40 +200,28 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             // 7. Sync local rewards state to cloud
             try {
                 val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(getApplication())
-                val dailyState = tracker.getDailyState()
-                if (dailyState.todayClaimed) {
-                    statsRepository.syncCheckinToCloud()
-                }
-                val shareState = tracker.getShareState()
-                if (shareState.todayClaimed) {
-                    statsRepository.syncShareToCloud()
+                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(getApplication())
+                if (!authPrefs.isGuestUser) {
+                    val dailyState = tracker.getDailyState()
+                    if (dailyState.todayClaimed && !tracker.isCheckinSynced) {
+                        statsRepository.syncCheckinToCloud()
+                    }
+                    val shareState = tracker.getShareState()
+                    if (shareState.todayClaimed && !tracker.isShareSynced) {
+                        statsRepository.syncShareToCloud()
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.w("ProfileVM", "Failed to sync local rewards: ${e.message}")
             }
         }
-=======
-    init {
-        loadStats()
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 
     private fun loadStats() {
         viewModelScope.launch {
-<<<<<<< HEAD
             userStatsDao.initializeStatsIfNeeded()
             userStatsDao.getUserStats().collect { userStats ->
                 _stats.value = userStats
-=======
-            // Initialize if needed
-            userStatsDao.initializeStatsIfNeeded()
-
-            // Collect stats
-            userStatsDao.getUserStats().collect { userStats ->
-                _stats.value = userStats
-
-                // AI-generate badges and level based on stats
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 if (userStats != null) {
                     generateAIBadgesAndLevel(userStats)
                 }
@@ -253,18 +232,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private fun generateAIBadgesAndLevel(stats: UserStats) {
         viewModelScope.launch {
             try {
-<<<<<<< HEAD
                 val badges = badgeSystem.generateBadges(
                     versesRead = stats.versesRead,
                     quizzesTaken = stats.totalQuizzesTaken,
                     score = stats.totalCorrectAnswers,
-=======
-                // Generate badges using AI system
-                val badges = badgeSystem.generateBadges(
-                    versesRead = stats.versesRead,
-                    quizzesTaken = stats.totalQuizzesTaken,
-                    score = stats.totalCorrectAnswers, // Correct answers
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     totalQuestions = stats.totalQuestionsAnswered.coerceAtLeast(1),
                     timeSpent = stats.totalTimeSpentSeconds,
                     currentStreak = stats.currentStreak,
@@ -272,10 +243,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 )
                 _userBadges.value = badges
 
-<<<<<<< HEAD
-=======
-                // Calculate level
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 val level = badgeSystem.calculateLevel(
                     versesRead = stats.versesRead,
                     quizzesTaken = stats.totalQuizzesTaken,

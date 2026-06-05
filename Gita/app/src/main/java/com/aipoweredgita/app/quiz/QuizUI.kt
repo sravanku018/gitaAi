@@ -32,12 +32,6 @@ import com.aipoweredgita.app.util.TextUtils
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import kotlinx.coroutines.delay
 
-<<<<<<< HEAD
-=======
-private val TimerGreen = Color(0xFF4CAF50)
-private val TimerYellow = Color(0xFFFFC107)
-private val TimerRed = Color(0xFFF44336)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 @Composable
 fun QuizContent(
@@ -64,19 +58,12 @@ fun QuizContent(
     val quizState = vm?.quizState?.collectAsState()
     val timeLeft = quizState?.value?.questionTimeLeftSeconds ?: 30
     val isTimerRunning = quizState?.value?.isTimerRunning ?: false
-<<<<<<< HEAD
     val language = quizState?.value?.language ?: "en"
 
     // Staggered enter animation state for options
     val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
     LaunchedEffect(options) {
         if (!isOpenEnded) {
-=======
-
-    if (!isOpenEnded) {
-        val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
-        LaunchedEffect(options) {
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             appeared.forEachIndexed { i, state ->
                 delay(60L)
                 state.value = true
@@ -119,12 +106,8 @@ fun QuizContent(
                 isTimerRunning = isTimerRunning,
                 questionNumber = quizState?.value?.totalQuestions ?: 0,
                 totalQuestions = quizState?.value?.maxQuestions ?: 0,
-<<<<<<< HEAD
                 score = quizState?.value?.score ?: 0,
                 language = language
-=======
-                score = quizState?.value?.score ?: 0
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
 
             // Ornamental separator
@@ -143,11 +126,7 @@ fun QuizContent(
                     value = userAnswer,
                     onValueChange = { userAnswer = it },
                     modifier = Modifier.fillMaxWidth(),
-<<<<<<< HEAD
                     placeholder = { Text(translateUiText("Type your answer here...", language), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-=======
-                    placeholder = { Text("Type your answer here...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     minLines = 6,
                     maxLines = 10,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -181,11 +160,7 @@ fun QuizContent(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-<<<<<<< HEAD
                     Text(translateUiText("Submit Answer", language), fontWeight = FontWeight.Bold)
-=======
-                    Text("Submit Answer", fontWeight = FontWeight.Bold)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                 }
             } else {
                 options.forEachIndexed { index, option ->
@@ -197,14 +172,9 @@ fun QuizContent(
                         else -> OptionVisualState.Idle
                     }
                     AnimatedVisibility(
-<<<<<<< HEAD
                         visible = appeared.getOrNull(index)?.value == true,
                         enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
                         exit = fadeOut()
-=======
-                        visible = true,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 })
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                     ) {
                         AnimatedOptionCard(
                             text = option,
@@ -213,10 +183,6 @@ fun QuizContent(
                             onClick = {
                                 onSelect(index)
                                 val correct = index == correctIndex
-<<<<<<< HEAD
-=======
-                                vm?.selectAnswer(index)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                                 showResult = correct
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -269,22 +235,14 @@ fun QuizContent(
                         }
 
                         Text(
-<<<<<<< HEAD
                             text = translateUiText(if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning", language),
-=======
-                            text = if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             style = MaterialTheme.typography.titleLarge,
                             color = if (isCorrect) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-<<<<<<< HEAD
                             text = translateUiText(if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.", language),
-=======
-                            text = if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -311,23 +269,14 @@ fun QuizContent(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-<<<<<<< HEAD
                             Text(translateUiText("Continue Journey", language), fontWeight = FontWeight.Bold)
-=======
-                            Text("Continue Journey", fontWeight = FontWeight.Bold)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         }
                     }
                 }
             }
         }
 
-<<<<<<< HEAD
         AnswerOverlay(show = showResult != null, isCorrect = showResult == true)
-=======
-        CelebrationOverlay(show = showResult == true)
-        WrongOverlay(show = showResult == false)
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     }
 }
 
@@ -352,17 +301,12 @@ private fun QuizTimerHeader(
     isTimerRunning: Boolean,
     questionNumber: Int,
     totalQuestions: Int,
-<<<<<<< HEAD
     score: Int,
     language: String
-=======
-    score: Int
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 ) {
     val progress = if (maxTime > 0) timeLeft.toFloat() / maxTime else 0f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-<<<<<<< HEAD
         animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springSmooth<Float>(),
         label = "progress"
     )
@@ -377,18 +321,6 @@ private fun QuizTimerHeader(
         animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springSmooth<androidx.compose.ui.graphics.Color>(),
         label = "timer_color"
     )
-=======
-        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
-        label = "timer_progress"
-    )
-
-    val timerColor = when {
-        timeLeft > 15 -> TimerGreen
-        timeLeft > 5 -> TimerYellow
-        else -> TimerRed
-    }
-    val animatedTimerColor by animateColorAsState(targetValue = timerColor, label = "timer_color")
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -407,11 +339,7 @@ private fun QuizTimerHeader(
                 // Question counter
                 Column {
                     Text(
-<<<<<<< HEAD
                         text = translateUiText("PROGRESS", language),
-=======
-                        text = "PROGRESS",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
@@ -445,11 +373,7 @@ private fun QuizTimerHeader(
                 // Score
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-<<<<<<< HEAD
                         text = translateUiText("SCORE", language),
-=======
-                        text = "SCORE",
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
@@ -465,7 +389,6 @@ private fun QuizTimerHeader(
         }
     }
 }
-<<<<<<< HEAD
 
 fun translateUiText(text: String, language: String): String {
     if (language.lowercase() != "tel") return text
@@ -483,5 +406,3 @@ fun translateUiText(text: String, language: String): String {
         else -> text
     }
 }
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b

@@ -4,11 +4,7 @@ import android.content.Context
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.data.LearningSegment
-<<<<<<< HEAD
 
-=======
-import com.aipoweredgita.app.data.SegmentReport
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs

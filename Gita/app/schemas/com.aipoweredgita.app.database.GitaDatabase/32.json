@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 32,
-    "identityHash": "9b60aa0b95582abc904df804ffb3e5b7",
+    "identityHash": "054709997e0659f448245ffa137ee2d7",
     "entities": [
       {
         "tableName": "favorite_verses",
@@ -577,7 +577,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_learning_patterns_lastUpdated",
+            "unique": false,
+            "columnNames": [
+              "lastUpdated"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_learning_patterns_lastUpdated` ON `${TABLE_NAME}` (`lastUpdated`)"
+          }
+        ]
       },
       {
         "tableName": "question_performance",
@@ -679,7 +690,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_question_performance_questionId",
+            "unique": false,
+            "columnNames": [
+              "questionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_question_performance_questionId` ON `${TABLE_NAME}` (`questionId`)"
+          }
+        ]
       },
       {
         "tableName": "user_preferences",
@@ -1475,7 +1497,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_bookmarks_bookmarkType",
+            "unique": false,
+            "columnNames": [
+              "bookmarkType"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_bookmarks_bookmarkType` ON `${TABLE_NAME}` (`bookmarkType`)"
+          }
+        ]
       },
       {
         "tableName": "notes",
@@ -1840,7 +1873,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "idx_voice_chat_messages_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_voice_chat_messages_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ]
       },
       {
         "tableName": "translation_cache",
@@ -1882,7 +1926,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9b60aa0b95582abc904df804ffb3e5b7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '054709997e0659f448245ffa137ee2d7')"
     ]
   }
 }

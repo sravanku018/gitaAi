@@ -16,39 +16,42 @@ class RetryInterceptor : Interceptor {
     // Circuit breaker state
     private val circuitBreaker = CircuitBreaker()
 
-<<<<<<< HEAD
     // Configuration — capped delays to avoid thread-pool starvation
-    private val maxRetries = 2
+    private val maxRetries = 1
     private val initialDelayMs = 100L
-    private val maxDelayMs = 2000L  // cap at 2s to avoid holding OkHttp threads
-=======
-    // Configuration
-    private val maxRetries = 3
-    private val initialDelayMs = 100L
-    private val maxDelayMs = 10000L
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
+    private val maxDelayMs = 1000L  // cap at 1s
     private val backoffMultiplier = 2.0
+
+    // Endpoints excluded from circuit breaker (known to fail gracefully)
+    private val excludedPaths = setOf("/guest/create")
+
+    // Auth endpoints should never be blocked by circuit breaker
+    private val authPaths = setOf("/auth/register", "/auth/login", "/auth/verify", "/auth/logout")
 
     override fun intercept(chain: Interceptor.Chain): Response {
         return executeWithRetry(chain, 0)
     }
 
     private fun executeWithRetry(chain: Interceptor.Chain, retryCount: Int): Response {
-        // Check circuit breaker state
-        if (circuitBreaker.isOpen()) {
-            Log.w(TAG, "Circuit breaker OPEN - rejecting request")
+        val request = chain.request()
+        val path = request.url.encodedPath
+        val isExcluded = excludedPaths.any { path.endsWith(it) }
+        val isAuth = authPaths.any { path.endsWith(it) }
+
+        // Check circuit breaker state (skip for excluded and auth endpoints)
+        if (!isExcluded && !isAuth && circuitBreaker.isOpen()) {
+            Log.w(TAG, "Circuit breaker OPEN - rejecting request to $path")
             throw IOException("Service temporarily unavailable (circuit breaker open)")
         }
 
-        val request = chain.request()
-        Log.d(TAG, "Executing request (attempt ${retryCount + 1}/$maxRetries)")
+        Log.d(TAG, "Executing request to $path (attempt ${retryCount + 1}/$maxRetries)")
 
         return try {
             val response = chain.proceed(request)
 
-            // Success - reset circuit breaker
+            // Success - reset circuit breaker (skip for excluded endpoints)
             if (response.isSuccessful) {
-                circuitBreaker.recordSuccess()
+                if (!isExcluded) circuitBreaker.recordSuccess()
                 Log.d(TAG, "Request successful")
                 return response
             }
@@ -65,7 +68,8 @@ class RetryInterceptor : Interceptor {
                 val code = response.code
                 // Retry only on server or rate-limit errors; do not retry on 4xx client errors
                 val shouldRetry = code == 429 || (code in 500..599)
-                circuitBreaker.recordFailure()
+                // Don't count auth endpoint failures (401/404 are expected)
+                if (!isExcluded && !isAuth) circuitBreaker.recordFailure()
                 response.close()
 
                 if (shouldRetry && retryCount < maxRetries) {
@@ -89,8 +93,8 @@ class RetryInterceptor : Interceptor {
             response
         } catch (e: Exception) {
             // Check if error is retryable
-            if (isRetryableError(e) && retryCount < maxRetries) {
-                circuitBreaker.recordFailure()
+            if (isRetryableError(e) && retryCount < maxRetries && !isAuth) {
+                if (!isExcluded) circuitBreaker.recordFailure()
                 val delayMs = calculateBackoffDelay(retryCount)
                 Log.w(TAG, "Retryable error: ${e.message}, scheduling retry #${retryCount + 1} (backoff ${delayMs}ms)")
                 try { Thread.sleep(delayMs) } catch (_: InterruptedException) { }
@@ -165,9 +169,9 @@ class CircuitBreaker {
     private var lastFailureTime = 0L
 
     // Configuration
-    private val failureThreshold = 5  // Open after 5 consecutive failures
-    private val successThreshold = 2  // Close after 2 consecutive successes in HALF_OPEN
-    private val timeoutMs = 30000L     // Try again after 30 seconds
+    private val failureThreshold = 20  // Open after 20 consecutive failures (was 10)
+    private val successThreshold = 1  // Close after 1 success in HALF_OPEN (was 2)
+    private val timeoutMs = 5000L     // Try again after 5 seconds (was 10)
 
     fun isOpen(): Boolean {
         synchronized(this) {

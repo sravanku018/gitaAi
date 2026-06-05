@@ -16,12 +16,8 @@ data class QuizAttempt(
     val totalQuestions: Int,
     val timeSpentSeconds: Long,
     val timestamp: Long = System.currentTimeMillis(),
-<<<<<<< HEAD
     val date: String = LocalDate.now().toString(),
     val coinsEarned: Int = 0
-=======
-    val date: String = LocalDate.now().toString()
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 ) {
     val accuracyPercentage: Float
         get() = if (totalQuestions > 0) {

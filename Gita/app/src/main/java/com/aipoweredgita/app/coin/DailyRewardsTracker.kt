@@ -33,6 +33,28 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
         }
     }
 
+    var isCheckinSynced: Boolean
+        get() {
+            val today = now()
+            val lastDate = prefs.getString(KEY_DATE, "") ?: ""
+            if (lastDate != today) return false
+            return prefs.getBoolean("checkin_synced", false)
+        }
+        set(value) {
+            prefs.edit().putBoolean("checkin_synced", value).apply()
+        }
+
+    var isShareSynced: Boolean
+        get() {
+            val today = now()
+            val lastDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
+            if (lastDate != today) return false
+            return prefs.getBoolean("share_synced", false)
+        }
+        set(value) {
+            prefs.edit().putBoolean("share_synced", value).apply()
+        }
+
     // ── Daily Check-in ───────────────────────────────────────────────────────
 
     data class DailyState(
@@ -129,6 +151,7 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             editor.putInt(KEY_DAY, s.day)
             editor.putInt(KEY_WEEK, s.week)
             editor.putString(KEY_DATE, now())
+            editor.putBoolean("checkin_synced", false)
             editor.commit()  // synchronous — prevents race with async reads
             return s.reward
         }
@@ -239,6 +262,7 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             editor.putInt(KEY_SHARE_DAY, s.day)
             editor.putInt(KEY_SHARE_WEEK, s.week)
             editor.putString(KEY_SHARE_DATE, now())
+            editor.putBoolean("share_synced", false)
             editor.commit()  // synchronous — prevents race with async reads
             return s.reward
         }
