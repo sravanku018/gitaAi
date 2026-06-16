@@ -1,61 +1,56 @@
 package com.aipoweredgita.app.viewmodel
 
-import android.app.Application
 import android.content.Context
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aipoweredgita.app.database.ReadVerse
-import com.aipoweredgita.app.database.RecommendationData
+import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.database.UserStats
-import com.aipoweredgita.app.ml.AIBadgeSystem
+import com.aipoweredgita.app.domain.model.NextActionData
+import com.aipoweredgita.app.domain.model.ProfileEvent
+import com.aipoweredgita.app.domain.model.ProfileSideEffect
+import com.aipoweredgita.app.domain.model.ProfileUiState
+import com.aipoweredgita.app.domain.usecase.GenerateBadgesUseCase
+import com.aipoweredgita.app.domain.usecase.GetCoinBalanceUseCase
+import com.aipoweredgita.app.domain.usecase.LoadDashboardUseCase
+import com.aipoweredgita.app.domain.usecase.UpdateProfileUseCase
 import com.aipoweredgita.app.ml.UserBadge
 import com.aipoweredgita.app.ml.UserLevel
-import com.aipoweredgita.app.recommendation.AdaptiveCurriculumPlanner
-import com.aipoweredgita.app.recommendation.RecommendationEngine
-import com.aipoweredgita.app.recommendation.predictNext
-import com.aipoweredgita.app.util.StringUtils
-import kotlinx.coroutines.Dispatchers
+import com.aipoweredgita.app.repository.ContentRepository
+import com.aipoweredgita.app.repository.StatsRepository
+import com.aipoweredgita.app.utils.AuthPreferences
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class ProfileViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(application)
-    private val userStatsDao = db.userStatsDao()
-    private val contentRepo = com.aipoweredgita.app.repository.ContentRepository(db.recommendationDataDao())
-    private val readingRepo = com.aipoweredgita.app.repository.ReadingRepository(db.readVerseDao(), db.cachedVerseDao())
-    private val dailyActivityRepo = com.aipoweredgita.app.repository.DailyActivityRepository(db.dailyActivityDao())
-    private val quizStatsRepo = com.aipoweredgita.app.repository.QuizStatsRepository(db.quizAttemptDao())
-    private val statsRepository = com.aipoweredgita.app.repository.StatsRepository(
-        userStatsDao = db.userStatsDao(),
-        dailyActivityDao = db.dailyActivityDao(),
-        appContext = getApplication()
-    )
+/**
+ * Profile ViewModel with UDF pattern
+ * Uses constructor injection via Hilt
+ */
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val statsRepository: StatsRepository,
+    private val contentRepo: ContentRepository,
+    private val getCoinBalanceUseCase: GetCoinBalanceUseCase,
+    private val loadDashboardUseCase: LoadDashboardUseCase,
+    private val generateBadgesUseCase: GenerateBadgesUseCase,
+    private val updateProfileUseCase: UpdateProfileUseCase
+) : ViewModel() {
 
-    private val badgeSystem = AIBadgeSystem()
-
-    // Badges & Level
-    private val _stats = MutableStateFlow<UserStats?>(null)
-    val stats: StateFlow<UserStats?> = _stats.asStateFlow()
-
-    private val _userBadges = MutableStateFlow<List<UserBadge>>(emptyList())
-    val userBadges: StateFlow<List<UserBadge>> = _userBadges.asStateFlow()
-
-    private val _userLevel = MutableStateFlow<UserLevel?>(null)
-    val userLevel: StateFlow<UserLevel?> = _userLevel.asStateFlow()
-
-    // Dashboard daily stats
+    // Backward-compatible type aliases for existing UI code
     data class DailyActivityData(
         val versesToday: Int = 0,
         val quizzesToday: Int = 0,
         val normalToday: Long = 0L,
         val quizToday: Long = 0L,
         val studioToday: Long = 0L,
-        val versesListToday: List<ReadVerse> = emptyList()
+        val versesListToday: List<com.aipoweredgita.app.database.ReadVerse> = emptyList()
     )
 
     data class NextActionData(
@@ -64,143 +59,179 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         val nextReason: String? = null
     )
 
+    // Single UI state
+    private val _uiState = MutableStateFlow(ProfileUiState())
+    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    // One-time side effects
+    private val _sideEffect = MutableSharedFlow<ProfileSideEffect>()
+    val sideEffect: SharedFlow<ProfileSideEffect> = _sideEffect.asSharedFlow()
+
+    // Backward-compatible separate state flows for existing UI code
+    private val _stats = MutableStateFlow<com.aipoweredgita.app.database.UserStats?>(null)
+    val stats: StateFlow<com.aipoweredgita.app.database.UserStats?> = _stats.asStateFlow()
+
+    private val _coinBalance = MutableStateFlow(0)
+    val coinBalance: StateFlow<Int> = _coinBalance.asStateFlow()
+
     private val _dailyActivity = MutableStateFlow(DailyActivityData())
     val dailyActivity: StateFlow<DailyActivityData> = _dailyActivity.asStateFlow()
 
     private val _nextAction = MutableStateFlow(NextActionData())
     val nextAction: StateFlow<NextActionData> = _nextAction.asStateFlow()
 
-    // Coin balance from API
-    private val _coinBalance = MutableStateFlow(0)
-    val coinBalance: StateFlow<Int> = _coinBalance.asStateFlow()
-
-    // Recommendations
-    private val _recommendations = MutableStateFlow<List<RecommendationData>>(emptyList())
-    val recommendations: StateFlow<List<RecommendationData>> = _recommendations.asStateFlow()
+    private val _recommendations = MutableStateFlow<List<com.aipoweredgita.app.database.RecommendationData>>(emptyList())
+    val recommendations: StateFlow<List<com.aipoweredgita.app.database.RecommendationData>> = _recommendations.asStateFlow()
 
     init {
         loadStats()
         loadRecommendations()
+        observeCoinBalance()
+    }
+
+    /**
+     * Handle events from the UI
+     */
+    fun onEvent(event: ProfileEvent) {
+        when (event) {
+            is ProfileEvent.LoadDashboard -> loadDashboard(null)
+            is ProfileEvent.UpdateProfile -> updateProfile(event.name, event.dob)
+            is ProfileEvent.RefreshCoins -> refreshCoinBalance()
+            is ProfileEvent.SetCoinBalance -> setCoinBalance(event.balance)
+        }
+    }
+
+    // Backward-compatible loadDashboardData method
+    fun loadDashboardData(context: Context?) {
+        loadDashboard(context)
+    }
+
+    /**
+     * Load user stats and generate badges
+     */
+    private fun loadStats() {
+        viewModelScope.launch {
+            try {
+                statsRepository // Access to trigger initialization
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // This would need to be injected or accessed differently
+                // For now, keeping the existing pattern
+                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(
+                    com.aipoweredgita.app.GitaApp.instance
+                )
+                db.userStatsDao().initializeStatsIfNeeded()
+                db.userStatsDao().getUserStats().collect { userStats ->
+                    _stats.value = userStats
+                    _uiState.update { it.copy(stats = userStats, isLoading = false) }
+                    if (userStats != null) {
+                        generateAIBadgesAndLevel(userStats)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _sideEffect.emit(ProfileSideEffect.ShowError(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    /**
+     * Generate AI badges and level from stats
+     */
+    private suspend fun generateAIBadgesAndLevel(stats: UserStats) {
+        try {
+            val result = generateBadgesUseCase(stats)
+            result.onSuccess { badgeResult ->
+                _uiState.update { 
+                    it.copy(
+                        badges = badgeResult.badges,
+                        level = badgeResult.level
+                    ) 
+                }
+            }
+            result.onFailure { error ->
+                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to generate badges"))
+            }
+        } catch (e: Exception) {
+            _sideEffect.emit(ProfileSideEffect.ShowError(e.message ?: "Failed to generate badges"))
+        }
+    }
+
+    /**
+     * Load recommendations
+     */
+    private fun loadRecommendations() {
+        viewModelScope.launch {
+            try {
+                contentRepo.getActiveRecommendations().collect { recs ->
+                    _recommendations.value = recs
+                    _uiState.update { it.copy(recommendations = recs) }
+                }
+            } catch (e: Exception) {
+                // Non-critical, continue
+            }
+        }
+    }
+
+    /**
+     * Observe coin balance changes
+     */
+    private fun observeCoinBalance() {
         viewModelScope.launch {
             statsRepository.coinBalance.collect { balance ->
                 _coinBalance.value = balance
+                _uiState.update { it.copy(coinBalance = balance) }
             }
         }
     }
 
-    private fun loadRecommendations() {
+    /**
+     * Load dashboard data
+     */
+    fun loadDashboard(context: Context?) {
         viewModelScope.launch {
-            contentRepo.getActiveRecommendations().collect { recs ->
-                _recommendations.value = recs
-            }
-        }
-    }
-
-    fun refreshCoinBalance() {
-        viewModelScope.launch {
-            _coinBalance.value = statsRepository.getBalance()
-        }
-    }
-
-    /** Set coin balance directly from local value (avoids server fetch overwrite). */
-    fun setCoinBalance(balance: Int) {
-        _coinBalance.value = balance
-    }
-
-    fun loadDashboardData(context: Context) {
-        viewModelScope.launch {
-            val today = java.time.LocalDate.now().toString()
-            val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-
-            // 1. Load today's verses
-            try {
-                val (vt, vlist) = withContext(Dispatchers.IO) {
-                    val vtCount = readingRepo.totalReadToday(today)
-                    val vlistData = readingRepo.getByDate(today)
-                    vtCount to vlistData
+            _uiState.update { it.copy(isLoading = true) }
+            
+            val ctx = context ?: com.aipoweredgita.app.GitaApp.instance
+            val result = loadDashboardUseCase(ctx)
+            
+            result.onSuccess { dashboardResult ->
+                val dailyActivityBc = DailyActivityData(
+                    versesToday = dashboardResult.dailyActivity.versesToday,
+                    quizzesToday = dashboardResult.dailyActivity.quizzesToday,
+                    normalToday = dashboardResult.dailyActivity.normalToday,
+                    quizToday = dashboardResult.dailyActivity.quizToday,
+                    studioToday = dashboardResult.dailyActivity.studioToday,
+                    versesListToday = dashboardResult.dailyActivity.versesListToday
+                )
+                val nextActionBc = NextActionData(
+                    nextStep = dashboardResult.nextAction.nextStep,
+                    nextLevel = dashboardResult.nextAction.nextLevel,
+                    nextReason = dashboardResult.nextAction.nextReason
+                )
+                _dailyActivity.value = dailyActivityBc
+                _nextAction.value = nextActionBc
+                _uiState.update { 
+                    it.copy(
+                        dailyActivity = dashboardResult.dailyActivity,
+                        nextAction = dashboardResult.nextAction,
+                        isLoading = false
+                    ) 
                 }
-                _dailyActivity.update { it.copy(versesToday = vt, versesListToday = vlist) }
-            } catch (e: Exception) {
-                android.util.Log.w("ProfileVM", "Failed to load verses", e)
             }
-
-            // 2. M1 next step predictor
-            try {
-                val lastSugDate = prefs.getString("next_suggestion_date", "")
-                val nextAction = if (lastSugDate != today) {
-                    val suggestion = withContext(Dispatchers.IO) { predictNext(db) }
-                    val cleanedStep = StringUtils.clean(suggestion.nextStep)
-                    val cleanedReason = StringUtils.clean(suggestion.reason)
-                    withContext(Dispatchers.IO) {
-                        prefs.edit()
-                            .putString("next_step_label", cleanedStep)
-                            .putInt("next_level", suggestion.nextLevel)
-                            .putString("next_reason", cleanedReason)
-                            .putString("next_suggestion_date", today)
-                            .apply()
-                    }
-                    NextActionData(nextStep = cleanedStep, nextLevel = suggestion.nextLevel, nextReason = cleanedReason)
-                } else {
-                    val rawStep = prefs.getString("next_step_label", null)
-                    val rawReason = prefs.getString("next_reason", null)
-                    val cleanedStep = StringUtils.clean(rawStep)
-                    val cleanedReason = StringUtils.clean(rawReason)
-                    if (cleanedStep != rawStep || cleanedReason != rawReason) {
-                        withContext(Dispatchers.IO) {
-                            prefs.edit().apply {
-                                if (cleanedStep != rawStep) putString("next_step_label", cleanedStep)
-                                if (cleanedReason != rawReason) putString("next_reason", cleanedReason)
-                            }.apply()
-                        }
-                    }
-                    NextActionData(nextStep = cleanedStep, nextLevel = prefs.getInt("next_level", -1), nextReason = cleanedReason)
-                }
-                _nextAction.value = nextAction
-            } catch (e: Exception) {
-                android.util.Log.w("ProfileVM", "Failed to predict next", e)
+            
+            result.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, error = error.message) }
+                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to load dashboard"))
             }
 
-            // 3. Daily activity + quiz attempts
-            try {
-                val row = withContext(Dispatchers.IO) { dailyActivityRepo.getByDate(today) }
-                val quizCount = withContext(Dispatchers.IO) {
-                    quizStatsRepo.getAttemptsByDate(today).first().size
-                }
-                row?.let { dailyRow ->
-                    _dailyActivity.update { state ->
-                        state.copy(
-                            normalToday = dailyRow.normalSeconds,
-                            quizToday = dailyRow.quizSeconds,
-                            studioToday = dailyRow.voiceStudioTimeSeconds,
-                            quizzesToday = quizCount
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ProfileVM", "Failed to load daily activity", e)
-            }
+            // Fetch coin balance
+            refreshCoinBalance()
 
-            // 5. Generate recommendations once per day
+            // Sync local rewards state to cloud
             try {
-                val lastRun = prefs.getString("last_rec_gen", "")
-                if (lastRun != today) {
-                    withContext(Dispatchers.IO) {
-                        RecommendationEngine(context).generateRecommendations()
-                        AdaptiveCurriculumPlanner(context).buildPlan()
-                    }
-                    prefs.edit().putString("last_rec_gen", today).apply()
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ProfileVM", "Failed to generate recommendations", e)
-            }
-
-            // 6. Fetch coin balance from API
-            _coinBalance.value = statsRepository.getBalance()
-
-            // 7. Sync local rewards state to cloud
-            try {
-                val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(getApplication())
-                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(getApplication())
+                val tracker = DailyRewardsTracker.getInstance(ctx)
+                val authPrefs = AuthPreferences.getInstance(ctx)
                 if (!authPrefs.isGuestUser) {
                     val dailyState = tracker.getDailyState()
                     if (dailyState.todayClaimed && !tracker.isCheckinSynced) {
@@ -212,56 +243,46 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.w("ProfileVM", "Failed to sync local rewards: ${e.message}")
+                // Non-critical, continue
             }
         }
     }
 
-    private fun loadStats() {
+    /**
+     * Refresh coin balance
+     */
+    fun refreshCoinBalance() {
         viewModelScope.launch {
-            userStatsDao.initializeStatsIfNeeded()
-            userStatsDao.getUserStats().collect { userStats ->
-                _stats.value = userStats
-                if (userStats != null) {
-                    generateAIBadgesAndLevel(userStats)
-                }
+            val result = getCoinBalanceUseCase()
+            result.onSuccess { balance ->
+                _coinBalance.value = balance
+                _uiState.update { it.copy(coinBalance = balance) }
+            }
+            result.onFailure { error ->
+                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to refresh coins"))
             }
         }
     }
 
-    private fun generateAIBadgesAndLevel(stats: UserStats) {
-        viewModelScope.launch {
-            try {
-                val badges = badgeSystem.generateBadges(
-                    versesRead = stats.versesRead,
-                    quizzesTaken = stats.totalQuizzesTaken,
-                    score = stats.totalCorrectAnswers,
-                    totalQuestions = stats.totalQuestionsAnswered.coerceAtLeast(1),
-                    timeSpent = stats.totalTimeSpentSeconds,
-                    currentStreak = stats.currentStreak,
-                    favoriteCount = stats.totalFavorites
-                )
-                _userBadges.value = badges
-
-                val level = badgeSystem.calculateLevel(
-                    versesRead = stats.versesRead,
-                    quizzesTaken = stats.totalQuizzesTaken,
-                    score = stats.totalCorrectAnswers,
-                    totalQuestions = stats.totalQuestionsAnswered.coerceAtLeast(1),
-                    timeSpent = stats.totalTimeSpentSeconds,
-                    currentStreak = stats.currentStreak,
-                    favoriteCount = stats.totalFavorites
-                )
-                _userLevel.value = level
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+    /**
+     * Set coin balance directly from local value
+     */
+    fun setCoinBalance(balance: Int) {
+        _uiState.update { it.copy(coinBalance = balance) }
     }
 
+    /**
+     * Update user profile
+     */
     fun updateProfile(name: String, dob: String) {
         viewModelScope.launch {
-            userStatsDao.updateProfile(name, dob)
+            val result = updateProfileUseCase(name, dob)
+            result.onSuccess {
+                _sideEffect.emit(ProfileSideEffect.ShowToast("Profile updated successfully"))
+            }
+            result.onFailure { error ->
+                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to update profile"))
+            }
         }
     }
 }

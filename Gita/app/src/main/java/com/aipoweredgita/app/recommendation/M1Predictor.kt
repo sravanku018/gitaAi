@@ -41,18 +41,10 @@ suspend fun predictNext(db: GitaDatabase): NextSuggestion {
         "Studio" to totalStudio
     ).minByOrNull { it.second }?.first ?: "Read"
 
-    // Estimate streak (consecutive days with any activity)
-    var streak = 0
-    var dayOffset = 0L
-    while (true) {
-        val d = LocalDate.now().minusDays(dayOffset).format(dateFormatter)
-        val row = try { dailyDao.getByDate(d) } catch (_: Exception) { null }
-        val sum = ((row?.normalSeconds ?: 0L) + (row?.quizSeconds ?: 0L) + (row?.voiceStudioTimeSeconds ?: 0L))
-        if (sum > 0L) {
-            streak++
-            dayOffset++
-        } else break
-    }
+    // Use the actual streak from user_stats instead of recalculating from daily_activity
+    val streak = try {
+        db.userStatsDao().getUserStatsOnce()?.currentStreak ?: 0
+    } catch (_: Exception) { 0 }
 
     // Difficulty heuristic based on streak and recent activity
     val recentActivity = totals.take(3).sumOf { it.first + it.second + it.third }

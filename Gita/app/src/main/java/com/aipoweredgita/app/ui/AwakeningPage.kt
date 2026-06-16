@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.YogaLevel
 import com.aipoweredgita.app.network.YogaSubStage
@@ -73,7 +74,7 @@ private val SubTagLockTx   = Color(0xFF1C1A10)
 @Composable
 fun AwakeningPage(modifier: Modifier = Modifier) {
     val uiCfg = LocalUiConfig.current
-    val profileViewModel: ProfileViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = hiltViewModel()
     val stats       by profileViewModel.stats.collectAsState()
     val totalCoins  by profileViewModel.coinBalance.collectAsState()
     val level        = YogaLevelManager.levelFor(stats)

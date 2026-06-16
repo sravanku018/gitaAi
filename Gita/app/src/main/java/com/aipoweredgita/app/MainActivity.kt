@@ -47,6 +47,7 @@ import com.aipoweredgita.app.utils.ThemePreferences
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.ml.ModelDownloadManager
 import com.aipoweredgita.app.ml.ModelStateManager
+import com.aipoweredgita.app.repository.CoinReconciliationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +59,9 @@ import com.aipoweredgita.app.notifications.DailyReflectionWorker
 import com.aipoweredgita.app.services.GemmaDownloadWorker
 import com.aipoweredgita.app.services.QwenDownloadWorker
 import com.aipoweredgita.app.services.QuestionIngestionWorker
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     
     // Notification permission launcher (Android 13+)
@@ -97,6 +100,28 @@ class MainActivity : ComponentActivity() {
                 val stats = database.userStatsDao().getUserStatsOnce()
                 if (stats != null) {
                     android.util.Log.d("MainActivity", "User ID: ${stats.userId}")
+                }
+                
+                // Reconcile coin balance with server
+                try {
+                    val reconciliationManager = CoinReconciliationManager(applicationContext)
+                    val result = reconciliationManager.autoReconcile()
+                    when (result) {
+                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Corrected -> {
+                            android.util.Log.w("MainActivity", "Coin balance corrected: ${result.oldBalance} → ${result.newBalance}")
+                        }
+                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Error -> {
+                            android.util.Log.e("MainActivity", "Reconciliation error: ${result.message}")
+                        }
+                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Skip -> {
+                            android.util.Log.d("MainActivity", "Reconciliation skipped: ${result.reason}")
+                        }
+                        is com.aipoweredgita.app.repository.AutoReconciliationResult.OK -> {
+                            android.util.Log.d("MainActivity", "Balance OK")
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Reconciliation failed: ${e.message}")
                 }
                 
                 // Check and apply yoga progression decay for inactivity

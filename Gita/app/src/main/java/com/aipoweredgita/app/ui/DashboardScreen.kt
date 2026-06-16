@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.ui.components.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
@@ -107,7 +108,7 @@ fun DashboardScreen(
     onNavigateToAwakening: () -> Unit = {},
     onNavigateToCoinHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val coroutineScope = rememberCoroutineScope()
     val stats by viewModel.stats.collectAsState()
@@ -482,9 +483,6 @@ fun DashboardScreen(
                         onEarnCoins = { amount, description ->
                             coroutineScope.launch {
                                 statsRepository.claimDailyReward(amount, description)
-                                // Read local balance directly — avoids server fetch overwrite
-                                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
-                                viewModel.setCoinBalance(authPrefs.localCoins)
                             }
                         }
                     )

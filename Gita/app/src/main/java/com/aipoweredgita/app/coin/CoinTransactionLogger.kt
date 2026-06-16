@@ -35,6 +35,58 @@ object CoinTransactionLogger {
         }
     }
 
+    fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
+        synchronized(this) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            // Server stores timestamps in UTC ("yyyy-MM-dd HH:mm:ss" without timezone suffix).
+            // We MUST parse with UTC or Java will interpret them as device local time, which
+            // shifts timestamps by the device's UTC offset (e.g. IST = +5:30 → 5.5 hr error).
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+
+            // Parse server entries (oldest first — server comes newest-first so reverse)
+            val serverEntries = serverHistory.reversed().takeLast(MAX)
+
+            // Find the oldest timestamp in the server data
+            val oldestServerTs = serverEntries.minOfOrNull { entry ->
+                try { fmt.parse(entry.created_at)?.time ?: Long.MAX_VALUE }
+                catch (_: Exception) { Long.MAX_VALUE }
+            } ?: Long.MAX_VALUE
+
+            // Read existing local entries and keep only those OLDER than the oldest server entry
+            // (avoids duplicates while preserving history the server no longer returns)
+            val existing = readJson(prefs)
+            val preservedLocal = mutableListOf<JSONObject>()
+            for (i in 0 until existing.length()) {
+                try {
+                    val obj = existing.getJSONObject(i)
+                    val ts = obj.optLong("timestamp", Long.MAX_VALUE)
+                    if (ts < oldestServerTs) preservedLocal.add(obj)
+                } catch (_: Exception) { /* skip corrupted */ }
+            }
+
+            // Build merged array: old local entries first, then server entries
+            val arr = JSONArray()
+            preservedLocal.forEach { arr.put(it) }
+            serverEntries.forEach { entry ->
+                val obj = JSONObject().apply {
+                    put("amount", entry.amount)
+                    put("description", entry.description.take(120))
+                    val ts = try { fmt.parse(entry.created_at)?.time ?: System.currentTimeMillis() }
+                             catch (_: Exception) { System.currentTimeMillis() }
+                    put("timestamp", ts)
+                    put("type", entry.type)
+                }
+                arr.put(obj)
+            }
+
+            // Trim to MAX keeping the newest
+            while (arr.length() > MAX) arr.remove(0)
+            prefs.edit().putString(KEY, arr.toString()).apply()
+        }
+    }
+
     fun getHistory(context: Context): List<CoinEntry> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val arr = readJson(prefs)

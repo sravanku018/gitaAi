@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import com.aipoweredgita.app.ui.components.GlassCard
@@ -56,7 +57,7 @@ fun QuizSectionScreen(
     val tabs = listOf("15 Questions", "25 Questions")
 
     // Hoist ViewModels to avoid re-creation on tab switches
-    val quizViewModel: QuizViewModel = viewModel()
+    val quizViewModel: QuizViewModel = hiltViewModel()
     val quizState by quizViewModel.quizState.collectAsState()
     val language = quizState.language
 
@@ -70,11 +71,12 @@ fun QuizSectionScreen(
             try {
                 val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(ctx)
                 val count = db.quizQuestionBankDao().getTotalCount()
-                if (count < 50) {
-                    android.util.Log.d("QuizSection", "Auto-downloading questions...")
+                if (count < 100) {
+                    android.util.Log.d("QuizSection", "Auto-downloading questions (current: $count)...")
                     val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(ctx, db.quizQuestionBankDao())
-                    importer.importDataset(language = "english", batchSize = 500)
-                    android.util.Log.d("QuizSection", "Auto-download complete")
+                    val count = importer.importDataset(language = "english", batchSize = 500)
+                    val newCount = db.quizQuestionBankDao().getTotalCount()
+                    android.util.Log.d("QuizSection", "Auto-download complete: $count → $newCount questions")
                 }
             } catch (e: Exception) {
                 android.util.Log.w("QuizSection", "Auto-download failed: ${e.message}")

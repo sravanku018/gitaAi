@@ -14,9 +14,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.work.WorkManager
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.flow.map
 import com.aipoweredgita.app.viewmodel.OfflineDownloadViewModel
+import com.aipoweredgita.app.domain.model.OfflineDownloadEvent
 import com.aipoweredgita.app.ui.LocalUiConfig
 import com.aipoweredgita.app.repository.DownloadStatus
 import com.aipoweredgita.app.repository.DownloadProgress
@@ -24,19 +25,21 @@ import com.aipoweredgita.app.repository.DownloadProgress
 @Composable
 fun OfflineDownloadScreen(
     modifier: Modifier = Modifier,
-    viewModel: OfflineDownloadViewModel = viewModel()
+    viewModel: OfflineDownloadViewModel = hiltViewModel()
 ) {
-    val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
-    val cachedCount by viewModel.cachedCount.collectAsStateWithLifecycle()
-    val isFullyCached by viewModel.isFullyCached.collectAsStateWithLifecycle()
-    val missingVerses by viewModel.missingVerses.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    val downloadProgress = state.downloadProgress
+    val cachedCount = state.cachedCount
+    val isFullyCached = state.isFullyCached
+    val missingVerses = state.missingVerses
     var showVerseReader by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
 
     // Observe offline verse download worker for failures using modern flow-based API
     val verseWorkInfos by produceState(initialValue = emptyList<androidx.work.WorkInfo>()) {
-        WorkManager.getInstance(context)
+        androidx.work.WorkManager.getInstance(context)
             .getWorkInfosForUniqueWorkFlow("offline_verse_download")
             .map { it.toList() }
             .collect { newValue -> value = newValue }
@@ -121,7 +124,7 @@ fun OfflineDownloadManagerScreen(
         Button(
             onClick = {
                 try {
-                    viewModel.startDownload()
+                    viewModel.onEvent(OfflineDownloadEvent.StartDownload)
                 } catch (_: Exception) { }
             },
             modifier = Modifier
@@ -160,7 +163,7 @@ fun OfflineDownloadManagerScreen(
             OutlinedButton(
                 onClick = {
                     try {
-                        viewModel.checkMissingVerses()
+                        viewModel.onEvent(OfflineDownloadEvent.CheckMissingVerses)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -178,7 +181,7 @@ fun OfflineDownloadManagerScreen(
             OutlinedButton(
                 onClick = {
                     try {
-                        viewModel.clearCache()
+                        viewModel.onEvent(OfflineDownloadEvent.ClearCache)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -236,7 +239,7 @@ fun OfflineDownloadManagerScreen(
                     text = { Text(downloadProgress.message ?: stringResource(id = com.aipoweredgita.app.R.string.offline_download_failed_body)) },
                     confirmButton = {
                         TextButton(onClick = {
-                            try { viewModel.startDownload() } catch (_: Exception) {}
+                            try { viewModel.onEvent(OfflineDownloadEvent.StartDownload) } catch (_: Exception) {}
                             showVerseDlError = false
                         }) { Text(stringResource(id = com.aipoweredgita.app.R.string.generic_retry)) }
                     },

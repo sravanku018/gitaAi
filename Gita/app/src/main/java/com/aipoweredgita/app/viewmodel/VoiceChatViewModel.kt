@@ -4,7 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.data.GitaVerse
 import com.aipoweredgita.app.database.CachedVerse
@@ -42,56 +42,55 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import com.aipoweredgita.app.domain.model.ChatMessage
+import com.aipoweredgita.app.domain.model.CoinError
+import com.aipoweredgita.app.domain.model.VoiceChatErrorType
+import com.aipoweredgita.app.domain.model.VoiceChatEvent
+import com.aipoweredgita.app.domain.model.VoiceChatSideEffect
+import com.aipoweredgita.app.domain.model.VoiceChatUiState
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
-// ─── Data Models ──────────────────────────────────────────────────────────────
-
-@Immutable
-data class ChatMessage(
-    val id        : String = UUID.randomUUID().toString(),
-    val text      : String,
-    val isUser    : Boolean,
-    val timestamp : Long = System.currentTimeMillis()
-)
-
-@Stable
-data class VoiceChatState(
-    val messages       : List<ChatMessage>  = emptyList(),
-    val isListening    : Boolean            = false,
-    val isSpeaking     : Boolean            = false,
-    val isThinking     : Boolean            = false,
-    val liveTranscript : String             = "",
-    val userInput      : String             = "",
-    val isLlmReady     : Boolean            = false,
-    val error          : String?            = null,
-    val errorType      : VoiceChatErrorType? = null,
-    val currentModelName: String             = "Unknown",
-    val coinBalance     : Int                = 0,
-    val coinError       : CoinError?         = null,
-    val showCoinConfirmation: Boolean       = false,
-    val pendingMessage  : String?           = null,
-    val pendingCost     : Int                = 0,
-    val isBalanceLoaded : Boolean            = false
-)
-
-enum class VoiceChatErrorType {
-    MODEL_INIT, LLM_INFERENCE, STT, TTS, NETWORK, CRASH_RECOVERY
-}
-
-enum class CoinError { NETWORK_ERROR, UNKNOWN_ERROR }
-
 // ─── ViewModel ────────────────────────────────────────────────────────────────
 
-class VoiceChatViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class VoiceChatViewModel @Inject constructor(
+    private val application: Application
+) : ViewModel() {
+
+    private fun getCloudProxyName(): String {
+        val provider = getAiProvider()
+        return if (provider == "groq") "Groq (Cloud)" else "NVIDIA 70B (Cloud)"
+    }
+
+    private fun getAiProvider(): String {
+        val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+        val model = prefs.getString("selected_ai_model", "Auto (Recommended)") ?: "Auto (Recommended)"
+        return when {
+            model.contains("NVIDIA", ignoreCase = true) -> "nvidia-basic"
+            model.contains("Groq", ignoreCase = true) -> "groq"
+            else -> "nvidia-basic"
+        }
+    }
 
     private val tag = "VoiceChatViewModel"
 
-    private val _state = MutableStateFlow(VoiceChatState())
-    val state: StateFlow<VoiceChatState> = _state.asStateFlow()
+    private val _uiState = MutableStateFlow(VoiceChatUiState())
+    val uiState: StateFlow<VoiceChatUiState> = _uiState.asStateFlow()
+
+    private val _sideEffect = MutableSharedFlow<VoiceChatSideEffect>()
+    val sideEffect: SharedFlow<VoiceChatSideEffect> = _sideEffect.asSharedFlow()
+
+    // Backward compatibility for existing UI
+    val state: StateFlow<VoiceChatUiState> = uiState
 
     private val database        = GitaDatabase.getDatabase(application)
     private val chatRepo = com.aipoweredgita.app.repository.ChatRepository(database.voiceChatMessageDao())
@@ -132,8 +131,22 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         refreshModelStatus()
         viewModelScope.launch {
             statsRepository.coinBalance.collect { balance ->
-                _state.update { it.copy(coinBalance = balance) }
+                _uiState.update { it.copy(coinBalance = balance) }
             }
+        }
+    }
+
+    fun onEvent(event: VoiceChatEvent) {
+        when (event) {
+            is VoiceChatEvent.UpdateUserInput -> updateUserInput(event.input)
+            is VoiceChatEvent.SendMessage -> sendMessage(event.text, null, null, event.confirmed)
+            is VoiceChatEvent.DismissCoinConfirmation -> dismissCoinConfirmation()
+            is VoiceChatEvent.ConfirmAndSendMessage -> confirmAndSendMessage()
+            is VoiceChatEvent.ClearChat -> clearChat()
+            is VoiceChatEvent.StartListening -> startListening()
+            is VoiceChatEvent.StopListening -> stopListening()
+            is VoiceChatEvent.StopAll -> stopAll()
+            is VoiceChatEvent.ClearError -> clearError()
         }
     }
 
@@ -146,17 +159,17 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                 if (uid != null && uid.isNotEmpty()) {
                     try {
                         val balance = statsRepository.getBalance()
-                        _state.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                        _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
                     } catch (e: Exception) {
                         Log.e(tag, "Failed to fetch coin balance", e)
-                        _state.update { it.copy(coinError = CoinError.NETWORK_ERROR, isBalanceLoaded = true) }
+                        _uiState.update { it.copy(coinError = CoinError.NETWORK_ERROR, isBalanceLoaded = true) }
                     }
                 } else {
                     try {
                         val balance = statsRepository.getBalance()
-                        _state.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                        _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
                     } catch (e: Exception) {
-                        _state.update { it.copy(isBalanceLoaded = true) }
+                        _uiState.update { it.copy(isBalanceLoaded = true) }
                     }
                 }
             }
@@ -166,14 +179,14 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     private fun setupVoiceManagerErrorForwarding() {
         voiceManager.onError = { errorMsg ->
             viewModelScope.launch(Dispatchers.Main) {
-                _state.update { it.copy(error = errorMsg, errorType = VoiceChatErrorType.TTS) }
+                _uiState.update { it.copy(error = errorMsg, errorType = VoiceChatErrorType.TTS) }
             }
         }
     }
 
     private fun observeModelChanges() {
         viewModelScope.launch {
-            ModelAvailability.getInstance(getApplication()).selectedModel.collect { modelName ->
+            ModelAvailability.getInstance(application).selectedModel.collect { modelName ->
                 Log.d(tag, "Model changed to $modelName — re-initializing")
                 refreshModelStatus()
             }
@@ -184,7 +197,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch(Dispatchers.IO) {
             val dbMessages = chatRepo.getAllMessages()
             withContext(Dispatchers.Main) {
-                _state.update {
+                _uiState.update {
                     it.copy(messages = dbMessages.map { dbm ->
                         ChatMessage(dbm.id, dbm.text, dbm.isUser, dbm.timestamp)
                     })
@@ -193,14 +206,14 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /**
-     * Builds and sends the full message chain to the Deno proxy.
-     * System prompt comes from GitaPromptEngine — verse context is a
-     * separate system message so it doesn't pollute the soul prompt.
-     *
-     * History window: 15 messages for natural flow.
-     * Session summary is injected when older messages have been compressed.
-     */
+     /**
+      * Builds and sends the full message chain to the Deno proxy.
+      * Server handles system prompt injection via app="gita".
+      * We only send: verse context + history + user message.
+      *
+      * History window: 15 messages for natural flow.
+      * Session summary is injected when older messages have been compressed.
+      */
     private suspend fun fetchGroqReply(
         groundedPrompt: String,
         history: List<ChatMessage>,
@@ -209,14 +222,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
         val messagesArray = JSONArray()
 
-        // 1. Krishna soul + format rules (GitaPromptEngine)
-        messagesArray.put(
-            JSONObject()
-                .put("role", "system")
-                .put("content", GitaPromptEngine.groqSystemPrompt())
-        )
-
-        // 2. Verse reference context — separate system message
+        // 1. Verse reference context — separate system message
         if (!verseReference.isNullOrBlank()) {
             messagesArray.put(
                 JSONObject()
@@ -225,7 +231,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             )
         }
 
-        // 3. Session summary from compressed older messages
+        // 2. Session summary from compressed older messages
         val chatSummary = summaryDao.getSummary("krishna-conversation")
         if (chatSummary != null) {
             messagesArray.put(
@@ -235,7 +241,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             )
         }
 
-        // 4. Conversation history (skip last — that's groundedPrompt)
+        // 3. Conversation history (skip last — that's groundedPrompt)
         history
             .filter { it.text.isNotEmpty() }
             .dropLast(1)
@@ -248,20 +254,17 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             }
 
-        // 5. Current user question (wrapped with reflective instructions)
-        val fullUserPrompt = GitaPromptEngine.buildUserInstructPrompt(
-            userMessage = groundedPrompt,
-            hasVerseContext = !verseReference.isNullOrBlank(),
-            langSuffix = ""
-        )
+        // 4. Current user question — plain, server handles the rest
         messagesArray.put(
             JSONObject()
                 .put("role", "user")
-                .put("content", fullUserPrompt)
+                .put("content", groundedPrompt)
         )
 
         val body = JSONObject()
             .put("messages", messagesArray)
+            .put("app", "gita")
+            .put("provider", getAiProvider())
             .toString()
             .toRequestBody("application/json; charset=utf-8".toMediaType())
 
@@ -270,13 +273,21 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             .post(body)
             .build()
 
-        okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw java.io.IOException("Proxy error: $response")
+        try {
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: ""
+                    Log.e(tag, "Proxy error: ${response.code} $errorBody")
+                    throw java.io.IOException("Server error ${response.code}")
+                }
+                val responseString = response.body?.string()
+                    ?: throw java.io.IOException("Empty response from server")
+                val json = JSONObject(responseString)
+                json.getString("reply")
             }
-            val responseString = response.body?.string()
-                ?: throw java.io.IOException("Empty response")
-            JSONObject(responseString).getString("reply")
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(tag, "Request timed out", e)
+            throw java.io.IOException("Server is taking too long — try again or switch to Groq in Settings")
         }
     }
 
@@ -338,6 +349,8 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             }
 
             bodyJson.put("messages", msgsArray)
+            bodyJson.put("app", "gita")
+            bodyJson.put("provider", getAiProvider())
             val body = bodyJson.toString()
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
 
@@ -359,7 +372,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     // ─── Model Init ───────────────────────────────────────────────────────────
 
     fun refreshModelStatus() {
-        val context = getApplication<Application>()
+        val context = application
 
         val ma = ModelAvailability.getInstance(context)
         val decision = ma.getRuntimeDecision(AppFeature.VOICE)
@@ -367,7 +380,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         if (decision.useProxy) {
             Log.d(tag, "Using proxy runtime for voice chat. tier=${decision.tierLabel} selected=${decision.selectedPreference}")
             useProxy = true
-            _state.update {
+            _uiState.update {
                 it.copy(
                     isLlmReady = true,
                     currentModelName = decision.displayName,
@@ -395,7 +408,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                            "tokens=$maxTokens timeout=${timeoutMs}ms " +
                            "topK=${samplerParams.topK} temp=${samplerParams.temperature}")
 
-                _state.update { it.copy(currentModelName = decision.displayName) }
+                _uiState.update { it.copy(currentModelName = decision.displayName) }
 
                 aiScope.launch {
                     initMutex.withLock {
@@ -413,7 +426,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 crashCount = 0
                                 useProxy = false
                                 withContext(Dispatchers.Main) {
-                                    _state.update {
+                                    _uiState.update {
                                         it.copy(
                                             isLlmReady = true,
                                             error      = null,
@@ -425,10 +438,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 Log.w(tag, "On-device model initialization failed. Falling back to Deno proxy.")
                                 useProxy = true
                                 withContext(Dispatchers.Main) {
-                                    _state.update {
+                                    _uiState.update {
                                         it.copy(
                                             isLlmReady = true,
-                                            currentModelName = "Cloud Proxy (Groq)",
+                                            currentModelName = getCloudProxyName(),
                                             error      = null,
                                             errorType  = null
                                         )
@@ -439,10 +452,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                             Log.e(tag, "Model init crashed, falling back to Deno proxy", e)
                             useProxy = true
                             withContext(Dispatchers.Main) {
-                                _state.update {
+                                _uiState.update {
                                     it.copy(
                                         isLlmReady = true,
-                                        currentModelName = "Cloud Proxy (Groq)",
+                                        currentModelName = getCloudProxyName(),
                                         error      = null,
                                         errorType  = null
                                     )
@@ -454,10 +467,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             } else {
                 Log.d(tag, "No on-device models downloaded. Falling back to Deno proxy.")
                 useProxy = true
-                _state.update {
+                _uiState.update {
                     it.copy(
                         isLlmReady = true,
-                        currentModelName = "Cloud Proxy (Groq)",
+                        currentModelName = getCloudProxyName(),
                         error = null,
                         errorType = null
                     )
@@ -466,10 +479,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (e: Exception) {
             Log.e(tag, "Failed to check model status, falling back to Deno proxy", e)
             useProxy = true
-            _state.update {
+            _uiState.update {
                 it.copy(
                     isLlmReady = true,
-                    currentModelName = "Cloud Proxy (Groq)",
+                    currentModelName = getCloudProxyName(),
                     error      = null,
                     errorType  = null
                 )
@@ -480,7 +493,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
     // ─── Messaging ────────────────────────────────────────────────────────────
 
     fun updateUserInput(input: String) {
-        _state.update { it.copy(userInput = input) }
+        _uiState.update { it.copy(userInput = input) }
     }
 
     fun sendMessage(
@@ -489,14 +502,14 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         gitaVerse   : GitaVerse?   = null,
         confirmed   : Boolean      = true
     ) {
-        val messageText = text ?: _state.value.userInput
+        val messageText = text ?: _uiState.value.userInput
         if (messageText.isBlank()) return
 
         // Crash loop protection
         val now = System.currentTimeMillis()
         if (now - lastCrashTime > 60_000) crashCount = 0
         if (crashCount >= MAX_CRASHES) {
-            _state.update {
+            _uiState.update {
                 it.copy(
                     error      = "Voice chat crashed too many times. Please restart the app.",
                     errorType  = VoiceChatErrorType.CRASH_RECOVERY,
@@ -506,34 +519,32 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
 
-        if (text == null) _state.update { it.copy(userInput = "", error = null, errorType = null) }
+        if (text == null) _uiState.update { it.copy(userInput = "", error = null, errorType = null) }
 
         val userMessage = ChatMessage(text = messageText, isUser = true)
-        _state.update { it.copy(messages = it.messages + userMessage, error = null, errorType = null, isThinking = true) }
+        _uiState.update { it.copy(messages = it.messages + userMessage, error = null, errorType = null, isThinking = true) }
         saveMessage(userMessage)
 
+        // First check if user has enough coins (without spending yet)
         viewModelScope.launch(Dispatchers.IO) {
-            val spent = statsRepository.spendCoins(messageText)
-            if (!spent) {
-                // Insufficient balance — abort message send
-                withContext(Dispatchers.Main) {
-                    _state.update {
-                        it.copy(
-                            isThinking = false,
-                            coinError = CoinError.NETWORK_ERROR,
-                            error = "Insufficient coins to ask a question",
-                            errorType = VoiceChatErrorType.LLM_INFERENCE
-                        )
-                    }
-                }
-                return@launch
-            }
             try {
                 val balance = statsRepository.getBalance()
-                _state.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                if (balance < 2) {
+                    withContext(Dispatchers.Main) {
+                        _uiState.update {
+                            it.copy(
+                                isThinking = false,
+                                coinError = CoinError.NETWORK_ERROR,
+                                error = "Insufficient coins to ask a question",
+                                errorType = VoiceChatErrorType.LLM_INFERENCE,
+                                messages = it.messages.dropLast(1) // Remove the user message we added
+                            )
+                        }
+                    }
+                }
             } catch (e: Exception) {
-                Log.e(tag, "Failed to fetch balance after spend", e)
-                _state.update { it.copy(coinError = CoinError.NETWORK_ERROR, isBalanceLoaded = true) }
+                Log.e(tag, "Failed to check balance", e)
             }
         }
 
@@ -542,7 +553,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
 
             // Add placeholder AI message for streaming
             withContext(Dispatchers.Main) {
-                _state.update { s ->
+                _uiState.update { s ->
                     s.copy(messages = s.messages + ChatMessage(id = aiMessageId, text = "", isUser = false))
                 }
             }
@@ -557,13 +568,40 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                         val reply = fetchGroqReply(
                             groundedPrompt = messageText,
-                            history = _state.value.messages,
+                            history = _uiState.value.messages,
                             verseReference = verseRef
                         )
                         val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
 
+                        // ✅ Spend coins ONLY after successful AI response
+                        val spent = withContext(Dispatchers.IO) {
+                            statsRepository.spendCoins(messageText)
+                        }
+                        if (!spent) {
+                            withContext(Dispatchers.Main) {
+                                _uiState.update {
+                                    it.copy(
+                                        isThinking = false,
+                                        coinError = CoinError.NETWORK_ERROR,
+                                        error = "Insufficient coins to ask a question",
+                                        errorType = VoiceChatErrorType.LLM_INFERENCE,
+                                        messages = it.messages.filter { m -> m.id != aiMessageId }
+                                    )
+                                }
+                            }
+                            return@withLock
+                        }
+
+                        // Update balance after successful spend
+                        try {
+                            val balance = withContext(Dispatchers.IO) { statsRepository.getBalance() }
+                            _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Failed to fetch balance after spend", e)
+                        }
+
                         withContext(Dispatchers.Main) {
-                            _state.update { s ->
+                            _uiState.update { s ->
                                 s.copy(
                                     messages = s.messages.map { m ->
                                         if (m.id == aiMessageId) m.copy(text = finalAnswer) else m
@@ -576,7 +614,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 speakResponse(finalAnswer)
                             } catch (e: Exception) {
                                 Log.e(tag, "TTS failed", e)
-                                _state.update {
+                                _uiState.update {
                                     it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
                                 }
                             }
@@ -595,7 +633,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 if (nowMs - lastUpdate > 64) {
                                     lastUpdate = nowMs
                                     viewModelScope.launch(Dispatchers.Main) {
-                                        _state.update { s ->
+                                        _uiState.update { s ->
                                             s.copy(messages = s.messages.map { m ->
                                                 if (m.id == aiMessageId) m.copy(text = partial) else m
                                             })
@@ -607,8 +645,35 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                 aiScope.launch {
                                     val finalAnswer = deepCleaned
 
+                                    // ✅ Spend coins ONLY after successful on-device response
+                                    val spent = withContext(Dispatchers.IO) {
+                                        statsRepository.spendCoins(messageText)
+                                    }
+                                    if (!spent) {
+                                        withContext(Dispatchers.Main) {
+                                            _uiState.update {
+                                                it.copy(
+                                                    isThinking = false,
+                                                    coinError = CoinError.NETWORK_ERROR,
+                                                    error = "Insufficient coins to ask a question",
+                                                    errorType = VoiceChatErrorType.LLM_INFERENCE,
+                                                    messages = it.messages.filter { m -> m.id != aiMessageId }
+                                                )
+                                            }
+                                        }
+                                        return@launch
+                                    }
+
+                                    // Update balance after successful spend
+                                    try {
+                                        val balance = withContext(Dispatchers.IO) { statsRepository.getBalance() }
+                                        _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                                    } catch (e: Exception) {
+                                        Log.e(tag, "Failed to fetch balance after spend", e)
+                                    }
+
                                     withContext(Dispatchers.Main) {
-                                        _state.update { s ->
+                                        _uiState.update { s ->
                                             s.copy(
                                                 messages   = s.messages.map { m ->
                                                     if (m.id == aiMessageId) m.copy(text = finalAnswer) else m
@@ -622,7 +687,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                                             speakResponse(finalAnswer)
                                         } catch (e: Exception) {
                                             Log.e(tag, "TTS failed", e)
-                                            _state.update {
+                                            _uiState.update {
                                                 it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
                                             }
                                         }
@@ -639,7 +704,7 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                 lastCrashTime = System.currentTimeMillis()
                 Log.e(tag, "Voice chat crash #$crashCount", e)
                 withContext(Dispatchers.Main) {
-                    _state.update {
+                    _uiState.update {
                         it.copy(
                             isThinking = false, // ✅ FIX: always cleared on error too
                             error      = when (e) {
@@ -658,18 +723,18 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             } finally {
                 // ✅ FIX: safety net — isThinking cleared even if onCleaned never fires
                 withContext(Dispatchers.Main) {
-                    _state.update { if (it.isThinking) it.copy(isThinking = false) else it }
+                    _uiState.update { if (it.isThinking) it.copy(isThinking = false) else it }
                 }
             }
         }
     }
 
     fun dismissCoinConfirmation() {
-        _state.update { it.copy(showCoinConfirmation = false, pendingMessage = null) }
+        _uiState.update { it.copy(showCoinConfirmation = false, pendingMessage = null) }
     }
 
     fun confirmAndSendMessage() {
-        val pending = _state.value.pendingMessage
+        val pending = _uiState.value.pendingMessage
         sendMessage(text = pending, confirmed = true)
     }
 
@@ -694,18 +759,18 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
             summaryDao.deleteSummary("krishna-conversation")
             voiceChatEngine.resetConversation()
             withContext(Dispatchers.Main) {
-                _state.update { it.copy(messages = emptyList()) }
+                _uiState.update { it.copy(messages = emptyList()) }
             }
         }
     }
 
     fun startListening() {
         stopAll()
-        _state.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", error = null, errorType = null) }
+        _uiState.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", error = null, errorType = null) }
         try {
             voiceManager.startListening(
                 onResult        = { result ->
-                    _state.update { it.copy(isListening = false, liveTranscript = "") }
+                    _uiState.update { it.copy(isListening = false, liveTranscript = "") }
                     if (result.isNotBlank()) sendMessage(
                         text        = result,
                         cachedVerse = currentCachedVerse,
@@ -713,28 +778,28 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 },
                 onPartialResult = { partial ->
-                    _state.update { it.copy(liveTranscript = partial) }
+                    _uiState.update { it.copy(liveTranscript = partial) }
                 },
                 onError         = { err ->
-                    _state.update { it.copy(isListening = false, error = err, errorType = VoiceChatErrorType.STT) }
+                    _uiState.update { it.copy(isListening = false, error = err, errorType = VoiceChatErrorType.STT) }
                 }
             )
         } catch (e: Exception) {
             Log.e(tag, "Failed to start listening", e)
-            _state.update { it.copy(isListening = false, error = "Failed to start voice input", errorType = VoiceChatErrorType.STT) }
+            _uiState.update { it.copy(isListening = false, error = "Failed to start voice input", errorType = VoiceChatErrorType.STT) }
         }
     }
 
     fun stopListening() {
         voiceManager.stopListening()
-        _state.update { it.copy(isListening = false) }
+        _uiState.update { it.copy(isListening = false) }
     }
 
     private fun speakResponse(text: String) {
         val cleaned = GitaPromptEngine.cleanForVoice(text)
-        _state.update { it.copy(isSpeaking = true) }
+        _uiState.update { it.copy(isSpeaking = true) }
         voiceManager.speak(cleaned, flush = true) {
-            _state.update { it.copy(isSpeaking = false) }
+            _uiState.update { it.copy(isSpeaking = false) }
         }
     }
 
@@ -742,10 +807,10 @@ class VoiceChatViewModel(application: Application) : AndroidViewModel(applicatio
         try { voiceChatEngine.stopResponse() } catch (_: Exception) {}
         try { voiceManager.stopSpeaking() }    catch (_: Exception) {}
         try { voiceManager.stopListening() }   catch (_: Exception) {}
-        _state.update { it.copy(isSpeaking = false, isListening = false, isThinking = false) }
+        _uiState.update { it.copy(isSpeaking = false, isListening = false, isThinking = false) }
     }
 
-    fun clearError()    { _state.update { it.copy(error = null, errorType = null) } }
+    fun clearError()    { _uiState.update { it.copy(error = null, errorType = null) } }
     fun stopSpeaking()  { stopAll() }
 
     // ─── Verse Context ────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.ui.LoadingScreen
 import com.aipoweredgita.app.viewmodel.QuizViewModel
@@ -25,7 +26,7 @@ import com.aipoweredgita.app.data.GitaVerse
 fun QuizScreen(
     modifier: Modifier = Modifier,
     onExitQuiz: () -> Unit = {}, // Add callback to navigate back to home
-    viewModel: com.aipoweredgita.app.viewmodel.QuizViewModel = viewModel()
+    viewModel: com.aipoweredgita.app.viewmodel.QuizViewModel = hiltViewModel()
 ) {
     val quizState by viewModel.quizState.collectAsState()
     val context = LocalContext.current
@@ -104,11 +105,13 @@ fun QuizScreen(
                 viewModel.submitOpenEndedAnswer(answerText)
             },
             onProceed = { wasCorrect ->
+                viewModel.confirmAnswerResult(wasCorrect)
                 if (!quizState.isQuizComplete) {
-                    viewModel.loadNextQuestion()
-                } else {
-                    // Quiz is complete, don't load next question
-                    // The completion dialog will be shown below
+                    if (quizState.totalQuestions >= quizState.maxQuestions) {
+                        viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.FinishQuiz)
+                    } else {
+                        viewModel.loadNextQuestion()
+                    }
                 }
             },
             vm = viewModel
@@ -121,6 +124,7 @@ fun QuizScreen(
             score = quizState.score,
             total = quizState.totalQuestions,
             coins = quizState.coinsEarned,
+            totalTimeSeconds = quizState.totalTimeSeconds,
             onExit = onExitQuiz,
             onRestart = { 
                 viewModel.restartQuiz() 

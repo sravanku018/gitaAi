@@ -50,11 +50,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.domain.model.VoiceChatEvent
+import com.aipoweredgita.app.domain.model.ChatMessage
+import com.aipoweredgita.app.domain.model.VoiceChatUiState
 import com.aipoweredgita.app.quiz.OrnamentRule
 import com.aipoweredgita.app.viewmodel.VoiceChatViewModel
-import com.aipoweredgita.app.viewmodel.ChatMessage
-import com.aipoweredgita.app.viewmodel.VoiceChatState
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.ui.components.AmbientOrbs
 import com.aipoweredgita.app.ui.components.GlassCard
@@ -114,7 +116,7 @@ fun VoiceStudioScreen(
     onNavigateToQuiz: () -> Unit = {},
     onNavigateToRead: () -> Unit = {},
     modifier: Modifier = Modifier,
-    voiceChatViewModel: VoiceChatViewModel = viewModel()
+    voiceChatViewModel: VoiceChatViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("voice_studio_prefs", android.content.Context.MODE_PRIVATE)
@@ -125,7 +127,7 @@ fun VoiceStudioScreen(
     }
 
     val colors = getVoiceStudioColors()
-    val state by voiceChatViewModel.state.collectAsState()
+    val state by voiceChatViewModel.uiState.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize().background(colors.AppBg)) {
         if (colors.IsDark) {
@@ -155,11 +157,11 @@ fun VoiceStudioScreen(
 
 @Composable
 private fun VoiceChatTab(
-    voiceChatViewModel: VoiceChatViewModel = viewModel(),
+    voiceChatViewModel: VoiceChatViewModel = hiltViewModel(),
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
-    val state by voiceChatViewModel.state.collectAsState()
+    val state by voiceChatViewModel.uiState.collectAsStateWithLifecycle()
     VoiceChatContent(
         state = state,
         onSendMessage          = { voiceChatViewModel.sendMessage(it) },
@@ -172,7 +174,10 @@ private fun VoiceChatTab(
         onClearError           = { voiceChatViewModel.clearError() },
         onRefreshModelStatus   = { voiceChatViewModel.refreshModelStatus() },
         onSetLanguageMode      = { voiceChatViewModel.setLanguageMode(it) },
-        onUpdateSelectedModel  = { com.aipoweredgita.app.ml.ModelAvailability.getInstance(context).updateSelectedModel(it) },
+        onUpdateSelectedModel  = {
+            com.aipoweredgita.app.ml.ModelAvailability.getInstance(context).updateSelectedModel(it)
+            voiceChatViewModel.refreshModelStatus()
+        },
         onConfirmSend          = { voiceChatViewModel.confirmAndSendMessage() },
         onDismissConfirmation  = { voiceChatViewModel.dismissCoinConfirmation() },
         onExit                 = onExit
@@ -184,7 +189,7 @@ private fun VoiceChatTab(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VoiceChatContent(
-    state: VoiceChatState,
+    state: VoiceChatUiState,
     onSendMessage: (String) -> Unit,
     onSendCurrentMessage: () -> Unit,
     onUpdateUserInput: (String) -> Unit,
@@ -206,7 +211,7 @@ private fun VoiceChatContent(
     val isBusy = state.isThinking || state.isSpeaking || state.isListening || !canInteract
     val colors = getVoiceStudioColors()
     var showModelMenu by remember { mutableStateOf(false) }
-    val modelOptions = listOf("Auto (Recommended)", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
+    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
 
 
 
@@ -282,7 +287,7 @@ private fun VoiceChatContent(
                 Text(
                     text = "Active Model: ${state.currentModelName}",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = if (state.currentModelName.contains("Groq", ignoreCase = true))
+                        color = if (state.currentModelName.contains("NVIDIA", ignoreCase = true) || state.currentModelName.contains("Groq", ignoreCase = true))
                             colors.RevolvingYellow
                         else
                             colors.TextMuted
@@ -320,12 +325,20 @@ private fun VoiceChatContent(
                             else -> true // Auto/Groq are always "available"
                         }
                         
-                        DropdownMenuItem(
+                    DropdownMenuItem(
                             text = { 
                                 Column {
                                     Text(option, style = MaterialTheme.typography.bodyMedium, color = colors.TextPrimary)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (state.currentModelName != "Unknown" && option.contains(state.currentModelName.split("-")[0], ignoreCase = true)) {
+                                        val isActive = when {
+                                            option.contains("NVIDIA") && state.currentModelName.contains("NVIDIA", ignoreCase = true) -> true
+                                            option.contains("Groq") && state.currentModelName.contains("Groq", ignoreCase = true) -> true
+                                            option.contains("Qwen3") && state.currentModelName.contains("Qwen3", ignoreCase = true) -> true
+                                            option.contains("Gemma") && state.currentModelName.contains("Gemma", ignoreCase = true) -> true
+                                            option.contains("Auto") && !state.currentModelName.contains("NVIDIA", ignoreCase = true) && !state.currentModelName.contains("Groq", ignoreCase = true) && !state.currentModelName.contains("Qwen3", ignoreCase = true) && !state.currentModelName.contains("Gemma", ignoreCase = true) -> true
+                                            else -> false
+                                        }
+                                        if (isActive) {
                                             Text("Active", style = MaterialTheme.typography.labelSmall, color = colors.SpeakGreen)
                                             Spacer(Modifier.width(8.dp))
                                         }
@@ -985,7 +998,7 @@ fun PreviewVoiceStudioIdle() {
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
-                state = VoiceChatState(isLlmReady = true),
+                state = VoiceChatUiState(isLlmReady = true),
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -1009,7 +1022,7 @@ fun PreviewVoiceStudioChat() {
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
-                state = VoiceChatState(messages = msgs, isLlmReady = true),
+                state = VoiceChatUiState(messages = msgs, isLlmReady = true),
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -1029,7 +1042,7 @@ fun PreviewVoiceStudioListening() {
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
-                state = VoiceChatState(isLlmReady = true, isListening = true),
+                state = VoiceChatUiState(isLlmReady = true, isListening = true),
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
@@ -1049,7 +1062,7 @@ fun PreviewVoiceStudioThinking() {
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
             VoiceChatContent(
-                state = VoiceChatState(
+                state = VoiceChatUiState(
                     messages = listOf(ChatMessage(text = "What is dharma?", isUser = true)),
                     isLlmReady = true, isThinking = true
                 ),

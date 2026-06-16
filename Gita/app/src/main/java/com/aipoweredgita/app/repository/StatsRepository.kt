@@ -21,6 +21,13 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -30,54 +37,92 @@ class StatsRepository(
     private val appContext: Context,
     private val pendingSyncEventDao: PendingSyncEventDao = GitaDatabase.getDatabase(appContext).pendingSyncEventDao()
 ) {
-    companion object {
-        @Volatile
-        private var lastSyncedUserId: String? = null
-        private val syncLock = Any()
-    }
 
     /** Observable network state for UI feedback. */
     private val _networkState = MutableStateFlow<NetworkState>(NetworkState.Idle)
     val networkState: StateFlow<NetworkState> = _networkState.asStateFlow()
 
     private val authPrefs by lazy { AuthPreferences.getInstance(appContext) }
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val _coinBalance = MutableStateFlow(authPrefs.localCoins)
-    val coinBalance: StateFlow<Int> = _coinBalance.asStateFlow()
+    val coinBalance: StateFlow<Int> = userStatsDao.getUserStats()
+        .map { it?.krishnaCoins ?: 0 }
+        .stateIn(coroutineScope, SharingStarted.Eagerly, 0)
 
-    private val prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-        if (key == "local_coins") {
-            _coinBalance.value = prefs.getInt("local_coins", 0)
-        }
+    /**
+     * The single source of truth for mapping a server Balance response onto the local UserStats entity,
+     * preserving any local-only fields (like totalTimeSpentSeconds, userName, etc.)
+     */
+    private fun com.aipoweredgita.app.network.CoinBalanceResponse.updateEntity(
+        current: com.aipoweredgita.app.database.UserStats,
+        userId: String
+    ): com.aipoweredgita.app.database.UserStats {
+        return current.copy(
+            userId = userId,
+            krishnaCoins = krishna_coins,
+            daysActive = days_active,
+            currentStreak = current_streak,
+            longestStreak = longest_streak,
+            totalQuizzesTaken = total_quizzes_taken,
+            totalQuestionsAnswered = total_questions_answered,
+            totalCorrectAnswers = total_correct_answers,
+            bestScore = best_score,
+            bestScoreOutOf = best_score_out_of,
+            versesRead = verses_read,
+            chaptersCompleted = chapters_completed,
+            lastActiveDate = last_activity_date ?: current.lastActiveDate,
+            serverUpdatedAt = updated_at ?: current.serverUpdatedAt
+        )
     }
 
-    init {
-        appContext.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
-            .registerOnSharedPreferenceChangeListener(prefChangeListener)
+    /**
+     * Unified sync function that acts as the single source of truth for pulling state from the server.
+     * Uses a staleness guard (serverUpdatedAt) to prevent slow background syncs from clobbering fresh optimistic updates.
+     */
+    suspend fun refreshUserState(uid: String) {
+        val token = authPrefs.token ?: return
+        try {
+            val balance = CoinApi.retrofitService.getBalance(uid, "Bearer $token")
+            val currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
+
+            // Server timestamp guard against stale overwrites
+            val serverUpdated = balance.updated_at
+            if (serverUpdated != null && serverUpdated.isNotEmpty() && currentStats.serverUpdatedAt.isNotEmpty()) {
+                if (serverUpdated < currentStats.serverUpdatedAt) {
+                    Log.w("Sync", "Skipping stale server data: ${serverUpdated} < ${currentStats.serverUpdatedAt}")
+                    return
+                }
+            }
+
+            // Map and save entity
+            val updatedStats = balance.updateEntity(currentStats, uid)
+            userStatsDao.insertStats(updatedStats) // Upsert
+
+            // Sync daily UI trackers
+            if (balance.checkin_day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
+            }
+            if (balance.share_day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
+            }
+            
+            _networkState.value = NetworkState.Success
+        } catch (e: Exception) {
+            Log.e("Sync", "Failed refreshUserState: ${e.message}")
+            _networkState.value = NetworkState.Error("sync", e.message ?: "Sync failed")
+        }
     }
 
     /** Ensures the user exists on the server before any coin API call. */
     private suspend fun ensureUserSynced() {
         val uid = userId() ?: return
-        synchronized(syncLock) {
-            if (lastSyncedUserId == uid) return
-        }
 
         if (authPrefs.isGuestUser) {
-            synchronized(syncLock) { lastSyncedUserId = uid }
             return
         }
 
-        try {
-            val balance = CoinApi.retrofitService.getBalance(uid)
-            if (balance.krishna_coins >= 0) {
-                synchronized(syncLock) { lastSyncedUserId = uid }
-                return
-            }
-        } catch (_: Exception) { }
-
+        refreshUserState(uid)
         syncUserWithCloud()
-        synchronized(syncLock) { lastSyncedUserId = uid }
     }
 
     private suspend fun userId(): String? = userStatsDao.getUserStatsOnce()?.userId?.takeIf { it.isNotEmpty() }
@@ -85,13 +130,23 @@ class StatsRepository(
     suspend fun trackQuizCompletion(
         score: Int,
         totalQuestions: Int,
-        segmentCorrectMap: Map<String, Int> = emptyMap()
+        segmentCorrectMap: Map<String, Int> = emptyMap(),
+        quizType: String = "general"
     ): Int {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(totalQuestions)
         userStatsDao.addCorrectAnswers(score)
 
+        // Track quiz time in daily activity
+        val today = LocalDate.now().toString()
+        dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+        dailyActivityDao?.addQuizSeconds(today, 60) // estimate 1 min per quiz
+
+        // Update streak BEFORE coin calculation so reward reflects current streak
+        updateStreak()
+
+        // Re-read stats to get the updated streak
         val stats = userStatsDao.getUserStatsOnce()
         stats?.let {
             val currentBestPercentage = if (it.bestScoreOutOf > 0)
@@ -121,7 +176,7 @@ class StatsRepository(
 
         val coins = if (isGuest) {
             if (result.totalCoins > 0) {
-                authPrefs.addLocalCoins(result.totalCoins)
+                userStatsDao.addKrishnaCoins(result.totalCoins)
                 CoinTransactionLogger.log(appContext, result.totalCoins, "${result.breakdown} (guest)")
             }
             result.totalCoins
@@ -137,17 +192,31 @@ class StatsRepository(
                                 "score" to score,
                                 "totalQuestions" to totalQuestions,
                                 "streakDays" to currentStreak,
-                                "checkinDay" to checkinDay
+                                "checkinDay" to checkinDay,
+                                "quizType" to quizType
                             )
                         )
                     )
-                    authPrefs.localCoins = response.total_coins
+                    userStatsDao.updateKrishnaCoins(response.total_coins)
                     CoinTransactionLogger.log(appContext, response.awarded, result.breakdown)
+                    // Record quiz attempt on server
+                    try {
+                        CoinApi.retrofitService.recordQuizAttempt(
+                            com.aipoweredgita.app.network.QuizAttemptRequest(
+                                user_id = uid,
+                                score = score,
+                                total_questions = totalQuestions,
+                                quiz_type = quizType,
+                                time_spent_seconds = 0,
+                                coins_earned = response.awarded
+                            )
+                        )
+                    } catch (_: Exception) {}
                     response.awarded
                 } catch (e: Exception) {
                     Log.e("StatsRepository", "Failed to award coins: ${e.message}")
                     val fallback = result.totalCoins
-                    authPrefs.addLocalCoins(fallback)
+                    userStatsDao.addKrishnaCoins(fallback)
                     CoinTransactionLogger.log(appContext, fallback, "${result.breakdown} (offline)")
 
                     try {
@@ -156,7 +225,8 @@ class StatsRepository(
                             "totalQuestions" to totalQuestions,
                             "accuracy" to accuracy,
                             "streakDays" to currentStreak,
-                            "checkinDay" to checkinDay
+                            "checkinDay" to checkinDay,
+                            "quizType" to quizType
                         )
                         val payloadString = Gson().toJson(payloadMap)
                         pendingSyncEventDao.insert(
@@ -164,7 +234,8 @@ class StatsRepository(
                                 userId = uid,
                                 eventType = "QUIZ",
                                 payload = payloadString,
-                                coinsToAdjust = fallback
+                                coinsToAdjust = fallback,
+                                idempotencyKey = "quiz_${uid}_${System.currentTimeMillis()}"
                             )
                         )
                         SyncWorker.schedule(appContext)
@@ -177,12 +248,14 @@ class StatsRepository(
             } ?: 0
         }
 
-        updateStreak()
         return coins
     }
 
     suspend fun trackVerseRead() {
         userStatsDao.incrementVersesRead()
+        val today = LocalDate.now().toString()
+        dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+        dailyActivityDao?.addVerses(today, 1)
         updateStreak()
     }
 
@@ -192,6 +265,16 @@ class StatsRepository(
             ModeType.QUIZ -> userStatsDao.addQuizModeTime(seconds)
             ModeType.VOICE -> userStatsDao.addVoiceStudioTime(seconds)
         }
+
+        // Also update daily_activity table for calendar heat map
+        val today = LocalDate.now().toString()
+        dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+        when (mode) {
+            ModeType.NORMAL -> dailyActivityDao?.addNormalSeconds(today, seconds)
+            ModeType.QUIZ -> dailyActivityDao?.addQuizSeconds(today, seconds)
+            ModeType.VOICE -> dailyActivityDao?.addVoiceStudioSeconds(today, seconds)
+        }
+
         updateStreak()
     }
 
@@ -223,6 +306,25 @@ class StatsRepository(
                 userStatsDao.updateDaysActive(currentStats.daysActive + 1)
             }
         }
+
+        // Continually back up monotonic stats (quizzes taken, verses read) to the server
+        // We use a PendingSyncEvent instead of a direct coroutine to ensure this runs 
+        // AFTER the current SQLite transaction completely commits.
+        try {
+            val payloadString = "{}" // SyncWorker now reads fresh stats directly from DB
+            pendingSyncEventDao.insert(
+                com.aipoweredgita.app.database.PendingSyncEvent(
+                    userId = currentStats.userId,
+                    eventType = "STATS_SYNC",
+                    payload = payloadString,
+                    coinsToAdjust = 0,
+                    idempotencyKey = "stats_sync_${currentStats.userId}_${System.currentTimeMillis()}"
+                )
+            )
+            com.aipoweredgita.app.services.SyncWorker.schedule(appContext)
+        } catch (dbEx: Exception) {
+            android.util.Log.e("StatsRepository", "Failed to queue stats sync event: ${dbEx.message}")
+        }
     }
 
     suspend fun trackSlokaShared(chapter: Int? = null, verse: Int? = null): Int {
@@ -242,7 +344,7 @@ class StatsRepository(
         if (fallbackCoins <= 0) return 0
 
         val coinsAwarded = if (isGuest) {
-            authPrefs.addLocalCoins(fallbackCoins)
+            userStatsDao.addKrishnaCoins(fallbackCoins)
             CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share")
             fallbackCoins
         } else {
@@ -254,17 +356,17 @@ class StatsRepository(
                     tracker.isShareSynced = true
                     val totalAwarded = response.coins_awarded + response.weekly_bonus
                     if (totalAwarded > 0) {
-                        authPrefs.addLocalCoins(totalAwarded)
+                        userStatsDao.addKrishnaCoins(totalAwarded)
                         CoinTransactionLogger.log(appContext, totalAwarded, "Daily sloka share")
                         totalAwarded
                     } else {
-                        authPrefs.addLocalCoins(fallbackCoins)
+                        userStatsDao.addKrishnaCoins(fallbackCoins)
                         CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share")
                         fallbackCoins
                     }
                 } catch (e: Exception) {
                     Log.e("StatsRepository", "Failed to track sloka share: ${e.message}")
-                    authPrefs.addLocalCoins(fallbackCoins)
+                    userStatsDao.addKrishnaCoins(fallbackCoins)
                     CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (offline)")
                     
                     try {
@@ -277,14 +379,15 @@ class StatsRepository(
                                 "slokaId" to slokaId
                             )
                             val payloadString = Gson().toJson(payloadMap)
-                            pendingSyncEventDao.insert(
-                                PendingSyncEvent(
-                                    userId = uid,
-                                    eventType = "SHARE",
-                                    payload = payloadString,
-                                    coinsToAdjust = fallbackCoins
-                                )
+                        pendingSyncEventDao.insert(
+                            PendingSyncEvent(
+                                userId = uid,
+                                eventType = "SHARE",
+                                payload = payloadString,
+                                coinsToAdjust = fallbackCoins,
+                                idempotencyKey = "share_${uid}_${System.currentTimeMillis()}"
                             )
+                        )
                             SyncWorker.schedule(appContext)
                         }
                     } catch (dbEx: Exception) {
@@ -313,18 +416,18 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         if (isGuest) {
-            authPrefs.addLocalCoins(15)
+            userStatsDao.addKrishnaCoins(15)
             CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)")
         } else {
             ensureUserSynced()
             userId()?.let { uid ->
                 try {
                     val response = CoinApi.retrofitService.awardCoins(CoinAwardRequest(uid, "chapter_completion"))
-                    authPrefs.localCoins = response.total_coins
+                    userStatsDao.updateKrishnaCoins(response.total_coins)
                     CoinTransactionLogger.log(appContext, response.awarded, "Chapter $chapterNo Completion")
                 } catch (e: Exception) {
                     Log.e("StatsRepository", "Failed to award chapter coins: ${e.message}")
-                    authPrefs.addLocalCoins(15)
+                    userStatsDao.addKrishnaCoins(15)
                     CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (offline)")
 
                     try {
@@ -335,7 +438,8 @@ class StatsRepository(
                                 userId = uid,
                                 eventType = "CHAPTER",
                                 payload = payloadString,
-                                coinsToAdjust = 15
+                                coinsToAdjust = 15,
+                                idempotencyKey = "chapter_${chapterNo}_${uid}_${System.currentTimeMillis()}"
                             )
                         )
                         SyncWorker.schedule(appContext)
@@ -366,7 +470,11 @@ class StatsRepository(
                     Log.w("StatsRepository", "Guest creation failed (will sync on login): ${guestError.message}")
                 }
             } else {
-                CoinApi.retrofitService.createUser(CreateUserRequest(uid, stats.userName.ifEmpty { "Gita Seeker" }, ""))
+                val response = CoinApi.retrofitService.createUser(CreateUserRequest(uid, stats.userName.ifEmpty { "Gita Seeker" }, ""))
+                if (response.token != null && authPrefs.token == null) {
+                    authPrefs.saveLoginState(userId = uid, loginMethod = "device", token = response.token)
+                    Log.d("StatsRepository", "Upgraded old user $uid with new backend session token")
+                }
                 Log.d("StatsRepository", "User $uid successfully synced with cloud.")
             }
         } catch (e: Exception) {
@@ -379,27 +487,46 @@ class StatsRepository(
         ensureUserSynced()
         val uid = userId() ?: return
         try {
-            CoinApi.retrofitService.checkin(mapOf("user_id" to uid))
+            val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
+            val response = CoinApi.retrofitService.checkin(mapOf(
+                "user_id" to uid,
+                "client_date" to localDate
+            ))
+            if (response.duplicate == true) {
+                Log.d("StatsRepository", "Checkin already synced (duplicate)")
+            } else {
+                Log.d("StatsRepository", "Checkin synced. Coins awarded: ${response.coins_awarded}")
+            }
+            refreshUserState(uid)
+            DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
+        } catch (e: retrofit2.HttpException) {
+            // 400 = "Already checked in today" - that's OK, mark as synced
+            Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: Exception) {
-            Log.e("StatsRepository", "Failed to sync checkin to cloud: ${e.message}")
-            try {
-                val hasPending = pendingSyncEventDao.getPendingEvents(uid).any { it.eventType == "CHECKIN" }
-                if (!hasPending) {
-                    val finalCoins = if (coinsToAdjust > 0) coinsToAdjust else DailyRewardsTracker.getInstance(appContext).getCurrentCheckinDay()
-                    pendingSyncEventDao.insert(
-                        PendingSyncEvent(
-                            userId = uid,
-                            eventType = "CHECKIN",
-                            payload = "{}",
-                            coinsToAdjust = finalCoins
-                        )
+            Log.e("StatsRepository", "Failed to sync checkin: ${e.message}")
+            queueCheckinSync(uid, coinsToAdjust)
+        }
+    }
+
+    private suspend fun queueCheckinSync(uid: String, coinsToAdjust: Int) {
+        try {
+            val hasPending = pendingSyncEventDao.getPendingEvents(uid).any { it.eventType == "CHECKIN" }
+            if (!hasPending) {
+                val finalCoins = if (coinsToAdjust > 0) coinsToAdjust else DailyRewardsTracker.getInstance(appContext).getCurrentCheckinDay()
+                pendingSyncEventDao.insert(
+                    PendingSyncEvent(
+                        userId = uid,
+                        eventType = "CHECKIN",
+                        payload = "{}",
+                        coinsToAdjust = finalCoins,
+                        idempotencyKey = "checkin_${uid}_${System.currentTimeMillis()}"
                     )
-                    SyncWorker.schedule(appContext)
-                }
-            } catch (dbEx: Exception) {
-                Log.e("StatsRepository", "Failed to queue checkin sync event: ${dbEx.message}")
+                )
+                SyncWorker.schedule(appContext)
             }
+        } catch (dbEx: Exception) {
+            Log.e("StatsRepository", "Failed to queue checkin sync: ${dbEx.message}")
         }
     }
 
@@ -408,34 +535,50 @@ class StatsRepository(
         ensureUserSynced()
         val uid = userId() ?: return
         try {
-            CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync"))
+            val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
+            val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync", client_date = localDate))
+            if (response.duplicate == true) {
+                Log.d("StatsRepository", "Share already synced (duplicate)")
+            } else {
+                Log.d("StatsRepository", "Share synced. Coins awarded: ${response.coins_awarded}")
+            }
+            refreshUserState(uid)
+            DailyRewardsTracker.getInstance(appContext).isShareSynced = true
+        } catch (e: retrofit2.HttpException) {
+            // 400 = "Already shared today" - that's OK, mark as synced
+            Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: Exception) {
-            Log.e("StatsRepository", "Failed to sync share to cloud: ${e.message}")
-            try {
-                val hasPending = pendingSyncEventDao.getPendingEvents(uid).any { it.eventType == "SHARE" }
-                if (!hasPending) {
-                    val finalCoins = if (coinsToAdjust > 0) coinsToAdjust else DailyRewardsTracker.getInstance(appContext).getShareState().reward
-                    val payloadMap = mapOf("slokaId" to "local_sync")
-                    val payloadString = Gson().toJson(payloadMap)
-                    pendingSyncEventDao.insert(
-                        PendingSyncEvent(
-                            userId = uid,
-                            eventType = "SHARE",
-                            payload = payloadString,
-                            coinsToAdjust = finalCoins
-                        )
+            Log.e("StatsRepository", "Failed to sync share: ${e.message}")
+            queueShareSync(uid, coinsToAdjust)
+        }
+    }
+
+    private suspend fun queueShareSync(uid: String, coinsToAdjust: Int) {
+        try {
+            val hasPending = pendingSyncEventDao.getPendingEvents(uid).any { it.eventType == "SHARE" }
+            if (!hasPending) {
+                val finalCoins = if (coinsToAdjust > 0) coinsToAdjust else DailyRewardsTracker.getInstance(appContext).getShareState().reward
+                val payloadMap = mapOf("slokaId" to "local_sync")
+                val payloadString = Gson().toJson(payloadMap)
+                pendingSyncEventDao.insert(
+                    PendingSyncEvent(
+                        userId = uid,
+                        eventType = "SHARE",
+                        payload = payloadString,
+                        coinsToAdjust = finalCoins,
+                        idempotencyKey = "share_sync_${uid}_${System.currentTimeMillis()}"
                     )
-                    SyncWorker.schedule(appContext)
-                }
-            } catch (dbEx: Exception) {
-                Log.e("StatsRepository", "Failed to queue share sync event: ${dbEx.message}")
+                )
+                SyncWorker.schedule(appContext)
             }
+        } catch (dbEx: Exception) {
+            Log.e("StatsRepository", "Failed to queue share sync: ${dbEx.message}")
         }
     }
 
     suspend fun claimDailyReward(coins: Int, description: String) {
-        authPrefs.addLocalCoins(coins)
+        userStatsDao.addKrishnaCoins(coins)
         CoinTransactionLogger.log(appContext, coins, description)
 
         if (!authPrefs.isGuestUser) {
@@ -444,7 +587,7 @@ class StatsRepository(
     }
 
     suspend fun claimShareReward(coins: Int, description: String) {
-        authPrefs.addLocalCoins(coins)
+        userStatsDao.addKrishnaCoins(coins)
         CoinTransactionLogger.log(appContext, coins, description)
 
         if (!authPrefs.isGuestUser) {
@@ -456,68 +599,204 @@ class StatsRepository(
         if (authPrefs.isGuestUser) {
             // Award 50 coin welcome bonus to new guests (once only)
             if (!authPrefs.guestWelcomeAwarded) {
-                authPrefs.localCoins = 50
+                userStatsDao.updateKrishnaCoins(50)
                 authPrefs.guestWelcomeAwarded = true
                 CoinTransactionLogger.log(appContext, 50, "Welcome bonus (guest)")
             }
-            return authPrefs.localCoins
+            return coinBalance.value
         }
 
-        val uid = userId() ?: return authPrefs.localCoins
+        val uid = userId() ?: return coinBalance.value
+        val token = authPrefs.token ?: run {
+            Log.w("StatsRepository", "No auth token — returning local balance")
+            return coinBalance.value
+        }
+
         _networkState.value = NetworkState.Loading("balance")
         return try {
-            val serverCoins = CoinApi.retrofitService.getBalance(uid).krishna_coins
+            val balanceResponse = CoinApi.retrofitService.getBalance(
+                userId = uid,
+                token  = "Bearer $token"
+            )
+            val serverCoins = balanceResponse.krishna_coins
             val pendingEvents = pendingSyncEventDao.getPendingEvents(uid)
             val pendingCoinsAdjustment = pendingEvents.sumOf { it.coinsToAdjust }
             val adjustedBalance = serverCoins + pendingCoinsAdjustment
-            authPrefs.localCoins = adjustedBalance
+            userStatsDao.updateKrishnaCoins(adjustedBalance)
+            
+            val currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
+            
+            // Server timestamp guard against stale overwrites
+            val serverUpdated = balanceResponse.updated_at
+            if (serverUpdated != null && serverUpdated.isNotEmpty() && currentStats.serverUpdatedAt.isNotEmpty()) {
+                if (serverUpdated < currentStats.serverUpdatedAt) {
+                    Log.w("Sync", "Skipping stale server data in getBalance: ${serverUpdated} < ${currentStats.serverUpdatedAt}")
+                    _networkState.value = NetworkState.Success
+                    return adjustedBalance
+                }
+            }
+
+            val updatedStats = balanceResponse.updateEntity(currentStats, uid).copy(krishnaCoins = adjustedBalance)
+            userStatsDao.insertStats(updatedStats)
+
+            // Sync daily UI trackers from server (server is source of truth)
+            if (balanceResponse.checkin_day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncWithServer(balanceResponse.checkin_day, balanceResponse.checkin_week, balanceResponse.last_checkin)
+            }
+            if (balanceResponse.share_day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balanceResponse.share_day, balanceResponse.share_week, balanceResponse.last_share)
+            }
+            
             _networkState.value = NetworkState.Success
             adjustedBalance
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to get balance: ${e.message}")
             _networkState.value = NetworkState.Error("balance", e.message ?: "Network error")
-            authPrefs.localCoins
+            coinBalance.value
+        }
+    }
+
+    suspend fun syncStatsToServer() {
+        if (authPrefs.isGuestUser) return
+        val uid = userId() ?: return
+        val token = authPrefs.token ?: return
+        
+        val localStats = userStatsDao.getUserStatsOnce() ?: return
+        try {
+            val response = CoinApi.retrofitService.syncUserStats(
+                token = "Bearer $token",
+                request = com.aipoweredgita.app.network.UserStatsSyncRequest(
+                    user_id = uid,
+                    current_streak = localStats.currentStreak,
+                    longest_streak = localStats.longestStreak,
+                    total_quizzes_taken = localStats.totalQuizzesTaken,
+                    total_questions_answered = localStats.totalQuestionsAnswered,
+                    total_correct_answers = localStats.totalCorrectAnswers,
+                    verses_read = localStats.versesRead,
+                    chapters_completed = localStats.chaptersCompleted,
+                    last_activity_date = localStats.lastActiveDate
+                )
+            )
+            if (response.success && response.stats != null) {
+                userStatsDao.syncRemoteStats(
+                    currentStreak = response.stats.current_streak,
+                    longestStreak = response.stats.longest_streak,
+                    totalQuizzesTaken = response.stats.total_quizzes_taken,
+                    totalQuestionsAnswered = response.stats.total_questions_answered,
+                    versesRead = response.stats.verses_read,
+                    chaptersCompleted = response.stats.chapters_completed,
+                    daysActive = localStats.daysActive,
+                    lastActiveDate = response.stats.last_activity_date.ifEmpty { localStats.lastActiveDate }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("StatsRepository", "Failed to sync stats to server: ${e.message}")
+            // Queue for retry via PendingSyncEvent
+            try {
+                val payloadMap = mapOf(
+                    "current_streak" to localStats.currentStreak,
+                    "longest_streak" to localStats.longestStreak,
+                    "total_quizzes_taken" to localStats.totalQuizzesTaken,
+                    "total_questions_answered" to localStats.totalQuestionsAnswered,
+                    "verses_read" to localStats.versesRead,
+                    "chapters_completed" to localStats.chaptersCompleted,
+                    "last_activity_date" to localStats.lastActiveDate
+                )
+                val payloadString = Gson().toJson(payloadMap)
+                pendingSyncEventDao.insert(
+                    PendingSyncEvent(
+                        userId = uid,
+                        eventType = "STATS_SYNC",
+                        payload = payloadString,
+                        coinsToAdjust = 0,
+                        idempotencyKey = "stats_sync_${uid}_${System.currentTimeMillis()}"
+                    )
+                )
+                SyncWorker.schedule(appContext)
+            } catch (dbEx: Exception) {
+                Log.e("StatsRepository", "Failed to queue stats sync event: ${dbEx.message}")
+            }
         }
     }
 
     suspend fun spendCoins(question: String): Boolean {
         val isGuest = authPrefs.isGuestUser
+        // Use question hash as idempotency key to prevent duplicate spends
+        val idempotencyKey = "spend_${userId() ?: "guest"}_${question.hashCode()}"
 
         if (isGuest) {
-            if (authPrefs.localCoins < 10) return false
-            authPrefs.addLocalCoins(-10)
-            CoinTransactionLogger.log(appContext, -10, "Asked question: $question")
+            // Dynamic pricing based on question length (matches backend voice_chat_rules)
+            val cost = when {
+                question.length <= 50 -> 2   // Short
+                question.length <= 150 -> 3  // Medium
+                else -> 5                    // Long
+            }
+            
+            if (coinBalance.value < cost) {
+                Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
+                return false
+            }
+            userStatsDao.addKrishnaCoins(-cost)
+            CoinTransactionLogger.log(appContext, -cost, "Asked question: $question")
+            Log.d("StatsRepository", "Guest spend: -$cost coins (${question.length} chars)")
             return true
         }
 
         ensureUserSynced()
         val uid = userId() ?: return false
         _networkState.value = NetworkState.Loading("spend")
+        
+        Log.d("StatsRepository", "Attempting to spend coins for user: $uid, question: ${question.take(50)}...")
+        
         try {
-            val response = CoinApi.retrofitService.spendCoins(CoinSpendRequest(uid, question))
-            authPrefs.localCoins = response.remaining_balance
+            val response = CoinApi.retrofitService.spendCoins(
+                CoinSpendRequest(uid, question, idempotencyKey)
+            )
+            
+            if (response.duplicate == true) {
+                Log.w("StatsRepository", "Duplicate spend detected, server remaining: ${response.remaining_balance}")
+                userStatsDao.updateKrishnaCoins(response.remaining_balance)
+                _networkState.value = NetworkState.Success
+                return true
+            }
+            
+            Log.d("StatsRepository", "Spend successful: ${response.spent} coins, remaining: ${response.remaining_balance}")
+            userStatsDao.updateKrishnaCoins(response.remaining_balance)
             _networkState.value = NetworkState.Success
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to spend coins: ${e.message}")
             _networkState.value = NetworkState.Error("spend", e.message ?: "Network error")
-            if (authPrefs.localCoins < 10) return false
-            authPrefs.addLocalCoins(-10)
-            CoinTransactionLogger.log(appContext, -10, "Asked question: $question (offline)")
+
+            // FIX: use same pricing as backend voice_chat_rules (not hardcoded -10)
+            val offlineCost = when {
+                question.length <= 50  -> 2
+                question.length <= 150 -> 3
+                else                   -> 5
+            }
+
+            if (coinBalance.value < offlineCost) {
+                Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $offlineCost")
+                return false
+            }
+
+            userStatsDao.addKrishnaCoins(-offlineCost)
+            CoinTransactionLogger.log(appContext, -offlineCost, "Asked question: $question (offline)")
+            Log.d("StatsRepository", "Deducted $offlineCost coins locally (offline), queuing for sync")
 
             try {
-                val payloadMap = mapOf("question" to question)
+                val payloadMap   = mapOf("question" to question)
                 val payloadString = Gson().toJson(payloadMap)
-                pendingSyncEventDao.insert(
-                    PendingSyncEvent(
-                        userId = uid,
-                        eventType = "SPEND",
-                        payload = payloadString,
-                        coinsToAdjust = -10
-                    )
+                val event = PendingSyncEvent(
+                    userId           = uid,
+                    eventType        = "SPEND",
+                    payload          = payloadString,
+                    coinsToAdjust    = -offlineCost,   // FIX: was -10
+                    idempotencyKey   = idempotencyKey
                 )
+                pendingSyncEventDao.insert(event)
                 SyncWorker.schedule(appContext)
             } catch (dbEx: Exception) {
-                Log.e("StatsRepository", "Failed to queue spend sync event: ${dbEx.message}")
+                Log.e("StatsRepository", "Failed to queue spend sync event: ${dbEx.message}", dbEx)
             }
         }
         return true

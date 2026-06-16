@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.quiz.OrnamentRule
 import com.aipoweredgita.app.ui.components.AmbientOrbs
 import com.aipoweredgita.app.ui.components.GlassCard
@@ -45,7 +46,7 @@ private val BorderHi      = Color(0x24FFFFFF)   // 14 % white
 @Composable
 fun ProfileScreen(
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = viewModel(),
+    viewModel: ProfileViewModel = hiltViewModel(),
     onNavigateToQuizStats: () -> Unit = {},
     isDarkTheme: Boolean = false,
     onThemeToggle: (Boolean) -> Unit = {},

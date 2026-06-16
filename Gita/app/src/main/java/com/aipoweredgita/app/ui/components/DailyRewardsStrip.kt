@@ -39,7 +39,6 @@ fun DailyRewardsStrip(
     val dailyState = remember(coinBalance) { tracker.getDailyState() }
     val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
     var claimedDay by remember(coinBalance) { mutableStateOf(dailyState.todayClaimed) }
-    var claimedWeek by remember(coinBalance) { mutableStateOf(weeklyState.claimed) }
     var claimedCount by remember(coinBalance) { mutableIntStateOf(if (dailyState.todayClaimed) dailyState.day else dailyState.day - 1) }
     var weekCompleted by remember(coinBalance) { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
     var dayBonusMessage by remember { mutableStateOf<String?>(null) }
@@ -103,13 +102,11 @@ fun DailyRewardsStrip(
                                 if (d == 7) {
                                     weekCompleted = true
                                     val bonus = tracker.claimDay7BonusIfEligible()
-                                    val wk = tracker.claimWeekly()
-                                    if (wk > 0) claimedWeek = true
-                                    val total = coins + bonus + wk
+                                    val total = coins + bonus + weeklyState.reward
                                     val desc = buildString {
                                         append("Day 7 check-in")
                                         if (bonus > 0) append(" + 7-day bonus")
-                                        if (wk > 0) append(" + Week ${weeklyState.week} bonus")
+                                        append(" + Week ${weeklyState.week} bonus")
                                         append(" = $total coins")
                                     }
                                     onEarnCoins(total, desc)
@@ -151,32 +148,32 @@ fun DailyRewardsStrip(
 
         // ─── Weekly Bonus — auto-claimed with day 7 ────────────────────
         val weekBg by animateColorAsState(
-            targetValue = if (claimedWeek) Color(0xFF4CAF50).copy(alpha = 0.08f) else bg,
+            targetValue = if (weekCompleted) Color(0xFF4CAF50).copy(alpha = 0.08f) else bg,
             animationSpec = springColor, label = "week_bg"
         )
         Row(
             modifier = Modifier.fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
                 .background(weekBg)
-                .border(0.5.dp, if (claimedWeek) Color(0xFF4CAF50).copy(alpha = 0.2f) else bd, MaterialTheme.shapes.small)
+                .border(0.5.dp, if (weekCompleted) Color(0xFF4CAF50).copy(alpha = 0.2f) else bd, MaterialTheme.shapes.small)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text("Week ${weeklyState.week} Bonus", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = tc)
                 Text(
-                    when { claimedWeek -> "Collected +${weeklyState.reward} coins"; !weekCompleted -> "Complete 7-day check-in"; else -> "Awarded on day 7" },
-                    fontSize = 11.sp, color = if (claimedWeek) Color(0xFF4CAF50) else dim)
+                    when { weekCompleted -> "Collected +${weeklyState.reward} coins"; else -> "Complete 7-day check-in" },
+                    fontSize = 11.sp, color = if (weekCompleted) Color(0xFF4CAF50) else dim)
             }
             val wkScale by animateFloatAsState(
-                targetValue = if (claimedWeek) 1.2f else 1f,
+                targetValue = if (weekCompleted) 1.2f else 1f,
                 animationSpec = springBounce, label = "wk_scale"
             )
             Box(Modifier.size(32.dp).scale(wkScale).clip(CircleShape)
-                .background(if (claimedWeek) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.1f))
-                .border(1.dp, if (claimedWeek) Color(0xFF4CAF50).copy(alpha = 0.4f) else Color.Gray.copy(alpha = 0.2f), CircleShape),
+                .background(if (weekCompleted) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.1f))
+                .border(1.dp, if (weekCompleted) Color(0xFF4CAF50).copy(alpha = 0.4f) else Color.Gray.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center) {
-                Text(if (claimedWeek) "✓" else "🪙", fontSize = 13.sp)
+                Text(if (weekCompleted) "✓" else "🪙", fontSize = 13.sp)
             }
         }
 

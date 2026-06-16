@@ -4,7 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -167,5 +169,13 @@ dependencies {
 
     // EncryptedSharedPreferences for secure credential storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Hilt DI
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+
+    // Kotlin Serialization for type-safe navigation
+    implementation(libs.kotlinx.serialization.json)
 
 }

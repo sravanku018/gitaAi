@@ -15,6 +15,9 @@ interface UserStatsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStats(stats: UserStats)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfEmpty(stats: UserStats)
+
     @Update
     suspend fun updateStats(stats: UserStats)
 
@@ -72,6 +75,35 @@ interface UserStatsDao {
     @Query("UPDATE user_stats SET userId = :userId WHERE id = 1")
     suspend fun updateUserId(userId: String)
 
+    @Query("UPDATE user_stats SET krishnaCoins = :coins WHERE id = 1")
+    suspend fun updateKrishnaCoins(coins: Int)
+
+    @Query("UPDATE user_stats SET krishnaCoins = krishnaCoins + :amount WHERE id = 1")
+    suspend fun addKrishnaCoins(amount: Int)
+
+    @Query("""
+        UPDATE user_stats 
+        SET currentStreak = :currentStreak, 
+            longestStreak = MAX(longestStreak, :longestStreak), 
+            totalQuizzesTaken = MAX(totalQuizzesTaken, :totalQuizzesTaken), 
+            totalQuestionsAnswered = MAX(totalQuestionsAnswered, :totalQuestionsAnswered), 
+            versesRead = MAX(versesRead, :versesRead), 
+            chaptersCompleted = MAX(chaptersCompleted, :chaptersCompleted), 
+            daysActive = MAX(daysActive, :daysActive),
+            lastActiveDate = CASE WHEN :lastActiveDate != '' THEN :lastActiveDate ELSE lastActiveDate END
+        WHERE id = 1
+    """)
+    suspend fun syncRemoteStats(
+        currentStreak: Int,
+        longestStreak: Int,
+        totalQuizzesTaken: Int,
+        totalQuestionsAnswered: Int,
+        versesRead: Int,
+        chaptersCompleted: Int,
+        daysActive: Int,
+        lastActiveDate: String = ""
+    )
+
     // Initialize stats if not exists
     suspend fun initializeStatsIfNeeded() {
         val existing = getUserStatsOnce()
@@ -83,6 +115,10 @@ interface UserStatsDao {
         if (stats != null && stats.userId.isEmpty()) {
             val uuid = java.util.UUID.randomUUID().toString()
             updateUserId(uuid)
+        }
+        // Fix corrupted negative coin balance (from stale server overwrites)
+        if (stats != null && stats.krishnaCoins < 0) {
+            updateKrishnaCoins(0)
         }
     }
 }

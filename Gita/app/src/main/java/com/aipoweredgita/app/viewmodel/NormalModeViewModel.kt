@@ -2,17 +2,23 @@ package com.aipoweredgita.app.viewmodel
 
 import android.app.Application
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.data.GitaVerse
 import com.aipoweredgita.app.database.GitaDatabase
+import com.aipoweredgita.app.domain.model.NormalModeEvent
+import com.aipoweredgita.app.domain.model.NormalModeSideEffect
+import com.aipoweredgita.app.domain.model.NormalModeUiState
 import com.aipoweredgita.app.repository.GitaRepository
 import com.aipoweredgita.app.repository.StatsRepository
 import com.aipoweredgita.app.repository.FavoriteRepository
+import com.aipoweredgita.app.repository.OfflineCacheRepository
+import com.aipoweredgita.app.repository.YogaProgressionRepository
 import com.aipoweredgita.app.util.TimeTracker
 import com.aipoweredgita.app.util.GitaConstants
 import com.aipoweredgita.app.util.ThrottledDatabaseUpdater
 import com.aipoweredgita.app.repository.ModeType
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,40 +28,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import androidx.compose.runtime.Stable
+import javax.inject.Inject
 
-@Stable
-data class NormalModeState(
-    val verse: GitaVerse? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val currentChapter: Int = 1,
-    val currentVerse: Int = 1,
-    val isFavorite: Boolean = false,
-    val favoriteMessage: String? = null,
-    // If API returns grouped verses (arrays), keep full set here
-    val combinedVerseNos: List<Int> = emptyList(),
-    // Chapter-level combined groups (each list contains the verses in a group)
-    val combinedGroups: List<List<Int>> = emptyList(),
-    // Note to show when viewing separated verses
-    val separatedVerseNote: String? = null
-)
-
-class NormalModeViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class NormalModeViewModel @Inject constructor(
+    private val statsRepository: StatsRepository,
+    private val favoriteRepository: FavoriteRepository,
+    private val offlineCacheRepository: OfflineCacheRepository,
+    private val yogaProgressionRepository: YogaProgressionRepository,
+    private val application: Application
+) : ViewModel() {
     private val TAG = "NormalModeViewModel"
-    private val _state = MutableStateFlow(NormalModeState())
-    val state: StateFlow<NormalModeState> = _state.asStateFlow()
+    private val _uiState = MutableStateFlow(NormalModeUiState())
+    val uiState: StateFlow<NormalModeUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<String>()
-    val events: SharedFlow<String> = _events.asSharedFlow()
+    private val _sideEffect = MutableSharedFlow<NormalModeSideEffect>()
+    val sideEffect: SharedFlow<NormalModeSideEffect> = _sideEffect.asSharedFlow()
+
+    // Backward compatibility for existing UI
+    val state: StateFlow<NormalModeUiState> = uiState
+    val events: SharedFlow<String> = MutableSharedFlow<String>() // Stub for backward compatibility if needed
 
     private val database = GitaDatabase.getDatabase(application)
     private val readVerseDao = database.readVerseDao()
-    private val favoriteRepository = FavoriteRepository(database.favoriteVerseDao())
-    private val offlineCacheRepository = com.aipoweredgita.app.repository.OfflineCacheRepository(database.cachedVerseDao())
-    private val statsRepository = StatsRepository(database.userStatsDao(), database.dailyActivityDao(), application)
-    private val yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
     private val language = GitaConstants.DEFAULT_LANGUAGE
     private val gitaRepository = GitaRepository()
     private var lastRequestedChapter: Int = 1
@@ -107,9 +102,9 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     init {
         timeTracker.start()
         viewModelScope.launch {
-            com.aipoweredgita.app.utils.NetworkUtils.networkStatusFlow(getApplication())
+            com.aipoweredgita.app.utils.NetworkUtils.networkStatusFlow(application)
                 .collect { online ->
-                    if (online && _state.value.error?.contains("Offline", ignoreCase = true) == true) {
+                    if (online && _uiState.value.error?.contains("Offline", ignoreCase = true) == true) {
                         loadVerse(lastRequestedChapter, lastRequestedVerse)
                     }
                 }
@@ -130,7 +125,17 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
         
         // Always set combinedGroups to empty list
         viewModelScope.launch {
-            _state.update { it.copy(combinedGroups = emptyList()) }
+            _uiState.update { it.copy(combinedGroups = emptyList()) }
+        }
+    }
+
+    fun onEvent(event: NormalModeEvent) {
+        when (event) {
+            is NormalModeEvent.LoadVerse -> loadVerse(event.chapter, event.verse, event.retryCount, event.autoSkipCombined)
+            is NormalModeEvent.NextVerse -> nextVerse()
+            is NormalModeEvent.PreviousVerse -> previousVerse()
+            is NormalModeEvent.GoToChapter -> goToChapter(event.chapter)
+            is NormalModeEvent.ToggleFavorite -> toggleFavorite()
         }
     }
 
@@ -138,7 +143,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             lastRequestedChapter = chapter
             lastRequestedVerse = verse
-            _state.update {
+            _uiState.update {
                 it.copy(
                     isLoading = true,
                     error = null,
@@ -165,7 +170,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     } else null
                     
                     // All verses are treated as separate - no combined verse detection
-                    _state.update {
+                    _uiState.update {
                         it.copy(
                             verse = verseData,
                             isLoading = false,
@@ -182,9 +187,9 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     trackVerseRead()
                 } else {
                     // Fallback to API if not cached
-                    val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(getApplication())
+                    val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(application)
                     if (!online) {
-                        _state.update {
+                        _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 error = "Offline: verse not downloaded. Use Offline mode or reconnect."
@@ -203,7 +208,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     } else null
                     
                     // All verses are treated as separate - no combined verse detection
-                    _state.update {
+                    _uiState.update {
                         it.copy(
                             verse = apiVerse,
                             isLoading = false,
@@ -273,7 +278,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                     }
                 }
 
-                _state.update {
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = errorMsg
@@ -285,7 +290,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
 
     fun nextVerse() {
         viewModelScope.launch {
-            val current = _state.value
+            val current = _uiState.value
             val currentVerse = current.verse ?: return@launch
             val currentChapter = currentVerse.chapterNo
             val maxVersesInChapter = chapterVerseCounts[currentChapter] ?: 47
@@ -304,7 +309,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
 
     fun previousVerse() {
         viewModelScope.launch {
-            val current = _state.value
+            val current = _uiState.value
             val currentVerse = current.verse ?: return@launch
             val currentChapter = currentVerse.chapterNo
             val currentNo = currentVerse.verseNo
@@ -332,23 +337,23 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
     private fun checkFavoriteStatus(chapter: Int, verse: Int) {
         viewModelScope.launch {
             favoriteRepository.isFavorite(chapter, verse).collect { isFav ->
-                _state.update { it.copy(isFavorite = isFav) }
+                _uiState.update { it.copy(isFavorite = isFav) }
             }
         }
     }
 
     fun toggleFavorite() {
-        val verse = _state.value.verse ?: return
+        val verse = _uiState.value.verse ?: return
 
         viewModelScope.launch {
-            val result = if (_state.value.isFavorite) {
+            val result = if (_uiState.value.isFavorite) {
                 favoriteRepository.removeFavorite(verse.chapterNo, verse.verseNo)
             } else {
                 favoriteRepository.addFavorite(verse)
             }
 
             result.onSuccess { message ->
-                _state.update {
+                _uiState.update {
                     it.copy(
                         favoriteMessage = message,
                         isFavorite = !it.isFavorite
@@ -356,22 +361,22 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 // Clear message after delay
                 kotlinx.coroutines.delay(2000)
-                _state.update { it.copy(favoriteMessage = null) }
+                _uiState.update { it.copy(favoriteMessage = null) }
             }.onFailure { error ->
-                _state.update {
+                _uiState.update {
                     it.copy(
                         favoriteMessage = error.message ?: "Operation failed"
                     )
                 }
                 kotlinx.coroutines.delay(2000)
-                _state.update { it.copy(favoriteMessage = null) }
+                _uiState.update { it.copy(favoriteMessage = null) }
             }
         }
     }
 
     private fun trackVerseRead() {
         viewModelScope.launch {
-            val verse = _state.value.verse ?: return@launch
+            val verse = _uiState.value.verse ?: return@launch
             // Track stats
             statsRepository.trackVerseRead()
             
@@ -380,7 +385,7 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
             if (didLevelUp && newLevel != null) {
                 // Show level-up notification
                 com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(
-                    getApplication(),
+                    application,
                     newLevel
                 )
             }
@@ -394,12 +399,12 @@ class NormalModeViewModel(application: Application) : AndroidViewModel(applicati
             
             if (currentReadCount >= totalVersesInChapter) {
                 // Potential chapter completion.
-                val prefs = getApplication<android.app.Application>().getSharedPreferences("chapter_stats", android.content.Context.MODE_PRIVATE)
+                val prefs = application.getSharedPreferences("chapter_stats", android.content.Context.MODE_PRIVATE)
                 val isCompleted = prefs.getBoolean("chapter_${verse.chapterNo}_completed", false)
                 if (!isCompleted) {
                     statsRepository.trackChapterCompleted(verse.chapterNo)
                     prefs.edit().putBoolean("chapter_${verse.chapterNo}_completed", true).apply()
-                    _events.emit("Chapter ${verse.chapterNo} Completed! 🪙 Sacred Coins awarded.")
+                    _sideEffect.emit(NormalModeSideEffect.ShowMessage("Chapter ${verse.chapterNo} Completed! \uD83E\uDE99 Sacred Coins awarded."))
                 }
             }
 

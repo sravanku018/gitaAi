@@ -1,38 +1,41 @@
 package com.aipoweredgita.app.viewmodel
 
-import android.app.Application
+import android.content.Context
 import android.content.res.Configuration
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import com.aipoweredgita.app.domain.model.ScreenConfigEvent
+import com.aipoweredgita.app.domain.model.ScreenConfigUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-data class ScreenConfig(
-    val isTablet: Boolean = false,
-    val isLandscape: Boolean = false,
-    val gridColumns: Int = 1,
-    val screenPadding: Int = 24,
-    val cardHeight: Int = 120,
-    val itemSpacing: Int = 16
-)
+@HiltViewModel
+class ScreenConfigViewModel @Inject constructor(
+    @ApplicationContext private val context: Context
+) : ViewModel() {
 
-class ScreenConfigViewModel(application: Application) : AndroidViewModel(application) {
+    private val _uiState = MutableStateFlow(ScreenConfigUiState())
+    val uiState: StateFlow<ScreenConfigUiState> = _uiState.asStateFlow()
 
-    private val _screenConfig = MutableStateFlow(ScreenConfig())
-    val screenConfig: StateFlow<ScreenConfig> = _screenConfig.asStateFlow()
+    // Legacy support
+    val screenConfig: StateFlow<ScreenConfigUiState> = uiState
 
     init {
-        updateScreenConfig()
+        updateScreenConfig(context.resources.configuration)
     }
 
-    /**
-     * Update screen configuration based on current device configuration
-     * This should be called with the current Configuration from Compose
-     */
-    fun updateScreenConfig(configuration: Configuration = getApplication<Application>().resources.configuration) {
+    fun onEvent(event: ScreenConfigEvent) {
+        when (event) {
+            is ScreenConfigEvent.UpdateScreenConfig -> updateScreenConfig(event.configuration ?: context.resources.configuration)
+            is ScreenConfigEvent.OnConfigurationChanged -> updateScreenConfig(event.newConfig)
+        }
+    }
+
+    private fun updateScreenConfig(configuration: Configuration) {
         val screenWidthDp = configuration.screenWidthDp
         val screenHeightDp = configuration.screenHeightDp
 
@@ -44,34 +47,32 @@ class ScreenConfigViewModel(application: Application) : AndroidViewModel(applica
         val cardHeight = if (isTablet) 140 else 120
         val itemSpacing = if (isTablet) 20 else 16
 
-        _screenConfig.value = ScreenConfig(
-            isTablet = isTablet,
-            isLandscape = isLandscape,
-            gridColumns = gridColumns,
-            screenPadding = screenPadding,
-            cardHeight = cardHeight,
-            itemSpacing = itemSpacing
-        )
+        _uiState.update {
+            it.copy(
+                isTablet = isTablet,
+                isLandscape = isLandscape,
+                gridColumns = gridColumns,
+                screenPadding = screenPadding,
+                cardHeight = cardHeight,
+                itemSpacing = itemSpacing
+            )
+        }
     }
 
-    /**
-     * Calculate number of grid columns based on device type and orientation
-     */
     private fun calculateGridColumns(isTablet: Boolean, isLandscape: Boolean): Int {
         return when {
-            // Tablet in landscape: 3 columns
             isTablet && isLandscape -> 3
-            // Tablet in portrait: 2 columns
             isTablet && !isLandscape -> 2
-            // Phone: 1 column
             else -> 1
         }
     }
 
-    /**
-     * Handle configuration changes (called when orientation changes)
-     */
+    // Keep legacy methods working by redirecting to events
+    fun updateScreenConfig() {
+        onEvent(ScreenConfigEvent.UpdateScreenConfig())
+    }
+
     fun onConfigurationChanged(newConfig: Configuration) {
-        updateScreenConfig()
+        onEvent(ScreenConfigEvent.OnConfigurationChanged(newConfig))
     }
 }

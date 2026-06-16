@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.database.DailyActivity
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.QuizAttempt
@@ -43,6 +44,7 @@ import com.aipoweredgita.app.database.ReadVerse
 import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.viewmodel.ActivityHistoryViewModel
+import com.aipoweredgita.app.domain.model.ActivityHistoryEvent
 import com.aipoweredgita.app.util.TimeUtils
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -57,20 +59,22 @@ import com.aipoweredgita.app.ui.theme.GoldSpark
 fun ActivityHistoryScreen(
     modifier: Modifier = Modifier,
     initialTab: Int = 0,
-    viewModel: ActivityHistoryViewModel = viewModel()
+    viewModel: ActivityHistoryViewModel = hiltViewModel()
 ) {
-    val userStats by viewModel.userStats.collectAsState()
-    val allActivity by viewModel.allActivity.collectAsState()
-    val attempts by viewModel.attempts.collectAsState()
-    val averageAccuracy by viewModel.averageAccuracy.collectAsState()
-    val averageTime by viewModel.averageTime.collectAsState()
-    val quiz10Stats by viewModel.quiz10Stats.collectAsState()
-    val quiz20Stats by viewModel.quiz20Stats.collectAsState()
-    val quiz30Stats by viewModel.quiz30Stats.collectAsState()
-    val selectedQuizSize by viewModel.selectedQuizSize.collectAsState()
-    val karmaCount by viewModel.karmaYogaCount.collectAsState()
-    val bhaktiCount by viewModel.bhaktiYogaCount.collectAsState()
-    val jnanaCount by viewModel.jnanaYogaCount.collectAsState()
+    val state by viewModel.uiState.collectAsState()
+    
+    val userStats = state.userStats
+    val allActivity = state.allActivity
+    val attempts = state.attempts
+    val averageAccuracy = state.averageAccuracy
+    val averageTime = state.averageTime
+    val quiz10Stats = state.quiz10Stats
+    val quiz20Stats = state.quiz20Stats
+    val quiz30Stats = state.quiz30Stats
+    val selectedQuizSize = state.selectedQuizSize
+    val karmaCount = state.karmaYogaCount
+    val bhaktiCount = state.bhaktiYogaCount
+    val jnanaCount = state.jnanaYogaCount
 
     var selectedTab by remember { mutableIntStateOf(initialTab) }
     val uiCfg = LocalUiConfig.current
@@ -123,7 +127,7 @@ fun ActivityHistoryScreen(
                 quiz20Stats = quiz20Stats,
                 quiz30Stats = quiz30Stats,
                 selectedQuizSize = selectedQuizSize,
-                onSelectQuizSize = { viewModel.selectQuizSize(it) },
+                onSelectQuizSize = { viewModel.onEvent(ActivityHistoryEvent.SelectQuizSize(it)) },
                 userStats = userStats,
                 karmaCount = karmaCount,
                 bhaktiCount = bhaktiCount,
@@ -634,59 +638,103 @@ private fun AHQuizAttemptCard(attempt: QuizAttempt) {
         attempt.accuracyPercentage >= 60 -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.error
     }
-    val bgColor = statusColor.copy(alpha = 0.1f)
+    val bgColor = statusColor.copy(alpha = 0.08f)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = bgColor)
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.2f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = attempt.dateFormatted,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Top row: emoji + score + accuracy + performance level
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${attempt.performanceEmoji} ${attempt.score}/${attempt.totalQuestions}",
+                        text = attempt.performanceEmoji,
+                        fontSize = 28.sp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "${attempt.score}/${attempt.totalQuestions}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${attempt.accuracyPercentage.toInt()}% accuracy",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                // Circular accuracy badge
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(statusColor.copy(alpha = 0.15f), androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${attempt.accuracyPercentage.toInt()}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${attempt.accuracyPercentage.toInt()}%",
-                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "🪙 +${attempt.coinsEarned}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldSpark
+                        color = statusColor
                     )
                 }
-                Text(
-                    text = "Time: ${attempt.timeSpentFormatted}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-            Text(
-                text = attempt.performanceLevel,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = statusColor
-            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Bottom row: time spent + finish time + performance level
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Time spent icon + text
+                    Text("⏱", fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = attempt.timeSpentFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    // Finish time
+                    Text("🕐", fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = attempt.dateFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Performance level badge
+                Surface(
+                    color = statusColor.copy(alpha = 0.12f),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = attempt.performanceLevel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
     }
 }

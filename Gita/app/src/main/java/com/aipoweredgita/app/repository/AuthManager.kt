@@ -46,7 +46,8 @@ class AuthManager(private val context: Context) {
 
             if (response.success) {
                 val wasGuest = authPrefs.isGuest || !authPrefs.isLoggedIn
-                val previousCoins = authPrefs.localCoins
+                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
                 // Save auth state
                 authPrefs.saveLoginState(
@@ -59,16 +60,15 @@ class AuthManager(private val context: Context) {
                 )
 
                 // Update Room DB with new user info
-                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 db.userStatsDao().updateUserId(response.user_id)
                 db.userStatsDao().updateProfile(name = name.ifEmpty { "Gita Seeker" }, dob = "")
 
                 if (wasGuest) {
                     val guestConversionCoins = previousCoins + response.coins
-                    authPrefs.localCoins = guestConversionCoins
+                    db.userStatsDao().updateKrishnaCoins(guestConversionCoins)
                     com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, response.coins, "Guest to User conversion bonus")
                 } else {
-                    authPrefs.localCoins = response.coins.coerceAtLeast(0)
+                    db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
                 }
 
                 // Sync guest data if exists
@@ -107,8 +107,9 @@ class AuthManager(private val context: Context) {
             )
 
 if (response.success) {
-                val wasGuest = authPrefs.isGuest || !authPrefs.isLoggedIn
-                val previousCoins = authPrefs.localCoins
+                val wasGuest = authPrefs.hasGuestSession()
+                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
                 // Extract a display name from email/username
                 val displayName = userId.substringBefore("@").replaceFirstChar { it.uppercase() }
@@ -124,7 +125,6 @@ if (response.success) {
                 )
 
                 // Update Room DB with new user info
-                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 db.userStatsDao().updateUserId(response.user_id)
                 
                 val existingStats = db.userStatsDao().getUserStatsOnce()
@@ -140,15 +140,46 @@ if (response.success) {
                 // Server returns the user's actual balance including welcome bonus
                 if (wasGuest) {
                     val guestConversionCoins = previousCoins + response.coins
-                    authPrefs.localCoins = guestConversionCoins
+                    db.userStatsDao().updateKrishnaCoins(guestConversionCoins)
                     com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, response.coins, "Guest to User conversion bonus")
                 } else {
-                    authPrefs.localCoins = response.coins.coerceAtLeast(0)
+                    db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
                 }
 
                 // Sync guest data if exists
                 if (guestSyncManager.hasGuestDataToSync()) {
                     guestSyncManager.syncGuestData(response.user_id)
+                }
+
+                // Run auto-reconciliation after login to detect any discrepancies
+                try {
+                    val reconciliationManager = CoinReconciliationManager(context)
+                    val result = reconciliationManager.autoReconcile()
+                    when (result) {
+                        is AutoReconciliationResult.Corrected -> {
+                            Log.w(TAG, "Auto-reconciliation corrected after login: ${result.oldBalance} → ${result.newBalance}")
+                        }
+                        is AutoReconciliationResult.Error -> {
+                            Log.e(TAG, "Auto-reconciliation failed after login: ${result.message}")
+                        }
+                        else -> { /* OK or Skip */ }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Auto-reconciliation failed during login", e)
+                }
+
+                // Pull server state into local DB (streak, quizzes, verses, DailyRewardsTracker)
+                try {
+                    val dbInstance = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                    val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
+                        dbInstance.userStatsDao(),
+                        dbInstance.dailyActivityDao(),
+                        context
+                    )
+                    statsRepo.refreshUserState(response.user_id)
+                    statsRepo.syncStatsToServer()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Stats sync failed during login", e)
                 }
 
                 Log.d(TAG, "Login successful: ${response.user_id}")

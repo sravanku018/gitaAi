@@ -4,6 +4,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -24,6 +26,7 @@ import com.aipoweredgita.app.ui.SettingsScreen
 import com.aipoweredgita.app.ui.LoginScreen
 import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 import com.aipoweredgita.app.viewmodel.OfflineDownloadViewModel
 import androidx.compose.runtime.collectAsState
@@ -110,7 +113,7 @@ fun NavGraph(
         ) { backStackEntry ->
             val chapter = backStackEntry.arguments?.getInt("chapter") ?: 0
             val verse = backStackEntry.arguments?.getInt("verse") ?: 0
-            val vm: com.aipoweredgita.app.viewmodel.NormalModeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+            val vm: com.aipoweredgita.app.viewmodel.NormalModeViewModel = hiltViewModel()
             androidx.compose.runtime.LaunchedEffect(chapter, verse) {
                 if (chapter > 0 && verse > 0) vm.loadVerse(chapter, verse) else if (chapter > 0) vm.goToChapter(chapter)
             }
@@ -130,12 +133,7 @@ fun NavGraph(
         }
 
         composable(Screen.QuizConfig.route) { backStackEntry ->
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry(Screen.QuizConfig.route)
-            }
-            val quizViewModel: QuizViewModel = viewModel(
-                viewModelStoreOwner = parentEntry
-            )
+            val quizViewModel: QuizViewModel = hiltViewModel()
             val quizState by quizViewModel.quizState.collectAsState()
             ProtectedQuizConfigScreen(
                 language = quizState.language,
@@ -155,12 +153,7 @@ fun NavGraph(
         }
 
         composable(Screen.QuizMode.route) { backStackEntry ->
-            val quizConfigEntry = remember(backStackEntry) {
-                navController.getBackStackEntry(Screen.QuizConfig.route)
-            }
-            val quizViewModel: QuizViewModel = viewModel(
-                viewModelStoreOwner = quizConfigEntry
-            )
+            val quizViewModel: QuizViewModel = hiltViewModel()
             com.aipoweredgita.app.ui.QuizScreen(
                 onExitQuiz = {
                     navController.navigate(Screen.Home.route) {
@@ -222,17 +215,12 @@ fun NavGraph(
         }
 
         composable(Screen.OfflineDownload.route) {
-            val offlineViewModel: OfflineDownloadViewModel = viewModel()
+            val offlineViewModel: OfflineDownloadViewModel = hiltViewModel()
             OfflineDownloadScreen(viewModel = offlineViewModel)
         }
 
         composable(Screen.Profile.route) { backStackEntry ->
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry(Screen.Home.route)
-            }
-            val profileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel = viewModel(
-                viewModelStoreOwner = parentEntry
-            )
+            val profileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel = hiltViewModel()
             ProfileScreen(
                 onNavigateToQuizStats = {
                     navController.navigate(Screen.QuizStats.route)
@@ -261,8 +249,21 @@ fun NavGraph(
         }
 
         composable(Screen.Login.route) {
+            val context = LocalContext.current
+            val coroutineScope = rememberCoroutineScope()
             LoginScreen(
-                onLoginSuccess = { _ ->
+                onLoginSuccess = { userId ->
+                    coroutineScope.launch {
+                        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                        val dao = db.userStatsDao()
+                        dao.insertIfEmpty(com.aipoweredgita.app.database.UserStats(userId = userId))
+                        val repo = com.aipoweredgita.app.repository.StatsRepository(
+                            userStatsDao = dao,
+                            dailyActivityDao = db.dailyActivityDao(),
+                            appContext = context
+                        )
+                        repo.refreshUserState(userId)
+                    }
                     onAuthChanged()
                     navController.popBackStack()
                 },

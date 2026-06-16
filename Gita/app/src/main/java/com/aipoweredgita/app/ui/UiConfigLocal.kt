@@ -5,9 +5,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
-import com.aipoweredgita.app.viewmodel.UiConfigState
+import com.aipoweredgita.app.domain.model.UiConfigUiState
 
-val LocalUiConfig = staticCompositionLocalOf { UiConfigState() }
+val LocalUiConfig = staticCompositionLocalOf { UiConfigUiState() }
 
 @Composable
 fun UiConfigProvider(content: @Composable () -> Unit) {
@@ -15,7 +15,7 @@ fun UiConfigProvider(content: @Composable () -> Unit) {
     val cfg = remember(conf.screenWidthDp, conf.screenHeightDp) {
         val landscape = conf.screenWidthDp > conf.screenHeightDp
         val columns = if (landscape) 10 else 7
-        UiConfigState(isLandscape = landscape, gridColumns = columns)
+        UiConfigUiState(isLandscape = landscape, gridColumns = columns)
     }
     CompositionLocalProvider(LocalUiConfig provides cfg) {
         content()

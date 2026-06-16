@@ -6,7 +6,6 @@
       <GradleProjectSettings>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="C:\Users\srath\AppData\Local\UniGetUI\Chocolatey\lib\gradle\tools\gradle-9.0.0" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />

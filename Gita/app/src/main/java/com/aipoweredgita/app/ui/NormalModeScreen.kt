@@ -37,7 +37,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.domain.model.NormalModeEvent
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.util.TextUtils.sanitizeText
 import com.aipoweredgita.app.viewmodel.NormalModeViewModel
@@ -68,18 +69,22 @@ private val chapterVerseCounts = mapOf(
 @Composable
 fun NormalModeScreen(
     modifier: Modifier = Modifier,
-    viewModel: NormalModeViewModel = viewModel(),
-    screenConfigViewModel: ScreenConfigViewModel = viewModel(),
+    viewModel: NormalModeViewModel = hiltViewModel(),
+    screenConfigViewModel: ScreenConfigViewModel = hiltViewModel(),
     onReadOfflineClick: () -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showChapterDialog by remember { mutableStateOf(false) }
     var showVerseDialog   by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    LaunchedEffect(viewModel.events) {
-        viewModel.events.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    LaunchedEffect(viewModel.sideEffect) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is com.aipoweredgita.app.domain.model.NormalModeSideEffect.ShowMessage -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -128,7 +133,7 @@ fun NormalModeScreen(
                 state.isLoading       -> GitaLoadingScreen()
                 state.error != null   -> GitaErrorScreen(
                     message = state.error ?: "",
-                    onRetry = { viewModel.loadVerse(state.currentChapter, state.currentVerse) }
+                    onRetry = { viewModel.onEvent(NormalModeEvent.LoadVerse(state.currentChapter, state.currentVerse)) }
                 )
                 state.verse != null   -> {
                     val verse = state.verse!!
@@ -193,10 +198,10 @@ fun NormalModeScreen(
                         favoriteMessage   = state.favoriteMessage,
                         canGoPrev         = !(verse.chapterNo == 1 && verse.verseNo == 1) && !state.isLoading,
                         canGoNext         = !(verse.chapterNo == 18 && verse.verseNo == 78) && !state.isLoading,
-                        onFavoriteToggle  = { viewModel.toggleFavorite() },
+                        onFavoriteToggle  = { viewModel.onEvent(NormalModeEvent.ToggleFavorite) },
                         onShare           = { shareVerse(verse) },
-                        onPrev            = { viewModel.previousVerse() },
-                        onNext            = { viewModel.nextVerse() }
+                        onPrev            = { viewModel.onEvent(NormalModeEvent.PreviousVerse) },
+                        onNext            = { viewModel.onEvent(NormalModeEvent.NextVerse) }
                     )
                 }
             }
@@ -208,7 +213,7 @@ fun NormalModeScreen(
         ChapterSelectionDialog(
             currentChapter    = state.currentChapter,
             onDismiss         = { showChapterDialog = false },
-            onChapterSelected = { ch -> viewModel.goToChapter(ch); showChapterDialog = false }
+            onChapterSelected = { ch -> viewModel.onEvent(NormalModeEvent.GoToChapter(ch)); showChapterDialog = false }
         )
     }
     if (showVerseDialog && state.verse != null) {
@@ -219,7 +224,7 @@ fun NormalModeScreen(
             combinedGroups  = state.combinedGroups,
             onDismiss       = { showVerseDialog = false },
             onVerseSelected = { v ->
-                viewModel.loadVerse(state.verse!!.chapterNo, v)
+                viewModel.onEvent(NormalModeEvent.LoadVerse(state.verse!!.chapterNo, v))
                 showVerseDialog = false
             }
         )

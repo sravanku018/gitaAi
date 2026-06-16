@@ -1,130 +1,136 @@
 package com.aipoweredgita.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.content.Context
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aipoweredgita.app.database.GitaDatabase
+import com.aipoweredgita.app.domain.model.OfflineDownloadEvent
+import com.aipoweredgita.app.domain.model.OfflineDownloadUiState
 import com.aipoweredgita.app.repository.DownloadProgress
 import com.aipoweredgita.app.repository.DownloadStatus
 import com.aipoweredgita.app.repository.OfflineCacheRepository
+import com.aipoweredgita.app.services.OfflineDownloadNotificationManager
+import com.aipoweredgita.app.util.GitaConstants
 import com.aipoweredgita.app.utils.NetworkUtils
 import com.aipoweredgita.app.utils.OfflinePreferences
-import com.aipoweredgita.app.services.OfflineDownloadNotificationManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class OfflineDownloadViewModel(application: Application) : AndroidViewModel(application) {
-
+@HiltViewModel
+class OfflineDownloadViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: OfflineCacheRepository
-    private val offlinePrefs = OfflinePreferences(application)
-    private val notifManager = OfflineDownloadNotificationManager(application)
+) : ViewModel() {
 
-    private val _downloadProgress = MutableStateFlow(
-        DownloadProgress(0, com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES, 0, DownloadStatus.IDLE)
-    )
-    val downloadProgress: StateFlow<DownloadProgress> = _downloadProgress.asStateFlow()
+    private val offlinePrefs = OfflinePreferences(context)
+    private val notifManager = OfflineDownloadNotificationManager(context)
 
-    private val _cachedCount = MutableStateFlow(0)
-    val cachedCount: StateFlow<Int> = _cachedCount.asStateFlow()
+    private val _uiState = MutableStateFlow(OfflineDownloadUiState())
+    val uiState: StateFlow<OfflineDownloadUiState> = _uiState.asStateFlow()
 
-    private val _isFullyCached = MutableStateFlow(false)
-    val isFullyCached: StateFlow<Boolean> = _isFullyCached.asStateFlow()
-
-    private val _missingVerses = MutableStateFlow<List<Pair<Int, Int>>>(emptyList())
-    val missingVerses: StateFlow<List<Pair<Int, Int>>> = _missingVerses.asStateFlow()
+    // Keep legacy state aliases for incremental migration
+    val downloadProgress: StateFlow<DownloadProgress>
+        get() = MutableStateFlow(_uiState.value.downloadProgress)
+    val cachedCount: StateFlow<Int>
+        get() = MutableStateFlow(_uiState.value.cachedCount)
+    val isFullyCached: StateFlow<Boolean>
+        get() = MutableStateFlow(_uiState.value.isFullyCached)
 
     init {
-        val database = GitaDatabase.getDatabase(application)
-        repository = OfflineCacheRepository(database.cachedVerseDao())
-
-        // Load initial cached count
         viewModelScope.launch {
             repository.getCachedCount().collect { count ->
-                _cachedCount.value = count
-                _isFullyCached.value = repository.isFullyCached()
+                val fullyCached = repository.isFullyCached()
+                _uiState.update { 
+                    it.copy(
+                        cachedCount = count,
+                        isFullyCached = fullyCached
+                    )
+                }
 
-                // Auto-update missing verses when cache count changes
-                // Only if we've already shown the missing verses list OR if fully cached
-                if (_missingVerses.value.isNotEmpty() || _isFullyCached.value) {
+                if (_uiState.value.missingVerses.isNotEmpty() || fullyCached) {
                     checkMissingVerses()
                 }
 
-                // One-time completion notification when all verses cached
-                if (_isFullyCached.value) {
+                if (fullyCached) {
                     try {
                         val alreadyNotified = offlinePrefs.isAllDownloadedNotified.first()
                         if (!alreadyNotified) {
                             notifManager.showCompletionNotification()
                             offlinePrefs.setAllDownloadedNotified(true)
                         }
-                    } catch (_: Exception) { /* ignore */ }
+                    } catch (_: Exception) { }
                 } else {
-                    // Not fully cached: proactively check and notify incomplete verses
                     try {
                         checkMissingVerses()
-                    } catch (_: Exception) { /* ignore */ }
+                    } catch (_: Exception) { }
                 }
             }
         }
     }
 
-    fun checkMissingVerses() {
+    fun onEvent(event: OfflineDownloadEvent) {
+        when (event) {
+            is OfflineDownloadEvent.StartDownload -> startDownload()
+            is OfflineDownloadEvent.ClearCache -> clearCache()
+            is OfflineDownloadEvent.CheckMissingVerses -> checkMissingVerses()
+        }
+    }
+
+    private fun checkMissingVerses() {
         viewModelScope.launch {
             val missing = repository.getMissingVerses()
-            _missingVerses.value = missing
+            _uiState.update { it.copy(missingVerses = missing) }
             try {
                 if (missing.isNotEmpty()) {
                     notifManager.showIncompleteNotification(missing.size)
                 }
-            } catch (_: Exception) { /* ignore */ }
+            } catch (_: Exception) { }
         }
     }
 
-    fun startDownload() {
-        // Prevent starting download if already downloading
-        if (_downloadProgress.value.status == DownloadStatus.DOWNLOADING) {
+    private fun startDownload() {
+        if (_uiState.value.downloadProgress.status == DownloadStatus.DOWNLOADING) {
             return
         }
 
-        // If offline, queue a background download via WorkManager and show a status message
-        if (!NetworkUtils.isNetworkAvailable(getApplication())) {
+        if (!NetworkUtils.isNetworkAvailable(context)) {
             try {
-                com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(getApplication())
-            } catch (_: Exception) { /* ignore */ }
+                com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(context)
+            } catch (_: Exception) { }
 
-            _downloadProgress.value = DownloadProgress(
-                current = _cachedCount.value,
-                total = com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES,
-                percentage = (_cachedCount.value * 100) / com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES,
-                status = DownloadStatus.DOWNLOADING,
-                message = "Queued for background; will resume when online."
-            )
+            val currentCount = _uiState.value.cachedCount
+            _uiState.update { 
+                it.copy(
+                    downloadProgress = DownloadProgress(
+                        current = currentCount,
+                        total = GitaConstants.TOTAL_VERSES,
+                        percentage = (currentCount * 100) / GitaConstants.TOTAL_VERSES,
+                        status = DownloadStatus.DOWNLOADING,
+                        message = "Queued for background; will resume when online."
+                    )
+                )
+            }
             return
         }
 
         viewModelScope.launch {
             try {
-                // Notify background in-progress
                 try { notifManager.showInProgressNotification() } catch (_: Exception) { }
                 repository.downloadAllVerses().collect { progress ->
-                    _downloadProgress.value = progress
+                    _uiState.update { it.copy(downloadProgress = progress) }
 
-                    if (progress.status == DownloadStatus.DOWNLOADING) {
-                        // keep in-progress notification alive
-                    }
-
-                    // After download completes, check for missing verses
                     if (progress.status == DownloadStatus.COMPLETED ||
                         progress.status == DownloadStatus.COMPLETED_WITH_ERRORS) {
-                        // cancel in-progress notification
                         try { notifManager.cancelInProgressNotification() } catch (_: Exception) { }
 
                         checkMissingVerses()
 
-                        // Double-check completion and notify once
                         try {
                             val fullyCached = repository.isFullyCached()
                             if (fullyCached) {
@@ -134,33 +140,41 @@ class OfflineDownloadViewModel(application: Application) : AndroidViewModel(appl
                                     offlinePrefs.setAllDownloadedNotified(true)
                                 }
                             } else {
-                                // Show incomplete notification with current missing count
                                 val missing = repository.getMissingVerses()
                                 if (missing.isNotEmpty()) {
                                     notifManager.showIncompleteNotification(missing.size)
                                 }
                             }
-                        } catch (_: Exception) { /* ignore */ }
+                        } catch (_: Exception) { }
                     }
                 }
             } catch (e: Exception) {
                 try { notifManager.cancelInProgressNotification() } catch (_: Exception) { }
-                _downloadProgress.value = DownloadProgress(
-                    current = _cachedCount.value,
-                    total = com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES,
-                    percentage = (_cachedCount.value * 100) / com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES,
-                    status = DownloadStatus.ERROR,
-                    message = "Download failed: ${e.message}"
-                )
+                val currentCount = _uiState.value.cachedCount
+                _uiState.update { 
+                    it.copy(
+                        downloadProgress = DownloadProgress(
+                            current = currentCount,
+                            total = GitaConstants.TOTAL_VERSES,
+                            percentage = (currentCount * 100) / GitaConstants.TOTAL_VERSES,
+                            status = DownloadStatus.ERROR,
+                            message = "Download failed: ${e.message}"
+                        )
+                    )
+                }
             }
         }
     }
 
-    fun clearCache() {
+    private fun clearCache() {
         viewModelScope.launch {
             repository.clearCache()
-            _downloadProgress.value = DownloadProgress(0, com.aipoweredgita.app.util.GitaConstants.TOTAL_VERSES, 0, DownloadStatus.IDLE)
-            _missingVerses.value = emptyList() // Clear missing verses list
+            _uiState.update { 
+                it.copy(
+                    downloadProgress = DownloadProgress(0, GitaConstants.TOTAL_VERSES, 0, DownloadStatus.IDLE),
+                    missingVerses = emptyList()
+                )
+            }
             try { offlinePrefs.resetAllDownloadedNotified() } catch (_: Exception) {}
         }
     }

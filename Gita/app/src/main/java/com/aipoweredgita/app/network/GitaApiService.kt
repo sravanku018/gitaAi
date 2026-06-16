@@ -96,14 +96,17 @@ data class CoinAwardRequest(
 
 data class CoinSpendRequest(
     val user_id: String,
-    val question: String
+    val question: String,
+    val idempotency_key: String? = null
 )
 
 data class ShareSlokaRequest(
     val user_id: String,
     val sloka_id: String? = null,
     val chapter: Int? = null,
-    val verse: Int? = null
+    val verse: Int? = null,
+    val idempotency_key: String? = null,
+    val client_date: String? = null
 )
 
 data class ClaimGuestRequest(
@@ -132,9 +135,55 @@ data class AuthLoginRequest(
 data class CoinBalanceResponse(
     val krishna_coins: Int = 0,
     val days_active: Int = 0,
-    val yoga_name: String = "",
+    val current_streak: Int = 0,
+    val longest_streak: Int = 0,
+    val total_quizzes_taken: Int = 0,
+    val total_questions_answered: Int = 0,
+    val total_correct_answers: Int = 0,
+    val best_score: Int = 0,
+    val best_score_out_of: Int = 0,
+    val verses_read: Int = 0,
+    val chapters_completed: Int = 0,
+    val last_activity_date: String? = null,
+    val updated_at: String? = null,
+    val yoga_name: String? = null,
     val multiplier: Int = 1,
-    val is_max: Int = 0
+    val is_max: Int = 0,
+    val checkin_day: Int = 0,
+    val checkin_week: Int = 0,
+    val share_day: Int = 0,
+    val share_week: Int = 0,
+    val last_checkin: String? = null,
+    val last_share: String? = null
+)
+
+data class UserStatsSyncRequest(
+    val user_id: String,
+    val current_streak: Int = 0,
+    val longest_streak: Int = 0,
+    val total_quizzes_taken: Int = 0,
+    val total_questions_answered: Int = 0,
+    val total_correct_answers: Int = 0,
+    val verses_read: Int = 0,
+    val chapters_completed: Int = 0,
+    val last_activity_date: String = ""
+)
+
+data class UserStatsSyncDto(
+    val current_streak: Int = 0,
+    val longest_streak: Int = 0,
+    val total_quizzes_taken: Int = 0,
+    val total_questions_answered: Int = 0,
+    val total_correct_answers: Int = 0,
+    val verses_read: Int = 0,
+    val chapters_completed: Int = 0,
+    val last_activity_date: String = "",
+    val updated_at: String = ""
+)
+
+data class UserStatsSyncResponse(
+    val success: Boolean = false,
+    val stats: UserStatsSyncDto? = null
 )
 
 data class CoinAwardResponse(
@@ -144,15 +193,47 @@ data class CoinAwardResponse(
     val new_level: Int = 1
 )
 
+data class QuizAttemptRequest(
+    val user_id: String,
+    val score: Int,
+    val total_questions: Int,
+    val quiz_type: String = "general",
+    val time_spent_seconds: Long = 0,
+    val coins_earned: Int = 0
+)
+
+data class QuizAttemptDto(
+    val id: Int = 0,
+    val score: Int = 0,
+    val total_questions: Int = 15,
+    val quiz_type: String = "general",
+    val time_spent_seconds: Long = 0,
+    val avg_time_per_question: Int = 0,
+    val coins_earned: Int = 0,
+    val accuracy: Int = 0,
+    val created_at: String = ""
+)
+
+data class ActivityDayDto(
+    val date: String = "",
+    val checkins: Int = 0,
+    val quizzes: Int = 0,
+    val shares: Int = 0,
+    val voice_chats: Int = 0,
+    val total_events: Int = 0
+)
+
 data class CoinSpendResponse(
     val spent: Int = 0,
     val label: String = "",
-    val remaining_balance: Int = 0
+    val remaining_balance: Int = 0,
+    val duplicate: Boolean = false
 )
 
 data class CreateUserResponse(
     val success: Boolean = false,
-    val coins: Int = 0
+    val coins: Int = 0,
+    val token: String? = null
 )
 
 data class CreateGuestResponse(
@@ -182,22 +263,34 @@ data class CheckinResponse(
     val day: Int = 0,
     val week: Int = 0,
     val coins_awarded: Int = 0,
-    val weekly_bonus: Int = 0
+    val weekly_bonus: Int = 0,
+    val total_coins: Int = -1,  // -1 = not provided by older backends
+    val duplicate: Boolean = false
 )
 
 data class ShareResponse(
     val share_day: Int = 0,
     val share_week: Int = 0,
     val coins_awarded: Int = 0,
-    val weekly_bonus: Int = 0
+    val weekly_bonus: Int = 0,
+    val total_coins: Int = -1,  // -1 = not provided by older backends
+    val duplicate: Boolean = false
 )
 
 data class CoinHistoryEntry(
+    val id: Int = 0,
     val amount: Int = 0,
     val type: String = "EARN",
     val source: String = "",
     val description: String = "",
+    val idempotency_key: String? = null,
     val created_at: String = ""
+)
+
+data class VoiceCostResponse(
+    val cost: Int = 2,
+    val label: String = "Short",
+    val length: Int = 0
 )
 
 data class LeaderboardEntry(
@@ -230,9 +323,72 @@ data class YogaStagesResponse(
     val sub_stages: List<YogaSubStage> = emptyList()
 )
 
+// Reconciliation data classes
+data class ReconcileRequest(
+    val user_id: String,
+    val local_balance: Int,
+    val pending_events: List<PendingEvent>
+)
+
+data class PendingEvent(
+    val idempotency_key: String,
+    val coinsToAdjust: Int
+)
+
+data class ReconcileResponse(
+    val server_balance: Int,
+    val expected_balance: Int,
+    val needs_correction: Boolean,
+    val correction_delta: Int,
+    val pending_adjustment: Int,
+    val unprocessed_events: List<UnprocessedEvent>
+)
+
+data class AutoReconcileRequest(
+    val user_id: String
+)
+
+data class AutoReconcileResponse(
+    val current_balance: Int,
+    val corrected_balance: Int,
+    val needs_correction: Boolean,
+    val delta_applied: Int,
+    val rows_deleted: Int,
+    val anomalies_detected: Int,
+    val anomalies: List<AnomalyItem>,
+    val corrections_applied: List<CorrectionItem>,
+    val groq_analysis: GroqAnalysis?,
+    val engine: String,
+    val corrected: Boolean
+)
+
+data class AnomalyItem(
+    val type: String,
+    val severity: String,
+    val description: String
+)
+
+data class CorrectionItem(
+    val reason: String
+)
+
+data class GroqAnalysis(
+    val analysis: String?,
+    val anomaly_score: Int?,
+    val confidence: Double?
+)
+
+data class UnprocessedEvent(
+    val idempotency_key: String,
+    val amount: Int
+)
+
 interface CoinApiService {
     @GET("coins/balance")
-    suspend fun getBalance(@Query("user_id") userId: String): CoinBalanceResponse
+    suspend fun getBalance(
+        @Query("user_id") userId: String,
+        @Header("Authorization") token: String? = null
+    ): CoinBalanceResponse
 
     @POST("coins/award")
     suspend fun awardCoins(@Body request: CoinAwardRequest): CoinAwardResponse
@@ -240,8 +396,25 @@ interface CoinApiService {
     @POST("coins/spend")
     suspend fun spendCoins(@Body request: CoinSpendRequest): CoinSpendResponse
 
+    @POST("coins/reconcile")
+    suspend fun reconcileBalance(@Body request: ReconcileRequest): ReconcileResponse
+
+    @POST("coins/auto-reconcile")
+    suspend fun autoReconcile(
+        @Header("Authorization") token: String? = null,
+        @Body request: AutoReconcileRequest
+    ): AutoReconcileResponse
+
+    @GET("coins/voice-cost")
+    suspend fun getVoiceCost(@Query("question") question: String): VoiceCostResponse
+
     @GET("coins/history")
-    suspend fun getHistory(@Query("user_id") userId: String): List<CoinHistoryEntry>
+    suspend fun getHistory(
+        @Query("user_id") userId: String,
+        @Header("Authorization") token: String? = null,
+        @Query("limit") limit: Int = 500,
+        @Query("offset") offset: Int = 0
+    ): List<CoinHistoryEntry>
 
     @GET("coins/leaderboard")
     suspend fun getLeaderboard(): List<LeaderboardEntry>
@@ -251,6 +424,22 @@ interface CoinApiService {
 
     @POST("share")
     suspend fun share(@Body request: ShareSlokaRequest): ShareResponse
+
+    @POST("quiz/attempt")
+    suspend fun recordQuizAttempt(@Body request: QuizAttemptRequest): Map<String, Any>
+
+    @GET("quiz/history")
+    suspend fun getQuizHistory(
+        @Query("user_id") userId: String,
+        @Header("Authorization") token: String? = null,
+        @Query("limit") limit: Int = 100
+    ): List<QuizAttemptDto>
+
+    @GET("activity/history")
+    suspend fun getActivityHistory(
+        @Query("user_id") userId: String,
+        @Header("Authorization") token: String? = null
+    ): List<ActivityDayDto>
 
     @POST("users/create")
     suspend fun createUser(@Body request: CreateUserRequest): CreateUserResponse
@@ -277,6 +466,12 @@ interface CoinApiService {
 
     @GET("yoga/stages")
     suspend fun getYogaStages(): YogaStagesResponse
+
+    @POST("users/stats/sync")
+    suspend fun syncUserStats(
+        @Header("Authorization") token: String? = null,
+        @Body request: UserStatsSyncRequest
+    ): UserStatsSyncResponse
 }
 
 object CoinApi {

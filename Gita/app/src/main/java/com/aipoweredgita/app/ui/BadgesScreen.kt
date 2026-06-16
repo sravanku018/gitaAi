@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import com.aipoweredgita.app.ui.LocalUiConfig
 import com.aipoweredgita.app.ui.components.MandalaBackground
@@ -114,7 +115,7 @@ fun ProgressionHeroSection() {
 }
 
 @Composable
-fun BadgesScreen(modifier: Modifier = Modifier, viewModel: ProfileViewModel = viewModel()) {
+fun BadgesScreen(modifier: Modifier = Modifier, viewModel: ProfileViewModel = hiltViewModel()) {
     val stats by viewModel.stats.collectAsState()
     val uiCfg = LocalUiConfig.current
 

@@ -9,7 +9,8 @@ interface QuizRepository {
         attempt: QuizAttempt,
         score: Int,
         totalQuestions: Int,
-        segmentCorrectMap: Map<String, Int> = emptyMap()
+        segmentCorrectMap: Map<String, Int> = emptyMap(),
+        quizType: String = "general"
     ): Triple<Boolean, Int?, Int>
 
     suspend fun getCachedTranslation(originalText: String, languageCode: String): TranslationCache?

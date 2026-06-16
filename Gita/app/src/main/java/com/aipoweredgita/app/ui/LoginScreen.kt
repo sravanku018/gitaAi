@@ -505,15 +505,15 @@ fun LoginScreen(
                                     val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                                     db.userStatsDao().updateUserId(guestId)
                                     db.userStatsDao().updateProfile(name = "Guest User", dob = "")
+                                    
+                                    // Award 50 coin welcome bonus to new guests (once only)
+                                    if (!authPrefs.guestWelcomeAwarded) {
+                                        db.userStatsDao().updateKrishnaCoins(50)
+                                        authPrefs.guestWelcomeAwarded = true
+                                        com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, 50, "Welcome bonus (guest)")
+                                    }
                                 } catch (e: Exception) {
                                     android.util.Log.e("LoginScreen", "Failed to update Room database for guest", e)
-                                }
-
-                                // Award 50 coin welcome bonus to new guests (once only)
-                                if (!authPrefs.guestWelcomeAwarded) {
-                                    authPrefs.localCoins = 50
-                                    authPrefs.guestWelcomeAwarded = true
-                                    com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, 50, "Welcome bonus (guest)")
                                 }
                                 isLoading = false
                                 onGuestLogin()

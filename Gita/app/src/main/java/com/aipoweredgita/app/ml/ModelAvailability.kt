@@ -72,6 +72,7 @@ class ModelAvailability(appContext: Context) {
         val gemma4Exists = gemma4Path != null
 
         val resolved = when {
+            selected.contains("NVIDIA", ignoreCase = true) -> null
             selected.contains("Groq", ignoreCase = true) -> null
             selected.contains("Qwen3") && qwen3Exists -> {
                 if (feature == AppFeature.QUIZ) qwen3Path else null
@@ -82,7 +83,7 @@ class ModelAvailability(appContext: Context) {
                     qwen3Path ?: gemma4Path
                 } else {
                     // VOICE uses only Gemma; Qwen removed from chat path.
-                    // null → ViewModel falls back to Groq proxy gracefully.
+                    // null → ViewModel falls back to cloud proxy gracefully.
                     gemma4Path
                 }
             }
@@ -95,6 +96,7 @@ class ModelAvailability(appContext: Context) {
         val selected = _selectedModel.value
         val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
         val useProxy = when {
+            selected.contains("NVIDIA", ignoreCase = true) -> true
             selected.contains("Groq", ignoreCase = true) -> true
             feature == AppFeature.VOICE &&
                 (tier == com.aipoweredgita.app.utils.DeviceTier.LOW || tier == com.aipoweredgita.app.utils.DeviceTier.LOW_MID) -> true
@@ -102,7 +104,9 @@ class ModelAvailability(appContext: Context) {
         }
         val modelPath = if (useProxy) null else resolveModelPath(feature, selected)
         val displayName = when {
-            useProxy -> "Cloud Proxy (Groq)"
+            useProxy && selected.contains("NVIDIA", ignoreCase = true) -> "NVIDIA 70B (Cloud)"
+            useProxy && selected.contains("Groq", ignoreCase = true) -> "Groq (Cloud)"
+            useProxy -> "Cloud Proxy"
             modelPath == null -> "No local model"
             modelPath.contains("qwen3", ignoreCase = true) -> "Qwen3 0.6B"
             modelPath.contains("gemma", ignoreCase = true) -> "Gemma 4 2B (Advanced)"

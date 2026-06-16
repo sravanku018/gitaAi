@@ -19,6 +19,9 @@ data class UserStats(
     val bestScore: Int = 0,
     val bestScoreOutOf: Int = 0,
 
+    // Coins
+    val krishnaCoins: Int = 0,
+
     // Reading statistics
     val versesRead: Int = 0,
     val distinctVersesRead: Int = 0,
@@ -46,7 +49,10 @@ data class UserStats(
     val firstOpenTimestamp: Long = System.currentTimeMillis(),
 
     // Active days count
-    val daysActive: Int = 1
+    val daysActive: Int = 1,
+
+    // Server Timestamp Guard for Sync
+    val serverUpdatedAt: String = ""
 ) {
     // Computed properties
     val accuracyPercentage: Float

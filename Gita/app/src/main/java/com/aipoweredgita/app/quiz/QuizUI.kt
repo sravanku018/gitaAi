@@ -52,6 +52,12 @@ fun QuizContent(
     val dialogScroll = rememberScrollState()
     val contentScroll = rememberScrollState()
 
+    // Reset local state when question changes (new question = new options list)
+    LaunchedEffect(options) {
+        showResult = null
+        showResultDialog = false
+    }
+
     val isOpenEnded = questionType == QuestionType.ESSAY || questionType == QuestionType.APPLICATION
 
     // Timer state from ViewModel
@@ -195,8 +201,15 @@ fun QuizContent(
         }
 
         if (showResultDialog) {
+            val isCorrect = if (isOpenEnded) {
+                showResult == true
+            } else {
+                selectedIndex == correctIndex
+            }
+
             Dialog(onDismissRequest = {
                 showResultDialog = false
+                onProceed(isCorrect)
             }) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -212,12 +225,6 @@ fun QuizContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val isCorrect = if (isOpenEnded) {
-                            showResult == true
-                        } else {
-                            selectedIndex == correctIndex
-                        }
-
                         // Icon/Visual feedback
                         Box(
                             modifier = Modifier

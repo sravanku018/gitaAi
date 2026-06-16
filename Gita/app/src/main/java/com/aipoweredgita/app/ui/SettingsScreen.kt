@@ -78,7 +78,7 @@ fun SettingsScreen(
     val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
     val deviceTier = tier
     var selectedModel by remember { mutableStateOf(prefs.getString("selected_ai_model", "Auto (Recommended)") ?: "Auto (Recommended)") }
-    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "Cloud Proxy (Groq)")
+    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
 
     // FIX: declare refreshStats BEFORE LaunchedEffect that calls it
     fun refreshStats() {
@@ -270,11 +270,12 @@ fun SettingsScreen(
                             model.contains("Auto") -> "Dynamically select the best model based on your device specs"
                             model.contains("Qwen3") -> "Fast 580MB LLM optimized for multilingual text"
                             model.contains("Gemma 4") -> "Powerful 2.58GB LLM for voice + deep analysis (8GB+ RAM)"
-                            model.contains("Groq") -> "Cloud-based Groq model (requires internet connection, free)"
+                            model.contains("NVIDIA") -> "Nemotron 70B — fast, Telugu-optimized (cloud-based)"
+                            model.contains("Groq") -> "Fastest cloud responses via Groq (requires internet)"
                             else -> ""
                         }
                         val isSelected = selectedModel == model ||
-                                (model == "Auto (Recommended)" && !selectedModel.contains("Qwen3") && !selectedModel.contains("Gemma") && !selectedModel.contains("Groq"))
+                                (model == "Auto (Recommended)" && !selectedModel.contains("Qwen3") && !selectedModel.contains("Gemma") && !selectedModel.contains("NVIDIA") && !selectedModel.contains("Groq"))
 
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).graphicsLayer { alpha = if (isDisabled) 0.5f else 1f },
@@ -508,7 +509,7 @@ fun SettingsScreen(
                     }
                     OrnamentRule()
                     Text(
-                        if (hasQuestions) "$importedCount questions already imported from the QA dataset."
+                        if (hasQuestions) "$importedCount questions imported from the QA dataset."
                         else "Import 3,500+ curated Bhagavad Gita questions from the official QA dataset.",
                         style = MaterialTheme.typography.bodySmall,
                         color = textSecondary

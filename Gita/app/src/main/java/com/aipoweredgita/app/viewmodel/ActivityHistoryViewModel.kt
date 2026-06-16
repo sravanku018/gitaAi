@@ -1,19 +1,22 @@
 package com.aipoweredgita.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.database.DailyActivity
-import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.QuizAttempt
-import com.aipoweredgita.app.database.UserStats
+import com.aipoweredgita.app.domain.model.ActivityHistoryEvent
+import com.aipoweredgita.app.domain.model.ActivityHistoryUiState
+import com.aipoweredgita.app.database.UserStatsDao
 import com.aipoweredgita.app.repository.DailyActivityRepository
 import com.aipoweredgita.app.repository.QuizStatsRepository
 import com.aipoweredgita.app.repository.SpiritualPathRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class QuizSizeStatsData(
     val quizSize: Int,
@@ -24,48 +27,16 @@ data class QuizSizeStatsData(
     val bestAttempt: QuizAttempt?
 )
 
-class ActivityHistoryViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = GitaDatabase.getDatabase(application)
-    private val quizStatsRepo = QuizStatsRepository(db.quizAttemptDao())
-    private val dailyActivityRepo = DailyActivityRepository(db.dailyActivityDao())
-    private val spiritualPathRepo = SpiritualPathRepository(db.readVerseDao())
-    private val userStatsDao = db.userStatsDao()
+@HiltViewModel
+class ActivityHistoryViewModel @Inject constructor(
+    private val quizStatsRepo: QuizStatsRepository,
+    private val dailyActivityRepo: DailyActivityRepository,
+    private val spiritualPathRepo: SpiritualPathRepository,
+    private val userStatsDao: UserStatsDao
+) : ViewModel() {
 
-    private val _userStats = MutableStateFlow<UserStats?>(null)
-    val userStats: StateFlow<UserStats?> = _userStats.asStateFlow()
-
-    private val _allActivity = MutableStateFlow<List<DailyActivity>>(emptyList())
-    val allActivity: StateFlow<List<DailyActivity>> = _allActivity.asStateFlow()
-
-    private val _attempts = MutableStateFlow<List<QuizAttempt>>(emptyList())
-    val attempts: StateFlow<List<QuizAttempt>> = _attempts.asStateFlow()
-
-    private val _averageAccuracy = MutableStateFlow(0f)
-    val averageAccuracy: StateFlow<Float> = _averageAccuracy.asStateFlow()
-
-    private val _averageTime = MutableStateFlow(0L)
-    val averageTime: StateFlow<Long> = _averageTime.asStateFlow()
-
-    private val _quiz10Stats = MutableStateFlow<QuizSizeStatsData?>(null)
-    val quiz10Stats: StateFlow<QuizSizeStatsData?> = _quiz10Stats.asStateFlow()
-
-    private val _quiz20Stats = MutableStateFlow<QuizSizeStatsData?>(null)
-    val quiz20Stats: StateFlow<QuizSizeStatsData?> = _quiz20Stats.asStateFlow()
-
-    private val _quiz30Stats = MutableStateFlow<QuizSizeStatsData?>(null)
-    val quiz30Stats: StateFlow<QuizSizeStatsData?> = _quiz30Stats.asStateFlow()
-
-    private val _selectedQuizSize = MutableStateFlow<Int?>(null)
-    val selectedQuizSize: StateFlow<Int?> = _selectedQuizSize.asStateFlow()
-
-    private val _karmaYogaCount = MutableStateFlow(0)
-    val karmaYogaCount: StateFlow<Int> = _karmaYogaCount.asStateFlow()
-
-    private val _bhaktiYogaCount = MutableStateFlow(0)
-    val bhaktiYogaCount: StateFlow<Int> = _bhaktiYogaCount.asStateFlow()
-
-    private val _jnanaYogaCount = MutableStateFlow(0)
-    val jnanaYogaCount: StateFlow<Int> = _jnanaYogaCount.asStateFlow()
+    private val _uiState = MutableStateFlow(ActivityHistoryUiState())
+    val uiState: StateFlow<ActivityHistoryUiState> = _uiState.asStateFlow()
 
     init {
         loadUserStats()
@@ -75,27 +46,102 @@ class ActivityHistoryViewModel(application: Application) : AndroidViewModel(appl
         loadSpiritualPathStats()
     }
 
-    fun selectQuizSize(size: Int?) { _selectedQuizSize.value = size }
+    fun onEvent(event: ActivityHistoryEvent) {
+        when (event) {
+            is ActivityHistoryEvent.SelectQuizSize -> selectQuizSize(event.size)
+        }
+    }
+
+    private fun selectQuizSize(size: Int?) {
+        _uiState.update { it.copy(selectedQuizSize = size) }
+    }
 
     private fun loadUserStats() {
         viewModelScope.launch { userStatsDao.initializeStatsIfNeeded() }
         viewModelScope.launch {
-            userStatsDao.getUserStats().collect { _userStats.value = it }
+            userStatsDao.getUserStats().collect { userStats ->
+                _uiState.update { it.copy(userStats = userStats) }
+            }
         }
     }
 
     private fun loadDailyActivity() {
         viewModelScope.launch {
-            dailyActivityRepo.getAllActivity().collect { _allActivity.value = it }
+            dailyActivityRepo.getAllActivity().collect { activity ->
+                // If local daily activity is empty (fresh install), fetch from server
+                if (activity.isEmpty()) {
+                    try {
+                        val context = com.aipoweredgita.app.GitaApp.instance
+                        val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                        val uid = authPrefs.userId
+                        val token = authPrefs.token
+                        if (uid != null && token != null) {
+                            val serverActivity = com.aipoweredgita.app.network.CoinApi.retrofitService.getActivityHistory(
+                                uid, "Bearer $token"
+                            )
+                            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                            val dao = db.dailyActivityDao()
+                            for (day in serverActivity) {
+                                dao.insertIfAbsent(
+                                    com.aipoweredgita.app.database.DailyActivity(
+                                        date = day.date,
+                                        normalSeconds = 0,
+                                        quizSeconds = day.quizzes.toLong() * 300,
+                                        voiceStudioTimeSeconds = day.voice_chats.toLong() * 120,
+                                        versesRead = day.total_events
+                                    )
+                                )
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+                _uiState.update { it.copy(allActivity = activity) }
+            }
         }
     }
 
     private fun loadQuizStats() {
         viewModelScope.launch {
             quizStatsRepo.getAllAttempts().collect { list ->
-                _attempts.value = list
-                _averageAccuracy.value = quizStatsRepo.getAverageAccuracy() ?: 0f
-                _averageTime.value = quizStatsRepo.getAverageTime() ?: 0L
+                // If local quiz attempts are empty (fresh install), fetch from server
+                if (list.isEmpty()) {
+                    try {
+                        val context = com.aipoweredgita.app.GitaApp.instance
+                        val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                        val uid = authPrefs.userId
+                        val token = authPrefs.token
+                        if (uid != null && token != null) {
+                            val serverAttempts = com.aipoweredgita.app.network.CoinApi.retrofitService.getQuizHistory(
+                                uid, "Bearer $token", limit = 500
+                            )
+                            val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
+                            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }
+                            for (dto in serverAttempts) {
+                                val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
+                                val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
+                                quizDao.insertAttempt(
+                                    com.aipoweredgita.app.database.QuizAttempt(
+                                        score = dto.score,
+                                        totalQuestions = dto.total_questions,
+                                        timestamp = ts,
+                                        date = dateStr,
+                                        quizType = dto.quiz_type,
+                                        timeSpentSeconds = dto.time_spent_seconds
+                                    )
+                                )
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+                _uiState.update { 
+                    it.copy(
+                        attempts = list,
+                        averageAccuracy = quizStatsRepo.getAverageAccuracy() ?: 0f,
+                        averageTime = quizStatsRepo.getAverageTime() ?: 0L
+                    ) 
+                }
             }
         }
     }
@@ -111,14 +157,38 @@ class ActivityHistoryViewModel(application: Application) : AndroidViewModel(appl
                 bestAttempt = quizStatsRepo.getBestAttemptByQuizSize(size)
             )
         }
-        viewModelScope.launch { quizStatsRepo.getAttemptsByQuizSize(10).collect { _quiz10Stats.value = buildStats(10, it) } }
-        viewModelScope.launch { quizStatsRepo.getAttemptsByQuizSize(20).collect { _quiz20Stats.value = buildStats(20, it) } }
-        viewModelScope.launch { quizStatsRepo.getAttemptsByQuizSize(30).collect { _quiz30Stats.value = buildStats(30, it) } }
+        viewModelScope.launch {
+            quizStatsRepo.getAttemptsByQuizSize(10).collect { list ->
+                _uiState.update { it.copy(quiz10Stats = buildStats(10, list)) }
+            }
+        }
+        viewModelScope.launch {
+            quizStatsRepo.getAttemptsByQuizSize(20).collect { list ->
+                _uiState.update { it.copy(quiz20Stats = buildStats(20, list)) }
+            }
+        }
+        viewModelScope.launch {
+            quizStatsRepo.getAttemptsByQuizSize(30).collect { list ->
+                _uiState.update { it.copy(quiz30Stats = buildStats(30, list)) }
+            }
+        }
     }
 
     private fun loadSpiritualPathStats() {
-        viewModelScope.launch { spiritualPathRepo.karmaYogaCount.collect { _karmaYogaCount.value = it } }
-        viewModelScope.launch { spiritualPathRepo.bhaktiYogaCount.collect { _bhaktiYogaCount.value = it } }
-        viewModelScope.launch { spiritualPathRepo.jnanaYogaCount.collect { _jnanaYogaCount.value = it } }
+        viewModelScope.launch { 
+            spiritualPathRepo.karmaYogaCount.collect { count ->
+                _uiState.update { it.copy(karmaYogaCount = count) }
+            } 
+        }
+        viewModelScope.launch { 
+            spiritualPathRepo.bhaktiYogaCount.collect { count ->
+                _uiState.update { it.copy(bhaktiYogaCount = count) }
+            } 
+        }
+        viewModelScope.launch { 
+            spiritualPathRepo.jnanaYogaCount.collect { count ->
+                _uiState.update { it.copy(jnanaYogaCount = count) }
+            } 
+        }
     }
 }

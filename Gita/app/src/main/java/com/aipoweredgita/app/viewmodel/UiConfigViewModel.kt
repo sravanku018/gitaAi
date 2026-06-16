@@ -1,24 +1,34 @@
 package com.aipoweredgita.app.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import com.aipoweredgita.app.domain.model.UiConfigEvent
+import com.aipoweredgita.app.domain.model.UiConfigUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-data class UiConfigState(
-    val isLandscape: Boolean = false,
-    val gridColumns: Int = 7,
-)
+@HiltViewModel
+class UiConfigViewModel @Inject constructor() : ViewModel() {
 
-class UiConfigViewModel(application: Application) : AndroidViewModel(application) {
-    private val _state = MutableStateFlow(UiConfigState())
-    val state: StateFlow<UiConfigState> = _state.asStateFlow()
+    private val _uiState = MutableStateFlow(UiConfigUiState())
+    val uiState: StateFlow<UiConfigUiState> = _uiState.asStateFlow()
 
-    fun updateFromSize(widthDp: Int, heightDp: Int) {
+    // Keep legacy state alias
+    val state: StateFlow<UiConfigUiState> = uiState
+
+    fun onEvent(event: UiConfigEvent) {
+        when (event) {
+            is UiConfigEvent.UpdateFromSize -> updateFromSize(event.widthDp, event.heightDp)
+        }
+    }
+
+    private fun updateFromSize(widthDp: Int, heightDp: Int) {
         val landscape = widthDp > heightDp
         val columns = if (landscape) 10 else 7
-        _state.value = UiConfigState(isLandscape = landscape, gridColumns = columns)
+        _uiState.update { it.copy(isLandscape = landscape, gridColumns = columns) }
     }
 }
 

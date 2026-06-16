@@ -7,7 +7,7 @@ object GitaConstants {
     const val COIN_API_BASE_URL = "https://prime-gorilla-49.sravanku018.deno.net/"
     const val VOICE_PROXY_URL = "https://noisy-sheep-76.sravanku018.deno.net/"
     const val NETWORK_CONNECT_TIMEOUT_SEC = 15L
-    const val NETWORK_READ_TIMEOUT_SEC = 20L
+    const val NETWORK_READ_TIMEOUT_SEC = 60L
     const val NETWORK_WRITE_TIMEOUT_SEC = 10L
     const val VERSE_CACHE_MAX_SIZE_KB = 2000
     const val TOTAL_VERSES = 700

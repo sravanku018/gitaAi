@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SpacedRepetitionItem::class, LearningStyle::class, YogaProgression::class, RandomVerseHistory::class,
         VoiceChatMessage::class, TranslationCache::class, ChatSummary::class, PendingSyncEvent::class
     ],
-    version = 34,
+    version = 38,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -551,6 +551,83 @@ abstract class GitaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_sync_events ADD COLUMN idempotencyKey TEXT")
+            }
+        }
+
+        private val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // krishnaCoins column already exists from MIGRATION_23_24, but we re-added it to the UserStats entity.
+                // This empty migration bumps the version to trigger schema validation.
+            }
+        }
+
+        private val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Remove extra columns (like segmentCoins) by recreating user_stats
+                database.execSQL("DROP TABLE IF EXISTS `user_stats_new`")
+                database.execSQL("""
+                    CREATE TABLE `user_stats_new` (
+                        `id` INTEGER NOT NULL, 
+                        `userName` TEXT NOT NULL, 
+                        `dateOfBirth` TEXT NOT NULL, 
+                        `totalQuizzesTaken` INTEGER NOT NULL, 
+                        `totalQuestionsAnswered` INTEGER NOT NULL, 
+                        `totalCorrectAnswers` INTEGER NOT NULL, 
+                        `bestScore` INTEGER NOT NULL, 
+                        `bestScoreOutOf` INTEGER NOT NULL, 
+                        `krishnaCoins` INTEGER NOT NULL, 
+                        `versesRead` INTEGER NOT NULL, 
+                        `distinctVersesRead` INTEGER NOT NULL, 
+                        `chaptersCompleted` INTEGER NOT NULL, 
+                        `totalTimeSpentSeconds` INTEGER NOT NULL, 
+                        `normalModeTimeSeconds` INTEGER NOT NULL, 
+                        `quizModeTimeSeconds` INTEGER NOT NULL, 
+                        `voiceStudioTimeSeconds` INTEGER NOT NULL, 
+                        `lastActiveTimestamp` INTEGER NOT NULL, 
+                        `totalFavorites` INTEGER NOT NULL, 
+                        `currentStreak` INTEGER NOT NULL, 
+                        `longestStreak` INTEGER NOT NULL, 
+                        `lastActiveDate` TEXT NOT NULL, 
+                        `userId` TEXT NOT NULL, 
+                        `firstOpenTimestamp` INTEGER NOT NULL, 
+                        `daysActive` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                """)
+                
+                database.execSQL("""
+                    INSERT INTO `user_stats_new` (
+                        `id`, `userName`, `dateOfBirth`, `totalQuizzesTaken`, `totalQuestionsAnswered`, 
+                        `totalCorrectAnswers`, `bestScore`, `bestScoreOutOf`, `krishnaCoins`, `versesRead`, 
+                        `distinctVersesRead`, `chaptersCompleted`, `totalTimeSpentSeconds`, 
+                        `normalModeTimeSeconds`, `quizModeTimeSeconds`, `voiceStudioTimeSeconds`, 
+                        `lastActiveTimestamp`, `totalFavorites`, `currentStreak`, `longestStreak`, 
+                        `lastActiveDate`, `userId`, `firstOpenTimestamp`, `daysActive`
+                    )
+                    SELECT 
+                        `id`, `userName`, `dateOfBirth`, `totalQuizzesTaken`, `totalQuestionsAnswered`, 
+                        `totalCorrectAnswers`, `bestScore`, `bestScoreOutOf`, `krishnaCoins`, `versesRead`, 
+                        `distinctVersesRead`, `chaptersCompleted`, `totalTimeSpentSeconds`, 
+                        `normalModeTimeSeconds`, `quizModeTimeSeconds`, `voiceStudioTimeSeconds`, 
+                        `lastActiveTimestamp`, `totalFavorites`, `currentStreak`, `longestStreak`, 
+                        `lastActiveDate`, `userId`, `firstOpenTimestamp`, `daysActive`
+                    FROM `user_stats`
+                """)
+                
+                database.execSQL("DROP TABLE `user_stats`")
+                database.execSQL("ALTER TABLE `user_stats_new` RENAME TO `user_stats`")
+            }
+        }
+
+        private val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `quiz_attempts` ADD COLUMN `quizType` TEXT NOT NULL DEFAULT 'general'")
+            }
+        }
+
         fun getDatabase(context: Context): GitaDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -558,7 +635,7 @@ abstract class GitaDatabase : RoomDatabase() {
                     GitaDatabase::class.java,
                     "gita_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38)
                 // Safety net: if a migration path is missing, fall back to destructive
                 // on downgrade only (not missing upgrades). Prevents crash on rollback.
                 .fallbackToDestructiveMigrationOnDowngrade()

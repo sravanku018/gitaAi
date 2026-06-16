@@ -14,10 +14,11 @@ data class QuizAttempt(
 
     val score: Int,
     val totalQuestions: Int,
-    val timeSpentSeconds: Long,
+    val timeSpentSeconds: Long = 0,
     val timestamp: Long = System.currentTimeMillis(),
     val date: String = LocalDate.now().toString(),
-    val coinsEarned: Int = 0
+    val coinsEarned: Int = 0,
+    val quizType: String = "general"
 ) {
     val accuracyPercentage: Float
         get() = if (totalQuestions > 0) {

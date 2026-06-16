@@ -35,8 +35,8 @@ class DatasetIngestionPipeline(
         "gujarati" to "https://huggingface.co/datasets/JDhruv14/Bhagavad-Gita-QA/resolve/main/Gujarati/gujarati.csv"
     )
 
-    // Cooldown period: don't re-ask same question within 30 minutes
-    private val COOLDOWN_MS = 30 * 60 * 1000L
+    // Cooldown period: don't re-ask same question within 24 hours
+    private val COOLDOWN_MS = 24 * 60 * 60 * 1000L
 
     /**
      * Full pipeline: download → convert → dedup → normalize → store.
@@ -211,7 +211,7 @@ class DatasetIngestionPipeline(
             val difficulty = estimateDifficulty(raw.chapterNo, raw.verseNo)
 
             QuizQuestionBank(
-                questionHash = "${raw.chapterNo}:${raw.verseNo}:${raw.question.hashCode()}",
+                questionHash = "${raw.question.trim().lowercase().hashCode()}",
                 questionType = "MCQ",
                 difficulty = difficulty,
                 question = raw.question,

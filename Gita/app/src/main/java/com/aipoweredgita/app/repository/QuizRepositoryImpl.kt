@@ -16,10 +16,11 @@ class QuizRepositoryImpl(
         attempt: QuizAttempt,
         score: Int,
         totalQuestions: Int,
-        segmentCorrectMap: Map<String, Int>
+        segmentCorrectMap: Map<String, Int>,
+        quizType: String
     ): Triple<Boolean, Int?, Int> {
         return database.withTransaction {
-            val coinsEarned = statsRepository.trackQuizCompletion(score, totalQuestions, segmentCorrectMap)
+            val coinsEarned = statsRepository.trackQuizCompletion(score, totalQuestions, segmentCorrectMap, quizType)
             quizAttemptDao.insertAttempt(attempt.copy(coinsEarned = coinsEarned))
             val (didLevelUp, newLevel) = yogaProgressionRepository.updateFromQuiz(score, totalQuestions)
             Triple(didLevelUp, newLevel, coinsEarned)

@@ -26,7 +26,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aipoweredgita.app.ml.ModelDownloadManager
+import com.aipoweredgita.app.domain.model.ModelDownloadEvent
 import com.aipoweredgita.app.viewmodel.ModelDownloadViewModel
 import com.aipoweredgita.app.ui.theme.*
 
@@ -43,18 +46,20 @@ data class ModelDownloadProgress(
 @Composable
 fun ModelDownloadScreen(
     modifier: Modifier = Modifier,
-    viewModel: ModelDownloadViewModel = viewModel()
+    viewModel: ModelDownloadViewModel = hiltViewModel()
 ) {
     val uiCfg = LocalUiConfig.current
     val context = LocalContext.current
-    val downloadProgress by viewModel.downloadProgress.collectAsState()
-    val overallProgress by viewModel.overallProgress.collectAsState()
-    val isDownloading by viewModel.isDownloading.collectAsState()
-    val perFileProgress by viewModel.fileProgressList.collectAsState()
-    val aggRemaining by viewModel.remainingBytes.collectAsState()
-    val filesRemaining by viewModel.filesRemaining.collectAsState()
-    val modelsStatus by viewModel.modelsStatus.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val downloadProgress = state.downloadProgress
+    val overallProgress = state.overallProgress
+    val isDownloading = state.isDownloading
+    val perFileProgress = state.fileProgressList
+    val aggRemaining = state.remainingBytes
+    val filesRemaining = state.filesRemaining
+    val modelsStatus = state.modelsStatus
+    val errorMessage = state.error
 
     var remainingMb by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(aggRemaining) {
@@ -188,7 +193,7 @@ fun ModelDownloadScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { viewModel.clearError() }) {
+                        IconButton(onClick = { viewModel.onEvent(ModelDownloadEvent.ClearError) }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Dismiss",
@@ -317,7 +322,7 @@ fun ModelDownloadScreen(
                                     horizontalArrangement = Arrangement.End
                                 ) {
                                     OutlinedButton(
-                                        onClick = { viewModel.cancelDownload() },
+                                        onClick = { viewModel.onEvent(ModelDownloadEvent.CancelDownload) },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = CrimsonDeep),
                                         border = BorderStroke(1.dp, CrimsonDeep)
                                     ) {
@@ -364,7 +369,7 @@ fun ModelDownloadScreen(
                                     }
 
                                     Button(
-                                        onClick = { viewModel.startSingleModelDownload(status.name) },
+                                        onClick = { viewModel.onEvent(ModelDownloadEvent.StartSingleModelDownload(status.name)) },
                                         enabled = !isDownloading,
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = if (isQwen) Saffron else DeepBrown,

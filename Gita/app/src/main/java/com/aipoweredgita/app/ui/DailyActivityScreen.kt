@@ -31,6 +31,7 @@ import java.util.Locale
 
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.ui.components.LotusBadge
 import androidx.compose.foundation.shape.CircleShape
@@ -42,7 +43,7 @@ import androidx.compose.ui.graphics.Brush
 @Composable
 fun ActivityScreen(
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = viewModel(),
+    viewModel: ProfileViewModel = hiltViewModel(),
     onNavigateToProgression: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -319,7 +320,7 @@ fun ActivityScreen(
                         )
                         if (versesList.size > 12) {
                             Text(
-                                text = "… and ${versesList.size - 12} more",
+                                text = "ï¿½ and ${versesList.size - 12} more",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -17,9 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.database.FavoriteVerse
 import com.aipoweredgita.app.viewmodel.FavoritesViewModel
+import com.aipoweredgita.app.domain.model.FavoritesEvent
+import com.aipoweredgita.app.domain.model.FavoritesSideEffect
 import com.aipoweredgita.app.ui.LocalUiConfig
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -29,12 +32,25 @@ import androidx.compose.foundation.background
 @Composable
 fun FavoritesScreen(
     modifier: Modifier = Modifier,
-    viewModel: FavoritesViewModel = viewModel(),
+    viewModel: FavoritesViewModel = hiltViewModel(),
     onVerseClick: (Int, Int) -> Unit = { _, _ -> }
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.uiState.collectAsState()
     var showClearDialog by remember { mutableStateOf(false) }
+    var inlineMessage by remember { mutableStateOf<String?>(null) }
     val uiCfg = LocalUiConfig.current
+
+    LaunchedEffect(viewModel.sideEffect) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is FavoritesSideEffect.ShowMessage -> {
+                    inlineMessage = effect.message
+                    kotlinx.coroutines.delay(2000)
+                    inlineMessage = null
+                }
+            }
+        }
+    }
 
     val isDark = rememberThemeIsDark()
     val appBg = MaterialTheme.colorScheme.background
@@ -89,7 +105,7 @@ fun FavoritesScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
         // Message display
-        state.message?.let { message ->
+        inlineMessage?.let { message ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -161,7 +177,7 @@ fun FavoritesScreen(
                     ) { favorite ->
                         FavoriteVerseCard(
                             favorite = favorite,
-                            onDelete = { viewModel.deleteFavorite(favorite.chapterNo, favorite.verseNo) },
+                            onDelete = { viewModel.onEvent(FavoritesEvent.DeleteFavorite(favorite.chapterNo, favorite.verseNo)) },
                             onClick = { onVerseClick(favorite.chapterNo, favorite.verseNo) }
                         )
                     }
@@ -180,7 +196,7 @@ fun FavoritesScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.clearAllFavorites()
+                        viewModel.onEvent(FavoritesEvent.ClearAllFavorites)
                         showClearDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(

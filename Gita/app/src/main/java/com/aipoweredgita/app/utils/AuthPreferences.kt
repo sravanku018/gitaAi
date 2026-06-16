@@ -31,9 +31,6 @@ class AuthPreferences(context: Context) {
         )
     }
 
-    /** Lock for atomic coin mutations to prevent read-modify-write race conditions. */
-    private val coinLock = Any()
-
     companion object {
         private const val KEY_USER_ID = "user_id"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
@@ -115,21 +112,6 @@ class AuthPreferences(context: Context) {
     // ── Guest Local Coins ──────────────────────────────────────────────
     // Guests earn coins locally since /guest/create is broken on server
 
-    var localCoins: Int
-        get() = prefs.getInt("local_coins", 0)
-        set(value) = synchronized(coinLock) {
-            prefs.edit().putInt("local_coins", value).commit()
-        }
-
-    fun addLocalCoins(amount: Int) = synchronized(coinLock) {
-        val current = prefs.getInt("local_coins", 0)
-        prefs.edit().putInt("local_coins", current + amount).commit()
-    }
-
-    fun resetLocalCoins() = synchronized(coinLock) {
-        prefs.edit().putInt("local_coins", 0).commit()
-    }
-
     var guestWelcomeAwarded: Boolean
         get() = prefs.getBoolean("guest_welcome_awarded", false)
         set(value) = prefs.edit().putBoolean("guest_welcome_awarded", value).apply()
@@ -152,6 +134,8 @@ class AuthPreferences(context: Context) {
         email: String? = null,
         password: String? = null
     ) {
+        // Use commit() (synchronous) so that isLoggedIn, userId, and token are immediately
+        // readable after login — async apply() can cause stale reads in the UI right after login
         prefs.edit().apply {
             putString(KEY_USER_ID, userId)
             putBoolean(KEY_IS_LOGGED_IN, true)
@@ -162,13 +146,13 @@ class AuthPreferences(context: Context) {
             email?.let { putString(KEY_EMAIL, it) }
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             remove("guest_welcome_awarded") // Reset guest flag
-            apply()
+            commit() // synchronous — ensures values are written before onLoginSuccess navigates
         }
-        // Store sensitive data in encrypted prefs
+        // Store sensitive data in encrypted prefs — also synchronous
         securePrefs.edit().apply {
             token?.let { putString(KEY_TOKEN, it) }
             password?.let { putString(KEY_PASSWORD, it) }
-            apply()
+            commit() // synchronous — token must be readable immediately after login
         }
     }
 
@@ -218,9 +202,8 @@ class AuthPreferences(context: Context) {
             remove(KEY_GUEST_ID)
             remove(KEY_LOGIN_METHOD)
             remove(KEY_LAST_LOGIN)
-            // Reset guest welcome flag and local coins on logout to start fresh
+            // Reset guest welcome flag on logout to start fresh
             remove("guest_welcome_awarded")
-            putInt("local_coins", 0)
             // Always preserve email/phone/name for quick re-login
             apply()
         }
