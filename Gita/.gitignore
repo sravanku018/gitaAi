@@ -13,3 +13,52 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Build outputs and logs
+*.log
+build_*.txt
+build_error.txt
+ksp_*.log
+ksp_*.txt
+
+# Temp and debug files
+temp_*.txt
+*.ps1
+*.py
+check_*.ps1
+fix_*.txt
+resize_*.py
+OFFLINE_ISSUE_NOTES.txt
+
+# Keys and certs
+*.jks
+*.keystore
+/keys
+
+# APK/AAB outputs
+*.apk
+*.aab
+*.aar
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ML Models (download at runtime)
+*.tflite
+*.bin
+*.onnx
+/models
+/.qwen
+/.kotlin
+
+# Misc
+*.swp
+*.swo
+*~
+.vscode/
+*.orig
