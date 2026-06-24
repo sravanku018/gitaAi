@@ -25,6 +25,9 @@ interface DailyActivityDao {
     @Query("SELECT * FROM daily_activity WHERE date = :date LIMIT 1")
     suspend fun getByDate(date: String): DailyActivity?
 
+    @Query("SELECT * FROM daily_activity WHERE date IN (:dates)")
+    suspend fun getByDates(dates: List<String>): List<DailyActivity>
+
     @Query("SELECT * FROM daily_activity ORDER BY date DESC")
     fun getAllActivity(): kotlinx.coroutines.flow.Flow<List<DailyActivity>>
 

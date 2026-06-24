@@ -28,8 +28,10 @@ class ThrottledDatabaseUpdater(
 ) {
     private val TAG = "ThrottledUpdater"
     private val batch = mutableListOf<VerseRead>()
+    private val retryCount = mutableMapOf<String, Int>()
     private var flushJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val maxRetries = 3
 
     /**
      * Track a verse read - batched and throttled
@@ -71,12 +73,28 @@ class ThrottledDatabaseUpdater(
             scope.launch {
                 try {
                     onBatchWrite(toBatch)
+                    // Clear retry counts on success
+                    toBatch.forEach { retryCount.remove("${it.chapter}:${it.verse}") }
                     Log.d(TAG, "Successfully flushed ${toBatch.size} reads")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error flushing batch: ${e.message}")
-                    // Re-queue on failure
-                    synchronized(batch) {
-                        batch.addAll(0, toBatch)
+                    // Re-queue on failure with retry limit
+                    val eligible = toBatch.filter { verse ->
+                        val key = "${verse.chapter}:${verse.verse}"
+                        val count = retryCount.getOrDefault(key, 0)
+                        if (count < maxRetries) {
+                            retryCount[key] = count + 1
+                            true
+                        } else {
+                            Log.e(TAG, "Dropping ${key} after $maxRetries retries")
+                            retryCount.remove(key)
+                            false
+                        }
+                    }
+                    if (eligible.isNotEmpty()) {
+                        synchronized(batch) {
+                            batch.addAll(0, eligible)
+                        }
                     }
                 }
             }

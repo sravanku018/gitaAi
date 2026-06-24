@@ -73,19 +73,12 @@ fun ActivityScreen(
     val breakdown = YogaLevelManager.compositeBreakdown(stats)
 
     LaunchedEffect(dates) {
-        val map = mutableMapOf<String, DailyActivity?>()
-        var anyActivity = false
-        for (d in dates) {
-            val row = try { db.dailyActivityDao().getByDate(d) } catch (e: Exception) {
-                android.util.Log.w("DailyActivityScreen", "Failed to load activity for $d", e)
-                null
-            }
-            map[d] = row
-            val total = (row?.normalSeconds ?: 0L) + (row?.quizSeconds ?: 0L) + (row?.voiceStudioTimeSeconds ?: 0L)
-            if (total > 0L) anyActivity = true
+        val rows = try { db.dailyActivityDao().getByDates(dates) } catch (_: Exception) { emptyList() }
+        val map = rows.associateBy { it.date }
+        activityByDate = dates.associateWith { d -> map[d] }
+        allZero = rows.all { row ->
+            ((row.normalSeconds ?: 0L) + (row.quizSeconds ?: 0L) + (row.voiceStudioTimeSeconds ?: 0L)) == 0L
         }
-        activityByDate = map
-        allZero = !anyActivity
     }
 
     LaunchedEffect(selectedDate) {

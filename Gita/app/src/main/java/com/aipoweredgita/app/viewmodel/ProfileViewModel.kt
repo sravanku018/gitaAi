@@ -112,16 +112,10 @@ class ProfileViewModel @Inject constructor(
     private fun loadStats() {
         viewModelScope.launch {
             try {
-                statsRepository // Access to trigger initialization
                 _uiState.update { it.copy(isLoading = true) }
                 
-                // This would need to be injected or accessed differently
-                // For now, keeping the existing pattern
-                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(
-                    com.aipoweredgita.app.GitaApp.instance
-                )
-                db.userStatsDao().initializeStatsIfNeeded()
-                db.userStatsDao().getUserStats().collect { userStats ->
+                statsRepository.initializeStatsIfNeeded()
+                statsRepository.getUserStatsFlow().collect { userStats ->
                     _stats.value = userStats
                     _uiState.update { it.copy(stats = userStats, isLoading = false) }
                     if (userStats != null) {

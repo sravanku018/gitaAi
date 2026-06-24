@@ -115,6 +115,40 @@ class FakeUserStatsDao : UserStatsDao {
     override suspend fun updateUserId(userId: String) {
         stats = stats?.copy(userId = userId)
     }
+
+    override suspend fun insertIfEmpty(stats: UserStats) {
+        if (this.stats == null) this.stats = stats
+    }
+
+    override suspend fun updateKrishnaCoins(coins: Int) {
+        stats = stats?.copy(krishnaCoins = coins)
+    }
+
+    override suspend fun addKrishnaCoins(amount: Int) {
+        stats = stats?.copy(krishnaCoins = (stats?.krishnaCoins ?: 0) + amount)
+    }
+
+    override suspend fun syncRemoteStats(
+        currentStreak: Int,
+        longestStreak: Int,
+        totalQuizzesTaken: Int,
+        totalQuestionsAnswered: Int,
+        versesRead: Int,
+        chaptersCompleted: Int,
+        daysActive: Int,
+        lastActiveDate: String
+    ) {
+        stats = stats?.copy(
+            currentStreak = currentStreak,
+            longestStreak = longestStreak,
+            totalQuizzesTaken = totalQuizzesTaken,
+            totalQuestionsAnswered = totalQuestionsAnswered,
+            versesRead = versesRead,
+            chaptersCompleted = chaptersCompleted,
+            daysActive = daysActive,
+            lastActiveDate = lastActiveDate
+        )
+    }
 }
 
 class FakePendingSyncEventDao : PendingSyncEventDao {

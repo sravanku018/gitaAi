@@ -57,12 +57,6 @@ private val chapterNames = mapOf(
     17 to "Shraddhatraya Yoga",   18 to "Moksha Sannyāsa Yoga"
 )
 
-private val chapterVerseCounts = mapOf(
-    1 to 47, 2 to 72, 3 to 43, 4 to 42, 5 to 29, 6 to 47,
-    7 to 30, 8 to 28, 9 to 34, 10 to 42, 11 to 55, 12 to 20,
-    13 to 34, 14 to 27, 15 to 20, 16 to 24, 17 to 28, 18 to 78
-)
-
 // ═══════════════════════════════════════════════════════════════════════════
 //  SCREEN
 // ═══════════════════════════════════════════════════════════════════════════
@@ -143,10 +137,14 @@ fun NormalModeScreen(
                         animationSpec = com.aipoweredgita.app.ui.theme.MotionTokens.springExpressive<Float>(),
                         label = "verse_enter"
                     )
+                    val verseScrollState = rememberScrollState()
+                    LaunchedEffect(verse.chapterNo, verse.verseNo) {
+                        verseScrollState.scrollTo(0)
+                    }
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(verseScrollState)
                             .padding(horizontal = 18.dp)
                             .graphicsLayer {
                                 alpha = verseAnim
@@ -220,7 +218,7 @@ fun NormalModeScreen(
         VerseSelectionDialog(
             currentChapter  = state.verse!!.chapterNo,
             currentVerse    = state.verse!!.verseNo,
-            maxVerses       = chapterVerseCounts[state.verse!!.chapterNo] ?: 47,
+            maxVerses       = com.aipoweredgita.app.util.GitaConstants.CHAPTER_VERSE_COUNTS[state.verse!!.chapterNo] ?: 47,
             combinedGroups  = state.combinedGroups,
             onDismiss       = { showVerseDialog = false },
             onVerseSelected = { v ->

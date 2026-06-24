@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +55,20 @@ fun OfflineDownloadScreen(
     }
 
     if (showVerseReader && cachedCount > 0) {
-        // Use unified verse screen instead of duplicating reader UI
-        VerseScreen()
+        // Wrap VerseScreen with a back button to return to download manager
+        Box(modifier = Modifier.fillMaxSize()) {
+            VerseScreen()
+            IconButton(
+                onClick = { showVerseReader = false },
+                modifier = Modifier.padding(16.dp).align(Alignment.TopStart)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back to downloads",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
     } else {
         // Show download manager
         OfflineDownloadManagerScreen(

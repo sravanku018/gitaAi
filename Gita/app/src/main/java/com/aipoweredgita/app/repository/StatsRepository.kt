@@ -9,6 +9,7 @@ import com.aipoweredgita.app.database.DailyActivityDao
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.PendingSyncEvent
 import com.aipoweredgita.app.database.PendingSyncEventDao
+import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.database.UserStatsDao
 import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.CoinAwardRequest
@@ -48,6 +49,12 @@ class StatsRepository(
     val coinBalance: StateFlow<Int> = userStatsDao.getUserStats()
         .map { it?.krishnaCoins ?: 0 }
         .stateIn(coroutineScope, SharingStarted.Eagerly, 0)
+
+    /** Expose UserStats flow for ProfileViewModel (replaces direct GitaDatabase access). */
+    fun getUserStatsFlow(): kotlinx.coroutines.flow.Flow<UserStats?> = userStatsDao.getUserStats()
+
+    /** Initialize stats row if not yet created. */
+    suspend fun initializeStatsIfNeeded() = userStatsDao.initializeStatsIfNeeded()
 
     /**
      * The single source of truth for mapping a server Balance response onto the local UserStats entity,
@@ -98,12 +105,15 @@ class StatsRepository(
             val updatedStats = balance.updateEntity(currentStats, uid)
             userStatsDao.insertStats(updatedStats) // Upsert
 
-            // Sync daily UI trackers
-            if (balance.checkin_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
-            }
-            if (balance.share_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
+            // Sync daily UI trackers — skip on fresh install so streak resets
+            val tracker = DailyRewardsTracker.getInstance(appContext)
+            if (!tracker.isFreshInstall()) {
+                if (balance.checkin_day > 0) {
+                    tracker.syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
+                }
+                if (balance.share_day > 0) {
+                    tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
+                }
             }
             
             _networkState.value = NetworkState.Success

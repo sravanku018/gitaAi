@@ -1,7 +1,7 @@
 package com.aipoweredgita.app.ui
 
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.viewmodel.NormalModeViewModel
 
 /**
@@ -10,7 +10,7 @@ import com.aipoweredgita.app.viewmodel.NormalModeViewModel
  */
 @Composable
 fun VerseScreen(
-    viewModel: NormalModeViewModel = viewModel(),
+    viewModel: NormalModeViewModel = hiltViewModel(),
     onReadOfflineClick: () -> Unit = {}
 ) {
     NormalModeScreen(

@@ -480,9 +480,11 @@ fun DashboardScreen(
                         context = context,
                         isDark = isDark,
                         coinBalance = coinBalance,
-                        onEarnCoins = { amount, description ->
-                            coroutineScope.launch {
-                                statsRepository.claimDailyReward(amount, description)
+                        onEarnCoins = remember(statsRepository, coroutineScope) {
+                            { amount, description ->
+                                coroutineScope.launch {
+                                    statsRepository.claimDailyReward(amount, description)
+                                }
                             }
                         }
                     )

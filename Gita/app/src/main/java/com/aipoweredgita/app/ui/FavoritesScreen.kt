@@ -16,8 +16,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.database.FavoriteVerse
 import com.aipoweredgita.app.viewmodel.FavoritesViewModel
@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.aipoweredgita.app.ui.theme.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 
 @Composable
 fun FavoritesScreen(
@@ -35,7 +36,7 @@ fun FavoritesScreen(
     viewModel: FavoritesViewModel = hiltViewModel(),
     onVerseClick: (Int, Int) -> Unit = { _, _ -> }
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showClearDialog by remember { mutableStateOf(false) }
     var inlineMessage by remember { mutableStateOf<String?>(null) }
     val uiCfg = LocalUiConfig.current
@@ -233,7 +234,6 @@ fun FavoriteVerseCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = { expanded = !expanded },
         colors = CardDefaults.cardColors(
             containerColor = cardBg
         ),
@@ -243,9 +243,9 @@ fun FavoriteVerseCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Header with chapter and verse info
+            // Header with chapter and verse info — clickable to toggle expand
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

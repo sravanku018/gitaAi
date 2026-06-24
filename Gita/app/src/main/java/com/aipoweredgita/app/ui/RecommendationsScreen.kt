@@ -24,8 +24,9 @@ fun RecommendationsScreen(
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val db = GitaDatabase.getDatabase(context)
+    val db = remember { GitaDatabase.getDatabase(context) }
     val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
 
     val uiCfg = LocalUiConfig.current
     Scaffold(topBar = {
@@ -49,7 +50,6 @@ fun RecommendationsScreen(
                             "study_mode" -> Button(onClick = onStartTopicQuiz) { Text("Continue") }
                             else -> Button(onClick = { onOpenFlashcards(r.recommendationId) }) { Text("View Flashcards") }
                         }
-                        val scope = rememberCoroutineScope()
                         Button(onClick = {
                             scope.launch {
                                 try { db.recommendationDataDao().dismiss(r.id) } catch (e: Exception) {

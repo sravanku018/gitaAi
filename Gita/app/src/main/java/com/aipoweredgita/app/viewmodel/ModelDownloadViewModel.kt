@@ -18,8 +18,11 @@ import com.aipoweredgita.app.utils.DeviceTierDetector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,27 +47,27 @@ class ModelDownloadViewModel @Inject constructor(
             return if (tier == DeviceTier.FLAGSHIP) 3 else 2
         }
 
-    // Legacy support for incremental migration
+    // Legacy support — delegate to _uiState so consumers get real updates
     val downloadProgress: StateFlow<ModelDownloadProgress>
-        get() = MutableStateFlow(_uiState.value.downloadProgress)
+        get() = _uiState.map { it.downloadProgress }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.downloadProgress)
     val overallProgress: StateFlow<Int>
-        get() = MutableStateFlow(_uiState.value.overallProgress)
+        get() = _uiState.map { it.overallProgress }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.overallProgress)
     val isDownloading: StateFlow<Boolean>
-        get() = MutableStateFlow(_uiState.value.isDownloading)
+        get() = _uiState.map { it.isDownloading }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.isDownloading)
     val modelsStatus: StateFlow<List<ModelDownloadManager.ModelStatus>>
-        get() = MutableStateFlow(_uiState.value.modelsStatus)
+        get() = _uiState.map { it.modelsStatus }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.modelsStatus)
     val errorMessage: StateFlow<String?>
-        get() = MutableStateFlow(_uiState.value.error)
+        get() = _uiState.map { it.error }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.error)
     val fileProgressList: StateFlow<List<ModelDownloadProgress>>
-        get() = MutableStateFlow(_uiState.value.fileProgressList)
+        get() = _uiState.map { it.fileProgressList }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.fileProgressList)
     val totalExpectedBytes: StateFlow<Long>
-        get() = MutableStateFlow(_uiState.value.totalExpectedBytes)
+        get() = _uiState.map { it.totalExpectedBytes }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.totalExpectedBytes)
     val totalDownloadedBytes: StateFlow<Long>
-        get() = MutableStateFlow(_uiState.value.totalDownloadedBytes)
+        get() = _uiState.map { it.totalDownloadedBytes }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.totalDownloadedBytes)
     val remainingBytes: StateFlow<Long>
-        get() = MutableStateFlow(_uiState.value.remainingBytes)
+        get() = _uiState.map { it.remainingBytes }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.remainingBytes)
     val filesRemaining: StateFlow<Int>
-        get() = MutableStateFlow(_uiState.value.filesRemaining)
+        get() = _uiState.map { it.filesRemaining }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.filesRemaining)
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {

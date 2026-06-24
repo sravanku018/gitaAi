@@ -8,6 +8,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class TimeTracker(
+    private val scope: CoroutineScope,
     private val onTimeUpdate: suspend (seconds: Long) -> Unit
 ) {
     private var startTime: Long = 0
@@ -19,7 +20,7 @@ class TimeTracker(
 
         startTime = System.currentTimeMillis()
 
-        trackingJob = CoroutineScope(Dispatchers.Default).launch {
+        trackingJob = scope.launch {
             while (isActive) {
                 delay(10000) // Update every 10 seconds
                 val elapsed = (System.currentTimeMillis() - startTime) / 1000
@@ -40,7 +41,7 @@ class TimeTracker(
         val elapsed = (System.currentTimeMillis() - startTime) / 1000
         if (elapsed > 0) {
             totalSeconds += elapsed
-            CoroutineScope(Dispatchers.Default).launch {
+            scope.launch {
                 onTimeUpdate(elapsed)
             }
         }

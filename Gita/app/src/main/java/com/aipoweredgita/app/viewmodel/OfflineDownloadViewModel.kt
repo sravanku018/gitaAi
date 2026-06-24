@@ -15,9 +15,12 @@ import com.aipoweredgita.app.utils.OfflinePreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,13 +37,13 @@ class OfflineDownloadViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OfflineDownloadUiState())
     val uiState: StateFlow<OfflineDownloadUiState> = _uiState.asStateFlow()
 
-    // Keep legacy state aliases for incremental migration
+    // Keep legacy state aliases — delegate to _uiState so consumers get real updates
     val downloadProgress: StateFlow<DownloadProgress>
-        get() = MutableStateFlow(_uiState.value.downloadProgress)
+        get() = _uiState.map { it.downloadProgress }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.downloadProgress)
     val cachedCount: StateFlow<Int>
-        get() = MutableStateFlow(_uiState.value.cachedCount)
+        get() = _uiState.map { it.cachedCount }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.cachedCount)
     val isFullyCached: StateFlow<Boolean>
-        get() = MutableStateFlow(_uiState.value.isFullyCached)
+        get() = _uiState.map { it.isFullyCached }.stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.isFullyCached)
 
     init {
         viewModelScope.launch {

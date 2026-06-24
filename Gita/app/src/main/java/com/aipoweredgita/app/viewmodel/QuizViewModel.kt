@@ -98,7 +98,7 @@ class QuizViewModel @Inject constructor(
      */
     private fun setQuizConfig(questionCount: Int, language: String) {
         _quizState.value = com.aipoweredgita.app.data.QuizState(maxQuestions = questionCount, language = language)
-        _uiState.value = QuizUiState(totalQuestions = questionCount)
+        _uiState.value = QuizUiState()
         quizStartTime = System.currentTimeMillis()
         sessionAskedIds.clear()
         viewModelScope.launch {
@@ -113,7 +113,7 @@ class QuizViewModel @Inject constructor(
         viewModelScope.launch {
             // Guard: don't load if we've already reached maxQuestions
             val current = _quizState.value
-            if (current.totalQuestions >= current.maxQuestions && current.currentQuestion != null) {
+            if (current.totalQuestions >= current.maxQuestions) {
                 return@launch
             }
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -206,6 +206,7 @@ class QuizViewModel @Inject constructor(
         )
 
         difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
+        saveProgress()
     }
 
     /**
@@ -232,6 +233,7 @@ class QuizViewModel @Inject constructor(
 
         // Update difficulty
         difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
+        saveProgress()
     }
 
     /**
@@ -293,7 +295,7 @@ class QuizViewModel @Inject constructor(
         val currentMaxQuestions = _quizState.value.maxQuestions
         val currentLanguage = _quizState.value.language
         _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = true)
-        _uiState.value = QuizUiState(totalQuestions = currentMaxQuestions, isLoading = true)
+        _uiState.value = QuizUiState(isLoading = true)
         quizStartTime = System.currentTimeMillis()
         sessionAskedIds.clear()
 
@@ -307,7 +309,7 @@ class QuizViewModel @Inject constructor(
     fun setQuizLimit(maxQuestions: Int) {
         val currentLanguage = _quizState.value.language
         _quizState.value = com.aipoweredgita.app.data.QuizState(maxQuestions = maxQuestions, language = currentLanguage)
-        _uiState.value = QuizUiState(totalQuestions = maxQuestions)
+        _uiState.value = QuizUiState()
         quizStartTime = System.currentTimeMillis()
         viewModelScope.launch {
             quizPreferences.clearQuizState()
@@ -316,7 +318,6 @@ class QuizViewModel @Inject constructor(
 
     fun setQuizLanguage(quizLanguage: String) {
         _quizState.value = _quizState.value.copy(language = quizLanguage)
-        _uiState.update { it.copy() }
     }
 
     fun submitOpenEndedAnswer(text: String) {
@@ -332,7 +333,7 @@ class QuizViewModel @Inject constructor(
     }
 
     fun selectAnswer(index: Int) {
-        _quizState.value = _quizState.value.copy(selectedAnswerIndex = index, showAnswer = true)
+        _quizState.value = _quizState.value.copy(selectedAnswerIndex = index)
     }
 
     fun revealAnswer() {
@@ -347,7 +348,7 @@ class QuizViewModel @Inject constructor(
         val currentMaxQuestions = _quizState.value.maxQuestions
         val currentLanguage = _quizState.value.language
         _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = true)
-        _uiState.value = QuizUiState(totalQuestions = currentMaxQuestions, isLoading = true)
+        _uiState.value = QuizUiState(isLoading = true)
         quizStartTime = System.currentTimeMillis()
         viewModelScope.launch {
             quizPreferences.clearQuizState()
@@ -357,7 +358,7 @@ class QuizViewModel @Inject constructor(
 
     fun exitQuiz() {
         val currentState = _quizState.value
-        if (currentState.totalQuestions > 0) {
+        if (currentState.score > 0 && currentState.totalQuestions > 0) {
             viewModelScope.launch {
                 try {
                     val timeSpentSeconds = if (quizStartTime > 0) {
@@ -373,11 +374,27 @@ class QuizViewModel @Inject constructor(
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions
                     )
-                    quizPreferences.clearQuizState()
                 } catch (e: Exception) {
                     _sideEffect.emit(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz"))
                 }
             }
+        }
+        viewModelScope.launch { quizPreferences.clearQuizState() }
+    }
+
+    private fun saveProgress() {
+        val state = _quizState.value
+        viewModelScope.launch {
+            try {
+                val usedQuestions = sessionAskedIds.map { it.toString() }.toSet()
+                quizPreferences.saveQuizState(
+                    score = state.score,
+                    totalQuestions = state.totalQuestions,
+                    maxQuestions = state.maxQuestions,
+                    startTime = quizStartTime,
+                    usedQuestions = usedQuestions
+                )
+            } catch (_: Exception) { }
         }
     }
 
@@ -404,17 +421,31 @@ class QuizViewModel @Inject constructor(
 
     private fun startTimer() {
         timerJob?.cancel()
-        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = 30, isTimerRunning = true)
+        // Give more time for open-ended questions
+        val question = _quizState.value.currentQuestion
+        val isOpenEnded = question?.type == com.aipoweredgita.app.data.QuestionType.ESSAY ||
+                question?.type == com.aipoweredgita.app.data.QuestionType.APPLICATION
+        val timeLimit = if (isOpenEnded) 60 else 30
+        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = timeLimit, isTimerRunning = true)
         timerJob = viewModelScope.launch {
             while (_quizState.value.questionTimeLeftSeconds > 0) {
                 kotlinx.coroutines.delay(1000)
-                val newTime = _quizState.value.questionTimeLeftSeconds - 1
-                _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = newTime)
+                synchronized(_quizState) {
+                    val current = _quizState.value.questionTimeLeftSeconds
+                    if (current > 0) {
+                        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = current - 1)
+                    }
+                }
             }
-            // Time ran out
+            // Time ran out — mark answer as revealed (wrong since no selection)
             stopTimer()
-            _uiState.update { it.copy(isAnswerRevealed = true) }
-            _quizState.value = _quizState.value.copy(showAnswer = true, showCorrectAnswer = false)
+            synchronized(_quizState) {
+                val state = _quizState.value
+                if (!state.showAnswer) {
+                    _uiState.update { it.copy(isAnswerRevealed = true) }
+                    _quizState.value = state.copy(showAnswer = true, showCorrectAnswer = false)
+                }
+            }
         }
     }
 

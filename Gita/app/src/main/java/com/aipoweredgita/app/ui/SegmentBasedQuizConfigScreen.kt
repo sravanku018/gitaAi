@@ -142,7 +142,7 @@ fun SegmentBasedQuizConfigScreen(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(focusSegments) { (segment, weightage) ->
+            items(focusSegments, key = { (segment, _) -> segment.name }) { (segment, weightage) ->
                 val segmentProgress = segmentSystem.segments[segment]!!
                 val color = when (segment) {
                     LearningSegment.KARMA_YOGA -> Color(0xFF4CAF50)

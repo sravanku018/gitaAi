@@ -159,6 +159,8 @@ private fun ConfettiAnimation(show: Boolean) {
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
+        // Read tick to ensure Canvas redraws when confetti positions change
+        @Suppress("UNUSED_VARIABLE") val forceRedraw = tick
         if (show) {
             confettiList.forEach { c ->
                 val cx = size.width * c.x

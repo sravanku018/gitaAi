@@ -68,73 +68,40 @@ class ActivityHistoryViewModel @Inject constructor(
     private fun loadDailyActivity() {
         viewModelScope.launch {
             dailyActivityRepo.getAllActivity().collect { activity ->
-                // If local daily activity is empty (fresh install), fetch from server
-                if (activity.isEmpty()) {
-                    try {
-                        val context = com.aipoweredgita.app.GitaApp.instance
-                        val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
-                        val uid = authPrefs.userId
-                        val token = authPrefs.token
-                        if (uid != null && token != null) {
-                            val serverActivity = com.aipoweredgita.app.network.CoinApi.retrofitService.getActivityHistory(
-                                uid, "Bearer $token"
-                            )
-                            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-                            val dao = db.dailyActivityDao()
-                            for (day in serverActivity) {
-                                dao.insertIfAbsent(
-                                    com.aipoweredgita.app.database.DailyActivity(
-                                        date = day.date,
-                                        normalSeconds = 0,
-                                        quizSeconds = day.quizzes.toLong() * 300,
-                                        voiceStudioTimeSeconds = day.voice_chats.toLong() * 120,
-                                        versesRead = day.total_events
-                                    )
-                                )
-                            }
-                        }
-                    } catch (_: Exception) {}
-                }
                 _uiState.update { it.copy(allActivity = activity) }
             }
+        }
+        viewModelScope.launch {
+            try {
+                val context = com.aipoweredgita.app.GitaApp.instance
+                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                val uid = authPrefs.userId
+                val token = authPrefs.token
+                if (uid != null && token != null) {
+                    val serverActivity = com.aipoweredgita.app.network.CoinApi.retrofitService.getActivityHistory(
+                        uid, "Bearer $token"
+                    )
+                    val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                    val dao = db.dailyActivityDao()
+                    for (day in serverActivity) {
+                        dao.insertIfAbsent(
+                            com.aipoweredgita.app.database.DailyActivity(
+                                date = day.date,
+                                normalSeconds = 0,
+                                quizSeconds = day.quizzes.toLong() * 300,
+                                voiceStudioTimeSeconds = day.voice_chats.toLong() * 120,
+                                versesRead = day.total_events
+                            )
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 
     private fun loadQuizStats() {
         viewModelScope.launch {
             quizStatsRepo.getAllAttempts().collect { list ->
-                // If local quiz attempts are empty (fresh install), fetch from server
-                if (list.isEmpty()) {
-                    try {
-                        val context = com.aipoweredgita.app.GitaApp.instance
-                        val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
-                        val uid = authPrefs.userId
-                        val token = authPrefs.token
-                        if (uid != null && token != null) {
-                            val serverAttempts = com.aipoweredgita.app.network.CoinApi.retrofitService.getQuizHistory(
-                                uid, "Bearer $token", limit = 500
-                            )
-                            val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
-                            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
-                                timeZone = java.util.TimeZone.getTimeZone("UTC")
-                            }
-                            for (dto in serverAttempts) {
-                                val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
-                                val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
-                                quizDao.insertAttempt(
-                                    com.aipoweredgita.app.database.QuizAttempt(
-                                        score = dto.score,
-                                        totalQuestions = dto.total_questions,
-                                        timestamp = ts,
-                                        date = dateStr,
-                                        quizType = dto.quiz_type,
-                                        timeSpentSeconds = dto.time_spent_seconds
-                                    )
-                                )
-                            }
-                        }
-                    } catch (_: Exception) {}
-                }
                 _uiState.update { 
                     it.copy(
                         attempts = list,
@@ -143,6 +110,37 @@ class ActivityHistoryViewModel @Inject constructor(
                     ) 
                 }
             }
+        }
+        viewModelScope.launch {
+            try {
+                val context = com.aipoweredgita.app.GitaApp.instance
+                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                val uid = authPrefs.userId
+                val token = authPrefs.token
+                if (uid != null && token != null) {
+                    val serverAttempts = com.aipoweredgita.app.network.CoinApi.retrofitService.getQuizHistory(
+                        uid, "Bearer $token", limit = 500
+                    )
+                    val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
+                    val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }
+                    for (dto in serverAttempts) {
+                        val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
+                        val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
+                        quizDao.insertAttempt(
+                            com.aipoweredgita.app.database.QuizAttempt(
+                                score = dto.score,
+                                totalQuestions = dto.total_questions,
+                                timestamp = ts,
+                                date = dateStr,
+                                quizType = dto.quiz_type,
+                                timeSpentSeconds = dto.time_spent_seconds
+                            )
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 

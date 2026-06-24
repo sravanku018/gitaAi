@@ -58,13 +58,14 @@ fun QuizContent(
         showResultDialog = false
     }
 
-    val isOpenEnded = questionType == QuestionType.ESSAY || questionType == QuestionType.APPLICATION
-
     // Timer state from ViewModel
     val quizState = vm?.quizState?.collectAsState()
     val timeLeft = quizState?.value?.questionTimeLeftSeconds ?: 30
     val isTimerRunning = quizState?.value?.isTimerRunning ?: false
     val language = quizState?.value?.language ?: "en"
+    val questionType = quizState?.value?.currentQuestion?.type ?: com.aipoweredgita.app.data.QuestionType.MCQ
+    val isOpenEnded = questionType == com.aipoweredgita.app.data.QuestionType.ESSAY || questionType == com.aipoweredgita.app.data.QuestionType.APPLICATION
+    val maxTime = if (isOpenEnded) 60 else 30
 
     // Staggered enter animation state for options
     val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
@@ -108,7 +109,7 @@ fun QuizContent(
             // Pill-shaped quiz header with timer
             QuizTimerHeader(
                 timeLeft = timeLeft,
-                maxTime = 30,
+                maxTime = maxTime,
                 isTimerRunning = isTimerRunning,
                 questionNumber = quizState?.value?.totalQuestions ?: 0,
                 totalQuestions = quizState?.value?.maxQuestions ?: 0,
@@ -151,10 +152,8 @@ fun QuizContent(
 
                 Button(
                     onClick = {
-                        onSubmitAnswer?.invoke(userAnswer)
-                        val correct = userAnswer.trim().isNotEmpty()
                         vm?.submitOpenEndedAnswer(userAnswer)
-                        showResult = correct
+                        showResult = true
                     },
                     enabled = userAnswer.trim().isNotEmpty() && selectedIndex == null,
                     modifier = Modifier
@@ -202,7 +201,7 @@ fun QuizContent(
 
         if (showResultDialog) {
             val isCorrect = if (isOpenEnded) {
-                showResult == true
+                quizState?.value?.showCorrectAnswer == true
             } else {
                 selectedIndex == correctIndex
             }

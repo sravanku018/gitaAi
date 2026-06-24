@@ -65,11 +65,30 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             synchronized(this) {
                 val currentDay = prefs.getInt(KEY_DAY, 1)
                 val currentWeek = prefs.getInt(KEY_WEEK, 1)
-                // Don't overwrite higher local day with lower server day in same week
-                val safeDay = if (serverWeek >= currentWeek) maxOf(serverDay, currentDay) else serverDay
+
+                // Map server state to client semantics:
+                // Server day=7 with week=N means "Week N-1 complete, transitioning to Week N"
+                // Client uses KEY_DAY=0 to mean "between weeks" and KEY_WEEK as the completed week
+                // Handles wrap: server week=1 after day=7 means completed week 4
+                val effectiveDay = if (serverDay == 7) 0 else serverDay
+                val effectiveWeek = if (serverDay == 7) {
+                    if (serverWeek == 1) 4 else serverWeek - 1
+                } else serverWeek
+
+                // Never downgrade: server must be equal or more advanced
+                if (effectiveWeek < currentWeek) return
+                if (effectiveWeek == currentWeek) {
+                    val localComplete = currentDay == 0
+                    val serverComplete = effectiveDay == 0
+                    // Local week complete but server says still in-progress — don't downgrade
+                    if (localComplete && !serverComplete) return
+                    // Both in-progress — don't downgrade day
+                    if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
+                }
+
                 prefs.edit().apply {
-                    putInt(KEY_DAY, safeDay)
-                    if (serverWeek > 0) putInt(KEY_WEEK, serverWeek)
+                    putInt(KEY_DAY, effectiveDay)
+                    putInt(KEY_WEEK, effectiveWeek)
                     // Only overwrite local date if server date is more recent
                     if (lastCheckin != null) {
                         val currentDate = prefs.getString(KEY_DATE, "") ?: ""
@@ -87,11 +106,25 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             synchronized(this) {
                 val currentDay = prefs.getInt(KEY_SHARE_DAY, 1)
                 val currentWeek = prefs.getInt(KEY_SHARE_WEEK, 1)
-                // Don't overwrite higher local day with lower server day in same week
-                val safeDay = if (serverWeek >= currentWeek) maxOf(serverDay, currentDay) else serverDay
+
+                // Map server state to client semantics (same as syncWithServer)
+                val effectiveDay = if (serverDay == 7) 0 else serverDay
+                val effectiveWeek = if (serverDay == 7) {
+                    if (serverWeek == 1) 4 else serverWeek - 1
+                } else serverWeek
+
+                // Never downgrade: server must be equal or more advanced
+                if (effectiveWeek < currentWeek) return
+                if (effectiveWeek == currentWeek) {
+                    val localComplete = currentDay == 0
+                    val serverComplete = effectiveDay == 0
+                    if (localComplete && !serverComplete) return
+                    if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
+                }
+
                 prefs.edit().apply {
-                    putInt(KEY_SHARE_DAY, safeDay)
-                    if (serverWeek > 0) putInt(KEY_SHARE_WEEK, serverWeek)
+                    putInt(KEY_SHARE_DAY, effectiveDay)
+                    putInt(KEY_SHARE_WEEK, effectiveWeek)
                     // Only overwrite local date if server date is more recent
                     if (lastShare != null) {
                         val currentDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
@@ -117,10 +150,26 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
 
     fun getDailyState(): DailyState {
         val today = now()
-        val lastDate = prefs.getString(KEY_DATE, "") ?: ""
-        val week = prefs.getInt(KEY_WEEK, 1).coerceIn(1, 4)
+        val yesterday = yesterdayStr(today)
+        var lastDate = prefs.getString(KEY_DATE, "") ?: ""
+        var week = prefs.getInt(KEY_WEEK, 1).coerceIn(1, 4)
         val protection = prefs.getInt(KEY_PROTECTION, 0).coerceAtLeast(0)
-        val rawDay = prefs.getInt(KEY_DAY, 1).coerceIn(0, 7)
+        var rawDay = prefs.getInt(KEY_DAY, 1).coerceIn(0, 7)
+
+        // Migration: after claimDay7BonusIfEligible, KEY_DAY is set to 0.
+        // If it's still 7 with lastDate==today and week>1, the old server sync overwrote it.
+        // Fix: restore KEY_DAY=0, undo the premature week advance, and push KEY_DATE
+        // to yesterday so getDailyState() falls into the "next day" branch (day 1 of next week).
+        if (rawDay == 7 && lastDate == today && week > 1) {
+            rawDay = 0
+            week = if (week == 1) 4 else week - 1
+            prefs.edit().apply {
+                putInt(KEY_DAY, 0)
+                putInt(KEY_WEEK, week)
+                putString(KEY_DATE, yesterday)
+            }.commit()
+            lastDate = yesterday
+        }
 
         if (lastDate == today) {
             return DailyState(
@@ -144,7 +193,6 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             )
         }
 
-        val yesterday = yesterdayStr(today)
         if (lastDate == yesterday) {
             val nextDay = if (rawDay == 0 || rawDay == 7) 1 else rawDay + 1
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
@@ -254,10 +302,23 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
 
     fun getShareState(): ShareState {
         val today = now()
-        val lastDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
-        val week = prefs.getInt(KEY_SHARE_WEEK, 1).coerceIn(1, 4)
+        val yesterday = yesterdayStr(today)
+        var lastDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
+        var week = prefs.getInt(KEY_SHARE_WEEK, 1).coerceIn(1, 4)
         val protection = prefs.getInt(KEY_SHARE_PROTECTION, 0).coerceAtLeast(0)
-        val rawDay = prefs.getInt(KEY_SHARE_DAY, 1).coerceIn(0, 7)
+        var rawDay = prefs.getInt(KEY_SHARE_DAY, 1).coerceIn(0, 7)
+
+        // Migration: same as getDailyState — fix corrupted KEY_SHARE_DAY=7 from old sync (week>1 only)
+        if (rawDay == 7 && lastDate == today && week > 1) {
+            rawDay = 0
+            week = if (week == 1) 4 else week - 1
+            prefs.edit().apply {
+                putInt(KEY_SHARE_DAY, 0)
+                putInt(KEY_SHARE_WEEK, week)
+                putString(KEY_SHARE_DATE, yesterday)
+            }.commit()
+            lastDate = yesterday
+        }
 
         if (lastDate == today) {
             return ShareState(
@@ -274,7 +335,6 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             return ShareState(1, false, 1, protection > 0, false, 1)
         }
 
-        val yesterday = yesterdayStr(today)
         if (lastDate == yesterday) {
             val nextDay = if (rawDay == 0 || rawDay == 7) 1 else rawDay + 1
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
@@ -341,6 +401,14 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
     fun getShareWeeklyState(): WeeklyState {
         val week = prefs.getInt(KEY_SHARE_WEEK, 1).coerceIn(1, 4)
         return WeeklyState(week, if (week == 4) 20 else 10)
+    }
+
+    // ── Fresh install detection ──────────────────────────────────────────────
+
+    fun isFreshInstall(): Boolean {
+        val checkinDate = prefs.getString(KEY_DATE, "") ?: ""
+        val shareDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
+        return checkinDate.isEmpty() && shareDate.isEmpty()
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────

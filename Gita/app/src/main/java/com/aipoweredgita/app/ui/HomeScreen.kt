@@ -101,58 +101,65 @@ fun HomeScreen(
         }
     }
 
-    // Define all mode items
-    val modeItems = listOf(
-        ModeItem(
-            title = "Normal Mode",
-            description = "Read and explore verses from the Bhagavad Gita",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
-            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
-            onClick = onNavigateToNormalMode
-        ),
-        ModeItem(
-            title = "Daily Activity",
-            description = "See where you spent time by date",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Timeline, contentDescription = "Activity") },
-            gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
-            onClick = onNavigateToDailyActivity
-        ),
-        ModeItem(
-            title = "Quiz Mode",
-            description = "Test your knowledge with random questions",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz") },
-            gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
-            onClick = onNavigateToQuizMode
-        ),
-        ModeItem(
-            title = "Favorites",
-            description = "View and manage your saved verses",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Favorite, contentDescription = "Favorites") },
-            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
-            onClick = onNavigateToFavorites
-        ),
-        ModeItem(
-            title = "Offline Mode",
-            description = "Download all verses for offline access (~3-4 MB)",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.CloudDownload, contentDescription = "Offline") },
-            gradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary),
-            onClick = onNavigateToOfflineDownload
-        ),
-        ModeItem(
-            title = "My Profile",
-            description = "View your stats, achievements, and progress",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Person, contentDescription = "Profile") },
-            gradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary),
-            onClick = onNavigateToProfile
-        ),
-        ModeItem(
-            title = "Random Sloka",
-            description = "Get inspired by a random verse",
-            icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Shuffle, contentDescription = "Random") },
-            gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
-            onClick = onNavigateToRandomSloka
+    // Extract theme colors outside remember (composable context required)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+
+    // Define all mode items — remember to avoid rebuilding on every recomposition
+    val modeItems = remember(onNavigateToNormalMode, onNavigateToDailyActivity, onNavigateToQuizMode, onNavigateToFavorites, onNavigateToOfflineDownload, onNavigateToProfile, onNavigateToRandomSloka, primary, secondary, tertiary) {
+        listOf(
+            ModeItem(
+                title = "Normal Mode",
+                description = "Read and explore verses from the Bhagavad Gita",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read") },
+                gradient = listOf(primary, secondary),
+                onClick = onNavigateToNormalMode
+            ),
+            ModeItem(
+                title = "Daily Activity",
+                description = "See where you spent time by date",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Timeline, contentDescription = "Activity") },
+                gradient = listOf(secondary, tertiary),
+                onClick = onNavigateToDailyActivity
+            ),
+            ModeItem(
+                title = "Quiz Mode",
+                description = "Test your knowledge with random questions",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.School, contentDescription = "Quiz") },
+                gradient = listOf(tertiary, primary),
+                onClick = onNavigateToQuizMode
+            ),
+            ModeItem(
+                title = "Favorites",
+                description = "View and manage your saved verses",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Favorite, contentDescription = "Favorites") },
+                gradient = listOf(primary, secondary),
+                onClick = onNavigateToFavorites
+            ),
+            ModeItem(
+                title = "Offline Mode",
+                description = "Download all verses for offline access (~3-4 MB)",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.CloudDownload, contentDescription = "Offline") },
+                gradient = listOf(secondary, tertiary),
+                onClick = onNavigateToOfflineDownload
+            ),
+            ModeItem(
+                title = "My Profile",
+                description = "View your stats, achievements, and progress",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Person, contentDescription = "Profile") },
+                gradient = listOf(tertiary, primary),
+                onClick = onNavigateToProfile
+            ),
+            ModeItem(
+                title = "Random Sloka",
+                description = "Get inspired by a random verse",
+                icon = { Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Shuffle, contentDescription = "Random") },
+                gradient = listOf(primary, tertiary),
+                onClick = onNavigateToRandomSloka
+            )
         )
-    )
+    }
 
     val isDark = isSystemInDarkTheme()
     val appBg = MaterialTheme.colorScheme.background
@@ -209,7 +216,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(screenConfig.itemSpacing.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(modeItems) { item ->
+                    items(modeItems, key = { it.title }) { item ->
                         ModeCard(
                             title = item.title,
                             description = item.description,

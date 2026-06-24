@@ -477,9 +477,13 @@ private fun VoiceChatContent(
                         )
                     }
                 // ── Thinking bubble ───────────────────────────────────────────────────────────
-                if (state.isThinking) { item { ThinkingBubble() } }
+                if (state.isThinking) { item(key = "thinking_bubble") {
+                    Box(modifier = Modifier.animateItem()) { ThinkingBubble() }
+                } }
                 // ── Listening bubble ───────────────────────────────────────────────────────────
-                if (state.isListening) { item { ListeningBubble(state.liveTranscript) } }
+                if (state.isListening) { item(key = "listening_bubble") {
+                    Box(modifier = Modifier.animateItem()) { ListeningBubble(state.liveTranscript) }
+                } }
                 }
             }
         }

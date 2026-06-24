@@ -87,14 +87,12 @@ fun CoinHistoryScreen(
 
     // Build local history from CoinTransactionLogger — used as fallback when no JWT token
     // (users created via users/create have no token, so server API returns 401/403)
-    fun buildLocalHistory(ctx: android.content.Context): List<CoinHistoryEntry> {
+    suspend fun buildLocalHistory(ctx: android.content.Context): List<CoinHistoryEntry> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         // Format local timestamps as UTC strings so they sort correctly alongside server entries.
-        // The server stores times in UTC; using local time here would create ordering mismatches
-        // for users in timezones ahead of UTC (e.g. IST entries would appear 5.5 h in the future).
         val utcFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }
-        return CoinTransactionLogger.getHistory(ctx).map { tx ->
+        CoinTransactionLogger.getHistory(ctx).map { tx ->
             CoinHistoryEntry(
                 amount = tx.amount,
                 type = tx.type.name,
@@ -435,7 +433,7 @@ fun CoinHistoryScreen(
                     }
 
                     // Transaction items for this date group
-                    itemsIndexed(transactions) { index, entry ->
+                    itemsIndexed(transactions, key = { index, entry -> "${entry.source}_${entry.amount}_${entry.created_at}_$index" }) { index, entry ->
                 val isEarn = entry.type == "EARN"
                 val alpha by animateFloatAsState(
                     targetValue = 1f,

@@ -56,6 +56,9 @@ class NormalModeViewModel @Inject constructor(
     private var lastRequestedChapter: Int = 1
     private var lastRequestedVerse: Int = 1
 
+    // Chapter verse counts (18 chapters)
+    private val chapterVerseCounts = GitaConstants.CHAPTER_VERSE_COUNTS
+
     // Throttled database updater - batches verse reads to reduce I/O
     private val throttledUpdater = ThrottledDatabaseUpdater(
         batchSize = 10,
@@ -84,8 +87,8 @@ class NormalModeViewModel @Inject constructor(
         }
     }
 
-    // Time tracker
-    private val timeTracker = TimeTracker { seconds ->
+    // Time tracker — uses viewModelScope to prevent coroutine leaks
+    private val timeTracker = TimeTracker(scope = viewModelScope) { seconds ->
         viewModelScope.launch(Dispatchers.IO) {
             statsRepository.trackModeTime(seconds, ModeType.NORMAL)
             try {
@@ -109,12 +112,6 @@ class NormalModeViewModel @Inject constructor(
                     }
                 }
         }
-    }
-
-    // Chapter verse counts (18 chapters)
-    private val chapterVerseCounts = GitaConstants.CHAPTER_VERSE_COUNTS
-
-    init {
         loadVerse(1, 1)
     }
 
@@ -334,8 +331,12 @@ class NormalModeViewModel @Inject constructor(
         }
     }
 
+    // Track the current favorite status collector job so we can cancel it on verse change
+    private var favoriteJob: kotlinx.coroutines.Job? = null
+
     private fun checkFavoriteStatus(chapter: Int, verse: Int) {
-        viewModelScope.launch {
+        favoriteJob?.cancel()
+        favoriteJob = viewModelScope.launch {
             favoriteRepository.isFavorite(chapter, verse).collect { isFav ->
                 _uiState.update { it.copy(isFavorite = isFav) }
             }
@@ -393,7 +394,9 @@ class NormalModeViewModel @Inject constructor(
             // Track distinct verses read (throttled to reduce DB writes)
             val vNo = verse.verseNo
             
-            // Check for chapter completion
+            // Check for chapter completion — flush throttled writes first to get accurate count
+            throttledUpdater.flush()
+            kotlinx.coroutines.delay(200) // Brief pause for flush to complete
             val currentReadCount = readVerseDao.getReadVersesCountByChapter(verse.chapterNo)
             val totalVersesInChapter = chapterVerseCounts[verse.chapterNo] ?: 47
             
@@ -408,11 +411,7 @@ class NormalModeViewModel @Inject constructor(
                 }
             }
 
-            if (verse.chapterNo in 1..18 && vNo >= 1) {
-                throttledUpdater.trackVerseRead(verse.chapterNo, vNo)
-            } else {
-                throttledUpdater.trackVerseRead(verse.chapterNo, verse.verseNo)
-            }
+            throttledUpdater.trackVerseRead(verse.chapterNo, verse.verseNo)
         }
     }
 

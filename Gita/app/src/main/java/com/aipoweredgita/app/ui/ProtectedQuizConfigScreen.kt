@@ -789,7 +789,9 @@ fun QuizNotReadyScreen(
     LaunchedEffect(Unit) {
         while (true) {
             try {
-                remMb = (mgr.getRemainingDownloadSizeBytes() / (1024 * 1024)).toInt()
+                val remaining = mgr.getRemainingDownloadSizeBytes()
+                remMb = (remaining / (1024 * 1024)).toInt()
+                if (remaining <= 0) break
             } catch (e: Exception) {
                 android.util.Log.w("QuizNotReadyScreen", "size error", e)
             }
