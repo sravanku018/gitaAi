@@ -9,56 +9,28 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/app/build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+.dual-graph/
 
-# Build outputs and logs
+# Kotlin & KSP
+.kotlin/
 *.log
-build_*.txt
+
+# Build artifacts
+build_log.txt
 build_error.txt
-ksp_*.log
-ksp_*.txt
+ksp_error.log
+**/build/
+**/outputs/
 
-# Temp and debug files
-temp_*.txt
-*.ps1
-*.py
-check_*.ps1
-fix_*.txt
-resize_*.py
-OFFLINE_ISSUE_NOTES.txt
+# Test results
+**/test-results/
+**/androidTest-results/
 
-# Keys and certs
+# Signing
 *.jks
 *.keystore
-/keys
-
-# APK/AAB outputs
-*.apk
-*.aab
-*.aar
-
-# IDE
-.idea/
-*.iml
-
-# OS
-.DS_Store
-Thumbs.db
-
-# ML Models (download at runtime)
-*.tflite
-*.bin
-*.onnx
-/models
-/.qwen
-/.kotlin
-
-# Misc
-*.swp
-*.swo
-*~
-.vscode/
-*.orig

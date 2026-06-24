@@ -205,6 +205,13 @@ object NetworkUtils {
                 ?: return CellularGeneration.FOUR_G // Default to 4G if we can't determine
 
             val dataNetworkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.READ_PHONE_STATE
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    return CellularGeneration.FOUR_G
+                }
                 telephonyManager.dataNetworkType
             } else {
                 @Suppress("DEPRECATION")
