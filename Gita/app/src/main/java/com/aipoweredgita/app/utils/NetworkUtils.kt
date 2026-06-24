@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -204,6 +205,7 @@ object NetworkUtils {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager
                 ?: return CellularGeneration.FOUR_G // Default to 4G if we can't determine
 
+            @SuppressLint("MissingPermission")
             val dataNetworkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     androidx.core.content.ContextCompat.checkSelfPermission(
