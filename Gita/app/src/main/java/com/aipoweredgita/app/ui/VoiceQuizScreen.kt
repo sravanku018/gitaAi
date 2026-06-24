@@ -37,7 +37,7 @@ import com.aipoweredgita.app.viewmodel.VoiceQuizViewModel
 fun VoiceQuizScreen(
     onExit: () -> Unit,
     viewModel: VoiceQuizViewModel = viewModel(),
-    languageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.ENG_TO_TEL
+    languageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current

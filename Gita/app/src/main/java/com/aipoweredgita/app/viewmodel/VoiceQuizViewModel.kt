@@ -59,7 +59,7 @@ class VoiceQuizViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val llmInitMutex = Mutex()
     private var isLlmInitialized = false
-    private var currentLanguageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.ENG_TO_TEL
+    private var currentLanguageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO
 
     private fun fixSpacing(text: String): String {
         if (text.isBlank()) return text
@@ -94,8 +94,7 @@ class VoiceQuizViewModel(application: Application) : AndroidViewModel(applicatio
                     try {
                         val success = gemmaEngine.initialize(modelPath)
                         if (success) {
-                            val instruction = if (currentLanguageMode == com.aipoweredgita.app.utils.LanguageMode.TEL_TO_TEL || 
-                                currentLanguageMode == com.aipoweredgita.app.utils.LanguageMode.ENG_TO_TEL)
+                            val instruction = if (currentLanguageMode == com.aipoweredgita.app.utils.LanguageMode.AUTO)
                                 "మీరు కృష్ణుడు. భగవద్గీత జ్ఞానం ఆధారంగా విద్యార్థి సమాధానాలను మూల్యాంకనం చేయండి. " +
                                 "సరైనదైతే ప్రోత్సహించండి, తప్పైతే సున్నితంగా సరిదిద్దండి. " +
                                 "సమాధానం ఎప్పుడూ 'సరియైనది' లేదా 'తప్పు' అనే పదంతో ప్రారంభం కావాలి. తెలుగులో మాత్రమే సమాధానం ఇవ్వండి."

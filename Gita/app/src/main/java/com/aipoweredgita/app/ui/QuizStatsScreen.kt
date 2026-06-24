@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.database.QuizAttempt
 import com.aipoweredgita.app.viewmodel.QuizStatsViewModel
-<<<<<<< HEAD
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,8 +35,6 @@ import androidx.compose.ui.geometry.Size
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.PI
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 
 @Composable
 fun QuizStatsScreen(
@@ -53,14 +50,10 @@ fun QuizStatsScreen(
     val quiz30Stats by viewModel.quiz30Stats.collectAsState()
     val selectedQuizSize by viewModel.selectedQuizSize.collectAsState()
 
-<<<<<<< HEAD
     val userStats by viewModel.userStats.collectAsState()
     val karmaCount by viewModel.karmaYogaCount.collectAsState()
     val bhaktiCount by viewModel.bhaktiYogaCount.collectAsState()
     val jnanaCount by viewModel.jnanaYogaCount.collectAsState()
-
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
     var selectedTab by remember { mutableIntStateOf(0) }
 
     val uiCfg = LocalUiConfig.current
@@ -148,15 +141,11 @@ fun QuizStatsScreen(
                 attempts = displayAttempts,
                 averageAccuracy = displayAvgAccuracy,
                 averageTime = displayAvgTime,
-<<<<<<< HEAD
                 bestAttempt = currentStats?.bestAttempt,
                 userStats = userStats,
                 karmaCount = karmaCount,
                 bhaktiCount = bhaktiCount,
                 jnanaCount = jnanaCount
-=======
-                bestAttempt = currentStats?.bestAttempt
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             )
             2 -> TipsTab(averageAccuracy = displayAvgAccuracy)
         }
@@ -263,15 +252,11 @@ fun PerformanceTab(
     attempts: List<QuizAttempt>,
     averageAccuracy: Float,
     averageTime: Long,
-<<<<<<< HEAD
     bestAttempt: QuizAttempt?,
     userStats: com.aipoweredgita.app.database.UserStats?,
     karmaCount: Int,
     bhaktiCount: Int,
     jnanaCount: Int
-=======
-    bestAttempt: QuizAttempt?
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
 ) {
     if (attempts.isEmpty()) {
         EmptyState(message = "No performance data available yet.\nComplete some quizzes to see your stats!")
@@ -324,7 +309,6 @@ fun PerformanceTab(
                 )
             }
 
-<<<<<<< HEAD
             // Charts Section
             PerformanceTrendLineChart(attempts = attempts)
             
@@ -341,9 +325,6 @@ fun PerformanceTab(
                 bhaktiCount = bhaktiCount,
                 jnanaCount = jnanaCount
             )
-
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
             // Best Attempt
             val best = bestAttempt ?: attempts.maxByOrNull { it.accuracyPercentage }
             best?.let {
@@ -574,7 +555,6 @@ fun EmptyState(message: String) {
         }
     }
 }
-<<<<<<< HEAD
 
 @Composable
 fun PerformanceTrendLineChart(attempts: List<QuizAttempt>) {
@@ -1221,5 +1201,3 @@ fun SpiritualPathRadarChart(
         }
     }
 }
-=======
->>>>>>> 401318f91826bfb1f047732aa660110805c4c39b
