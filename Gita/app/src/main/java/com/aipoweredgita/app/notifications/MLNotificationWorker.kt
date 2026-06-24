@@ -214,7 +214,7 @@ class MLNotificationWorker(
             val delay = java.util.concurrent.TimeUnit.MINUTES.toMillis(delayMinutes)
 
             val workRequest = OneTimeWorkRequestBuilder<MLNotificationWorker>()
-                .setInitialDelay(java.time.Duration.ofMillis(delay))
+                .setInitialDelay(delay, java.util.concurrent.TimeUnit.MILLISECONDS)
                 .setInputData(workDataOf("notification_type" to notificationType.name))
                 .build()
 
