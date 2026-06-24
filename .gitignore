@@ -28,6 +28,7 @@ temp_*.txt
 fix_*.txt
 check_*.ps1
 resize_logo.py
+OFFLINE_ISSUE_NOTES.txt
 
 # ML model files
 *.bin
