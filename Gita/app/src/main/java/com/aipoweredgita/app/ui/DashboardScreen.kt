@@ -486,6 +486,13 @@ fun DashboardScreen(
                                     statsRepository.claimDailyReward(amount, description)
                                 }
                             }
+                        },
+                        onShareClaim = remember(statsRepository, coroutineScope) {
+                            { amount, description ->
+                                coroutineScope.launch {
+                                    statsRepository.claimShareReward(amount, description)
+                                }
+                            }
                         }
                     )
                 }

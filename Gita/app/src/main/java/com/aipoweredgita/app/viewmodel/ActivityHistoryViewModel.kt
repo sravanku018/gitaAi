@@ -148,11 +148,12 @@ class ActivityHistoryViewModel @Inject constructor(
     private fun loadGroupedQuizStats() {
         suspend fun buildStats(size: Int, list: List<QuizAttempt>): QuizSizeStatsData? {
             if (list.isEmpty()) return null
+            val stats = quizStatsRepo.getStatsByQuizSize(size)
             return QuizSizeStatsData(
                 quizSize = size, attempts = list,
-                totalAttempts = quizStatsRepo.getTotalAttemptsByQuizSize(size),
-                averageAccuracy = quizStatsRepo.getAverageAccuracyByQuizSize(size) ?: 0f,
-                averageTime = quizStatsRepo.getAverageTimeByQuizSize(size) ?: 0L,
+                totalAttempts = stats?.totalAttempts ?: 0,
+                averageAccuracy = stats?.averageAccuracy ?: 0f,
+                averageTime = stats?.averageTime ?: 0L,
                 bestAttempt = quizStatsRepo.getBestAttemptByQuizSize(size)
             )
         }
@@ -162,8 +163,18 @@ class ActivityHistoryViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            quizStatsRepo.getAttemptsByQuizSize(15).collect { list ->
+                _uiState.update { it.copy(quiz15Stats = buildStats(15, list)) }
+            }
+        }
+        viewModelScope.launch {
             quizStatsRepo.getAttemptsByQuizSize(20).collect { list ->
                 _uiState.update { it.copy(quiz20Stats = buildStats(20, list)) }
+            }
+        }
+        viewModelScope.launch {
+            quizStatsRepo.getAttemptsByQuizSize(25).collect { list ->
+                _uiState.update { it.copy(quiz25Stats = buildStats(25, list)) }
             }
         }
         viewModelScope.launch {

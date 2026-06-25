@@ -115,13 +115,13 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                 append("<|im_start|>assistant\n")
             } else {
                 // Gemma 4 chat template
-                append("<|turn>system\n")
+                append("<start_of_turn>system\n")
                 append(systemInstruction.trim())
-                append("<turn|>\n")
-                append("<|turn>user\n")
+                append("<end_of_turn>\n")
+                append("<start_of_turn>user\n")
                 append(prompt.trim().take(MAX_PROMPT_CHARS))
-                append("<turn|>\n")
-                append("<|turn>model\n")
+                append("<end_of_turn>\n")
+                append("<start_of_turn>model\n")
             }
         }
 

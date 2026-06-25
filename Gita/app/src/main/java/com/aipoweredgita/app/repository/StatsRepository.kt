@@ -368,7 +368,8 @@ class StatsRepository(
             userId()?.let { uid ->
                 try {
                     val slokaId = if (chapter != null && verse != null) "ch${chapter}v${verse}" else null
-                    val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, slokaId, chapter = chapter, verse = verse))
+                    val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
+                    val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, slokaId, chapter = chapter, verse = verse, client_date = localDate))
                     tracker.isShareSynced = true
                     val totalAwarded = response.coins_awarded + response.weekly_bonus
                     if (totalAwarded > 0) {

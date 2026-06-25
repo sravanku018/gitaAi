@@ -69,7 +69,9 @@ fun ActivityHistoryScreen(
     val averageAccuracy = state.averageAccuracy
     val averageTime = state.averageTime
     val quiz10Stats = state.quiz10Stats
+    val quiz15Stats = state.quiz15Stats
     val quiz20Stats = state.quiz20Stats
+    val quiz25Stats = state.quiz25Stats
     val quiz30Stats = state.quiz30Stats
     val selectedQuizSize = state.selectedQuizSize
     val karmaCount = state.karmaYogaCount
@@ -124,7 +126,9 @@ fun ActivityHistoryScreen(
                 averageAccuracy = averageAccuracy,
                 averageTime = averageTime,
                 quiz10Stats = quiz10Stats,
+                quiz15Stats = quiz15Stats,
                 quiz20Stats = quiz20Stats,
+                quiz25Stats = quiz25Stats,
                 quiz30Stats = quiz30Stats,
                 selectedQuizSize = selectedQuizSize,
                 onSelectQuizSize = { viewModel.onEvent(ActivityHistoryEvent.SelectQuizSize(it)) },
@@ -431,7 +435,9 @@ private fun QuizTab(
     averageAccuracy: Float,
     averageTime: Long,
     quiz10Stats: com.aipoweredgita.app.viewmodel.QuizSizeStatsData?,
+    quiz15Stats: com.aipoweredgita.app.viewmodel.QuizSizeStatsData?,
     quiz20Stats: com.aipoweredgita.app.viewmodel.QuizSizeStatsData?,
+    quiz25Stats: com.aipoweredgita.app.viewmodel.QuizSizeStatsData?,
     quiz30Stats: com.aipoweredgita.app.viewmodel.QuizSizeStatsData?,
     selectedQuizSize: Int?,
     onSelectQuizSize: (Int?) -> Unit,
@@ -457,11 +463,25 @@ private fun QuizTab(
                 label = { Text("10Q (${quiz10Stats.totalAttempts})") }
             )
         }
+        if (quiz15Stats != null) {
+            FilterChip(
+                selected = selectedQuizSize == 15,
+                onClick = { onSelectQuizSize(15) },
+                label = { Text("15Q (${quiz15Stats.totalAttempts})") }
+            )
+        }
         if (quiz20Stats != null) {
             FilterChip(
                 selected = selectedQuizSize == 20,
                 onClick = { onSelectQuizSize(20) },
                 label = { Text("20Q (${quiz20Stats.totalAttempts})") }
+            )
+        }
+        if (quiz25Stats != null) {
+            FilterChip(
+                selected = selectedQuizSize == 25,
+                onClick = { onSelectQuizSize(25) },
+                label = { Text("25Q (${quiz25Stats.totalAttempts})") }
             )
         }
         if (quiz30Stats != null) {
@@ -477,7 +497,9 @@ private fun QuizTab(
 
     val currentStats = when (selectedQuizSize) {
         10 -> quiz10Stats
+        15 -> quiz15Stats
         20 -> quiz20Stats
+        25 -> quiz25Stats
         30 -> quiz30Stats
         else -> null
     }

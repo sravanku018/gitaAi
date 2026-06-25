@@ -222,7 +222,7 @@ class DatasetIngestionPipeline(
                 optionB = shuffledOptions.getOrNull(1) ?: "",
                 optionC = shuffledOptions.getOrNull(2) ?: "",
                 optionD = shuffledOptions.getOrNull(3) ?: "",
-                correctAnswer = raw.answer,
+                correctAnswer = listOf("A", "B", "C", "D").getOrElse(correctIndex) { "A" },
                 explanation = raw.answer,
                 keywords = topics.joinToString(","),
                 topics = topics.joinToString(","),

@@ -2,6 +2,7 @@ package com.aipoweredgita.app.repository
 
 import com.aipoweredgita.app.database.QuizAttempt
 import com.aipoweredgita.app.database.QuizAttemptDao
+import com.aipoweredgita.app.database.QuizSizeStats
 import kotlinx.coroutines.flow.Flow
 
 class QuizStatsRepository(private val quizAttemptDao: QuizAttemptDao) {
@@ -19,6 +20,8 @@ class QuizStatsRepository(private val quizAttemptDao: QuizAttemptDao) {
     suspend fun getAverageTimeByQuizSize(size: Int): Long? = quizAttemptDao.getAverageTimeByQuizSize(size)
 
     suspend fun getBestAttemptByQuizSize(size: Int): QuizAttempt? = quizAttemptDao.getBestAttemptByQuizSize(size)
+
+    suspend fun getStatsByQuizSize(size: Int): QuizSizeStats? = quizAttemptDao.getStatsByQuizSize(size)
 
     suspend fun getAverageAccuracy(): Float? = quizAttemptDao.getAverageAccuracy()
 

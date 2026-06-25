@@ -461,11 +461,10 @@ class HuggingFaceMLManager(private val context: Context) {
         val options = mutableListOf(missingWord)
 
         // Add similar words or random alternatives
-        val wrongOptions = listOf(
-            if (missingWord.length > 2) missingWord.reversed() else "other",
-            words.filter { it != missingWord }.randomOrNull() ?: "different",
-            "meditation"  // Common gita word
-        ).distinct().take(3)
+        val otherVerseWords = words.filter { it != missingWord && it.length > 3 }.distinct()
+        val commonGitaWords = listOf("dharma", "karma", "yoga", "atman", "moksha", "bhakti", "jnana", "samsara", "prakriti", "purusha", "ahimsa", "sattva", "rajas", "tamas")
+        val distractorPool = (otherVerseWords + commonGitaWords).filter { it != missingWord }.distinct().shuffled()
+        val wrongOptions = distractorPool.take(3)
 
         options.addAll(wrongOptions)
 
@@ -738,12 +737,8 @@ class HuggingFaceMLManager(private val context: Context) {
         val selectedOptions = optionSets[optionIndex].toMutableList()
         val correctAnswer = selectedOptions[0]
         selectedOptions.removeAt(0)
-        selectedOptions.shuffled().toMutableList().also { shuffled ->
-            shuffled.add(0, correctAnswer)
-            selectedOptions.clear()
-            selectedOptions.addAll(shuffled)
-        }
-        val correctIndex = 0  // correctAnswer is always at index 0 after add(0, answer)
+        val allOptions = (listOf(correctAnswer) + selectedOptions).shuffled()
+        val correctIndex = allOptions.indexOf(correctAnswer)
 
         val difficultyLabel = when (desiredDifficulty) {
             1, 2 -> "Easy"
@@ -755,7 +750,7 @@ class HuggingFaceMLManager(private val context: Context) {
 
         return QuizQuestionData(
             question = questionTemplates[questionIndex],
-            options = selectedOptions,
+            options = allOptions,
             correctOptionIndex = correctIndex,
             explanation = "This is based on the teachings in Chapter $chapter, Verse $verseNum of the Bhagavad Gita.",
             type = "MCQ",

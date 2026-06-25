@@ -51,4 +51,20 @@ interface QuizAttemptDao {
 
     @Query("SELECT * FROM quiz_attempts WHERE totalQuestions = :quizSize AND totalQuestions > 0 ORDER BY (score * 100.0 / totalQuestions) DESC LIMIT 1")
     suspend fun getBestAttemptByQuizSize(quizSize: Int): QuizAttempt?
+
+    @Query("""
+        SELECT
+            COUNT(*) as totalAttempts,
+            AVG(score * 100.0 / totalQuestions) as averageAccuracy,
+            AVG(timeSpentSeconds) as averageTime
+        FROM quiz_attempts
+        WHERE totalQuestions = :quizSize AND totalQuestions > 0
+    """)
+    suspend fun getStatsByQuizSize(quizSize: Int): QuizSizeStats?
 }
+
+data class QuizSizeStats(
+    val totalAttempts: Int,
+    val averageAccuracy: Float?,
+    val averageTime: Long?
+)

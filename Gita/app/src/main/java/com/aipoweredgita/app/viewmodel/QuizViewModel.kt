@@ -250,14 +250,16 @@ class QuizViewModel @Inject constructor(
             val quizAttempt = QuizAttempt(
                 score = currentState.score,
                 totalQuestions = currentState.totalQuestions,
-                timeSpentSeconds = timeSpentSeconds
+                timeSpentSeconds = timeSpentSeconds,
+                quizType = currentState.quizType
             )
 
             try {
                 val result = quizRepository.saveQuizAttemptWithStats(
                     attempt = quizAttempt,
                     score = currentState.score,
-                    totalQuestions = currentState.totalQuestions
+                    totalQuestions = currentState.totalQuestions,
+                    quizType = currentState.quizType
                 )
 
                 _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.third) }
@@ -367,12 +369,14 @@ class QuizViewModel @Inject constructor(
                     val quizAttempt = QuizAttempt(
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions,
-                        timeSpentSeconds = timeSpentSeconds
+                        timeSpentSeconds = timeSpentSeconds,
+                        quizType = currentState.quizType
                     )
                     quizRepository.saveQuizAttemptWithStats(
                         attempt = quizAttempt,
                         score = currentState.score,
-                        totalQuestions = currentState.totalQuestions
+                        totalQuestions = currentState.totalQuestions,
+                        quizType = currentState.quizType
                     )
                 } catch (e: Exception) {
                     _sideEffect.emit(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz"))
@@ -430,21 +434,17 @@ class QuizViewModel @Inject constructor(
         timerJob = viewModelScope.launch {
             while (_quizState.value.questionTimeLeftSeconds > 0) {
                 kotlinx.coroutines.delay(1000)
-                synchronized(_quizState) {
-                    val current = _quizState.value.questionTimeLeftSeconds
-                    if (current > 0) {
-                        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = current - 1)
-                    }
+                val current = _quizState.value.questionTimeLeftSeconds
+                if (current > 0) {
+                    _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = current - 1)
                 }
             }
             // Time ran out — mark answer as revealed (wrong since no selection)
             stopTimer()
-            synchronized(_quizState) {
-                val state = _quizState.value
-                if (!state.showAnswer) {
-                    _uiState.update { it.copy(isAnswerRevealed = true) }
-                    _quizState.value = state.copy(showAnswer = true, showCorrectAnswer = false)
-                }
+            val state = _quizState.value
+            if (!state.showAnswer) {
+                _uiState.update { it.copy(isAnswerRevealed = true) }
+                _quizState.value = state.copy(showAnswer = true, showCorrectAnswer = false)
             }
         }
     }

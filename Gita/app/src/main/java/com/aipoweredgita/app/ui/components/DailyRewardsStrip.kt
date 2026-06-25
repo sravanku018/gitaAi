@@ -34,7 +34,8 @@ fun DailyRewardsStrip(
     context: android.content.Context,
     isDark: Boolean,
     coinBalance: Int,
-    onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> }
+    onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
+    onShareClaim: (amount: Int, description: String) -> Unit = { _, _ -> }
 ) {
     val dailyState = remember(coinBalance) { tracker.getDailyState() }
     val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
@@ -101,11 +102,10 @@ fun DailyRewardsStrip(
                             if (coins > 0) {
                                 if (d == 7) {
                                     weekCompleted = true
-                                    val bonus = tracker.claimDay7BonusIfEligible()
-                                    val total = coins + bonus + weeklyState.reward
+                                    tracker.claimDay7BonusIfEligible()
+                                    val total = coins + weeklyState.reward
                                     val desc = buildString {
                                         append("Day 7 check-in")
-                                        if (bonus > 0) append(" + 7-day bonus")
                                         append(" + Week ${weeklyState.week} bonus")
                                         append(" = $total coins")
                                     }
@@ -209,7 +209,20 @@ fun DailyRewardsStrip(
                         }
                         .clip(MaterialTheme.shapes.small)
                         .background(bgColor)
-                        .border(if (isToday) 1.5.dp else 0.5.dp, bdColor, MaterialTheme.shapes.small),
+                        .border(if (isToday) 1.5.dp else 0.5.dp, bdColor, MaterialTheme.shapes.small)
+                        .clickable(enabled = isToday) {
+                            val coins = tracker.claimShare()
+                            if (coins > 0) {
+                                claimedShare = true
+                                if (d == 7) {
+                                    tracker.claimShareDay7BonusIfEligible()
+                                    val total = coins + tracker.getShareWeeklyState().reward
+                                    onShareClaim(total, "Share day 7 + week bonus")
+                                } else {
+                                    onShareClaim(coins, "Share day $d")
+                                }
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
