@@ -88,6 +88,11 @@ fun NormalModeScreen(
             initialValue = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)
         )
 
+    val statsRepository = remember {
+        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+        com.aipoweredgita.app.repository.StatsRepository(db.userStatsDao(), db.dailyActivityDao(), context)
+    }
+
     fun shareVerse(verse: com.aipoweredgita.app.data.GitaVerse) {
         val text = buildString {
             appendLine("📖 Bhagavad Gita ${verse.chapterNo}:${verse.verseNo}")
@@ -103,6 +108,7 @@ fun NormalModeScreen(
                 }, "Share verse via"
             )
         )
+        viewModel.onEvent(com.aipoweredgita.app.domain.model.NormalModeEvent.TrackShare)
     }
 
     val isDark = rememberThemeIsDark()

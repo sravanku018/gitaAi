@@ -115,6 +115,25 @@ class SyncWorker(
                         userStatsDao.updateKrishnaCoins(response.total_coins)
                         Log.d(TAG, "Chapter sync success. New server balance: ${response.total_coins}")
                     }
+                    "BATTLE" -> {
+                        val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
+                        val battleCoins = jsonObject.get("battleCoins")?.asInt ?: event.coinsToAdjust
+                        val score = jsonObject.get("score")?.asInt ?: 0
+
+                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score")
+                        val response = CoinApi.retrofitService.awardCoins(
+                            CoinAwardRequest(
+                                user_id = event.userId,
+                                source = "battle_quiz",
+                                metadata = mapOf(
+                                    "battleCoins" to battleCoins,
+                                    "score" to score
+                                )
+                            )
+                        )
+                        userStatsDao.updateKrishnaCoins(response.total_coins)
+                        Log.d(TAG, "Battle sync success. New server balance: ${response.total_coins}")
+                    }
                     "SPEND" -> {
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
                         val question = jsonObject.get("question")?.asString ?: ""

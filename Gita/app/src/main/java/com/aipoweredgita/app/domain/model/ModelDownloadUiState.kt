@@ -1,7 +1,7 @@
 package com.aipoweredgita.app.domain.model
 
 import com.aipoweredgita.app.ml.ModelDownloadManager
-import com.aipoweredgita.app.ui.ModelDownloadProgress
+import com.aipoweredgita.app.services.ModelDownloadProgress
 
 data class ModelDownloadUiState(
     val downloadProgress: ModelDownloadProgress = ModelDownloadProgress(),

@@ -54,14 +54,17 @@ class SmartTimingPredictor(
 
         // Calculate engagement for each hour based on activity
         activities.forEach { activity ->
-            // Simulate hourly breakdown (in real app, you'd store hourly data)
             val totalSeconds = activity.normalSeconds + activity.quizSeconds
+            if (totalSeconds <= 0) return@forEach
             val dailyEngagement = totalSeconds.toFloat() / 3600f
 
-            // Peak activity assumed 6-10 AM and 6-10 PM (typical user behavior)
-            val peakHours = listOf(7, 8, 9, 19, 20, 21, 22)
-            peakHours.forEach { hour ->
-                val engagementScore = (dailyEngagement / 24f) * if (hour in 7..9 || hour in 19..22) 2.0f else 0.5f
+            // Distribute engagement across hours based on activity level
+            // Higher engagement days contribute more to pattern detection
+            val weight = (dailyEngagement / 2f).coerceIn(0.1f, 1.0f)
+            // Spread activity across common study hours (morning + evening)
+            val studyHours = listOf(6, 7, 8, 9, 10, 17, 18, 19, 20, 21, 22)
+            studyHours.forEach { hour ->
+                val engagementScore = weight * if (hour in 7..9 || hour in 19..22) 1.0f else 0.5f
                 hourlyScores[hour]?.add(engagementScore.coerceIn(0f, 1f))
             }
         }

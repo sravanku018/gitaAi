@@ -243,8 +243,9 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
     fun claimDaily(): Int {
         val s = getDailyState()
         if (s.todayClaimed) return 0
+        val today = now()
         synchronized(this) {
-            if (prefs.getString(KEY_DATE, "") == now()) return 0
+            if (prefs.getString(KEY_DATE, "") == today) return 0
             val editor = prefs.edit()
             if (s.protectionWillAutoAdvance) {
                 val p = (prefs.getInt(KEY_PROTECTION, 0) - 1).coerceAtLeast(0)
@@ -252,7 +253,7 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             }
             editor.putInt(KEY_DAY, s.day)
             editor.putInt(KEY_WEEK, s.week)
-            editor.putString(KEY_DATE, now())
+            editor.putString(KEY_DATE, today)
             editor.putBoolean("checkin_synced", false)
             editor.commit()  // synchronous — prevents race with async reads
             return s.reward

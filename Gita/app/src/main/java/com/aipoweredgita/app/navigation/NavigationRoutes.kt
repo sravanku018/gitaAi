@@ -22,6 +22,10 @@ import kotlinx.serialization.Serializable
 @Serializable data object LoginKey
 @Serializable data object QuizSectionKey
 @Serializable data object RecommendationsKey
+@Serializable data object NotesKey
+@Serializable data object MeditationKey
+@Serializable data object StudyPlanKey
+@Serializable data object QuizBattleKey
 
 // Routes with arguments
 @Serializable data class NormalModeKey(val chapter: Int = 0, val verse: Int = 0)

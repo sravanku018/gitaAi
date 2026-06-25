@@ -40,7 +40,6 @@ import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.ui.SplashScreen
 import com.aipoweredgita.app.ui.ExitScreen
 import com.aipoweredgita.app.ui.MainScreen
-import com.aipoweredgita.app.ui.ModelDownloadScreen
 import com.aipoweredgita.app.ui.UiConfigProvider
 import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import com.aipoweredgita.app.utils.ThemePreferences

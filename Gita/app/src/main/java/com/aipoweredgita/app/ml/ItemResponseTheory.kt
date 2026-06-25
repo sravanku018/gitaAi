@@ -151,12 +151,16 @@ class ItemResponseTheoryEngine {
             val p = probabilityCorrect(theta, item)
             val q = 1.0 - p
 
-            // First derivative: d log L / dθ
-            val dL = if (isCorrect) (a * q) else (-a * p)
+            // First derivative: d log L / dθ (with guessing correction)
+            val dL = if (isCorrect) {
+                a * (p - c) * q / (p * (1.0 - c))
+            } else {
+                -a * (p - c) / (1.0 - c)
+            }
             firstDerivative += dL
 
-            // Second derivative: d² log L / dθ²
-            val d2L = -a * a * p * q
+            // Second derivative: d² log L / dθ² (with guessing correction)
+            val d2L = -a * a * (p - c) * (1.0 - p) * (c * (1.0 - p) + (p - c) * q) / (p * p * (1.0 - c) * (1.0 - c))
             secondDerivative += d2L
         }
 

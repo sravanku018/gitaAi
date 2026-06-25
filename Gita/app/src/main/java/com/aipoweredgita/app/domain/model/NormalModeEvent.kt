@@ -6,4 +6,5 @@ sealed class NormalModeEvent {
     object PreviousVerse : NormalModeEvent()
     data class GoToChapter(val chapter: Int) : NormalModeEvent()
     object ToggleFavorite : NormalModeEvent()
+    object TrackShare : NormalModeEvent()
 }

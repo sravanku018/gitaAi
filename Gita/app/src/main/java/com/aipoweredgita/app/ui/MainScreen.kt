@@ -120,6 +120,22 @@ fun MainScreen(
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Settings.route)
                     },
+                    onNavigateToNotes = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Notes.route)
+                    },
+                    onNavigateToMeditation = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Meditation.route)
+                    },
+                    onNavigateToStudyPlan = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.StudyPlan.route)
+                    },
+                    onNavigateToQuizBattle = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.QuizBattle.route)
+                    },
                     onNavigateToCoinHistory = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.CoinHistory.route)
@@ -192,23 +208,25 @@ fun MainScreen(
                 )
             },
             bottomBar = {
-                BottomNavigationBar(
-                    currentRoute = currentRoute,
-                    isDarkTheme = isDarkTheme,
-                    onNavigate = { route ->
-                        // Only navigate if not already on that route
-                        if (currentRoute != route) {
-                            navController.navigate(route) {
-                                // Pop up to the start destination
-                                popUpTo(Screen.Home.route) {
-                                    saveState = false
+                Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    BottomNavigationBar(
+                        currentRoute = currentRoute,
+                        isDarkTheme = isDarkTheme,
+                        onNavigate = { route ->
+                            // Only navigate if not already on that route
+                            if (currentRoute != route) {
+                                navController.navigate(route) {
+                                    // Pop up to the start destination
+                                    popUpTo(Screen.Home.route) {
+                                        saveState = false
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = false
                                 }
-                                launchSingleTop = true
-                                restoreState = false
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
         ) { innerPadding ->
             NavGraph(
@@ -316,6 +334,10 @@ fun DrawerContent(
     onNavigateToYogaLevels: () -> Unit,
     onNavigateToCoinHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToNotes: () -> Unit = {},
+    onNavigateToMeditation: () -> Unit = {},
+    onNavigateToStudyPlan: () -> Unit = {},
+    onNavigateToQuizBattle: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onLogout: () -> Unit = {},
     stats: com.aipoweredgita.app.database.UserStats?,
@@ -541,12 +563,17 @@ fun DrawerContent(
                 onClick = onNavigateToYogaLevels
             )
 
+            TwitterMenuItem(icon = { Icon(Icons.Filled.EditNote, "Notes") }, title = "My Notes", isDarkTheme = isDarkTheme, onClick = onNavigateToNotes)
+            TwitterMenuItem(icon = { Text("🧘") }, title = "Meditation", isDarkTheme = isDarkTheme, onClick = onNavigateToMeditation)
+            TwitterMenuItem(icon = { Icon(Icons.Filled.CalendarMonth, "Plans") }, title = "Study Plans", isDarkTheme = isDarkTheme, onClick = onNavigateToStudyPlan)
+            TwitterMenuItem(icon = { Icon(Icons.Filled.SportsMma, "Battle") }, title = "Quiz Battle", isDarkTheme = isDarkTheme, onClick = onNavigateToQuizBattle)
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f))
 
             // Settings section
             TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Menu, contentDescription = "Appearance & Theme") },
-                title = "Appearance & Theme",
+                icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = "Settings") },
+                title = "Settings",
                 isDarkTheme = isDarkTheme,
                 trailing = {
                     Switch(

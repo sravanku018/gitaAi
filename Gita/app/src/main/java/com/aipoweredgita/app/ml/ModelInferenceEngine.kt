@@ -107,12 +107,12 @@ class ModelInferenceEngine(private val context: Context) : Closeable {
 
     private fun mapAssetModel(assetPath: String): MappedByteBuffer? {
         return try {
-            context.assets.openFd(assetPath).use { afd ->
-                java.io.FileInputStream(afd.fileDescriptor).use { input ->
-                    input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length).also {
-                        mappedBuffer = it  // track for explicit unmap in close()
-                    }
-                }
+            val afd = context.assets.openFd(assetPath)
+            val input = java.io.FileInputStream(afd.fileDescriptor)
+            val channel = input.channel
+            fileChannel = channel  // track for close()
+            channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length).also {
+                mappedBuffer = it  // track for explicit unmap in close()
             }
         } catch (e: Exception) {
             null

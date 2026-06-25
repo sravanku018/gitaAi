@@ -12,7 +12,13 @@ import com.aipoweredgita.app.domain.model.QuizEvent
 import com.aipoweredgita.app.domain.model.QuizSideEffect
 import com.aipoweredgita.app.domain.model.QuizUiState
 import com.aipoweredgita.app.ml.AdaptiveDifficultyEngine
+import com.aipoweredgita.app.ml.ELOEntity
+import com.aipoweredgita.app.ml.EntityType
+import com.aipoweredgita.app.ml.EloRatingSystem
 import com.aipoweredgita.app.ml.HuggingFaceMLManager
+import com.aipoweredgita.app.ml.ItemParameters
+import com.aipoweredgita.app.ml.ItemResponseTheoryEngine
+import com.aipoweredgita.app.ml.StudentAbility
 import com.aipoweredgita.app.repository.QuizRepository
 import com.aipoweredgita.app.repository.QuizQuestionRepository
 import com.aipoweredgita.app.repository.StatsRepository
@@ -63,6 +69,10 @@ class QuizViewModel @Inject constructor(
     private val mlManager = HuggingFaceMLManager(application)
     private val difficultyEngine = AdaptiveDifficultyEngine()
     private var userState = AdaptiveDifficultyEngine.UserState()
+    private val eloSystem = EloRatingSystem()
+    private val irtEngine = ItemResponseTheoryEngine()
+    private var studentEntity = ELOEntity(id = "student", type = EntityType.STUDENT)
+    private var studentAbility = StudentAbility(studentId = "student")
     private var quizStartTime: Long = 0
     private var timerJob: kotlinx.coroutines.Job? = null
     // Track question IDs asked in the current quiz session to prevent repeats
@@ -71,10 +81,15 @@ class QuizViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            val prefs = application.getSharedPreferences("quiz_prefs", android.content.Context.MODE_PRIVATE)
+            userState = AdaptiveDifficultyEngine.loadState(prefs)
+            studentEntity = ELOEntity(id = "student", rating = 1500.0 + (userState.skillLevel - 5) * 50.0, type = EntityType.STUDENT)
+            studentAbility = StudentAbility(studentId = "student", theta = (userState.skillLevel - 5) * 0.5)
             val success = com.aipoweredgita.app.ml.TranslationManager().downloadModelsIfNeeded()
             if (!success) {
                 _sideEffect.emit(QuizSideEffect.ShowError("Failed to download translation models"))
             }
+            mlManager.initializeModels()
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -123,8 +138,9 @@ class QuizViewModel @Inject constructor(
                 // Fetch next question from DB using repository
                 // Over-fetch to have a pool to filter session-asked questions
                 val limit = 1
-                val minDiff = 1
-                val maxDiff = 10
+                val diff = userState.skillLevel
+                val minDiff = (diff - 2).coerceAtLeast(1)
+                val maxDiff = (diff + 2).coerceAtMost(10)
                 val fetchLimit = maxOf(limit, 10)
                 val candidates = quizQuestionRepository.getNextQuestions(minDiff, maxDiff, fetchLimit)
                 
@@ -206,6 +222,15 @@ class QuizViewModel @Inject constructor(
         )
 
         difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
+
+        // Update Elo ratings
+        val questionEntity = ELOEntity(id = "q_${_quizState.value.totalQuestions}", type = EntityType.QUESTION)
+        eloSystem.updateRatings(studentEntity, questionEntity, if (isCorrect) 1.0 else 0.0)
+
+        // Update IRT ability
+        val itemParams = ItemParameters(difficulty = (userState.skillLevel).toDouble(), discrimination = 1.0)
+        studentAbility = irtEngine.updateAbility(studentAbility, listOf(itemParams to isCorrect))
+
         saveProgress()
     }
 
@@ -233,6 +258,15 @@ class QuizViewModel @Inject constructor(
 
         // Update difficulty
         difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
+
+        // Update Elo ratings
+        val questionEntity2 = ELOEntity(id = "q_${_quizState.value.totalQuestions}", type = EntityType.QUESTION)
+        eloSystem.updateRatings(studentEntity, questionEntity2, if (isCorrect) 1.0 else 0.0)
+
+        // Update IRT ability
+        val itemParams2 = ItemParameters(difficulty = (userState.skillLevel).toDouble(), discrimination = 1.0)
+        studentAbility = irtEngine.updateAbility(studentAbility, listOf(itemParams2 to isCorrect))
+
         saveProgress()
     }
 
@@ -420,6 +454,8 @@ class QuizViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        val prefs = application.getSharedPreferences("quiz_prefs", android.content.Context.MODE_PRIVATE)
+        AdaptiveDifficultyEngine.saveState(userState, prefs)
         mlManager.close()
     }
 

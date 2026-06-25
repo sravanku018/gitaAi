@@ -186,6 +186,37 @@ data class UserStatsSyncResponse(
     val stats: UserStatsSyncDto? = null
 )
 
+data class ServerNote(
+    val id: Int = 0,
+    val chapter_no: Int = 0,
+    val verse_no: Int = 0,
+    val note: String = "",
+    val created_at: String = "",
+    val updated_at: String = ""
+)
+
+data class NotesSyncRequest(
+    val user_id: String,
+    val notes: List<NoteSyncItem>
+)
+
+data class NoteSyncItem(
+    val chapterNo: Int,
+    val verseNo: Int,
+    val note: String
+)
+
+data class NotesSyncResponse(
+    val success: Boolean = false,
+    val synced: Int = 0
+)
+
+data class NoteDeleteRequest(
+    val user_id: String,
+    val chapter_no: Int,
+    val verse_no: Int
+)
+
 data class CoinAwardResponse(
     val awarded: Int = 0,
     val total_coins: Int = 0,
@@ -472,6 +503,17 @@ interface CoinApiService {
         @Header("Authorization") token: String? = null,
         @Body request: UserStatsSyncRequest
     ): UserStatsSyncResponse
+
+    @GET("notes")
+    suspend fun getNotes(
+        @Query("user_id") userId: String
+    ): List<ServerNote>
+
+    @POST("notes/sync")
+    suspend fun syncNotes(@Body request: NotesSyncRequest): NotesSyncResponse
+
+    @POST("notes/delete")
+    suspend fun deleteNote(@Body request: NoteDeleteRequest): Map<String, Any>
 }
 
 object CoinApi {

@@ -103,7 +103,6 @@ fun DailyRewardsStrip(
                             if (coins > 0) {
                                 if (d == 7) {
                                     weekCompleted = true
-                                    tracker.claimDay7BonusIfEligible()
                                     val total = coins + weeklyState.reward
                                     val desc = buildString {
                                         append("Day 7 check-in")

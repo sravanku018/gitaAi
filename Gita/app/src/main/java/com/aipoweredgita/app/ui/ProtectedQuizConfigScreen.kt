@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aipoweredgita.app.R
 import com.aipoweredgita.app.ml.ModelDownloadManager
+import com.aipoweredgita.app.services.ModelDownloadProgress
 import com.aipoweredgita.app.viewmodel.ModelDownloadViewModel
 import androidx.compose.ui.tooling.preview.Preview
 import com.aipoweredgita.app.ui.theme.*
@@ -188,7 +189,11 @@ fun SacredQuizConfigScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text       = if (language == "tel") "ప్రారంభించండి" else "प्रारंभ करें",
+                        text       = when (language) {
+                            "tel" -> "ప్రారంభించండి"
+                            "hin" -> "प्रारंभ करें"
+                            else -> "START"
+                        },
                         fontSize   = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color      = Color.White.copy(alpha = 0.7f),
@@ -1257,8 +1262,8 @@ fun AIDownloadDialogPreview() {
 @Composable
 fun QuizNotReadyScreenPreview() {
     val sampleProgress = listOf(
-        ModelDownloadProgress("Qwen3 0.6B", 45, "Downloading...", null, 450_000_000L, 1_000_000_000L),
-        ModelDownloadProgress("Gemma 4 2B", 10, "Pending...", null, 200_000_000L, 2_000_000_000L)
+        ModelDownloadProgress(modelName = "Qwen3 0.6B", percentage = 45, message = "Downloading...", currentBytes = 450_000_000L, totalBytes = 1_000_000_000L),
+        ModelDownloadProgress(modelName = "Gemma 4 2B", percentage = 10, message = "Pending...", currentBytes = 200_000_000L, totalBytes = 2_000_000_000L)
     )
     GitaLearningTheme {
         QuizNotReadyScreenContent(
@@ -1274,7 +1279,7 @@ fun QuizNotReadyScreenPreview() {
 @Composable
 fun DownloadProgressCardPreview() {
     val sampleProgress = listOf(
-        ModelDownloadProgress("Qwen3 0.6B", 65, "Downloading...", null, 650_000_000L, 1_000_000_000L)
+        ModelDownloadProgress(modelName = "Qwen3 0.6B", percentage = 65, message = "Downloading...", currentBytes = 650_000_000L, totalBytes = 1_000_000_000L)
     )
     GitaLearningTheme {
         Box(modifier = Modifier.background(BgDark).padding(20.dp)) {

@@ -12,9 +12,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserPreferences::class, RecommendationData::class, LearningInsights::class, QuizQuestionBank::class,
         StudyGuide::class, Flashcard::class, Bookmark::class, Note::class,
         SpacedRepetitionItem::class, LearningStyle::class, YogaProgression::class, RandomVerseHistory::class,
-        VoiceChatMessage::class, TranslationCache::class, ChatSummary::class, PendingSyncEvent::class
+        VoiceChatMessage::class, TranslationCache::class, ChatSummary::class, PendingSyncEvent::class,
+        VerseNote::class, VerseFts::class, StudyPlan::class, StudyPlanProgress::class
     ],
-    version = 38,
+    version = 39,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -44,6 +45,9 @@ abstract class GitaDatabase : RoomDatabase() {
     abstract fun translationCacheDao(): TranslationCacheDao
     abstract fun chatSummaryDao(): ChatSummaryDao
     abstract fun pendingSyncEventDao(): PendingSyncEventDao
+    abstract fun verseNoteDao(): VerseNoteDao
+    abstract fun verseSearchDao(): VerseSearchDao
+    abstract fun studyPlanDao(): StudyPlanDao
 
     companion object {
         @Volatile
@@ -628,6 +632,53 @@ abstract class GitaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `verse_notes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `chapterNo` INTEGER NOT NULL,
+                        `verseNo` INTEGER NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                """)
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `study_plans` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `durationDays` INTEGER NOT NULL,
+                        `planType` TEXT NOT NULL,
+                        `chapters` TEXT NOT NULL,
+                        `currentDay` INTEGER NOT NULL DEFAULT 1,
+                        `isActive` INTEGER NOT NULL DEFAULT 1,
+                        `startDate` INTEGER NOT NULL,
+                        `completedAt` INTEGER
+                    )
+                """)
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `study_plan_progress` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `planId` INTEGER NOT NULL,
+                        `day` INTEGER NOT NULL,
+                        `chapterNo` INTEGER NOT NULL,
+                        `verseStart` INTEGER NOT NULL,
+                        `verseEnd` INTEGER NOT NULL,
+                        `isCompleted` INTEGER NOT NULL DEFAULT 0,
+                        `completedAt` INTEGER
+                    )
+                """)
+                database.execSQL("""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS `verse_fts` USING fts4(
+                        `verse`, `translation`, `chapterNo` INTEGER, `verseNo` INTEGER,
+                        content=`cached_verses`
+                    )
+                """)
+            }
+        }
+
         fun getDatabase(context: Context): GitaDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -635,7 +686,7 @@ abstract class GitaDatabase : RoomDatabase() {
                     GitaDatabase::class.java,
                     "gita_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39)
                 // Safety net: if a migration path is missing, fall back to destructive
                 // on downgrade only (not missing upgrades). Prevents crash on rollback.
                 .fallbackToDestructiveMigrationOnDowngrade()

@@ -12,7 +12,7 @@ import com.aipoweredgita.app.domain.model.ModelDownloadEvent
 import com.aipoweredgita.app.domain.model.ModelDownloadUiState
 import com.aipoweredgita.app.ml.ModelDownloadManager
 import com.aipoweredgita.app.services.ModelDownloadService
-import com.aipoweredgita.app.ui.ModelDownloadProgress
+import com.aipoweredgita.app.services.ModelDownloadProgress
 import com.aipoweredgita.app.utils.DeviceTier
 import com.aipoweredgita.app.utils.DeviceTierDetector
 import dagger.hilt.android.lifecycle.HiltViewModel

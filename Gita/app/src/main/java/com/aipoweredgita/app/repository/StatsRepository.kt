@@ -267,6 +267,61 @@ class StatsRepository(
         return coins
     }
 
+    suspend fun trackBattleCompletion(battleCoins: Int, score: Int, questionsAnswered: Int) {
+        ensureUserSynced()
+        userStatsDao.incrementQuizzesTaken()
+        userStatsDao.addQuestionsAnswered(questionsAnswered)
+        userStatsDao.addCorrectAnswers(score)
+
+        val today = LocalDate.now().toString()
+        dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+        dailyActivityDao?.addQuizSeconds(today, 60)
+
+        updateStreak()
+
+        val isGuest = authPrefs.isGuestUser
+
+        if (isGuest) {
+            if (battleCoins > 0) {
+                userStatsDao.addKrishnaCoins(battleCoins)
+                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)")
+            }
+        } else {
+            userId()?.let { uid ->
+                try {
+                    val response = CoinApi.retrofitService.awardCoins(
+                        CoinAwardRequest(
+                            user_id = uid,
+                            source = "battle_quiz",
+                            metadata = mapOf(
+                                "battleCoins" to battleCoins,
+                                "score" to score,
+                                "questionsAnswered" to questionsAnswered
+                            )
+                        )
+                    )
+                    userStatsDao.updateKrishnaCoins(response.total_coins)
+                    CoinTransactionLogger.log(appContext, response.awarded, "battle_quiz: +${battleCoins}")
+                } catch (e: Exception) {
+                    if (battleCoins > 0) {
+                        userStatsDao.addKrishnaCoins(battleCoins)
+                        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
+                        db.pendingSyncEventDao().insert(
+                            com.aipoweredgita.app.database.PendingSyncEvent(
+                                userId = uid,
+                                eventType = "BATTLE",
+                                payload = """{"battleCoins":$battleCoins,"score":$score}""",
+                                coinsToAdjust = battleCoins,
+                                idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
+                            )
+                        )
+                        CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (offline queued)")
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun trackVerseRead() {
         userStatsDao.incrementVersesRead()
         val today = LocalDate.now().toString()

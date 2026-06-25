@@ -55,6 +55,7 @@ fun ProfileScreen(
     onNavigateToLogin: () -> Unit = {}
 ) {
     val stats by viewModel.stats.collectAsState()
+    val profileState by viewModel.uiState.collectAsState()
     val yogaInfo = com.aipoweredgita.app.ui.components.YogaLevelManager.yogaLevelInfo(stats)
     val levelProgress = com.aipoweredgita.app.ui.components.YogaLevelManager.progressInLevel(stats)
     
@@ -157,7 +158,7 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SmallStatItem(SmallStatData("Streak", "${stats?.currentStreak ?: 0} days", Icons.Default.Whatshot), Modifier.weight(1f))
-                SmallStatItem(SmallStatData("Badges", "${stats?.totalFavorites ?: 0}", Icons.Default.EmojiEvents), Modifier.weight(1f))
+                SmallStatItem(SmallStatData("Badges", "${profileState.badges.size}", Icons.Default.EmojiEvents), Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(24.dp))

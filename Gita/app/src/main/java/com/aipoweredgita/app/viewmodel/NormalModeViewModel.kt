@@ -133,6 +133,7 @@ class NormalModeViewModel @Inject constructor(
             is NormalModeEvent.PreviousVerse -> previousVerse()
             is NormalModeEvent.GoToChapter -> goToChapter(event.chapter)
             is NormalModeEvent.ToggleFavorite -> toggleFavorite()
+            is NormalModeEvent.TrackShare -> trackShare()
         }
     }
 
@@ -422,6 +423,16 @@ class NormalModeViewModel @Inject constructor(
         // Flush any pending verse reads to database
         throttledUpdater.flush()
         Log.d(TAG, "NormalModeViewModel cleared - throttled updater flushed")
+    }
+
+    private fun trackShare() {
+        viewModelScope.launch {
+            val verse = _uiState.value.verse
+            statsRepository.trackSlokaShared(
+                chapter = verse?.chapterNo,
+                verse = verse?.verseNo
+            )
+        }
     }
 }
                     

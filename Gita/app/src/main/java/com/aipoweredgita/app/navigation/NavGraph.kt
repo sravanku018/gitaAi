@@ -21,7 +21,6 @@ import com.aipoweredgita.app.ui.WidgetSettingsScreen
 import com.aipoweredgita.app.ui.BadgesScreen
 import com.aipoweredgita.app.ui.RandomSlokaScreen
 import com.aipoweredgita.app.ui.AwakeningPage
-import com.aipoweredgita.app.ui.DailyActivityScreen
 import com.aipoweredgita.app.ui.SettingsScreen
 import com.aipoweredgita.app.ui.LoginScreen
 import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
@@ -54,6 +53,10 @@ sealed class Screen(val route: String) {
     object DailyActivity : Screen("daily_activity")
     object Recommendations : Screen("recommendations")
     object Login : Screen("login")
+    object Notes : Screen("notes")
+    object Meditation : Screen("meditation")
+    object StudyPlan : Screen("study_plan")
+    object QuizBattle : Screen("quiz_battle")
 
     object Flashcards : Screen("flashcards?topic={topic}")
     object RandomSloka : Screen("random_sloka?chapter={chapter}&verse={verse}")
@@ -337,6 +340,51 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 initialChapter = initChapter,
                 initialVerse = initVerse
+            )
+        }
+
+        composable(Screen.Notes.route) {
+            com.aipoweredgita.app.ui.NotesScreen(
+                onBack = { navController.popBackStack() },
+                onVerseClick = { chapter, verse -> navController.navigate("normal_mode?chapter=$chapter&verse=$verse") }
+            )
+        }
+
+        composable(Screen.Meditation.route) {
+            com.aipoweredgita.app.ui.MeditationTimerScreen(
+                onBack = { navController.popBackStack() },
+                onComplete = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.StudyPlan.route) {
+            com.aipoweredgita.app.ui.StudyPlanScreen(
+                onBack = { navController.popBackStack() },
+                onStartReading = { chapter, verse -> navController.navigate("normal_mode?chapter=$chapter&verse=$verse") }
+            )
+        }
+
+        composable(Screen.QuizBattle.route) {
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            com.aipoweredgita.app.ui.QuizBattleScreen(
+                onBack = { navController.popBackStack() },
+                onGameOver = { score, maxCombo, questionsAnswered, battleCoins ->
+                    if (battleCoins > 0) {
+                        scope.launch {
+                            try {
+                                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                                val repo = com.aipoweredgita.app.repository.StatsRepository(
+                                    userStatsDao = db.userStatsDao(),
+                                    dailyActivityDao = db.dailyActivityDao(),
+                                    appContext = context
+                                )
+                                repo.trackBattleCompletion(battleCoins, score, questionsAnswered)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                    navController.popBackStack()
+                }
             )
         }
     }
