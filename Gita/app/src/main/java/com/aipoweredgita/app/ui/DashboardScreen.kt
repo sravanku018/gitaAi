@@ -487,11 +487,9 @@ fun DashboardScreen(
                                 }
                             }
                         },
-                        onShareClaim = remember(statsRepository, coroutineScope) {
-                            { amount, description ->
-                                coroutineScope.launch {
-                                    statsRepository.claimShareReward(amount, description)
-                                }
+                        onShareClaim = remember(statsRepository) {
+                            { _, _ ->
+                                statsRepository.trackSlokaShared()
                             }
                         }
                     )

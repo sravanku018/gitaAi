@@ -3,6 +3,7 @@ package com.aipoweredgita.app.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,7 +36,7 @@ fun DailyRewardsStrip(
     isDark: Boolean,
     coinBalance: Int,
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
-    onShareClaim: (amount: Int, description: String) -> Unit = { _, _ -> }
+    onShareClaim: suspend (amount: Int, description: String) -> Unit = { _, _ -> }
 ) {
     val dailyState = remember(coinBalance) { tracker.getDailyState() }
     val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
@@ -180,6 +181,7 @@ fun DailyRewardsStrip(
         // ─── Share Rewards ──────────────────────────────────────────────
         val shareState = remember(coinBalance) { tracker.getShareState() }
         var claimedShare by remember(coinBalance) { mutableStateOf(shareState.todayClaimed) }
+        val shareScope = rememberCoroutineScope()
         HorizontalDivider(color = bd)
         Text("Daily Share Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -214,12 +216,14 @@ fun DailyRewardsStrip(
                             val coins = tracker.claimShare()
                             if (coins > 0) {
                                 claimedShare = true
-                                if (d == 7) {
-                                    tracker.claimShareDay7BonusIfEligible()
-                                    val total = coins + tracker.getShareWeeklyState().reward
-                                    onShareClaim(total, "Share day 7 + week bonus")
-                                } else {
-                                    onShareClaim(coins, "Share day $d")
+                                shareScope.launch {
+                                    if (d == 7) {
+                                        tracker.claimShareDay7BonusIfEligible()
+                                        val total = coins + tracker.getShareWeeklyState().reward
+                                        onShareClaim(total, "Share day 7 + week bonus")
+                                    } else {
+                                        onShareClaim(coins, "Share day $d")
+                                    }
                                 }
                             }
                         },
