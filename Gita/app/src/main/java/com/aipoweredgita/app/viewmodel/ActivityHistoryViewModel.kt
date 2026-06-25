@@ -125,6 +125,7 @@ class ActivityHistoryViewModel @Inject constructor(
                     val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }
+                    quizDao.deleteAll()
                     for (dto in serverAttempts) {
                         val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
                         val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))

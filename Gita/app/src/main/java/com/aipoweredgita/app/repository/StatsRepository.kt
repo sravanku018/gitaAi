@@ -141,7 +141,8 @@ class StatsRepository(
         score: Int,
         totalQuestions: Int,
         segmentCorrectMap: Map<String, Int> = emptyMap(),
-        quizType: String = "general"
+        quizType: String = "general",
+        timeSpentSeconds: Long = 0
     ): Int {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
@@ -151,7 +152,12 @@ class StatsRepository(
         // Track quiz time in daily activity
         val today = LocalDate.now().toString()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
-        dailyActivityDao?.addQuizSeconds(today, 60) // estimate 1 min per quiz
+        dailyActivityDao?.addQuizSeconds(today, if (timeSpentSeconds > 0) timeSpentSeconds else 60)
+
+        // Track quiz mode time in user stats for overview time distribution
+        if (timeSpentSeconds > 0) {
+            userStatsDao.addQuizModeTime(timeSpentSeconds)
+        }
 
         // Update streak BEFORE coin calculation so reward reflects current streak
         updateStreak()
@@ -217,7 +223,7 @@ class StatsRepository(
                                 score = score,
                                 total_questions = totalQuestions,
                                 quiz_type = quizType,
-                                time_spent_seconds = 0,
+                                time_spent_seconds = timeSpentSeconds,
                                 coins_earned = response.awarded
                             )
                         )
