@@ -1,15 +1,18 @@
 package com.aipoweredgita.app.util
 
+import com.aipoweredgita.app.BuildConfig
+
 /**
  * Centralized feature flags for runtime-tunable behavior.
- * In the future, these can be sourced from remote config or BuildConfig fields.
+ * Debug-only flags are tied to BuildConfig.DEBUG to prevent leaking
+ * sensitive data (API URLs, user IDs, coin balances) in release builds.
  */
 object FeatureFlags {
-    // Enable verbose network logging (OkHttp logging interceptor)
-    @JvmField val ENABLE_VERBOSE_NETWORK_LOGS: Boolean = true
+    // Verbose network logging — debug only (leaks API URLs, headers, bodies)
+    val ENABLE_VERBOSE_NETWORK_LOGS: Boolean = BuildConfig.DEBUG
 
-    // Enable lightweight performance metrics logs (e.g., API timings)
-    @JvmField val ENABLE_PERF_METRICS: Boolean = true
+    // Performance metrics logs — debug only
+    val ENABLE_PERF_METRICS: Boolean = BuildConfig.DEBUG
 
     // Show offline banner on main reading screen
     @JvmField val SHOW_OFFLINE_BANNER: Boolean = true

@@ -5,8 +5,8 @@ import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.domain.model.DailyActivityData
 import com.aipoweredgita.app.domain.model.NextActionData
 import com.aipoweredgita.app.recommendation.AdaptiveCurriculumPlanner
+import com.aipoweredgita.app.recommendation.M1Predictor
 import com.aipoweredgita.app.recommendation.RecommendationEngine
-import com.aipoweredgita.app.recommendation.predictNext
 import com.aipoweredgita.app.repository.DailyActivityRepository
 import com.aipoweredgita.app.repository.QuizStatsRepository
 import com.aipoweredgita.app.repository.ReadingRepository
@@ -52,7 +52,12 @@ class LoadDashboardUseCase @Inject constructor(
             val nextAction = try {
                 val lastSugDate = prefs.getString("next_suggestion_date", "")
                 if (lastSugDate != today) {
-                    val suggestion = withContext(Dispatchers.IO) { predictNext(database) }
+                    val suggestion = withContext(Dispatchers.IO) {
+                        M1Predictor(
+                            dailyActivityDao = database.dailyActivityDao(),
+                            userStatsDao = database.userStatsDao()
+                        ).predictNext()
+                    }
                     val cleanedStep = StringUtils.clean(suggestion.nextStep)
                     val cleanedReason = StringUtils.clean(suggestion.reason)
                     withContext(Dispatchers.IO) {
@@ -107,7 +112,11 @@ class LoadDashboardUseCase @Inject constructor(
                 if (lastRun != today) {
                     withContext(Dispatchers.IO) {
                         RecommendationEngine(context).generateRecommendations()
-                        AdaptiveCurriculumPlanner(context).buildPlan()
+                        AdaptiveCurriculumPlanner(
+                            userStatsDao = database.userStatsDao(),
+                            userPreferencesDao = database.userPreferencesDao(),
+                            recommendationDataDao = database.recommendationDataDao()
+                        ).buildPlan()
                     }
                     prefs.edit().putString("last_rec_gen", today).apply()
                 }

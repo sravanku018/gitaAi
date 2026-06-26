@@ -40,7 +40,6 @@ class AuthPreferences(context: Context) {
         private const val KEY_PHONE = "phone"
         private const val KEY_EMAIL = "email"
         private const val KEY_NAME = "name"
-        private const val KEY_PASSWORD = "password"
         private const val KEY_REMEMBER_ME = "remember_me"
         private const val KEY_LAST_LOGIN = "last_login"
         private const val KEY_TOKEN = "auth_token"
@@ -91,10 +90,10 @@ class AuthPreferences(context: Context) {
         get() = prefs.getString(KEY_NAME, null)
         set(value) = prefs.edit().putString(KEY_NAME, value).apply()
 
-    /** Password stored in EncryptedSharedPreferences (not plaintext). */
-    var savedPassword: String?
-        get() = securePrefs.getString(KEY_PASSWORD, null)
-        set(value) = securePrefs.edit().putString(KEY_PASSWORD, value).apply()
+    /** Auth token stored in EncryptedSharedPreferences (not plaintext). */
+    var token: String?
+        get() = securePrefs.getString(KEY_TOKEN, null)
+        set(value) = securePrefs.edit().putString(KEY_TOKEN, value).apply()
 
     var rememberMe: Boolean
         get() = prefs.getBoolean(KEY_REMEMBER_ME, true)
@@ -103,11 +102,6 @@ class AuthPreferences(context: Context) {
     var lastLogin: Long
         get() = prefs.getLong(KEY_LAST_LOGIN, 0)
         set(value) = prefs.edit().putLong(KEY_LAST_LOGIN, value).apply()
-
-    /** Auth token stored in EncryptedSharedPreferences (not plaintext). */
-    var token: String?
-        get() = securePrefs.getString(KEY_TOKEN, null)
-        set(value) = securePrefs.edit().putString(KEY_TOKEN, value).apply()
 
     // ── Guest Local Coins ──────────────────────────────────────────────
     // Guests earn coins locally since /guest/create is broken on server
@@ -123,7 +117,8 @@ class AuthPreferences(context: Context) {
 
     /**
      * Save login state after successful authentication.
-     * Passwords and tokens are stored in EncryptedSharedPreferences.
+     * Token is stored in EncryptedSharedPreferences.
+     * Password is never stored — if token expires, user must re-login.
      */
     fun saveLoginState(
         userId: String,
@@ -131,8 +126,7 @@ class AuthPreferences(context: Context) {
         loginMethod: String,
         token: String? = null,
         phone: String? = null,
-        email: String? = null,
-        password: String? = null
+        email: String? = null
     ) {
         // Use commit() (synchronous) so that isLoggedIn, userId, and token are immediately
         // readable after login — async apply() can cause stale reads in the UI right after login
@@ -148,10 +142,9 @@ class AuthPreferences(context: Context) {
             remove("guest_welcome_awarded") // Reset guest flag
             commit() // synchronous — ensures values are written before onLoginSuccess navigates
         }
-        // Store sensitive data in encrypted prefs — also synchronous
+        // Store token in encrypted prefs — also synchronous
         securePrefs.edit().apply {
             token?.let { putString(KEY_TOKEN, it) }
-            password?.let { putString(KEY_PASSWORD, it) }
             commit() // synchronous — token must be readable immediately after login
         }
     }
@@ -172,13 +165,13 @@ class AuthPreferences(context: Context) {
     }
 
     /**
-     * Get saved credentials for auto-fill
+     * Get saved credentials for auto-fill (phone/email only — password is never stored).
      */
     fun getSavedCredentials(): Triple<String?, String?, String?> {
         return when (loginMethod) {
-            "phone" -> Triple(phone, null, savedPassword)
-            "email" -> Triple(email, null, savedPassword)
-            else -> Triple(null, null, savedPassword)
+            "phone" -> Triple(phone, null, null)
+            "email" -> Triple(email, null, null)
+            else -> Triple(null, null, null)
         }
     }
 

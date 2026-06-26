@@ -139,4 +139,14 @@ object DatabaseModule {
     fun providePendingSyncEventDao(database: GitaDatabase): PendingSyncEventDao {
         return database.pendingSyncEventDao()
     }
+
+    @Provides
+    fun provideVerseNoteDao(database: GitaDatabase): VerseNoteDao {
+        return database.verseNoteDao()
+    }
+
+    @Provides
+    fun provideStudyPlanDao(database: GitaDatabase): StudyPlanDao {
+        return database.studyPlanDao()
+    }
 }

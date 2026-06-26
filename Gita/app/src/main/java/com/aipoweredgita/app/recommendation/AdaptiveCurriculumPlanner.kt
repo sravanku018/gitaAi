@@ -1,8 +1,9 @@
 package com.aipoweredgita.app.recommendation
 
-import android.content.Context
-import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.RecommendationData
+import com.aipoweredgita.app.database.RecommendationDataDao
+import com.aipoweredgita.app.database.UserPreferencesDao
+import com.aipoweredgita.app.database.UserStatsDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,11 +18,14 @@ data class CurriculumPlan(
     val items: List<CurriculumItem>
 )
 
-class AdaptiveCurriculumPlanner(private val context: Context) {
+class AdaptiveCurriculumPlanner(
+    private val userStatsDao: UserStatsDao,
+    private val userPreferencesDao: UserPreferencesDao,
+    private val recommendationDataDao: RecommendationDataDao
+) {
     suspend fun buildPlan(): CurriculumPlan = withContext(Dispatchers.IO) {
-        val db = GitaDatabase.getDatabase(context)
-        val stats = db.userStatsDao().getUserStatsOnce()
-        val prefs = db.userPreferencesDao().getPreferencesSync(1)
+        val stats = userStatsDao.getUserStatsOnce()
+        val prefs = userPreferencesDao.getPreferencesSync(1)
 
         val items = mutableListOf<CurriculumItem>()
 
@@ -41,9 +45,8 @@ class AdaptiveCurriculumPlanner(private val context: Context) {
         items.add(CurriculumItem(type = "chapter", id = recentChapter.toString(), title = "Review Chapter $recentChapter", suggestedQuestions = 8))
 
         // Persist outline as recommendations for visibility
-        val recDao = db.recommendationDataDao()
         items.forEachIndexed { idx, item ->
-            recDao.insert(
+            recommendationDataDao.insert(
                 RecommendationData(
                     recommendationType = item.type,
                     recommendationId = item.id,

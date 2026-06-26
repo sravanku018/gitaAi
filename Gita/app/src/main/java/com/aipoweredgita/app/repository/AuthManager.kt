@@ -55,8 +55,7 @@ class AuthManager(private val context: Context) {
                     name = name,
                     loginMethod = "password",
                     token = response.token,
-                    email = email,
-                    password = password
+                    email = email
                 )
 
                 // Update Room DB with new user info
@@ -120,8 +119,7 @@ if (response.success) {
                     name = displayName,
                     loginMethod = "password",
                     token = response.token,
-                    email = userId,
-                    password = password
+                    email = userId
                 )
 
                 // Update Room DB with new user info
