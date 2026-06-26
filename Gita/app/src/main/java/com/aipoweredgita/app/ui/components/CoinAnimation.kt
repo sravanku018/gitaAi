@@ -33,7 +33,7 @@ data class CoinEvent(
 )
 
 object CoinAnimationManager {
-    private val _events = MutableSharedFlow<CoinEvent>()
+    private val _events = MutableSharedFlow<CoinEvent>(replay = 1)
     val events = _events.asSharedFlow()
 
     suspend fun emit(event: CoinEvent) {
@@ -159,4 +159,3 @@ private fun LevelUpAnimation(message: String) {
         )
     }
 }
-

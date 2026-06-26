@@ -66,7 +66,7 @@ fun AmbientOrbs(modifier: Modifier = Modifier) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(Color(0xFFFF6400).copy(alpha = 0.22f), Color.Transparent),
-                center = Offset(drift1X.dp.toPx(), -20.dp.toPx() + drift1Y.dp.toPx()),
+                center = Offset(size.width * 0.25f + drift1X.dp.toPx(), -20.dp.toPx() + drift1Y.dp.toPx()),
                 radius = 180.dp.toPx()
             )
         )

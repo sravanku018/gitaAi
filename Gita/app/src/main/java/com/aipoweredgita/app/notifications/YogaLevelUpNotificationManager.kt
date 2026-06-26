@@ -21,9 +21,11 @@ object YogaLevelUpNotificationManager {
         createNotificationChannel(context)
         
         val (levelName, message) = when (newLevel) {
+            0 -> Pair("Karma Yoga", "🎉 You've unlocked Karma Yoga! Action is your foundation.")
             1 -> Pair("Bhakti Yoga", "🎉 You've unlocked Bhakti Yoga! Continue your journey with devotion.")
             2 -> Pair("Jnana Yoga", "🎉 You've unlocked Jnana Yoga! Wisdom guides your path now.")
-            3 -> Pair("Moksha", "🎉 You've achieved Moksha! The ultimate liberation is yours!")
+            3 -> Pair("Dhyana Yoga", "🎉 You've unlocked Dhyana Yoga! Find peace in meditation.")
+            4, 5 -> Pair("Moksha", "🎉 You've achieved Moksha! The ultimate liberation is yours!")
             else -> Pair("Level Up", "🎉 Congratulations on your progress!")
         }
         
@@ -59,16 +61,20 @@ object YogaLevelUpNotificationManager {
         createNotificationChannel(context)
         
         val oldLevelName = when (oldLevel) {
+            0 -> "Karma Yoga"
             1 -> "Bhakti Yoga"
             2 -> "Jnana Yoga"
-            3 -> "Moksha"
-            else -> "Karma Yoga"
+            3 -> "Dhyana Yoga"
+            4, 5 -> "Moksha"
+            else -> "Unknown"
         }
         
         val newLevelName = when (newLevel) {
             0 -> "Karma Yoga"
             1 -> "Bhakti Yoga"
             2 -> "Jnana Yoga"
+            3 -> "Dhyana Yoga"
+            4, 5 -> "Moksha"
             else -> "Unknown"
         }
         

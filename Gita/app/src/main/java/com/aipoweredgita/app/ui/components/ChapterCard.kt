@@ -70,13 +70,14 @@ fun ChapterCard(
     val fontFamily = when (chapter.number % 3) {
         0 -> FontFamily.Serif
         1 -> FontFamily.Default
-        else -> FontFamily.Monospace
+        else -> FontFamily.Serif
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .heightIn(min = 200.dp)
+            .wrapContentHeight()
             .clickable { onClick() },
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),

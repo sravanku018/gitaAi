@@ -32,7 +32,8 @@ fun YogaProgressionBar(
         0 -> "Karma Yoga"
         1 -> "Bhakti Yoga"
         2 -> "Jnana Yoga"
-        3 -> "Moksha"
+        3 -> "Dhyana Yoga"
+        4, 5 -> "Moksha"
         else -> "Unknown"
     }
     
@@ -40,7 +41,8 @@ fun YogaProgressionBar(
         0 -> Color(0xFFFF9800) // Orange for Karma
         1 -> Color(0xFFE91E63) // Pink for Bhakti
         2 -> Color(0xFF2196F3) // Blue for Jnana
-        3 -> GoldSpark // Gold for Moksha
+        3 -> Color(0xFF9C27B0) // Purple for Dhyana
+        4, 5 -> GoldSpark // Gold for Moksha
         else -> Color.Gray
     }
     
@@ -154,4 +156,3 @@ private fun StatItem(
         )
     }
 }
-

@@ -43,9 +43,10 @@ fun VerticalProgressRoad(
         YogaLevel(4, "Moksha", "🌺", GoldSpark)
     )
     
-    // Animated progress
-    val animatedProgress by animateFloatAsState(
-        targetValue = currentProgress / 100f,
+    // Animated progress fraction (from 0 to 4 levels)
+    val targetProgressFraction = (currentLevel + (currentProgress / 100f)).coerceIn(0f, 4f)
+    val animatedProgressFraction by animateFloatAsState(
+        targetValue = targetProgressFraction,
         animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
         label = "progress_animation"
     )
@@ -86,7 +87,7 @@ fun VerticalProgressRoad(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Vertical road with milestones
+            // Box enclosing road and milestones
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,6 +102,8 @@ fun VerticalProgressRoad(
                 ) {
                     val roadWidth = 60.dp.toPx()
                     val centerX = size.width / 2
+                    val padding = 28.dp.toPx()
+                    val roadHeightRange = size.height - 2 * padding
                     
                     // Background road (gray)
                     drawRect(
@@ -110,21 +113,59 @@ fun VerticalProgressRoad(
                     )
                     
                     // Progress road (gradient)
-                    val progressHeight = size.height * animatedProgress
+                    val progressHeight = (animatedProgressFraction / 4f) * roadHeightRange
+                    val activeColor = levels.getOrNull(currentLevel)?.color ?: GoldSpark
                     val gradient = Brush.verticalGradient(
                         colors = listOf(
-                            levels[currentLevel].color.copy(alpha = 0.7f),
-                            levels[currentLevel].color
+                            activeColor.copy(alpha = 0.7f),
+                            activeColor
                         ),
-                        startY = size.height - progressHeight,
-                        endY = size.height
+                        startY = size.height - padding - progressHeight,
+                        endY = size.height - padding
                     )
                     
                     drawRect(
                         brush = gradient,
-                        topLeft = Offset(centerX - roadWidth / 2, size.height - progressHeight),
+                        topLeft = Offset(centerX - roadWidth / 2, size.height - padding - progressHeight),
                         size = androidx.compose.ui.geometry.Size(roadWidth, progressHeight)
                     )
+                    
+                    // Draw sub-stage ticks/steps (20 per level segment, 100 total stages)
+                    val subStageSpacing = roadHeightRange / 4f / 20f
+                    val currentGlobalIndex = currentLevel * 20 + (currentProgress / 100f * 20f).toInt()
+                    
+                    for (l in 0..3) {
+                        for (s in 0..19) {
+                            val subStageGlobalIndex = l * 20 + s
+                            val isSubCompleted = subStageGlobalIndex < currentGlobalIndex
+                            val isSubActive = subStageGlobalIndex == currentGlobalIndex
+                            
+                            val y = size.height - padding - subStageGlobalIndex * subStageSpacing
+                            
+                            val tickColor = when {
+                                isSubCompleted -> (levels.getOrNull(l)?.color ?: GoldSpark).copy(alpha = 0.8f)
+                                isSubActive -> levels.getOrNull(l)?.color ?: GoldSpark
+                                else -> Color.White.copy(alpha = 0.4f)
+                            }
+                            
+                            val tickLength = 6.dp.toPx()
+                            val tickThickness = 1.5.dp.toPx()
+                            
+                            // Left tick
+                            drawRect(
+                                color = tickColor,
+                                topLeft = Offset(centerX - roadWidth / 2 + 4.dp.toPx(), y - tickThickness / 2),
+                                size = androidx.compose.ui.geometry.Size(tickLength, tickThickness)
+                            )
+                            
+                            // Right tick
+                            drawRect(
+                                color = tickColor,
+                                topLeft = Offset(centerX + roadWidth / 2 - 4.dp.toPx() - tickLength, y - tickThickness / 2),
+                                size = androidx.compose.ui.geometry.Size(tickLength, tickThickness)
+                            )
+                        }
+                    }
                     
                     // Road center line (dashed)
                     drawLine(
@@ -216,4 +257,3 @@ fun VerticalProgressRoad(
         }
     }
 }
-

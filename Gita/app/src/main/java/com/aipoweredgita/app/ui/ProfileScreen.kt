@@ -64,6 +64,43 @@ fun ProfileScreen(
     val yogaInfo = YogaLevelManager.yogaLevelInfo(stats)
     val levelProgress = YogaLevelManager.progressInLevel(stats)
 
+    var yogaLevels by remember { mutableStateOf<List<YogaLevel>>(emptyList()) }
+    var yogaSubStages by remember { mutableStateOf<List<YogaSubStage>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val res = CoinApi.retrofitService.getYogaStages()
+            yogaLevels = res.levels
+            yogaSubStages = res.sub_stages
+        } catch (_: Exception) {}
+    }
+
+    val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+        ?: yogaLevels.lastOrNull()
+    val activeSubStage = yogaSubStages.find { totalCoins in it.min_coins until it.max_coins }
+        ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
+
+    val displayYogaName = activeLevel?.name ?: yogaInfo.yogaName
+    val displayStep = activeSubStage?.sub_level ?: yogaInfo.step
+    val displayEmoji = activeLevel?.let { yl ->
+        when(yl.level) { 1 -> "🌿"; 2 -> "🔥"; 3 -> "🧠"; 4 -> "📘"; else -> "🌸" }
+    } ?: yogaInfo.emoji
+
+    val displayProgress = activeLevel?.let { yl ->
+        val range = yl.max_coins - yl.min_coins
+        if (range > 0) {
+            ((totalCoins - yl.min_coins).toFloat() / range).coerceIn(0f, 1f)
+        } else 0f
+    } ?: levelProgress
+
+    val customYogaInfo = YogaLevelManager.YogaLevelInfo(
+        level = activeLevel?.level ?: yogaInfo.level,
+        step = displayStep,
+        yogaName = displayYogaName,
+        yogaDescription = activeLevel?.description ?: yogaInfo.yogaDescription,
+        emoji = displayEmoji
+    )
+
     val isDark = isDarkTheme
     val appBg = MaterialTheme.colorScheme.background
     val gold = if (isDark) GoldSpark else Saffron
@@ -73,8 +110,8 @@ fun ProfileScreen(
             Column(modifier = Modifier.background(appBg)) {
                 ProfileHeader(
                     ProfileInfo(stats?.userName ?: "Arjuna", stats?.age ?: 0),
-                    yogaInfo,
-                    levelProgress,
+                    customYogaInfo,
+                    displayProgress,
                     totalCoins
                 )
                 TabRow(
@@ -120,7 +157,11 @@ fun ProfileScreen(
                     viewModel = viewModel
                 )
                 1 -> BadgesTab(viewModel = viewModel)
-                2 -> YogaPathTab(viewModel = viewModel)
+                2 -> YogaPathTab(
+                    viewModel = viewModel,
+                    yogaLevels = yogaLevels,
+                    yogaSubStages = yogaSubStages
+                )
             }
         }
     }
@@ -400,21 +441,14 @@ private fun BadgeItem(badge: UserBadge, goldColor: Color) {
 }
 
 @Composable
-private fun YogaPathTab(viewModel: ProfileViewModel) {
+private fun YogaPathTab(
+    viewModel: ProfileViewModel,
+    yogaLevels: List<YogaLevel>,
+    yogaSubStages: List<YogaSubStage>
+) {
     val stats by viewModel.stats.collectAsState()
     val totalCoins by viewModel.coinBalance.collectAsState()
     val intensity = YogaLevelManager.compositeScore(stats)
-
-    var yogaLevels by remember { mutableStateOf<List<YogaLevel>>(emptyList()) }
-    var yogaSubStages by remember { mutableStateOf<List<YogaSubStage>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        try {
-            val res = CoinApi.retrofitService.getYogaStages()
-            yogaLevels = res.levels
-            yogaSubStages = res.sub_stages
-        } catch (_: Exception) {}
-    }
 
     Column(
         modifier = Modifier
@@ -434,6 +468,26 @@ private fun YogaPathTab(viewModel: ProfileViewModel) {
         }
 
         Spacer(Modifier.height(24.dp))
+
+        if (yogaLevels.isNotEmpty()) {
+            val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+                ?: yogaLevels.lastOrNull()
+            val currentLevelIndex = activeLevel?.let { yogaLevels.indexOf(it) } ?: 0
+            val currentProgress = activeLevel?.let { yl ->
+                val range = yl.max_coins - yl.min_coins
+                if (range > 0) {
+                    ((totalCoins - yl.min_coins).toFloat() / range * 100f).coerceIn(0f, 100f)
+                } else 0f
+            } ?: 0f
+
+            VerticalProgressRoad(
+                currentLevel = currentLevelIndex,
+                currentProgress = currentProgress,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
+        }
 
         yogaLevels.forEachIndexed { index, yl ->
             val subs = yogaSubStages.filter { it.level == yl.level }.sortedBy { it.sub_level }

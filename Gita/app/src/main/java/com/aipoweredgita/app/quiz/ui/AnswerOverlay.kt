@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import com.aipoweredgita.app.ui.ConfettiBurst
 
 @Composable
 fun AnswerOverlay(
@@ -46,7 +47,13 @@ fun AnswerOverlay(
             contentAlignment = Alignment.Center
         ) {
             if (isCorrect) {
-                ConfettiAnimation(show)
+                var playId by remember { mutableStateOf(0) }
+                LaunchedEffect(show) {
+                    if (show) {
+                        playId++
+                    }
+                }
+                ConfettiBurst(playId = playId)
             }
 
             // Shake offset for wrong answers
@@ -117,63 +124,4 @@ fun AnswerOverlay(
     }
 }
 
-@Composable
-private fun ConfettiAnimation(show: Boolean) {
-    val confettiColors = listOf(
-        Color(0xFFFF6B6B), Color(0xFF4ECDC4), Color(0xFFFFE66D),
-        Color(0xFF95E1D3), Color(0xFFF38181), Color(0xFFAA96DA), Color(0xFFFCACA0)
-    )
-    val confettiList = remember { mutableStateListOf<Confetti>() }
-    var tick by remember { mutableStateOf(0) }
 
-    LaunchedEffect(show) {
-        if (show) {
-            confettiList.clear()
-            confettiList.addAll(
-                List(50) {
-                    Confetti(
-                        x = Random.nextFloat(),
-                        y = -0.1f - Random.nextFloat() * 0.3f,
-                        velocityX = (Random.nextFloat() - 0.5f) * 0.02f,
-                        velocityY = Random.nextFloat() * 0.015f + 0.01f,
-                        color = confettiColors.random(),
-                        size = Random.nextFloat() * 15f + 10f,
-                        rotation = Random.nextFloat() * 360f,
-                        rotationSpeed = (Random.nextFloat() - 0.5f) * 10f
-                    )
-                }
-            )
-            while (true) {
-                withFrameMillis {
-                    confettiList.forEach { c ->
-                        c.x += c.velocityX
-                        c.y += c.velocityY
-                        c.rotation += c.rotationSpeed
-                        c.velocityY += 0.0005f
-                        if (c.y > 1.1f) { c.y = -0.1f; c.x = Random.nextFloat(); c.velocityY = Random.nextFloat() * 0.015f + 0.01f }
-                    }
-                    tick++
-                }
-            }
-        }
-    }
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        // Read tick to ensure Canvas redraws when confetti positions change
-        @Suppress("UNUSED_VARIABLE") val forceRedraw = tick
-        if (show) {
-            confettiList.forEach { c ->
-                val cx = size.width * c.x
-                val cy = size.height * c.y
-                rotate(c.rotation, Offset(cx, cy)) {
-                    drawRect(color = c.color, topLeft = Offset(cx - c.size / 2, cy - c.size / 2), size = Size(c.size, c.size * 1.5f))
-                }
-            }
-        }
-    }
-}
-
-private data class Confetti(
-    var x: Float, var y: Float, var velocityX: Float, var velocityY: Float,
-    val color: Color, val size: Float, var rotation: Float, val rotationSpeed: Float
-)

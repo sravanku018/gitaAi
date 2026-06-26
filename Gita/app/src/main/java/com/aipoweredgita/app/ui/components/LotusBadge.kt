@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aipoweredgita.app.ui.theme.*
@@ -45,7 +46,30 @@ fun LotusBadge(
     val colorSecondary = MaterialTheme.colorScheme.secondary
     val onPrimary = MaterialTheme.colorScheme.onPrimary
 
-    val cachedPath = remember { Path() }
+    val density = LocalDensity.current
+    val cachedPath = remember(petals, animatedOpenness, innerRadiusFactor, size, density) {
+        val sizePx = with(density) { size.toPx() }
+        val cx = sizePx / 2f
+        val cy = sizePx / 2f
+        val outerR = sizePx * 0.45f
+        val innerR = outerR * innerRadiusFactor
+        val petalHalfW = outerR * 0.18f
+
+        Path().apply {
+            moveTo(cx, cy - innerR)
+            cubicTo(
+                cx + petalHalfW, cy - innerR,
+                cx + petalHalfW, cy - outerR * animatedOpenness,
+                cx, cy - outerR
+            )
+            cubicTo(
+                cx - petalHalfW, cy - outerR * animatedOpenness,
+                cx - petalHalfW, cy - innerR,
+                cx, cy - innerR
+            )
+            close()
+        }
+    }
 
     Canvas(modifier.size(size)) {
         val w = this.size.width
@@ -55,7 +79,6 @@ fun LotusBadge(
         val cy = h / 2f
         val outerR = minDim * 0.45f
         val innerR = outerR * innerRadiusFactor
-        val petalHalfW = outerR * 0.18f
 
         // Background subtle circle
         drawCircle(
@@ -69,21 +92,6 @@ fun LotusBadge(
             center = Offset(cx, cy),
             radius = outerR
         )
-
-        // Build the path once per frame
-        cachedPath.reset()
-        cachedPath.moveTo(cx, cy - innerR)
-        cachedPath.cubicTo(
-            cx + petalHalfW, cy - innerR,
-            cx + petalHalfW, cy - outerR * animatedOpenness,
-            cx, cy - outerR
-        )
-        cachedPath.cubicTo(
-            cx - petalHalfW, cy - outerR * animatedOpenness,
-            cx - petalHalfW, cy - innerR,
-            cx, cy - innerR
-        )
-        cachedPath.close()
 
         val step = 360f / petals
         repeat(petals) { i ->

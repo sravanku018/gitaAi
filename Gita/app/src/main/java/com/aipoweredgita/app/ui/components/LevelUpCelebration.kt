@@ -23,16 +23,20 @@ fun LevelUpCelebration(
     modifier: Modifier = Modifier
 ) {
     val levelName = when (newLevel) {
+        0 -> "Karma Yoga"
         1 -> "Bhakti Yoga"
         2 -> "Jnana Yoga"
-        3 -> "Moksha"
+        3 -> "Dhyana Yoga"
+        4, 5 -> "Moksha"
         else -> "Level Up"
     }
     
     val levelColor = when (newLevel) {
+        0 -> Color(0xFFFF9800) // Orange for Karma
         1 -> Color(0xFFE91E63) // Pink for Bhakti
         2 -> Color(0xFF2196F3) // Blue for Jnana
-        3 -> GoldSpark // Gold for Moksha
+        3 -> Color(0xFF9C27B0) // Purple for Dhyana
+        4, 5 -> GoldSpark // Gold for Moksha
         else -> Color(0xFFFF9800)
     }
     
@@ -116,7 +120,7 @@ fun LevelUpCelebration(
                     contentAlignment = Alignment.Center
                 ) {
                     LotusBadge(
-                        level = newLevel,
+                        level = if (newLevel in 0..4) newLevel + 1 else newLevel,
                         size = 90.dp,
                         animateChanges = false
                     )
@@ -144,4 +148,3 @@ fun LevelUpCelebration(
         }
     }
 }
-
