@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.data.GitaVerse
-import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.domain.model.NormalModeEvent
 import com.aipoweredgita.app.domain.model.NormalModeSideEffect
 import com.aipoweredgita.app.domain.model.NormalModeUiState
@@ -36,6 +35,9 @@ class NormalModeViewModel @Inject constructor(
     private val favoriteRepository: FavoriteRepository,
     private val offlineCacheRepository: OfflineCacheRepository,
     private val yogaProgressionRepository: YogaProgressionRepository,
+    private val readVerseDao: com.aipoweredgita.app.database.ReadVerseDao,
+    private val userStatsDao: com.aipoweredgita.app.database.UserStatsDao,
+    private val dailyActivityDao: com.aipoweredgita.app.database.DailyActivityDao,
     private val application: Application
 ) : ViewModel() {
     private val TAG = "NormalModeViewModel"
@@ -49,8 +51,6 @@ class NormalModeViewModel @Inject constructor(
     val state: StateFlow<NormalModeUiState> = uiState
     val events: SharedFlow<String> = MutableSharedFlow<String>() // Stub for backward compatibility if needed
 
-    private val database = GitaDatabase.getDatabase(application)
-    private val readVerseDao = database.readVerseDao()
     private val language = GitaConstants.DEFAULT_LANGUAGE
     private val gitaRepository = GitaRepository()
     private var lastRequestedChapter: Int = 1
@@ -76,8 +76,8 @@ class NormalModeViewModel @Inject constructor(
                 )
             }
             val distinct = readVerseDao.distinctVersePairs()
-            database.userStatsDao().updateDistinctVersesRead(distinct)
-            val dailyDao = database.dailyActivityDao()
+            userStatsDao.updateDistinctVersesRead(distinct)
+            val dailyDao = dailyActivityDao
             dailyDao.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
             dailyDao.addVerses(today, batch.size)
             Log.d(TAG, "Batch write completed: ${batch.size} verses")
@@ -93,9 +93,8 @@ class NormalModeViewModel @Inject constructor(
             statsRepository.trackModeTime(seconds, ModeType.NORMAL)
             try {
                 val today = java.time.LocalDate.now().toString()
-                val dailyDao = database.dailyActivityDao()
-                dailyDao.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
-                dailyDao.addNormalSeconds(today, seconds)
+                dailyActivityDao.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
+                dailyActivityDao.addNormalSeconds(today, seconds)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to update daily normal seconds", e)
             }

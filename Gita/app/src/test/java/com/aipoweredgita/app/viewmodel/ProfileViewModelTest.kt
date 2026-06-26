@@ -12,6 +12,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +62,8 @@ class ProfileViewModelTest {
             getCoinBalanceUseCase = getCoinBalanceUseCase,
             loadDashboardUseCase = loadDashboardUseCase,
             generateBadgesUseCase = generateBadgesUseCase,
-            updateProfileUseCase = updateProfileUseCase
+            updateProfileUseCase = updateProfileUseCase,
+            appContext = mockk<Context>(relaxed = true)
         )
     }
 

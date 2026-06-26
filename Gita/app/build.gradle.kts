@@ -52,6 +52,7 @@ android {
     // kotlinOptions and compilerOptions moved to tasks.withType below
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

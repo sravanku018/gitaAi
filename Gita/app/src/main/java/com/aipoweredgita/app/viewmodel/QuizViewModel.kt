@@ -221,16 +221,7 @@ class QuizViewModel @Inject constructor(
             score = if (isCorrect) _quizState.value.score + 1 else _quizState.value.score
         )
 
-        difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
-
-        // Update Elo ratings
-        val questionEntity = ELOEntity(id = "q_${_quizState.value.totalQuestions}", type = EntityType.QUESTION)
-        eloSystem.updateRatings(studentEntity, questionEntity, if (isCorrect) 1.0 else 0.0)
-
-        // Update IRT ability
-        val itemParams = ItemParameters(difficulty = (userState.skillLevel).toDouble(), discrimination = 1.0)
-        studentAbility = irtEngine.updateAbility(studentAbility, listOf(itemParams to isCorrect))
-
+        updateMLEngines(isCorrect)
         saveProgress()
     }
 
@@ -256,18 +247,20 @@ class QuizViewModel @Inject constructor(
             score = if (isCorrect) _quizState.value.score + 1 else _quizState.value.score
         )
 
-        // Update difficulty
-        difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
-
-        // Update Elo ratings
-        val questionEntity2 = ELOEntity(id = "q_${_quizState.value.totalQuestions}", type = EntityType.QUESTION)
-        eloSystem.updateRatings(studentEntity, questionEntity2, if (isCorrect) 1.0 else 0.0)
-
-        // Update IRT ability
-        val itemParams2 = ItemParameters(difficulty = (userState.skillLevel).toDouble(), discrimination = 1.0)
-        studentAbility = irtEngine.updateAbility(studentAbility, listOf(itemParams2 to isCorrect))
-
+        updateMLEngines(isCorrect)
         saveProgress()
+    }
+
+    /**
+     * Single point of update for all ML engines (difficulty, ELO, IRT).
+     * Prevents double-updating if both confirmAnswer flows trigger.
+     */
+    private fun updateMLEngines(isCorrect: Boolean) {
+        difficultyEngine.updateDifficulty(userState, isCorrect, 0L)
+        val questionEntity = ELOEntity(id = "q_${_quizState.value.totalQuestions}", type = EntityType.QUESTION)
+        eloSystem.updateRatings(studentEntity, questionEntity, if (isCorrect) 1.0 else 0.0)
+        val itemParams = ItemParameters(difficulty = userState.skillLevel.toDouble(), discrimination = 1.0)
+        studentAbility = irtEngine.updateAbility(studentAbility, listOf(itemParams to isCorrect))
     }
 
     /**
