@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App and widget strings -->
+    <string name="app_name">AI Powered Gita</string>
+    <string name="widget_description">Daily AI-Powered Gita Verse</string>
+
+    <!-- Quiz UI strings -->
+    <string name="quiz_next_question">Next Question</string>
+    <string name="quiz_restart">Restart</string>
+    <string name="quiz_exit">Exit</string>
+    <string name="quiz_complete_title">Quiz Complete</string>
+    <string name="quiz_score">Score: %1$d / %2$d</string>
+    <string name="quiz_accuracy">Accuracy: %1$d%%</string>
+    <string name="quiz_result_correct">Correct</string>
+    <string name="quiz_result_incorrect">Incorrect</string>
+    <string name="quiz_correct_answer">Correct answer: %1$s</string>
+    <string name="quiz_response_time">Response time: %1$s s</string>
+    <string name="quiz_performance_outstanding">Outstanding!</string>
+    <string name="quiz_performance_excellent">Excellent!</string>
+    <string name="quiz_performance_good">Good Job!</string>
+    <string name="quiz_performance_keep_practicing">Keep Practicing!</string>
+    <string name="quiz_performance_dont_give_up">Don\'t Give Up!</string>
+
+    <!-- Additional quiz labels/buttons -->
+    <string name="quiz_reveal_answer">Reveal Answer</string>
+    <string name="quiz_loading_question">Loading question...</string>
+    <string name="generic_retry">Retry</string>
+    <string name="error_no_internet">No Internet Connection</string>
+    <string name="cta_read_offline">Read Offline Instead</string>
+    <string name="offline_download_failed_title">Background Download Failed</string>
+    <string name="offline_download_failed_body">Background download was interrupted, likely due to network issues. You can retry or download from this page.</string>
+    <string name="offline_retry_background">Retry Background</string>
+    <string name="loading_verse">Loading verse...</string>
+    <string name="select_chapter_title">Select Chapter (1–18)</string>
+    <string name="select_verse_title">Select Verse (1-%1$d)</string>
+    <string name="generic_cancel">Cancel</string>
+    <string name="verses_range">Verses %1$d–%2$d</string>
+    <string name="verses_list">Verses %1$s</string>
+    <string name="offline_read_offline">Read Offline (%1$d verses)</string>
+    <string name="offline_all_downloaded">All Verses Downloaded</string>
+    <string name="offline_resume_download">Resume Download</string>
+    <string name="offline_download_all">Download All Verses</string>
+    <string name="generic_dismiss">Dismiss</string>
+
+    <!-- Model availability messages -->
+    <string name="model_missing_voice">Gemma 4 2B is required for voice features. Download it from Settings &gt; Manage AI Models.</string>
+    <string name="model_missing_quiz">No AI model available. Download Qwen3 0.6B for smart quiz questions.</string>
+    <string name="model_missing_generic">AI model not available. Download from Settings &gt; Manage AI Models.</string>
+</resources>

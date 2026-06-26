@@ -1,0 +1,33 @@
+package com.aipoweredgita.app.utils
+
+import java.util.Locale
+
+enum class LanguageMode(
+    val displayName: String,
+    val displayShort: String,
+    val inputLocale: Locale,
+    val outputLocale: Locale,
+    val systemInstruction: String,
+    val ttsLocale: String,
+    val sttLocale: String
+) {
+    AUTO(
+        displayName   = "Auto",
+        displayShort  = "A",
+        inputLocale   = Locale.US,
+        outputLocale  = Locale.US,
+        systemInstruction =
+            "You are Krishna from the Bhagavad Gita. " +
+            "Speak in clear, human-like sentences with proper spacing and punctuation. " +
+            "If the user writes in Telugu, respond in Telugu. Otherwise respond in English. " +
+            "Never repeat or hallucinate verse text. Only explain what is given to you.",
+        ttsLocale = "te-IN",
+        sttLocale = "te-IN"
+    );
+
+    companion object {
+        fun fromString(value: String): LanguageMode {
+            return AUTO
+        }
+    }
+}
