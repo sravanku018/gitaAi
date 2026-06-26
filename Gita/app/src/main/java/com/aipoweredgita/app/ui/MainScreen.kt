@@ -121,11 +121,11 @@ fun MainScreen(
                     },
                     onNavigateToProfile = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Profile.route)
+                        navController.navigate("profile?tab=0")
                     },
                     onNavigateToYogaLevels = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Profile.route)
+                        navController.navigate("profile?tab=2")
                     },
                     onNavigateToSettings = {
                         scope.launch { drawerState.close() }
@@ -154,6 +154,11 @@ fun MainScreen(
                     onNavigateToLogin = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Login.route)
+                    },
+
+                    onNavigateToFlashcards = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("flashcards?topic=")
                     },
                     onLogout = {
                         scope.launch {
@@ -399,6 +404,8 @@ fun DrawerContent(
     onNavigateToStudyPlan: () -> Unit = {},
     onNavigateToQuizBattle: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+
+    onNavigateToFlashcards: () -> Unit = {},
     onLogout: () -> Unit = {},
     stats: com.aipoweredgita.app.database.UserStats?,
     coinBalance: Int = 0,
@@ -583,7 +590,21 @@ fun DrawerContent(
                 icon = { Icon(imageVector = Icons.Filled.Style, contentDescription = "Flashcards") },
                 title = "Flashcards",
                 isDarkTheme = isDarkTheme,
-                onClick = { /* TODO: Navigate to Flashcards */ }
+                onClick = onNavigateToFlashcards,
+                trailing = {
+                    Surface(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Soon",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             )
 
             DrawerSectionHeader("REFLECT")
@@ -631,12 +652,7 @@ fun DrawerContent(
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToCoinHistory
             )
-            TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Badge, contentDescription = "Badges") },
-                title = "Badges",
-                isDarkTheme = isDarkTheme,
-                onClick = { /* TODO: Navigate to Badges */ }
-            )
+
 
             DrawerSectionHeader("APP")
             TwitterMenuItem(

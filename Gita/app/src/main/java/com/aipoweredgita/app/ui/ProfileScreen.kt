@@ -34,6 +34,8 @@ import com.aipoweredgita.app.ui.components.*
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import com.aipoweredgita.app.domain.model.ProfileUiState
+import com.aipoweredgita.app.ml.UserBadge
+import com.aipoweredgita.app.ml.BadgeCategory
 import kotlinx.coroutines.launch
 import kotlin.math.*
 
@@ -42,6 +44,7 @@ import kotlin.math.*
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
+    initialTab: Int = 0,
     onNavigateToQuizStats: () -> Unit = {},
     isDarkTheme: Boolean = false,
     onThemeToggle: (Boolean) -> Unit = {},
@@ -55,7 +58,7 @@ fun ProfileScreen(
     val authPrefs = remember { com.aipoweredgita.app.utils.AuthPreferences.getInstance(context) }
     val isGuest = remember { authPrefs.isGuestUser }
     
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember(initialTab) { mutableStateOf(initialTab) }
     val tabs = listOf("Stats", "Badges", "Yoga Path")
 
     val yogaInfo = YogaLevelManager.yogaLevelInfo(stats)
@@ -243,8 +246,15 @@ private fun StatsTab(
     }
 }
 
+
+
 @Composable
 private fun BadgesTab(viewModel: ProfileViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val badges = uiState.badges
+    val isDark = rememberThemeIsDark()
+    val gold = if (isDark) GoldSpark else Saffron
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -253,43 +263,139 @@ private fun BadgesTab(viewModel: ProfileViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ProgressionHeroSection()
-        
-        val context = LocalContext.current
-        val database = remember { com.aipoweredgita.app.database.GitaDatabase.getDatabase(context) }
-        val progression by database.yogaProgressionDao().getProgressionFlow().collectAsState(initial = null)
 
-        val currentLevelIndex = progression?.yogaLevel ?: 0
-        val getStatus = { levelIndex: Int ->
-             if (levelIndex - 1 < currentLevelIndex) TimelineStatus.COMPLETED
-             else if (levelIndex - 1 == currentLevelIndex) TimelineStatus.CURRENT
-             else TimelineStatus.LOCKED
+        if (badges.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🏅", fontSize = 48.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "No badges unlocked yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Read verses and complete quizzes to earn sacred honors!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                }
+            }
+        } else {
+            badges.forEach { badge ->
+                BadgeItem(badge = badge, goldColor = gold)
+            }
         }
+    }
+}
 
-        // 1. Karma Yoga
-        val karmaStart = Color(0xFF10B981)
-        val karmaEnd = Color(0xFF059669)
-        val status1 = getStatus(1)
-        TimelineLevelItem(1, "Karma Yoga", "Path of Action", "🌿", karmaStart, karmaEnd, status1, isFirst = true)
-        TimelineStepItem(1, "Swadharma", "Do your duty honestly", "①", karmaEnd, status1)
-        TimelineStepItem(2, "Nishkama Karma", "Action without desire", "②", karmaEnd, status1)
-        TimelineStepItem(3, "Ishwara Arpanam", "Offer work to God", "③", karmaEnd, status1)
-
-        // 2. Bhakti Yoga
-        val bhaktiStart = Color(0xFFEC4899)
-        val bhaktiEnd = Color(0xFFF43F5E)
-        val status2 = getStatus(2)
-        TimelineLevelItem(2, "Bhakti Yoga", "Path of Devotion", "🔥", bhaktiStart, bhaktiEnd, status2)
-        TimelineStepItem(4, "Bhakti Drida", "Firm Devotion", "④", bhaktiEnd, status2)
-        TimelineStepItem(5, "Surrender", "Saranagati", "⑤", bhaktiEnd, status2)
-        TimelineStepItem(6, "Prem Bhakti", "Divine Love", "⑥", bhaktiEnd, status2)
-
-        // 3. Jnana Yoga
-        val jnanaStart = Color(0xFF8B5CF6)
-        val jnanaEnd = Color(0xFF6366F1)
-        val status3 = getStatus(3)
-        TimelineLevelItem(3, "Jnana Yoga", "Path of Knowledge", "🧠", jnanaStart, jnanaEnd, status3)
-        TimelineStepItem(8, "Self-Inquiry", "Who am I?", "⑧", jnanaEnd, status3)
-        TimelineStepItem(9, "Discrimination", "Real vs Unreal", "⑨", jnanaEnd, status3)
+@Composable
+private fun BadgeItem(badge: UserBadge, goldColor: Color) {
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        cornerRadius = 20.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Badge Icon (Large Emoji inside a stylized circle)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(goldColor.copy(alpha = 0.1f), CircleShape)
+                    .border(1.5.dp, goldColor.copy(alpha = 0.25f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = badge.icon,
+                    fontSize = 28.sp
+                )
+            }
+            
+            // Badge Information
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = badge.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+                
+                Spacer(Modifier.height(4.dp))
+                
+                Text(
+                    text = badge.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textPrimary.copy(alpha = 0.7f)
+                )
+                
+                Spacer(Modifier.height(6.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Category Badge
+                    Box(
+                        modifier = Modifier
+                            .background(goldColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = badge.category.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = goldColor
+                        )
+                    }
+                    
+                    // Unlocked Date
+                    Text(
+                        text = "Unlocked: ${badge.unlockedAt}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textPrimary.copy(alpha = 0.5f)
+                    )
+                }
+            }
+            
+            // Badge Level (if greater than 0)
+            if (badge.level > 0) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Lv. ${badge.level}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = goldColor
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Row {
+                        repeat(badge.level.coerceAtMost(5)) {
+                            Text("⭐", fontSize = 8.sp)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -317,14 +423,6 @@ private fun YogaPathTab(viewModel: ProfileViewModel) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Awakening Consciousness",
-            style = MaterialTheme.typography.headlineSmall.copy(color = GoldSpark, fontWeight = FontWeight.Bold),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(Modifier.height(16.dp))
-
         Box(
             modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
@@ -332,7 +430,6 @@ private fun YogaPathTab(viewModel: ProfileViewModel) {
             SacredFlame(modifier = Modifier.fillMaxSize())
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 MandalaBadge(intensity = intensity, modifier = Modifier.size(80.dp))
-                Text("🪙 $totalCoins", color = GoldSpark, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -529,62 +626,299 @@ private fun ProgressionHeroSection() {
     }
 }
 
-@Composable
-private fun TimelineLevelItem(level: Int, name: String, description: String, emoji: String, colorStart: Color, colorEnd: Color, status: TimelineStatus, isFirst: Boolean = false) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(emoji, fontSize = 24.sp, modifier = Modifier.padding(end = 16.dp))
-        Column {
-            Text("$level. $name", fontWeight = FontWeight.Bold)
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
+
 
 @Composable
-private fun TimelineStepItem(step: Int, name: String, description: String, icon: String, color: Color, status: TimelineStatus) {
-    Row(modifier = Modifier.fillMaxWidth().padding(start = 40.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(24.dp).background(color.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
-            Text(step.toString(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-enum class TimelineStatus { LOCKED, CURRENT, COMPLETED }
-
-@Composable
-private fun YogaMargStage(emoji: String, name: String, range: String, subs: List<YogaSubStage>, currentCoins: Int, done: Boolean, active: Boolean, locked: Boolean, isLast: Boolean) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = if(active) Saffron.copy(alpha = 0.1f) else Color.Transparent), border = BorderStroke(1.dp, if(active) Saffron else Color.Gray.copy(alpha = 0.2f))) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(emoji, fontSize = 24.sp)
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, fontWeight = FontWeight.Bold)
-                Text(range, style = MaterialTheme.typography.labelSmall)
+private fun YogaMargStage(
+    emoji: String,
+    name: String,
+    range: String,
+    subs: List<YogaSubStage>,
+    currentCoins: Int,
+    done: Boolean,
+    active: Boolean,
+    locked: Boolean,
+    isLast: Boolean
+) {
+    val gold = if (rememberThemeIsDark()) GoldSpark else Saffron
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (active) gold.copy(alpha = 0.08f) else Color.Transparent
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (active) gold else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Main Stage Header Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(if (locked) Color.Gray.copy(alpha = 0.1f) else gold.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(emoji, fontSize = 20.sp)
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = name,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (locked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (done) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = "Completed", tint = Color.Green)
+                } else if (active) {
+                    Text(
+                        text = "Active",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = gold,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
-            if(done) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green)
+
+            // Sub-stages list (only display if not locked, to show progress or target steps)
+            if (!locked && subs.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                Spacer(Modifier.height(8.dp))
+                
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(start = 12.dp)
+                ) {
+                    subs.forEach { sub ->
+                        val subDone = currentCoins >= sub.max_coins
+                        val subActive = currentCoins in sub.min_coins until sub.max_coins
+                        val subLocked = !subDone && !subActive
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Sub-stage Bullet/Status
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(
+                                        color = when {
+                                            subDone -> Color.Green.copy(alpha = 0.15f)
+                                            subActive -> gold.copy(alpha = 0.2f)
+                                            else -> Color.Gray.copy(alpha = 0.1f)
+                                        },
+                                        shape = CircleShape
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = when {
+                                            subDone -> Color.Green
+                                            subActive -> gold
+                                            else -> Color.Gray.copy(alpha = 0.4f)
+                                        },
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (subDone) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color.Green,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                } else if (subActive) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(gold, CircleShape)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = sub.sub_name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (subActive) FontWeight.Bold else FontWeight.Normal,
+                                    color = when {
+                                        subLocked -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        subActive -> gold
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun SacredFlame(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.background(Brush.verticalGradient(listOf(Color.Transparent, Saffron.copy(alpha = 0.3f)))), contentAlignment = Alignment.BottomCenter) {
-        Text("🔥", fontSize = 80.sp, modifier = Modifier.padding(bottom = 20.dp))
+    val infiniteTransition = rememberInfiniteTransition(label = "FlameEffects")
+    
+    val scaleY by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scaleY"
+    )
+
+    val scaleX by infiniteTransition.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scaleX"
+    )
+
+    val translationX by infiniteTransition.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "translationX"
+    )
+
+    Box(
+        modifier = modifier.background(
+            Brush.verticalGradient(
+                listOf(
+                    Color.Transparent,
+                    Saffron.copy(alpha = 0.05f),
+                    Saffron.copy(alpha = 0.25f)
+                )
+            )
+        ),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Text(
+            text = "🔥",
+            fontSize = 80.sp,
+            modifier = Modifier
+                .padding(bottom = 20.dp)
+                .graphicsLayer(
+                    scaleX = scaleX,
+                    scaleY = scaleY,
+                    translationX = translationX
+                )
+        )
     }
 }
 
 @Composable
 private fun MandalaBadge(intensity: Float, modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(color = GoldSpark.copy(alpha = 0.2f), radius = size.minDimension / 2)
-            drawCircle(color = GoldSpark, radius = size.minDimension / 2, style = Stroke(2.dp.toPx()))
+    val infiniteTransition = rememberInfiniteTransition(label = "MandalaEffects")
+    
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
+    Box(
+        modifier = modifier.graphicsLayer(scaleX = scale, scaleY = scale),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(rotationZ = rotation)
+        ) {
+            val center = Offset(size.width / 2, size.height / 2)
+            val baseRadius = size.minDimension / 2.3f
+
+            drawCircle(
+                color = GoldSpark.copy(alpha = glowAlpha),
+                radius = baseRadius * 1.2f
+            )
+
+            drawCircle(
+                color = GoldSpark.copy(alpha = 0.08f),
+                radius = baseRadius
+            )
+            drawCircle(
+                color = GoldSpark,
+                radius = baseRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+
+            val petalCount = 12
+            for (i in 0 until petalCount) {
+                val angleRad = (i * 2 * Math.PI / petalCount)
+                val petalX = center.x + cos(angleRad).toFloat() * (baseRadius * 0.85f)
+                val petalY = center.y + sin(angleRad).toFloat() * (baseRadius * 0.85f)
+                
+                drawLine(
+                    color = GoldSpark.copy(alpha = 0.4f),
+                    start = center,
+                    end = Offset(petalX, petalY),
+                    strokeWidth = 1.dp.toPx()
+                )
+                drawCircle(
+                    color = GoldSpark.copy(alpha = 0.8f),
+                    radius = 2.5.dp.toPx(),
+                    center = Offset(petalX, petalY)
+                )
+            }
         }
-        Text("🕉️", fontSize = 24.sp)
+
+        Text(
+            text = "🕉️",
+            fontSize = 28.sp
+        )
     }
 }

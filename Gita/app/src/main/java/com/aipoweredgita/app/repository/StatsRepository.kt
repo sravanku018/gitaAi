@@ -3,6 +3,7 @@ package com.aipoweredgita.app.repository
 import android.content.Context
 import android.util.Log
 import com.aipoweredgita.app.coin.CoinRewardEngine
+import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.coin.CoinTransactionLogger
 import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.database.DailyActivityDao
@@ -182,6 +183,7 @@ class StatsRepository(
         val currentStreak = stats?.currentStreak ?: 0
         val checkinDay = DailyRewardsTracker.getInstance(appContext).getCurrentCheckinDay()
 
+        val multiplier = YogaLevelManager.getCoinMultiplier(stats)
         // Use CoinRewardEngine for calculation
         val result = CoinRewardEngine.calculate(
             CoinRewardEngine.Input(
@@ -189,7 +191,8 @@ class StatsRepository(
                 totalQuestions = totalQuestions,
                 segmentCorrectMap = segmentCorrectMap,
                 currentStreakDays = currentStreak,
-                dailyCheckinDay = checkinDay
+                dailyCheckinDay = checkinDay,
+                yogaMultiplier = multiplier
             )
         )
 

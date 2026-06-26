@@ -108,7 +108,7 @@ fun NavGraph(
                 onNavigateToVoiceStudio = { navController.navigate(Screen.VoiceStudio.route) },
                 onNavigateToRecommendations = { tab -> navController.navigate("recommendations?tab=$tab") },
                 onNavigateToRandomSloka = { navController.navigate("random_sloka") },
-                onNavigateToAwakening = { navController.navigate(Screen.Profile.route) },
+                onNavigateToAwakening = { navController.navigate("profile?tab=2") },
                 onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) },
                 onNavigateToActivityHistory = { navController.navigate(Screen.ActivityHistory.route) }
             )
@@ -213,9 +213,16 @@ fun NavGraph(
             OfflineDownloadScreen(viewModel = offlineViewModel)
         }
 
-        composable(Screen.Profile.route) { backStackEntry ->
+        composable(
+            route = "profile?tab={tab}",
+            arguments = listOf(
+                androidx.navigation.navArgument("tab") { type = androidx.navigation.NavType.IntType; defaultValue = 0 }
+            )
+        ) { backStackEntry ->
+            val tab = backStackEntry.arguments?.getInt("tab") ?: 0
             val profileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel = hiltViewModel()
             ProfileScreen(
+                initialTab = tab,
                 onNavigateToQuizStats = {
                     navController.navigate(Screen.ActivityHistory.route)
                 },
@@ -263,6 +270,12 @@ fun NavGraph(
 
         composable(Screen.ActivityHistory.route) {
             ActivityHistoryScreen()
+        }
+
+        composable(Screen.CoinHistory.route) {
+            com.aipoweredgita.app.ui.CoinHistoryScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(

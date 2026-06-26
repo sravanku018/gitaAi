@@ -222,15 +222,17 @@ fun DashboardScreen(
                                 val level = YogaLevelManager.levelFor(stats)
                                 val multiplier = YogaLevelManager.getCoinMultiplier(stats)
                                 if (level > 1) {
+                                    val bonusText = if (multiplier > 1.0f) " (${multiplier}x Bonus)" else ""
                                     Text(
-                                        text = "Level $level (${multiplier}x Bonus)",
+                                        text = "Level $level$bonusText",
                                         fontSize = 12.sp,
                                         color = textSecondary,
                                         modifier = Modifier.clickable { onNavigateToAwakening() }
                                     )
                                 } else {
+                                    val bonusText = if (multiplier > 1.0f) " (${multiplier}x Bonus)" else ""
                                     Text(
-                                        text = "Seeker (${multiplier}x Bonus)",
+                                        text = "Seeker$bonusText",
                                         fontSize = 12.sp,
                                         color = textSecondary,
                                         modifier = Modifier.clickable { onNavigateToAwakening() }

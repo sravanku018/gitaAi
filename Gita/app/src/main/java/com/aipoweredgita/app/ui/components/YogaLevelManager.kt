@@ -128,13 +128,14 @@ object YogaLevelManager {
     /**
      * Get coin earnings multiplier based on level
      * Level 1: 1.0x
-     * Level 2: 2.0x
+     * Level 2: 1.0x (no bonus)
      * Level 3: 3.0x
      * Level 4: 4.0x
      * Level 5: 5.0x
      */
     fun getCoinMultiplier(stats: UserStats?): Float {
-        return levelFor(stats).toFloat()
+        val level = levelFor(stats)
+        return if (level == 2) 1.0f else level.toFloat()
     }
 
     // Progress within current level 0..1
