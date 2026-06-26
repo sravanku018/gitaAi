@@ -43,6 +43,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ModelManagerEntryPoint {
+    fun modelDownloadManager(): ModelDownloadManager
+}
 
 @Composable
 fun TryNowDialog(
@@ -50,7 +60,12 @@ fun TryNowDialog(
     onDownloadStarted: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val modelManager = remember { com.aipoweredgita.app.ml.ModelDownloadManager(context) }
+    val modelManager = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ModelManagerEntryPoint::class.java
+        ).modelDownloadManager()
+    }
 
     // Observe WorkManager status (shared across all screens)
     val workInfo by com.aipoweredgita.app.ml.ModelDownloadStateManager.getGemmaWorkInfoLiveData(context)

@@ -55,9 +55,9 @@ fun OfflineDownloadScreen(
     }
 
     if (showVerseReader && cachedCount > 0) {
-        // Wrap VerseScreen with a back button to return to download manager
+        // Wrap NormalModeScreen with a back button to return to download manager
         Box(modifier = Modifier.fillMaxSize()) {
-            VerseScreen()
+            NormalModeScreen()
             IconButton(
                 onClick = { showVerseReader = false },
                 modifier = Modifier.padding(16.dp).align(Alignment.TopStart)

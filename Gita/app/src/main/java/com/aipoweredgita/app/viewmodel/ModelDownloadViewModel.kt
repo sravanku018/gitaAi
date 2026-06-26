@@ -29,13 +29,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ModelDownloadViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val manager: ModelDownloadManager
 ) : ViewModel() {
 
     private val TAG = "ModelDownloadViewModel"
     private var downloadService: ModelDownloadService? = null
     private var isBound = false
-    private val manager by lazy { ModelDownloadManager(context) }
     private var downloadJob: kotlinx.coroutines.Job? = null
 
     private val _uiState = MutableStateFlow(ModelDownloadUiState())

@@ -127,7 +127,7 @@ fun NavGraph(
             androidx.compose.runtime.LaunchedEffect(chapter, verse) {
                 if (chapter > 0 && verse > 0) vm.loadVerse(chapter, verse) else if (chapter > 0) vm.goToChapter(chapter)
             }
-            com.aipoweredgita.app.ui.VerseScreen(
+            com.aipoweredgita.app.ui.NormalModeScreen(
                 viewModel = vm,
                 onReadOfflineClick = { navController.navigate(Screen.OfflineDownload.route) }
             )

@@ -2,6 +2,9 @@ package com.aipoweredgita.app.ml
 
 import android.content.Context
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -28,7 +31,10 @@ data class DownloadProgress(
 
 private data class Manifest(val urls: Map<String, String>)
 
-class ModelDownloadManager(private val context: Context) {
+@Singleton
+class ModelDownloadManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private val TAG = "ModelDownloadManager"
     private val legacyDir = File(context.cacheDir, "ml_models")

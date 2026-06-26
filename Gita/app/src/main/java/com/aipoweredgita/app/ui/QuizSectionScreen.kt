@@ -65,23 +65,8 @@ fun QuizSectionScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
 
     // Auto-download questions on first open
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(ctx)
-                val count = db.quizQuestionBankDao().getTotalCount()
-                if (count < 100) {
-                    android.util.Log.d("QuizSection", "Auto-downloading questions (current: $count)...")
-                    val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(ctx, db.quizQuestionBankDao())
-                    val count = importer.importDataset(language = "english", batchSize = 500)
-                    val newCount = db.quizQuestionBankDao().getTotalCount()
-                    android.util.Log.d("QuizSection", "Auto-download complete: $count → $newCount questions")
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("QuizSection", "Auto-download failed: ${e.message}")
-            }
-        }
+        quizViewModel.checkAndDownloadQuestions()
     }
 
     LaunchedEffect(selectedTab) {

@@ -97,6 +97,24 @@ class QuizViewModel @Inject constructor(
     /**
      * Handle events from the UI
      */
+    fun checkAndDownloadQuestions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val db = GitaDatabase.getDatabase(application)
+                val count = db.quizQuestionBankDao().getTotalCount()
+                if (count < 100) {
+                    android.util.Log.d("QuizViewModel", "Auto-downloading questions (current: $count)...")
+                    val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, db.quizQuestionBankDao())
+                    val imported = importer.importDataset(language = "english", batchSize = 500)
+                    val newCount = db.quizQuestionBankDao().getTotalCount()
+                    android.util.Log.d("QuizViewModel", "Auto-download complete: $imported → $newCount questions")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("QuizViewModel", "Auto-download failed: ${e.message}")
+            }
+        }
+    }
+
     fun onEvent(event: QuizEvent) {
         when (event) {
             is QuizEvent.SelectAnswer -> selectAnswer(event.answer)

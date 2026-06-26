@@ -12,13 +12,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aipoweredgita.app.ui.theme.GoldSpark
 
+import androidx.compose.foundation.clickable
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.viewmodel.GitaSearchViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GitaSearchScreen(
     onBack: () -> Unit,
-    onVerseClick: (Int, Int) -> Unit
+    onVerseClick: (Int, Int) -> Unit,
+    viewModel: GitaSearchViewModel = hiltViewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
     
     Scaffold(
         topBar = {
@@ -26,7 +32,7 @@ fun GitaSearchScreen(
                 title = {
                     TextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = { viewModel.onSearchQueryChange(it) },
                         placeholder = { Text("Search Gita verses...") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
@@ -55,8 +61,51 @@ fun GitaSearchScreen(
                     Text("Enter a topic or keyword to search", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                // Placeholder for search results
-                Text("Search results for '$searchQuery' will appear here.", modifier = Modifier.padding(16.dp))
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(searchResults) { result ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onVerseClick(result.chapterNo, result.verseNo) },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Chapter ${result.chapterNo}, Verse ${result.verseNo}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = GoldSpark
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = result.verse,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = result.translation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 3,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    if (searchResults.isEmpty() && searchQuery.isNotBlank()) {
+                        item {
+                            Text(
+                                "No results found for '$searchQuery'",
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -79,11 +79,7 @@ fun CoinHistoryScreen(
         refreshTrigger++
     }
 
-    // Function to run reconciliation — disabled, auto-reconcile corrupts balance
-    suspend fun runReconciliationIfNeeded() {
-        // Auto-reconcile disabled: Groq AI was deleting transactions and
-        // adjusting balances incorrectly on every screen refresh
-    }
+
 
     // Build local history from CoinTransactionLogger — used as fallback when no JWT token
     // (users created via users/create have no token, so server API returns 401/403)
@@ -127,10 +123,7 @@ fun CoinHistoryScreen(
         android.util.Log.d("CoinHistory", "LaunchedEffect triggered: stats=${stats?.userId}, refreshTrigger=$refreshTrigger, isGuest=$isGuest, effectiveUid=$effectiveUid, hasToken=${authPrefs.token != null}")
 
         if (effectiveUid != null && effectiveUid.isNotEmpty()) {
-            // Run reconciliation on refresh (1 time only)
-            if (refreshTrigger > 0) {
-                runReconciliationIfNeeded()
-            }
+
 
             // Small delay to ensure server has processed the transaction
             if (refreshTrigger > 0 || coinBalance > 0) {

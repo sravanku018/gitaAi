@@ -149,4 +149,9 @@ object DatabaseModule {
     fun provideStudyPlanDao(database: GitaDatabase): StudyPlanDao {
         return database.studyPlanDao()
     }
+
+    @Provides
+    fun provideVerseSearchDao(database: GitaDatabase): VerseSearchDao {
+        return database.verseSearchDao()
+    }
 }
