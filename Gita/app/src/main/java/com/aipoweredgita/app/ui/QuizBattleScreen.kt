@@ -60,6 +60,11 @@ fun QuizBattleScreen(
     var isTimerRunning by remember { mutableStateOf(false) }
     val quizViewModel: QuizBattleViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
+    LaunchedEffect(Unit) {
+        quizViewModel.setQuizLimit(999)  // Battle = unlimited questions
+        quizViewModel.setQuizLanguage("en")
+    }
+
     // Timer
     LaunchedEffect(isTimerRunning, battleState.timeLeft) {
         if (isTimerRunning && battleState.timeLeft > 0) {

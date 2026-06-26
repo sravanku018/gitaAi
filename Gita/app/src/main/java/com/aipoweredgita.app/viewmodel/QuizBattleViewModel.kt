@@ -64,6 +64,14 @@ class QuizBattleViewModel @Inject constructor(
         }
     }
 
+    fun setQuizLimit(limit: Int) {
+        _quizState.value = _quizState.value.copy(maxQuestions = limit)
+    }
+
+    fun setQuizLanguage(language: String) {
+        // Battle mode always uses English
+    }
+
     fun restartQuiz() {
         sessionAskedIds.clear()
         _quizState.value = QuizState()
