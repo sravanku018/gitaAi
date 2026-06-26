@@ -134,7 +134,7 @@ object YogaLevelManager {
      * Level 5: 5.0x
      */
     fun getCoinMultiplier(stats: UserStats?): Float {
-        return 1.0f // API handles coin calculation
+        return levelFor(stats).toFloat()
     }
 
     // Progress within current level 0..1

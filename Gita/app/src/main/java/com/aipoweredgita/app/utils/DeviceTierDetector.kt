@@ -28,8 +28,9 @@ object DeviceTierDetector {
 
     private const val TAG = "DeviceTier"
     @Volatile private var cached: DeviceTier? = null
+    @Volatile private var cachedArmVersion: Int? = null
 
-    fun invalidate() { cached = null }
+    fun invalidate() { cached = null; cachedArmVersion = null }
 
     /**
      * Synchronous detection. Safe to call on any thread — no blocking I/O or
@@ -122,7 +123,7 @@ object DeviceTierDetector {
         return clusters
     }
 
-    private fun armVersion(): Int = runCatching {
+    private fun armVersion(): Int = cachedArmVersion ?: runCatching {
         val info = java.io.File("/proc/cpuinfo").readText()
         if (info.contains("ARMv9", ignoreCase = true) ||
             info.contains("Cortex-X4", ignoreCase = true) ||
@@ -130,7 +131,7 @@ object DeviceTierDetector {
             info.contains("Cortex-A720", ignoreCase = true) ||
             info.contains("Cortex-A520", ignoreCase = true) ||
             Build.VERSION.SDK_INT >= 34) 9 else 8
-    }.getOrDefault(8)
+    }.getOrDefault(8).also { cachedArmVersion = it }
 
     // ─── GPU axis ───────────────────────────────────────────────────
 

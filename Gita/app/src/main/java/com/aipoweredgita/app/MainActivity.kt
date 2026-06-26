@@ -46,10 +46,10 @@ import com.aipoweredgita.app.utils.ThemePreferences
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.ml.ModelDownloadManager
 import com.aipoweredgita.app.ml.ModelStateManager
-import com.aipoweredgita.app.repository.CoinReconciliationManager
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
 
         // Initialize database and schedule workers on background thread (non-blocking)
         // This prevents ANR during app startup
-        CoroutineScope(Dispatchers.Default).launch {
+        lifecycleScope.launch(Dispatchers.Default) {
             try {
                 // Initialize database and ensure UserStats record exists
                 val database = GitaDatabase.getDatabase(applicationContext)
@@ -101,27 +101,7 @@ class MainActivity : ComponentActivity() {
                     android.util.Log.d("MainActivity", "User ID: ${stats.userId}")
                 }
                 
-                // Reconcile coin balance with server
-                try {
-                    val reconciliationManager = CoinReconciliationManager(applicationContext)
-                    val result = reconciliationManager.autoReconcile()
-                    when (result) {
-                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Corrected -> {
-                            android.util.Log.w("MainActivity", "Coin balance corrected: ${result.oldBalance} → ${result.newBalance}")
-                        }
-                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Error -> {
-                            android.util.Log.e("MainActivity", "Reconciliation error: ${result.message}")
-                        }
-                        is com.aipoweredgita.app.repository.AutoReconciliationResult.Skip -> {
-                            android.util.Log.d("MainActivity", "Reconciliation skipped: ${result.reason}")
-                        }
-                        is com.aipoweredgita.app.repository.AutoReconciliationResult.OK -> {
-                            android.util.Log.d("MainActivity", "Balance OK")
-                        }
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.e("MainActivity", "Reconciliation failed: ${e.message}")
-                }
+                // Note: autoReconcile runs in GitaApp.onCreate() — no duplicate call here
                 
                 // Check and apply yoga progression decay for inactivity
                 val yogaProgressionRepository = com.aipoweredgita.app.repository.YogaProgressionRepository(database.yogaProgressionDao())
@@ -146,13 +126,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Schedule daily verse notification worker (once; it survives app restarts)
-                // Switch back to main thread for WorkManager
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     scheduleDailyVerseWorker()
                     
                     // Automatically schedule model downloads and question ingestion on first run
-                    // Gemma 4 (Flagship only) download is disabled automatically per user request, wait for user instruction
-                    // GemmaDownloadWorker.scheduleBackgroundDownload(applicationContext)
                     QwenDownloadWorker.scheduleBackgroundDownload(applicationContext, "Qwen3 0.6B")
                     QuestionIngestionWorker.schedule(applicationContext)
                     com.aipoweredgita.app.services.OfflineVerseDownloadWorker.scheduleBackgroundDownload(applicationContext)
