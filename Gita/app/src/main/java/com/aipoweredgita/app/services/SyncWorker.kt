@@ -10,9 +10,20 @@ import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.CoinAwardRequest
 import com.aipoweredgita.app.network.CoinSpendRequest
 import com.aipoweredgita.app.network.ShareSlokaRequest
+import com.aipoweredgita.app.repository.StatsRepository
 import com.aipoweredgita.app.utils.AuthPreferences
 import com.google.gson.Gson
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface SyncWorkerEntryPoint {
+    fun statsRepository(): StatsRepository
+}
 
 class SyncWorker(
     context: Context,
@@ -57,11 +68,10 @@ class SyncWorker(
         val dao = database.pendingSyncEventDao()
         val userStatsDao = database.userStatsDao()
 
-        val statsRepository = com.aipoweredgita.app.repository.StatsRepository(
-            userStatsDao = userStatsDao,
-            dailyActivityDao = database.dailyActivityDao(),
-            appContext = applicationContext
+        val entryPoint = EntryPointAccessors.fromApplication(
+            applicationContext, SyncWorkerEntryPoint::class.java
         )
+        val statsRepository = entryPoint.statsRepository()
 
         val events = dao.getPendingEvents(currentUserId)
 

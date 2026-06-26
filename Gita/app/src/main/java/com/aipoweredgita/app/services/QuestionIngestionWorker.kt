@@ -45,7 +45,7 @@ class QuestionIngestionWorker(
 
             // Check if questions already exist
             val existingCount = dao.getTotalCount()
-            if (existingCount > 50) {
+            if (existingCount > 200) {
                 Log.d(TAG, "Questions already exist ($existingCount), skipping ingestion")
                 return Result.success()
             }

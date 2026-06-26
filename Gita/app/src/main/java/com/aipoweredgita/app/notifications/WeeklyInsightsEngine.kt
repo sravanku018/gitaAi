@@ -1,16 +1,22 @@
 package com.aipoweredgita.app.notifications
 
 import android.content.Context
+import android.util.Log
 import com.aipoweredgita.app.database.DailyActivity
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.UserStats
+import com.aipoweredgita.app.util.GitaConstants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 
 data class WeeklyInsight(
     val summary: String,
@@ -21,7 +27,12 @@ data class WeeklyInsight(
 
 object WeeklyInsightsEngine {
 
-    private const val GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+    private const val TAG = "WeeklyInsightsEngine"
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
 
     suspend fun generateWeeklyInsight(context: Context): WeeklyInsight? = withContext(Dispatchers.IO) {
         try {
@@ -57,44 +68,50 @@ object WeeklyInsightsEngine {
                 appendLine("""{"summary":"2-3 sentence summary","focusArea":"main topic studied","accuracyChange":0.0,"krishnaMessage":"1 line Krishna teaching"}""")
             }
 
-            val response = callGroq(prompt) ?: return@withContext null
+            val response = callProxy(prompt) ?: return@withContext null
             parseInsight(response)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to generate weekly insight", e)
             null
         }
     }
 
-    private fun callGroq(prompt: String): String? {
+    private fun callProxy(prompt: String): String? {
         return try {
-            val apiKey = "gsk_placeholder" // Replace with actual Groq API key
-            val url = URL(GROQ_API_URL)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Authorization", "Bearer $apiKey")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            conn.connectTimeout = 10000
-            conn.readTimeout = 15000
+            val messagesArray = JSONArray()
+            messagesArray.put(
+                JSONObject()
+                    .put("role", "system")
+                    .put("content", "You are a wise Gita teacher. Respond only with valid JSON, no extra text.")
+            )
+            messagesArray.put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", prompt)
+            )
 
-            val body = JSONObject().apply {
-                put("model", "llama-3.1-8b-instant")
-                put("messages", listOf(
-                    JSONObject().put("role", "user").put("content", prompt)
-                ))
-                put("temperature", 0.7)
-                put("max_tokens", 300)
+            val body = JSONObject()
+                .put("messages", messagesArray)
+                .put("app", "gita")
+                .put("provider", "groq")
+                .toString()
+                .toRequestBody("application/json; charset=utf-8".toMediaType())
+
+            val request = Request.Builder()
+                .url(GitaConstants.VOICE_PROXY_URL)
+                .post(body)
+                .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "Proxy error: ${response.code}")
+                    return null
+                }
+                val responseString = response.body?.string() ?: return null
+                JSONObject(responseString).getString("reply")
             }
-
-            conn.outputStream.use { it.write(body.toString().toByteArray()) }
-
-            if (conn.responseCode == 200) {
-                val json = JSONObject(conn.inputStream.bufferedReader().readText())
-                json.getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
-            } else null
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to call proxy for weekly insight", e)
             null
         }
     }
