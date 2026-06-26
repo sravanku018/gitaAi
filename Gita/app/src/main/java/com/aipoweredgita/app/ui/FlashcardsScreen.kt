@@ -30,23 +30,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.database.Flashcard
-import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.ui.components.GlassCard
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import com.aipoweredgita.app.ui.theme.GoldSpark
 import androidx.compose.ui.graphics.luminance
 import com.aipoweredgita.app.ui.theme.Saffron
 import com.aipoweredgita.app.ui.LocalUiConfig
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
-    val context = LocalContext.current
-    val db = remember { GitaDatabase.getDatabase(context) }
-    val cards by db.flashcardDao().getByTopic(topic).collectAsState(initial = emptyList())
+fun FlashcardsScreen(
+    onBack: () -> Unit,
+    viewModel: com.aipoweredgita.app.viewmodel.FlashcardsViewModel = hiltViewModel()
+) {
+    val topic = viewModel.topic
+    val cards by viewModel.cards.collectAsStateWithLifecycle()
     val uiCfg = LocalUiConfig.current
-    val coroutineScope = rememberCoroutineScope()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     var isFlipped by remember { mutableStateOf(false) }
@@ -373,13 +373,11 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                     // Hard button
                                     OutlinedButton(
                                         onClick = {
-                                            coroutineScope.launch(Dispatchers.IO) {
-                                                db.flashcardDao().update(
-                                                    card.copy(
-                                                        timesShown = card.timesShown + 1
-                                                    )
+                                            viewModel.updateCard(
+                                                card.copy(
+                                                    timesShown = card.timesShown + 1
                                                 )
-                                            }
+                                            )
                                             if (currentIndex < cards.size - 1) {
                                                 currentIndex++
                                                 isFlipped = false
@@ -402,14 +400,12 @@ fun FlashcardsScreen(topic: String, onBack: () -> Unit) {
                                     // Easy button
                                     Button(
                                         onClick = {
-                                            coroutineScope.launch(Dispatchers.IO) {
-                                                db.flashcardDao().update(
-                                                    card.copy(
-                                                        timesShown = card.timesShown + 1,
-                                                        timesCorrect = card.timesCorrect + 1
-                                                    )
+                                            viewModel.updateCard(
+                                                card.copy(
+                                                    timesShown = card.timesShown + 1,
+                                                    timesCorrect = card.timesCorrect + 1
                                                 )
-                                            }
+                                            )
                                             correctCount++
                                             if (currentIndex < cards.size - 1) {
                                                 currentIndex++

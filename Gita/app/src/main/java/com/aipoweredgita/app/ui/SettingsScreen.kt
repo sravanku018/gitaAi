@@ -62,14 +62,14 @@ fun SettingsScreen(
     val allDownloaded = remainingBytes <= 0L
 
     val qwenWorkInfo by com.aipoweredgita.app.services.QwenDownloadWorker
-        .getDownloadStatusLive(context, "Qwen3 0.6B")
-        .observeAsState()
+        .getDownloadStatusFlow(context, "Qwen3 0.6B")
+        .collectAsStateWithLifecycle(initialValue = null)
     val isQwenDownloading = com.aipoweredgita.app.services.QwenDownloadWorker.isDownloading(context, "Qwen3 0.6B")
     val qwenDownloadProgress = qwenWorkInfo?.progress?.getInt("overallProgress", 0) ?: 0
 
     val gemmaWorkInfo by com.aipoweredgita.app.services.GemmaDownloadWorker
-        .getDownloadStatusLive(context)
-        .observeAsState()
+        .getDownloadStatusFlow(context)
+        .collectAsStateWithLifecycle(initialValue = null)
     val isGemmaDownloading = com.aipoweredgita.app.services.GemmaDownloadWorker.isDownloading(context)
     val gemmaDownloadProgress = gemmaWorkInfo?.progress?.getInt("overallProgress", 0) ?: 0
 

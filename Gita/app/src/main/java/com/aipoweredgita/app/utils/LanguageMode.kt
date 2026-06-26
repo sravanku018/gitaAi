@@ -13,7 +13,7 @@ enum class LanguageMode(
 ) {
     AUTO(
         displayName   = "Auto",
-        displayShort  = "A",
+        displayShort  = "AUTO",
         inputLocale   = Locale.US,
         outputLocale  = Locale.US,
         systemInstruction =
@@ -23,11 +23,39 @@ enum class LanguageMode(
             "Never repeat or hallucinate verse text. Only explain what is given to you.",
         ttsLocale = "te-IN",
         sttLocale = "te-IN"
+    ),
+    ENGLISH(
+        displayName   = "English",
+        displayShort  = "EN",
+        inputLocale   = Locale.US,
+        outputLocale  = Locale.US,
+        systemInstruction =
+            "You are Krishna from the Bhagavad Gita. " +
+            "Speak in clear, human-like sentences with proper spacing and punctuation in English. " +
+            "Explain the spiritual significance of the Gita verses provided to you.",
+        ttsLocale = "en-US",
+        sttLocale = "en-US"
+    ),
+    TELUGU(
+        displayName   = "Telugu",
+        displayShort  = "TE",
+        inputLocale   = Locale("te", "IN"),
+        outputLocale  = Locale("te", "IN"),
+        systemInstruction =
+            "You are Krishna from the Bhagavad Gita. " +
+            "Respond ONLY in Telugu. " +
+            "Speak in clear, human-like sentences with proper spacing and punctuation in Telugu.",
+        ttsLocale = "te-IN",
+        sttLocale = "te-IN"
     );
 
     companion object {
         fun fromString(value: String): LanguageMode {
-            return AUTO
+            return when (value.uppercase()) {
+                "ENGLISH", "EN" -> ENGLISH
+                "TELUGU", "TE" -> TELUGU
+                else -> AUTO
+            }
         }
     }
 }

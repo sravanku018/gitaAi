@@ -286,9 +286,8 @@ fun NavGraph(
             arguments = listOf(
                 androidx.navigation.navArgument("topic") { type = androidx.navigation.NavType.StringType; defaultValue = "" }
             )
-        ) { backStackEntry ->
-            val topic = backStackEntry.arguments?.getString("topic") ?: ""
-            com.aipoweredgita.app.ui.FlashcardsScreen(topic = topic, onBack = { navController.popBackStack() })
+        ) {
+            com.aipoweredgita.app.ui.FlashcardsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

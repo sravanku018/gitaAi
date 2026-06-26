@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.*
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.map
 
 class GemmaDownloadWorker(
     context: Context,
@@ -93,6 +94,12 @@ class GemmaDownloadWorker(
             val out = androidx.lifecycle.MediatorLiveData<WorkInfo?>()
             out.addSource(live) { list -> out.value = list.firstOrNull() }
             return out
+        }
+
+        fun getDownloadStatusFlow(context: Context): kotlinx.coroutines.flow.Flow<WorkInfo?> {
+            return WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWorkFlow(WORK_NAME_GEMMA)
+                .map { list -> list.firstOrNull() }
         }
 
         fun isDownloading(context: Context): Boolean {

@@ -105,6 +105,7 @@ class QuizViewModel @Inject constructor(
             is QuizEvent.FinishQuiz -> finishQuiz()
             is QuizEvent.RestartQuiz -> restartQuiz()
             is QuizEvent.SetQuizConfig -> setQuizConfig(event.questionCount, event.language)
+            is QuizEvent.ProceedToNextOrFinish -> proceedToNextOrFinish(event.wasCorrect)
         }
     }
 
@@ -223,6 +224,18 @@ class QuizViewModel @Inject constructor(
 
         updateMLEngines(isCorrect)
         saveProgress()
+    }
+
+    private fun proceedToNextOrFinish(wasCorrect: Boolean) {
+        confirmAnswerResult(wasCorrect)
+        val state = _quizState.value
+        if (!state.isQuizComplete) {
+            if (state.totalQuestions >= state.maxQuestions) {
+                finishQuiz()
+            } else {
+                loadNextQuestion()
+            }
+        }
     }
 
     /**

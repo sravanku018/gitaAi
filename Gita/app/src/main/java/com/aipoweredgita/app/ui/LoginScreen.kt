@@ -81,7 +81,7 @@ fun LoginScreen(
     var selectedTab by remember { mutableStateOf(authPrefs.loginMethod ?: "email") }
     var userId by remember { mutableStateOf(savedEmail ?: "") }
     var email by remember { mutableStateOf(savedEmail ?: "") }
-    var password by remember { mutableStateOf(savedPassword ?: "") }
+    var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var isRegisterMode by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }

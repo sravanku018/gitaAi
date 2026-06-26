@@ -65,7 +65,8 @@ class VoiceChatViewModel @Inject constructor(
     private val application: Application,
     private val chatRepo: com.aipoweredgita.app.repository.ChatRepository,
     private val summaryDao: com.aipoweredgita.app.database.ChatSummaryDao,
-    private val statsRepository: StatsRepository
+    private val statsRepository: StatsRepository,
+    private val contentRepository: com.aipoweredgita.app.repository.ContentRepository
 ) : ViewModel() {
 
     private fun getCloudProxyName(): String {
@@ -131,6 +132,40 @@ class VoiceChatViewModel @Inject constructor(
             statsRepository.coinBalance.collect { balance ->
                 _uiState.update { it.copy(coinBalance = balance) }
             }
+        }
+        viewModelScope.launch {
+            contentRepository.getActiveRecommendations().collect { recommendations ->
+                val dynamicSuggestions = recommendations.take(4).map { r ->
+                    mapRecommendationToSuggestion(r.recommendationTitle)
+                }.toMutableList()
+                
+                val defaults = listOf("What is karma?", "Explain dharma", "How to find peace?", "What is Atman?")
+                for (d in defaults) {
+                    if (dynamicSuggestions.size >= 4) break
+                    if (!dynamicSuggestions.contains(d)) {
+                        dynamicSuggestions.add(d)
+                    }
+                }
+                _uiState.update { it.copy(suggestions = dynamicSuggestions) }
+            }
+        }
+    }
+
+    private fun mapRecommendationToSuggestion(title: String): String {
+        val lower = title.lowercase()
+        return when {
+            lower.contains("strengthen ") -> {
+                val topic = title.substringAfter("Strengthen ").trim()
+                "Tell me about $topic"
+            }
+            lower.contains("review chapter ") -> {
+                val ch = title.substringAfter("Review Chapter ").trim()
+                "What is Chapter $ch about?"
+            }
+            lower.contains("yoga level") -> {
+                "How to advance in Yoga?"
+            }
+            else -> title
         }
     }
 
@@ -863,6 +898,7 @@ class VoiceChatViewModel @Inject constructor(
 
     fun setLanguageMode(mode: LanguageMode) {
         currentLanguageMode = mode
+        _uiState.update { it.copy(currentLanguageMode = mode) }
         voiceManager.setLocale(mode.sttLocale, mode.ttsLocale)
         aiScope.launch {
             voiceChatEngine.updateSystemInstruction(mode.systemInstruction)

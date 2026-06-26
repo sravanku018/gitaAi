@@ -35,5 +35,7 @@ data class VoiceChatUiState(
     val showCoinConfirmation: Boolean = false,
     val pendingMessage: String? = null,
     val pendingCost: Int = 0,
-    val isBalanceLoaded: Boolean = false
+    val isBalanceLoaded: Boolean = false,
+    val currentLanguageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
+    val suggestions: List<String> = listOf("What is karma?", "Explain dharma", "How to find peace?", "What is Atman?")
 )

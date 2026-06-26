@@ -105,14 +105,7 @@ fun QuizScreen(
                 viewModel.submitOpenEndedAnswer(answerText)
             },
             onProceed = { wasCorrect ->
-                viewModel.confirmAnswerResult(wasCorrect)
-                if (!quizState.isQuizComplete) {
-                    if (quizState.totalQuestions >= quizState.maxQuestions) {
-                        viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.FinishQuiz)
-                    } else {
-                        viewModel.loadNextQuestion()
-                    }
-                }
+                viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.ProceedToNextOrFinish(wasCorrect))
             },
             vm = viewModel
         )

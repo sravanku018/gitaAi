@@ -91,7 +91,7 @@ private fun getVoiceStudioColors(): VoiceStudioColors {
     val userBubbleBg = Saffron.copy(alpha = if (isDark) 0.12f else 0.08f)
     val userBubbleBdr = gold.copy(alpha = 0.25f)
     val appBg = MaterialTheme.colorScheme.background
-    
+
     return remember(isDark, textPrimary, textSecondary, textMuted, gold, border, borderHi, userBubbleBg, userBubbleBdr, appBg) {
         VoiceStudioColors(
             IsDark = isDark,
@@ -133,12 +133,13 @@ fun VoiceStudioScreen(
         if (colors.IsDark) {
             AmbientOrbs(modifier = Modifier.fillMaxSize())
         }
-        
+
+        // FIX 3: Guard order — balance must be loaded first, then check amount
         if (!state.isBalanceLoaded) {
-            // Block access until coin balance is confirmed
             BalanceLoadingOverlay(colors = colors)
-        } else if (state.coinBalance <= 0) {
+        } else if (state.coinBalance < 2) {
             InsufficientCoinsOverlay(
+                coinBalance = state.coinBalance,
                 onExit = onExit,
                 onNavigateToQuiz = onNavigateToQuiz,
                 onNavigateToRead = onNavigateToRead,
@@ -213,8 +214,6 @@ private fun VoiceChatContent(
     var showModelMenu by remember { mutableStateOf(false) }
     val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
 
-
-
     var hasAudioPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -248,9 +247,9 @@ private fun VoiceChatContent(
                     .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
             ) {
                 Icon(
-                    Icons.Default.Close, 
+                    Icons.Default.Close,
                     contentDescription = "Back",
-                    tint = colors.TextPrimary.copy(alpha = 0.9f), 
+                    tint = colors.TextPrimary.copy(alpha = 0.9f),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -264,28 +263,36 @@ private fun VoiceChatContent(
                     Text(
                         text = "Sacred conversations",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Normal,
+                            fontWeight = FontWeight.SemiBold,
                             color = colors.TextPrimary,
                             letterSpacing = 0.2.sp
                         )
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(12.dp))
                     Surface(
                         color = GoldSpark.copy(alpha = 0.15f),
-                        shape = MaterialTheme.shapes.medium,
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.3f))
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldSpark.copy(alpha = 0.7f))
                     ) {
-                        Text(
-                            text = "Coins ${state.coinBalance}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = GoldSpark,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(text = "🪙", fontSize = 16.sp)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "${state.coinBalance}",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                color = GoldSpark
+                            )
+                        }
                     }
                 }
                 Text(
-                    text = "Active Model: ${state.currentModelName}",
+                    text = "Model: ${state.currentModelName}",
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = if (state.currentModelName.contains("NVIDIA", ignoreCase = true) || state.currentModelName.contains("Groq", ignoreCase = true))
                             colors.RevolvingYellow
@@ -295,7 +302,34 @@ private fun VoiceChatContent(
                 )
             }
 
-            // Model Selection Option
+            // Language Toggle
+            Row(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(if (colors.IsDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f))
+                    .border(0.5.dp, colors.Border, MaterialTheme.shapes.medium)
+            ) {
+                com.aipoweredgita.app.utils.LanguageMode.entries.forEach { mode ->
+                    val isSelected = state.currentLanguageMode == mode
+                    Box(
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(if (isSelected) colors.RevolvingYellow.copy(alpha = 0.2f) else Color.Transparent)
+                            .clickable { onSetLanguageMode(mode) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = mode.displayShort,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) colors.RevolvingYellow else colors.TextSecondary
+                        )
+                    }
+                }
+            }
+
+            // Model Selection
             Box {
                 IconButton(
                     onClick = { showModelMenu = true },
@@ -305,37 +339,45 @@ private fun VoiceChatContent(
                         .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
                 ) {
                     Icon(
-                        Icons.Default.SmartToy, 
+                        Icons.Default.SmartToy,
                         contentDescription = "Select Model",
-                        tint = colors.RevolvingYellow, 
+                        tint = colors.RevolvingYellow,
                         modifier = Modifier.size(16.dp)
                     )
                 }
-                
+
                 DropdownMenu(
                     expanded = showModelMenu,
                     onDismissRequest = { showModelMenu = false },
                     modifier = Modifier.background(if (colors.IsDark) Color(0xFF140F0A) else Color(0xFFFFFDF8))
                 ) {
-
                     modelOptions.forEach { option ->
                         val ma = com.aipoweredgita.app.ml.ModelAvailability.getInstance(context)
+                        // FIX 2: Use isAvailable(modelKey) pattern — adjust method names to match
+                        // your actual ModelAvailability API. These are the two most likely signatures:
+                        //   ma.isGemma4Available()  OR  ma.isAvailable("gemma4")
+                        //   ma.isQwen3Available()   OR  ma.isAvailable("qwen3")
                         val isAvailable = when {
-                            option.contains("Gemma 4") -> ma.isGemma4Available()
-                            else -> true // Auto/Groq are always "available"
+                            option.contains("Gemma 4")  -> ma.isGemma4Available()
+                            option.contains("Qwen3")    -> ma.isQwen3Available()
+                            else -> true // Auto / cloud models always "available"
                         }
-                        
-                    DropdownMenuItem(
-                            text = { 
+
+                        DropdownMenuItem(
+                            text = {
                                 Column {
                                     Text(option, style = MaterialTheme.typography.bodyMedium, color = colors.TextPrimary)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         val isActive = when {
                                             option.contains("NVIDIA") && state.currentModelName.contains("NVIDIA", ignoreCase = true) -> true
-                                            option.contains("Groq") && state.currentModelName.contains("Groq", ignoreCase = true) -> true
-                                            option.contains("Qwen3") && state.currentModelName.contains("Qwen3", ignoreCase = true) -> true
-                                            option.contains("Gemma") && state.currentModelName.contains("Gemma", ignoreCase = true) -> true
-                                            option.contains("Auto") && !state.currentModelName.contains("NVIDIA", ignoreCase = true) && !state.currentModelName.contains("Groq", ignoreCase = true) && !state.currentModelName.contains("Qwen3", ignoreCase = true) && !state.currentModelName.contains("Gemma", ignoreCase = true) -> true
+                                            option.contains("Groq")   && state.currentModelName.contains("Groq",  ignoreCase = true) -> true
+                                            option.contains("Qwen3")  && state.currentModelName.contains("Qwen3", ignoreCase = true) -> true
+                                            option.contains("Gemma")  && state.currentModelName.contains("Gemma", ignoreCase = true) -> true
+                                            option.contains("Auto")
+                                                    && !state.currentModelName.contains("NVIDIA", ignoreCase = true)
+                                                    && !state.currentModelName.contains("Groq",  ignoreCase = true)
+                                                    && !state.currentModelName.contains("Qwen3", ignoreCase = true)
+                                                    && !state.currentModelName.contains("Gemma", ignoreCase = true) -> true
                                             else -> false
                                         }
                                         if (isActive) {
@@ -354,9 +396,9 @@ private fun VoiceChatContent(
                             }
                         )
                     }
-                    
+
                     HorizontalDivider(color = colors.Border)
-                    
+
                     val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
                     Text(
                         text = "Device: ${tier.label}",
@@ -374,7 +416,6 @@ private fun VoiceChatContent(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
             if (state.messages.isEmpty() && !state.isThinking) {
-                // Empty state
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -416,8 +457,9 @@ private fun VoiceChatContent(
 
                     Spacer(Modifier.height(10.dp))
 
+                    // FIX 4: Replaced broken glyph with standard bullet •
                     Text(
-                        text = "Speak or write your question � each inquiry costs 1 Krishna Coin. The Gita holds answers to every struggle of the human soul.",
+                        text = "Speak or write your question \u2022 each inquiry costs 1 Krishna Coin. The Gita holds answers to every struggle of the human soul.",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = colors.TextSecondary,
                             lineHeight = 22.sp
@@ -433,8 +475,7 @@ private fun VoiceChatContent(
                         horizontalArrangement = Arrangement.Center,
                         maxItemsInEachRow = 2
                     ) {
-                        listOf("What is karma?", "Explain dharma", "How to find peace?", "What is Atman?")
-                            .forEach { suggestion ->
+                        state.suggestions.forEach { suggestion ->
                                 SuggestionChip(
                                     onClick = { if (!isBusy) onSendMessage(suggestion) },
                                     enabled = !isBusy,
@@ -455,8 +496,6 @@ private fun VoiceChatContent(
                                 )
                             }
                     }
-
-
                 }
             } else {
                 LazyColumn(
@@ -476,14 +515,12 @@ private fun VoiceChatContent(
                             onEdit = { onUpdateUserInput(it) }
                         )
                     }
-                // ── Thinking bubble ───────────────────────────────────────────────────────────
-                if (state.isThinking) { item(key = "thinking_bubble") {
-                    Box(modifier = Modifier.animateItem()) { ThinkingBubble() }
-                } }
-                // ── Listening bubble ───────────────────────────────────────────────────────────
-                if (state.isListening) { item(key = "listening_bubble") {
-                    Box(modifier = Modifier.animateItem()) { ListeningBubble(state.liveTranscript) }
-                } }
+                    if (state.isThinking) { item(key = "thinking_bubble") {
+                        Box(modifier = Modifier.animateItem()) { ThinkingBubble() }
+                    } }
+                    if (state.isListening) { item(key = "listening_bubble") {
+                        Box(modifier = Modifier.animateItem()) { ListeningBubble(state.liveTranscript) }
+                    } }
                 }
             }
         }
@@ -532,7 +569,6 @@ private fun VoiceChatContent(
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Text Input Field (Restored as per request)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -548,8 +584,10 @@ private fun VoiceChatContent(
                             .weight(1f)
                             .heightIn(min = 42.dp),
                         placeholder = {
-                            Text(if (state.isBalanceLoaded) "Ask Krishna (Costs 1 coin)..." else "Loading spiritual balance...",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextSecondary.copy(alpha = 0.7f)))
+                            Text(
+                                if (state.isBalanceLoaded) "Ask Krishna (Costs 1 coin)..." else "Loading spiritual balance...",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextSecondary.copy(alpha = 0.7f))
+                            )
                         },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.TextPrimary),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -568,7 +606,7 @@ private fun VoiceChatContent(
                         maxLines = 3
                     )
 
-                    // Mic button for voice input
+                    // Mic button
                     IconButton(
                         onClick = {
                             if (hasAudioPermission) onStartListening()
@@ -578,7 +616,8 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
-                                if (state.isListening) colors.ListenRed.copy(alpha = 0.25f) else (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)),
+                                if (state.isListening) colors.ListenRed.copy(alpha = 0.25f)
+                                else (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)),
                                 CircleShape
                             )
                             .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
@@ -588,6 +627,7 @@ private fun VoiceChatContent(
                             modifier = Modifier.size(18.dp))
                     }
 
+                    // Send button
                     val canSend = !isBusy && state.userInput.isNotBlank()
                     IconButton(
                         onClick = { if (canSend) onSendCurrentMessage() },
@@ -595,12 +635,12 @@ private fun VoiceChatContent(
                         modifier = Modifier
                             .size(42.dp)
                             .background(
-                                if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)),
+                                if (canSend) colors.RevolvingYellow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f),
                                 CircleShape
                             )
                             .border(
                                 1.dp,
-                                if (canSend) colors.RevolvingYellow else (MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                                if (canSend) colors.RevolvingYellow else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                                 CircleShape
                             )
                     ) {
@@ -612,16 +652,37 @@ private fun VoiceChatContent(
                         )
                     }
 
-                    // Clear button moved here next to input
-                    IconButton(
-                        onClick = { if (canInteract) onClearChat() },
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), CircleShape)
-                            .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
+                    // Clear button
+                    val canClear = canInteract && state.messages.isNotEmpty()
+                    AnimatedVisibility(
+                        visible = state.messages.isNotEmpty(),
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally()
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Clear",
-                            tint = colors.RevolvingYellow, modifier = Modifier.size(18.dp))
+                        IconButton(
+                            onClick = { if (canClear) onClearChat() },
+                            enabled = canClear,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(
+                                    if (canClear) (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f))
+                                    else Color.Transparent,
+                                    CircleShape
+                                )
+                                .border(
+                                    1.dp,
+                                    if (canClear) (if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f))
+                                    else colors.Border.copy(alpha = 0.3f),
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Clear",
+                                tint = if (canClear) colors.RevolvingYellow else colors.TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -674,7 +735,7 @@ private fun VoiceChatContent(
     }
 }
 
-// ── Gemini orb ────────────────────────────────────────────────────────────────
+// ── Thinking dots ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun ThinkingDots() {
@@ -702,7 +763,7 @@ private fun ThinkingDots() {
     }
 }
 
-// ── Backing components ────────────────────────────────────────────────────────
+// ── Chat bubble ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun ChatBubble(
@@ -727,11 +788,8 @@ private fun ChatBubble(
         verticalAlignment = Alignment.Top
     ) {
         if (!isUser) {
-            // Krishna Avatar with Revolving Line
             Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .size(38.dp),
+                modifier = Modifier.padding(top = 2.dp).size(38.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.size(38.dp)) {
@@ -745,7 +803,6 @@ private fun ChatBubble(
                         )
                     }
                 }
-                
                 Box(
                     modifier = Modifier
                         .size(31.dp)
@@ -768,9 +825,11 @@ private fun ChatBubble(
             RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp)
         else
             RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp)
-        
-        val bubbleBg = if (isUser) colors.UserBubbleBg else (if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.03f))
-        val bubbleBdrColor = if (isUser) colors.UserBubbleBdr else (if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f))
+
+        val bubbleBg = if (isUser) colors.UserBubbleBg
+        else (if (colors.IsDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.03f))
+        val bubbleBdrColor = if (isUser) colors.UserBubbleBdr
+        else (if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f))
 
         Box(
             modifier = Modifier
@@ -801,16 +860,12 @@ private fun ChatBubble(
 
         if (isUser) {
             Spacer(Modifier.width(10.dp))
-            // Devotee Avatar with Revolving Line
             Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .size(38.dp),
+                modifier = Modifier.padding(top = 2.dp).size(38.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.size(38.dp)) {
-                    rotate(-rotation)
-                    {
+                    rotate(-rotation) {
                         drawArc(
                             color = colors.UserBubbleBdr,
                             startAngle = 180f,
@@ -820,7 +875,6 @@ private fun ChatBubble(
                         )
                     }
                 }
-
                 Box(
                     modifier = Modifier
                         .size(31.dp)
@@ -857,11 +911,8 @@ private fun ThinkingBubble() {
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
-        // Krishna Avatar (Thinking) with Revolving Line
         Box(
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(38.dp),
+            modifier = Modifier.padding(top = 2.dp).size(38.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(38.dp)) {
@@ -921,7 +972,7 @@ private fun ThinkingBubble() {
     }
 }
 
-// ── Listening bubble ───────────────────────────────────────────────────────────
+// ── Listening bubble ──────────────────────────────────────────────────────────
 
 @Composable
 private fun ListeningBubble(liveTranscript: String) {
@@ -979,10 +1030,13 @@ private fun ListeningBubble(liveTranscript: String) {
             }
         }
         Spacer(Modifier.width(10.dp))
-        // Devotee Avatar
         Box(
-            modifier = Modifier.padding(top = 2.dp).size(38.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                .border(1.dp, colors.ListenRed.copy(alpha=0.5f), CircleShape).clip(CircleShape)
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(38.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .border(1.dp, colors.ListenRed.copy(alpha = 0.5f), CircleShape)
+                .clip(CircleShape)
         ) {
             Image(
                 painter = painterResource(id = com.aipoweredgita.app.R.drawable.devotee),
@@ -990,6 +1044,149 @@ private fun ListeningBubble(liveTranscript: String) {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+        }
+    }
+}
+
+// ── Overlays ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun BalanceLoadingOverlay(colors: VoiceStudioColors) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "ॐ",
+            fontSize = 48.sp,
+            color = colors.RevolvingYellow,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        CircularProgressIndicator(
+            modifier = Modifier.size(32.dp),
+            color = colors.RevolvingYellow,
+            strokeWidth = 3.dp,
+            trackColor = colors.RevolvingYellow.copy(alpha = 0.15f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Preparing your spiritual connection...",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = colors.TextPrimary,
+                letterSpacing = 0.5.sp
+            ),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Please wait while we verify your balance.",
+            style = MaterialTheme.typography.bodySmall.copy(color = colors.TextSecondary),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun InsufficientCoinsOverlay(
+    coinBalance: Int,
+    onExit: () -> Unit,
+    onNavigateToQuiz: () -> Unit,
+    onNavigateToRead: () -> Unit,
+    colors: VoiceStudioColors
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "ॐ",
+            fontSize = 48.sp,
+            color = colors.RevolvingYellow,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Insufficient Divine Energy",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = colors.TextPrimary,
+                letterSpacing = 0.5.sp
+            ),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        // FIX 3: Show exact balance; handles 0 and negative correctly
+        Text(
+            text = "Sacred conversations require spiritual energy. You have $coinBalance Krishna Coin${if (coinBalance == 1) "" else "s"} remaining.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = colors.TextSecondary,
+                lineHeight = 22.sp
+            ),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(28.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (colors.IsDark) Color.White.copy(alpha = 0.03f) else Color.Black.copy(alpha = 0.02f)
+            ),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.Border.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Perform spiritual acts to earn coins:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.TextMuted,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Button(
+                    onClick = onNavigateToQuiz,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.RevolvingYellow,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Take a Quiz (+5 to +15 Coins)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = onNavigateToRead,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.RevolvingYellow),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = Brush.linearGradient(
+                            colors = listOf(colors.RevolvingYellow.copy(alpha = 0.4f), colors.RevolvingYellow.copy(alpha = 0.4f))
+                        )
+                    )
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.RevolvingYellow)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Read Gita Verses (+Coins)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+        TextButton(onClick = onExit, modifier = Modifier.height(48.dp)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = colors.TextMuted, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Back to Dashboard", color = colors.TextMuted, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -1006,11 +1203,8 @@ fun PreviewVoiceStudioIdle() {
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
-                onSetLanguageMode = {},
-                onUpdateSelectedModel = {},
-                onConfirmSend = {},
-                onDismissConfirmation = {},
-                onExit = {}
+                onSetLanguageMode = {}, onUpdateSelectedModel = {},
+                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
             )
         }
     }
@@ -1021,7 +1215,7 @@ fun PreviewVoiceStudioIdle() {
 fun PreviewVoiceStudioChat() {
     val msgs = listOf(
         ChatMessage(text = "What is karma?", isUser = true),
-        ChatMessage(text = "Karma is the law of cause and effect � every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
+        ChatMessage(text = "Karma is the law of cause and effect \u2022 every action you take shapes your future. Act rightly, without attachment to the fruits.", isUser = false)
     )
     GitaLearningTheme {
         Box(Modifier.background(BgDark)) {
@@ -1030,11 +1224,8 @@ fun PreviewVoiceStudioChat() {
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
-                onSetLanguageMode = {},
-                onUpdateSelectedModel = {},
-                onConfirmSend = {},
-                onDismissConfirmation = {},
-                onExit = {}
+                onSetLanguageMode = {}, onUpdateSelectedModel = {},
+                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
             )
         }
     }
@@ -1050,11 +1241,8 @@ fun PreviewVoiceStudioListening() {
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
-                onSetLanguageMode = {},
-                onUpdateSelectedModel = {},
-                onConfirmSend = {},
-                onDismissConfirmation = {},
-                onExit = {}
+                onSetLanguageMode = {}, onUpdateSelectedModel = {},
+                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
             )
         }
     }
@@ -1073,210 +1261,9 @@ fun PreviewVoiceStudioThinking() {
                 onSendMessage = {}, onSendCurrentMessage = {}, onUpdateUserInput = {},
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
-                onSetLanguageMode = {},
-                onUpdateSelectedModel = {},
-                onConfirmSend = {},
-                onDismissConfirmation = {},
-                onExit = {}
+                onSetLanguageMode = {}, onUpdateSelectedModel = {},
+                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
             )
         }
     }
 }
-
-@Composable
-private fun BalanceLoadingOverlay(colors: VoiceStudioColors) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "ॐ",
-            fontSize = 48.sp,
-            color = colors.RevolvingYellow,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        CircularProgressIndicator(
-            modifier = Modifier.size(32.dp),
-            color = colors.RevolvingYellow,
-            strokeWidth = 3.dp,
-            trackColor = colors.RevolvingYellow.copy(alpha = 0.15f)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Preparing your spiritual connection...",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Medium,
-                color = colors.TextPrimary,
-                letterSpacing = 0.5.sp
-            ),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Please wait while we verify your balance.",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = colors.TextSecondary
-            ),
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun InsufficientCoinsOverlay(
-    onExit: () -> Unit,
-    onNavigateToQuiz: () -> Unit,
-    onNavigateToRead: () -> Unit,
-    colors: VoiceStudioColors
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Om ornament / Icon
-        Text(
-            text = "ॐ",
-            fontSize = 48.sp,
-            color = colors.RevolvingYellow,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Text(
-            text = "Insufficient Divine Energy",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = colors.TextPrimary,
-                letterSpacing = 0.5.sp
-            ),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Subtitle
-        Text(
-            text = "Sacred conversations require spiritual energy. You have 0 Krishna Coins remaining.",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = colors.TextSecondary,
-                lineHeight = 22.sp
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Actions Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (colors.IsDark) Color.White.copy(alpha = 0.03f) else Color.Black.copy(alpha = 0.02f)
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                0.5.dp,
-                colors.Border.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Perform spiritual acts to earn coins:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.TextMuted,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                // Earn via Quiz Button
-                Button(
-                    onClick = onNavigateToQuiz,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.RevolvingYellow,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.Black
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Take a Quiz (+5 to +15 Coins)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Earn via Reading Button
-                OutlinedButton(
-                    onClick = onNavigateToRead,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = colors.RevolvingYellow
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = Brush.linearGradient(
-                            colors = listOf(colors.RevolvingYellow.copy(alpha = 0.4f), colors.RevolvingYellow.copy(alpha = 0.4f))
-                        )
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = colors.RevolvingYellow
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Read Gita Verses (+Coins)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Back / Exit Button
-        TextButton(
-            onClick = onExit,
-            modifier = Modifier.height(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                tint = colors.TextMuted,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "Back to Dashboard",
-                color = colors.TextMuted,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-

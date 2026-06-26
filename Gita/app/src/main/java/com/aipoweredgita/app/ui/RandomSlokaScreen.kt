@@ -41,11 +41,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import com.aipoweredgita.app.coin.DailyRewardsTracker
-import com.aipoweredgita.app.network.GitaApi
-import com.aipoweredgita.app.util.GitaConstants
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,20 +50,13 @@ import android.widget.Toast
 fun RandomSlokaScreen(
     onBack: () -> Unit,
     initialChapter: Int = 0,
-    initialVerse: Int = 0
+    initialVerse: Int = 0,
+    viewModel: com.aipoweredgita.app.viewmodel.RandomSlokaViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val db = remember { GitaDatabase.getDatabase(context) }
-    val statsRepository = remember {
-        com.aipoweredgita.app.repository.StatsRepository(
-            userStatsDao = db.userStatsDao(),
-            dailyActivityDao = db.dailyActivityDao(),
-            appContext = context.applicationContext
-        )
-    }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentVerse = state.currentVerse
 
-    var currentVerse by remember { mutableStateOf<CachedVerse?>(null) }
     var isSpeaking by remember { mutableStateOf(false) }
 
     val voiceManager = remember { VoiceManager(context) }
@@ -79,81 +69,12 @@ fun RandomSlokaScreen(
     DisposableEffect(Unit) {
         onDispose {
             voiceManager.stopSpeaking()
-        }
-    }
-
-    suspend fun generateNewSloka() {
-        withContext(Dispatchers.IO) {
-            var verseData = db.cachedVerseDao().getRandomVerse()
-            if (verseData == null && db.cachedVerseDao().getCachedCount() > 0) {
-                db.randomVerseHistoryDao().clearHistory()
-                verseData = db.cachedVerseDao().getRandomVerse()
-            }
-            if (verseData != null) {
-                db.randomVerseHistoryDao().insertShownVerse(
-                    RandomVerseHistory(
-                        chapterNo = verseData.chapterNo,
-                        verseNo = verseData.verseNo
-                    )
-                )
-                currentVerse = verseData
-            } else {
-                try {
-                    val fallback = GitaApi.retrofitService.getVerse(GitaConstants.DEFAULT_LANGUAGE, 2, 47)
-                    val cached = CachedVerse(
-                        chapterNo = fallback.chapterNo,
-                        verseNo = fallback.verseNo,
-                        chapterName = fallback.chapterName,
-                        verse = fallback.verse,
-                        translation = fallback.translation,
-                        meaning = fallback.meaning,
-                        explanation = fallback.explanation
-                    )
-                    db.cachedVerseDao().insertVerse(cached)
-                    currentVerse = cached
-                } catch (e: Exception) {
-                    currentVerse = CachedVerse(
-                        chapterNo = 2,
-                        verseNo = 47,
-                        chapterName = "Bhagavad Gita",
-                        verse = "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥",
-                        translation = "You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.",
-                        meaning = "Karma yoga",
-                        explanation = "Karma yoga explanation"
-                    )
-                }
-            }
+            voiceManager.destroy()
         }
     }
 
     LaunchedEffect(initialChapter, initialVerse) {
-        if (initialChapter > 0 && initialVerse > 0) {
-            withContext(Dispatchers.IO) {
-                val verse = db.cachedVerseDao().getVerse(initialChapter, initialVerse)
-                if (verse != null) {
-                    currentVerse = verse
-                } else {
-                    try {
-                        val apiVerse = GitaApi.retrofitService.getVerse(GitaConstants.DEFAULT_LANGUAGE, initialChapter, initialVerse)
-                        val cached = CachedVerse(
-                            chapterNo = apiVerse.chapterNo,
-                            verseNo = apiVerse.verseNo,
-                            chapterName = apiVerse.chapterName,
-                            verse = apiVerse.verse,
-                            translation = apiVerse.translation,
-                            meaning = apiVerse.meaning,
-                            explanation = apiVerse.explanation
-                        )
-                        db.cachedVerseDao().insertVerse(cached)
-                        currentVerse = cached
-                    } catch (e: Exception) {
-                        generateNewSloka()
-                    }
-                }
-            }
-        } else {
-            generateNewSloka()
-        }
+        viewModel.loadVerse(initialChapter, initialVerse)
     }
 
     fun shareSloka(verse: CachedVerse) {
@@ -165,13 +86,8 @@ fun RandomSlokaScreen(
         }
         try {
             context.startActivity(Intent.createChooser(intent, "Share Sloka"))
-            scope.launch {
-                val awarded = statsRepository.trackSlokaShared(chapter = verse.chapterNo, verse = verse.verseNo)
-                if (awarded > 0) {
-                    Toast.makeText(context, "Shared successfully! Earned $awarded coins 🪙", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "Shared successfully!", Toast.LENGTH_SHORT).show()
-                }
+            viewModel.trackSlokaShared(verse.chapterNo, verse.verseNo) { message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             Toast.makeText(context, "Failed to share: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -202,11 +118,9 @@ fun RandomSlokaScreen(
                          }
                      },
                      actions = {
-                         IconButton(onClick = {
-                             scope.launch {
-                                 generateNewSloka()
-                             }
-                         }) {
+                          IconButton(onClick = {
+                              viewModel.generateNewSloka()
+                          }) {
                              Icon(
                                  imageVector = Icons.Default.Refresh,
                                  contentDescription = "Refresh",

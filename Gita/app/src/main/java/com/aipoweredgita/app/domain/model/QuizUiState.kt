@@ -30,6 +30,7 @@ sealed class QuizEvent {
     data object FinishQuiz : QuizEvent()
     data object RestartQuiz : QuizEvent()
     data class SetQuizConfig(val questionCount: Int, val language: String) : QuizEvent()
+    data class ProceedToNextOrFinish(val wasCorrect: Boolean) : QuizEvent()
 }
 
 /**

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.*
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.map
 
 class QwenDownloadWorker(
     context: Context,
@@ -77,6 +78,12 @@ class QwenDownloadWorker(
             val out = androidx.lifecycle.MediatorLiveData<WorkInfo?>()
             out.addSource(live) { list -> out.value = list.firstOrNull() }
             return out
+        }
+
+        fun getDownloadStatusFlow(context: Context, modelName: String = "Qwen3 0.6B"): kotlinx.coroutines.flow.Flow<WorkInfo?> {
+            return WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWorkFlow(WORK_NAME_QWEN + "_" + modelName.replace(" ", "_"))
+                .map { list -> list.firstOrNull() }
         }
 
         fun isDownloading(context: Context, modelName: String = "Qwen3 0.6B"): Boolean {
