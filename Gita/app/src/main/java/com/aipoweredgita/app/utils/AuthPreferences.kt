@@ -110,6 +110,10 @@ class AuthPreferences(context: Context) {
         get() = prefs.getBoolean("guest_welcome_awarded", false)
         set(value) = prefs.edit().putBoolean("guest_welcome_awarded", value).apply()
 
+    var onboardingCompleted: Boolean
+        get() = prefs.getBoolean("onboarding_completed", false)
+        set(value) = prefs.edit().putBoolean("onboarding_completed", value).apply()
+
     /** Convenience: true if this is a guest user or not logged in. */
     val isGuestUser: Boolean get() = !isLoggedIn || isGuest
 

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -140,6 +141,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleLarge,
                 color = gold
             )
+            // ... (rest of Appearance section remains)
 
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -242,6 +244,16 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
             HardwareSpecsCard(context)
+            
+            // ── Widget Settings ───────────────────────────────────────────
+            Text(
+                "Home Widget",
+                style = MaterialTheme.typography.titleLarge,
+                color = gold,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            WidgetSettingsSection(context)
+            
             ModelRecommendationCard(context)
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -713,6 +725,67 @@ fun SettingsScreen(
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text("Back to Wisdom", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun WidgetSettingsSection(context: android.content.Context) {
+    val isDark = rememberThemeIsDark()
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    
+    var widgetCount by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+        val widgetIds = appWidgetManager.getAppWidgetIds(
+            android.content.ComponentName(context, com.aipoweredgita.app.widget.GitaVerseWidget::class.java)
+        )
+        widgetCount = widgetIds.size
+    }
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 32.dp,
+        elevation = 4.dp,
+        tint = cardBg,
+        border = cardBorder
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Star, contentDescription = null, tint = gold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Daily Verse Widget", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (widgetCount > 0) "✓ Widget Active ($widgetCount)" else "No Widget Added",
+                        color = if (widgetCount > 0) gold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        "Shows a new inspirational verse each day on your home screen.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (widgetCount > 0) {
+                    IconButton(onClick = {
+                        val intent = android.content.Intent(context, com.aipoweredgita.app.widget.GitaVerseWidget::class.java).apply {
+                            action = "com.aipoweredgita.app.widget.ACTION_WIDGET_REFRESH"
+                        }
+                        context.sendBroadcast(intent)
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = gold)
+                    }
+                }
             }
         }
     }

@@ -14,6 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.SportsMma
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +69,7 @@ fun MainScreen(
     // Use a key that changes when auth state changes so the UI recomposes
     var authVersion by remember { mutableStateOf(0) }
     val isGuest = remember(authVersion) { authPrefs.isGuestUser }
+    var showMoreSheet by remember { mutableStateOf(false) }
 
     // Fetch coin balance from API when userId becomes available
     LaunchedEffect(stats) {
@@ -114,7 +125,7 @@ fun MainScreen(
                     },
                     onNavigateToYogaLevels = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Awakening.route)
+                        navController.navigate(Screen.Profile.route)
                     },
                     onNavigateToSettings = {
                         scope.launch { drawerState.close() }
@@ -130,7 +141,7 @@ fun MainScreen(
                     },
                     onNavigateToStudyPlan = {
                         scope.launch { drawerState.close() }
-                        navController.navigate(Screen.StudyPlan.route)
+                        navController.navigate(Screen.Recommendations.route)
                     },
                     onNavigateToQuizBattle = {
                         scope.launch { drawerState.close() }
@@ -189,6 +200,15 @@ fun MainScreen(
                             )
                         }
                     },
+                    actions = {
+                        IconButton(onClick = { navController.navigate(Screen.GitaSearch.route) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = "Search",
+                                tint = GoldSpark
+                            )
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(
@@ -213,10 +233,10 @@ fun MainScreen(
                         currentRoute = currentRoute,
                         isDarkTheme = isDarkTheme,
                         onNavigate = { route ->
-                            // Only navigate if not already on that route
-                            if (currentRoute != route) {
+                            if (route == "more") {
+                                showMoreSheet = true
+                            } else if (currentRoute != route) {
                                 navController.navigate(route) {
-                                    // Pop up to the start destination
                                     popUpTo(Screen.Home.route) {
                                         saveState = false
                                     }
@@ -229,6 +249,46 @@ fun MainScreen(
                 }
             }
         ) { innerPadding ->
+            if (showMoreSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showMoreSheet = false },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    dragHandle = { BottomSheetDefaults.DragHandle(color = GoldSpark.copy(alpha = 0.5f)) }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                    ) {
+                        Text(
+                            text = "More Options",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        val moreItems = listOf(
+                            Triple(Icons.Filled.EditNote, "My Notes", Screen.Notes.route),
+                            Triple(Icons.Filled.SelfImprovement, "Meditation", Screen.Meditation.route),
+                            Triple(Icons.Filled.SportsMma, "Quiz Battle", Screen.QuizBattle.route),
+                            Triple(Icons.Filled.CalendarMonth, "Study Plans", Screen.Recommendations.route),
+                            Triple(Icons.Filled.Favorite, "Favorites", Screen.Favorites.route),
+                            Triple(Icons.Filled.Person, "Profile", Screen.Profile.route)
+                        )
+                        
+                        moreItems.forEach { (icon, title, route) ->
+                            ListItem(
+                                headlineContent = { Text(title) },
+                                leadingContent = { Icon(icon, contentDescription = null, tint = GoldSpark) },
+                                modifier = Modifier.clickable {
+                                    showMoreSheet = false
+                                    navController.navigate(route)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             NavGraph(
                 navController = navController,
                 modifier = Modifier.padding(innerPadding),
@@ -262,7 +322,7 @@ fun BottomNavigationBar(
             Screen.ChapterSelection.route to Icons.AutoMirrored.Filled.MenuBook to "Read",
             Screen.QuizSection.route to Icons.Filled.School to "Quiz",
             Screen.VoiceStudio.route to Icons.Filled.Mic to "Voice",
-            Screen.Profile.route to Icons.Filled.Person to "Profile"
+            "more" to Icons.Filled.AddCircle to "More"
         )
         
         navItems.forEach { (routeAndIcon, label) ->
@@ -273,7 +333,7 @@ fun BottomNavigationBar(
                 Screen.ChapterSelection.route -> currentRoute == Screen.ChapterSelection.route || currentRoute?.startsWith("normal_mode") == true
                 Screen.QuizSection.route -> currentRoute == Screen.QuizSection.route || currentRoute == Screen.QuizConfig.route || currentRoute == Screen.QuizMode.route
                 Screen.VoiceStudio.route -> currentRoute == Screen.VoiceStudio.route
-                Screen.Profile.route -> currentRoute == Screen.Profile.route
+                "more" -> false
                 else -> false
             }
 
@@ -500,27 +560,51 @@ fun DrawerContent(
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
-            TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Home") },
-                title = "Home",
-                isDarkTheme = isDarkTheme,
-                onClick = onNavigateToHome
-            )
-
+            DrawerSectionHeader("LEARN")
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read Verses") },
                 title = "Read Verses",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToRead
             )
-
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.School, contentDescription = "Quiz") },
                 title = "Quiz",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToQuiz
             )
+            TwitterMenuItem(
+                icon = { Icon(Icons.Filled.SportsMma, "Battle") },
+                title = "Quiz Battle",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToQuizBattle
+            )
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.Style, contentDescription = "Flashcards") },
+                title = "Flashcards",
+                isDarkTheme = isDarkTheme,
+                onClick = { /* TODO: Navigate to Flashcards */ }
+            )
 
+            DrawerSectionHeader("REFLECT")
+            TwitterMenuItem(
+                icon = { Icon(Icons.Filled.SelfImprovement, "Meditation") },
+                title = "Meditation",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToMeditation
+            )
+            TwitterMenuItem(
+                icon = { Icon(Icons.Filled.EditNote, "Notes") },
+                title = "My Notes",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToNotes
+            )
+            TwitterMenuItem(
+                icon = { Icon(Icons.Filled.CalendarMonth, "Plans") },
+                title = "Study Plans",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToStudyPlan
+            )
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Favorite, contentDescription = "Favorites") },
                 title = "Favorites",
@@ -528,20 +612,45 @@ fun DrawerContent(
                 onClick = onNavigateToFavorites
             )
 
+            DrawerSectionHeader("PROGRESS")
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Leaderboard, contentDescription = "Activity History") },
                 title = "Activity History",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToQuizStats
             )
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = "Yoga Levels") },
+                title = "Yoga Levels",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToYogaLevels
+            )
+            TwitterMenuItem(
+                icon = { Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { Text("🪙", fontSize = 22.sp) } },
+                title = "Coin History",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToCoinHistory
+            )
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.Badge, contentDescription = "Badges") },
+                title = "Badges",
+                isDarkTheme = isDarkTheme,
+                onClick = { /* TODO: Navigate to Badges */ }
+            )
 
+            DrawerSectionHeader("APP")
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = "Settings") },
+                title = "Settings",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToSettings
+            )
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.CloudDownload, contentDescription = "Offline Mode") },
                 title = "Offline Mode",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToOfflineDownload
             )
-
             TwitterMenuItem(
                 icon = { Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile") },
                 title = "Profile",
@@ -549,48 +658,51 @@ fun DrawerContent(
                 onClick = onNavigateToProfile
             )
 
-            TwitterMenuItem(
-                icon = { Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { Text("🪙", fontSize = 22.sp) } },
-                title = "Coin History",
-                isDarkTheme = isDarkTheme,
-                onClick = onNavigateToCoinHistory
-            )
-
-            TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = "Yoga Levels") },
-                title = "Yoga Levels",
-                isDarkTheme = isDarkTheme,
-                onClick = onNavigateToYogaLevels
-            )
-
-            TwitterMenuItem(icon = { Icon(Icons.Filled.EditNote, "Notes") }, title = "My Notes", isDarkTheme = isDarkTheme, onClick = onNavigateToNotes)
-            TwitterMenuItem(icon = { Text("🧘") }, title = "Meditation", isDarkTheme = isDarkTheme, onClick = onNavigateToMeditation)
-            TwitterMenuItem(icon = { Icon(Icons.Filled.CalendarMonth, "Plans") }, title = "Study Plans", isDarkTheme = isDarkTheme, onClick = onNavigateToStudyPlan)
-            TwitterMenuItem(icon = { Icon(Icons.Filled.SportsMma, "Battle") }, title = "Quiz Battle", isDarkTheme = isDarkTheme, onClick = onNavigateToQuizBattle)
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f))
 
-            // Settings section
-            TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = "Settings") },
-                title = "Settings",
-                isDarkTheme = isDarkTheme,
-                trailing = {
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = onThemeToggle,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = GoldSpark,
-                            checkedTrackColor = Saffron.copy(alpha = 0.5f),
-                            uncheckedThumbColor = Color.Black.copy(alpha = 0.4f),
-                            uncheckedTrackColor = Color.Black.copy(alpha = 0.1f)
-                        )
+            // Appearance Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isDarkTheme) Icons.Filled.DarkMode else Icons.Filled.LightMode,
+                    contentDescription = null,
+                    tint = GoldSpark,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(20.dp))
+                Text(
+                    text = "Dark Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = isDarkTheme,
+                    onCheckedChange = onThemeToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = GoldSpark,
+                        checkedTrackColor = Saffron.copy(alpha = 0.5f)
                     )
-                },
-                onClick = onNavigateToSettings
-            )
+                )
+            }
         }
     }
+}
+
+@Composable
+fun DrawerSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = GoldSpark.copy(alpha = 0.7f),
+        modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)
+    )
 }
 
 @Composable

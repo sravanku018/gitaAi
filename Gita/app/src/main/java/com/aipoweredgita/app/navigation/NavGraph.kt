@@ -16,10 +16,7 @@ import com.aipoweredgita.app.ui.OfflineDownloadScreen
 import com.aipoweredgita.app.ui.ProfileScreen
 
 import com.aipoweredgita.app.ui.ActivityHistoryScreen
-import com.aipoweredgita.app.ui.WidgetSettingsScreen
-import com.aipoweredgita.app.ui.BadgesScreen
 import com.aipoweredgita.app.ui.RandomSlokaScreen
-import com.aipoweredgita.app.ui.AwakeningPage
 import com.aipoweredgita.app.ui.SettingsScreen
 import com.aipoweredgita.app.ui.LoginScreen
 import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
@@ -31,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 sealed class Screen(val route: String) {
+    object Onboarding : Screen("onboarding")
     object Home : Screen("home")
     object NormalMode : Screen("normal_mode?chapter={chapter}&verse={verse}")
     object ChapterSelection : Screen("chapter_selection")
@@ -41,19 +39,14 @@ sealed class Screen(val route: String) {
     object Favorites : Screen("favorites")
     object OfflineDownload : Screen("offline_download")
     object Profile : Screen("profile")
-    object QuizStats : Screen("quiz_stats")
     object ActivityHistory : Screen("activity_history")
-    object WidgetSettings : Screen("widget_settings")
     object Settings : Screen("settings")
-    object Badges : Screen("badges")
     object CoinHistory : Screen("coin_history")
-    object Awakening : Screen("awakening")
-    object DailyActivity : Screen("daily_activity")
     object Recommendations : Screen("recommendations")
     object Login : Screen("login")
+    object GitaSearch : Screen("gita_search")
     object Notes : Screen("notes")
     object Meditation : Screen("meditation")
-    object StudyPlan : Screen("study_plan")
     object QuizBattle : Screen("quiz_battle")
 
     object Flashcards : Screen("flashcards?topic={topic}")
@@ -68,9 +61,13 @@ fun NavGraph(
     onThemeToggle: (Boolean) -> Unit = {},
     onAuthChanged: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val authPrefs = remember { com.aipoweredgita.app.utils.AuthPreferences.getInstance(context) }
+    val startDest = if (authPrefs.onboardingCompleted) Screen.Home.route else Screen.Onboarding.route
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = startDest,
         modifier = modifier,
         enterTransition = {
             fadeIn(animationSpec = tween(300)) + slideIntoContainer(
@@ -93,6 +90,17 @@ fun NavGraph(
             )
         }
     ) {
+        composable(Screen.Onboarding.route) {
+            com.aipoweredgita.app.ui.OnboardingScreen(
+                onFinished = {
+                    authPrefs.onboardingCompleted = true
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Home.route) {
             DashboardScreen(
                 onNavigateToNormalMode = { navController.navigate(Screen.ChapterSelection.route) },
@@ -100,7 +108,7 @@ fun NavGraph(
                 onNavigateToVoiceStudio = { navController.navigate(Screen.VoiceStudio.route) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
                 onNavigateToRandomSloka = { navController.navigate("random_sloka") },
-                onNavigateToAwakening = { navController.navigate(Screen.Awakening.route) },
+                onNavigateToAwakening = { navController.navigate(Screen.Profile.route) },
                 onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) }
             )
         }
@@ -208,12 +216,10 @@ fun NavGraph(
             val profileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel = hiltViewModel()
             ProfileScreen(
                 onNavigateToQuizStats = {
-                    navController.navigate(Screen.QuizStats.route)
+                    navController.navigate(Screen.ActivityHistory.route)
                 },
                 isDarkTheme = isDarkTheme,
                 onThemeToggle = onThemeToggle,
-                onNavigateToBadges = { navController.navigate(Screen.Badges.route) },
-                onNavigateToYogaLevels = { navController.navigate(Screen.Awakening.route) },
                 onNavigateToLogin = { navController.navigate(Screen.Login.route) },
                 viewModel = profileViewModel
             )
@@ -247,34 +253,15 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.Badges.route) {
-            BadgesScreen()
-        }
-
-        composable(Screen.CoinHistory.route) {
-            com.aipoweredgita.app.ui.CoinHistoryScreen(
-                onBack = { navController.popBackStack() }
+        composable(Screen.GitaSearch.route) {
+            com.aipoweredgita.app.ui.GitaSearchScreen(
+                onBack = { navController.popBackStack() },
+                onVerseClick = { chapter, verse -> navController.navigate("normal_mode?chapter=$chapter&verse=$verse") }
             )
-        }
-
-        composable(Screen.Awakening.route) {
-            AwakeningPage()
-        }
-
-        composable(Screen.DailyActivity.route) {
-            ActivityHistoryScreen(initialTab = 2)
-        }
-
-        composable(Screen.QuizStats.route) {
-            ActivityHistoryScreen(initialTab = 1)
         }
 
         composable(Screen.ActivityHistory.route) {
             ActivityHistoryScreen()
-        }
-
-        composable(Screen.WidgetSettings.route) {
-            WidgetSettingsScreen()
         }
 
         composable(Screen.Recommendations.route) {
@@ -333,13 +320,6 @@ fun NavGraph(
                     }
                     navController.popBackStack()
                 }
-            )
-        }
-
-        composable(Screen.StudyPlan.route) {
-            com.aipoweredgita.app.ui.StudyPlanScreen(
-                onBack = { navController.popBackStack() },
-                onStartReading = { chapter, verse -> navController.navigate("normal_mode?chapter=$chapter&verse=$verse") }
             )
         }
 
