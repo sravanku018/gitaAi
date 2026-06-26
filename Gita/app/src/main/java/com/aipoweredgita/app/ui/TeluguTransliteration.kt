@@ -10,16 +10,20 @@ import androidx.compose.ui.unit.dp
 
 object TeluguTransliterator {
 
-    private val vowelMap = mapOf(
-        "a" to "అ", "aa" to "ఆ", "i" to "ఇ", "ee" to "ఈ",
-        "u" to "ఉ", "oo" to "ఊ", "e" to "ఏ", "ai" to "ఐ",
-        "o" to "ఓ", "au" to "ఔ", "am" to "అం", "ah" to "అః"
-    )
+    private val vowelMap = buildMap {
+        val base = mapOf(
+            "a" to "అ", "aa" to "ఆ", "i" to "ఇ", "ee" to "ఈ",
+            "u" to "ఉ", "oo" to "ఊ", "e" to "ఏ", "ai" to "ఐ",
+            "o" to "ఓ", "au" to "ఔ", "am" to "అం", "ah" to "అః"
+        )
+        putAll(base)
+        base.forEach { (k, v) -> put(k.uppercase(), v) }
+    }
 
     private val consonantMap = mapOf(
         "ka" to "క", "kha" to "ఖ", "ga" to "గ", "gha" to "ఘ", "nga" to "ఙ",
         "cha" to "చ", "chha" to "ఛ", "ja" to "జ", "jha" to "ఝ", "nja" to "ఞ",
-        "ta" to "ట", "tha" to "ఠ", "da" to "డ", "dha" to "ఢ", "na" to "ణ",
+        "Ta" to "ట", "Tha" to "ఠ", "Da" to "డ", "Dha" to "ఢ", "Na" to "ణ",
         "tha" to "త", "thha" to "థ", "da" to "ద", "dhha" to "ధ", "na" to "న",
         "pa" to "ప", "pha" to "ఫ", "ba" to "బ", "bha" to "భ", "ma" to "మ",
         "ya" to "య", "ra" to "ర", "la" to "ల", "va" to "వ",
@@ -44,15 +48,13 @@ object TeluguTransliterator {
 
         val result = StringBuilder()
         var i = 0
-        val lower = input.lowercase()
 
-        while (i < lower.length) {
+        while (i < input.length) {
             var matched = false
 
-            // Try longest match first
             for (len in 6 downTo 1) {
-                if (i + len <= lower.length) {
-                    val chunk = lower.substring(i, i + len)
+                if (i + len <= input.length) {
+                    val chunk = input.substring(i, i + len)
                     if (vowelMap.containsKey(chunk)) {
                         result.append(vowelMap[chunk])
                         i += len
@@ -65,11 +67,26 @@ object TeluguTransliterator {
                         matched = true
                         break
                     }
+                    val lowerChunk = chunk.lowercase()
+                    if (lowerChunk != chunk) {
+                        if (vowelMap.containsKey(lowerChunk)) {
+                            result.append(vowelMap[lowerChunk])
+                            i += len
+                            matched = true
+                            break
+                        }
+                        if (consonantMap.containsKey(lowerChunk)) {
+                            result.append(consonantMap[lowerChunk])
+                            i += len
+                            matched = true
+                            break
+                        }
+                    }
                 }
             }
 
             if (!matched) {
-                val ch = lower[i]
+                val ch = input[i]
                 when {
                     ch == ' ' -> result.append(' ')
                     ch.isDigit() -> result.append(digitMap[ch.toString()] ?: ch)

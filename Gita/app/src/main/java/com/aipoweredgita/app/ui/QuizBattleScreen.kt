@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.data.QuizQuestion
-import com.aipoweredgita.app.viewmodel.QuizViewModel
+import com.aipoweredgita.app.viewmodel.QuizBattleViewModel
 import kotlinx.coroutines.delay
 
 data class BattleState(
@@ -58,7 +58,7 @@ fun QuizBattleScreen(
     val context = LocalContext.current
     var battleState by remember { mutableStateOf(BattleState()) }
     var isTimerRunning by remember { mutableStateOf(false) }
-    val quizViewModel: QuizViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val quizViewModel: QuizBattleViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     // Timer
     LaunchedEffect(isTimerRunning, battleState.timeLeft) {

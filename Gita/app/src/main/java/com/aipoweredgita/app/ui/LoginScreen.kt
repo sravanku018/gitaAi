@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
 import com.aipoweredgita.app.utils.AuthPreferences
+import com.aipoweredgita.app.viewmodel.LoginViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 // Sacred color palette
 private val DeepBrown = Color(0xFF1A0F00)
@@ -71,6 +73,7 @@ fun LoginScreen(
     val authPrefs = remember { AuthPreferences.getInstance(context) }
     val authManager = remember { com.aipoweredgita.app.repository.AuthManager.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val loginViewModel: LoginViewModel = hiltViewModel()
     
     // Load saved credentials
     val (savedPhone, savedEmail, savedPassword) = remember { authPrefs.getSavedCredentials() }
@@ -121,6 +124,7 @@ fun LoginScreen(
                             authPrefs.loginMethod = "email"
                             authPrefs.rememberMe = true
                         }
+                        loginViewModel.handleLoginSuccess(authResult.userId)
                         onLoginSuccess(authResult.userId)
                     },
                     onFailure = { error ->
@@ -148,6 +152,7 @@ fun LoginScreen(
                             authPrefs.loginMethod = "email"
                             authPrefs.rememberMe = true
                         }
+                        loginViewModel.handleLoginSuccess(authResult.userId)
                         onLoginSuccess(authResult.userId)
                     },
                     onFailure = { error ->
@@ -495,29 +500,9 @@ fun LoginScreen(
                         onClick = {
                             isLoading = true
                             errorMessage = null
-                            scope.launch {
-                                // Guest login is instant and performed locally without server round-trip latency
-                                val guestId = "guest_${java.util.UUID.randomUUID()}"
-                                authPrefs.saveGuestState(guestId)
-
-                                // Update Room DB with guest user info so user stats and viewmodels work correctly
-                                try {
-                                    val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-                                    db.userStatsDao().updateUserId(guestId)
-                                    db.userStatsDao().updateProfile(name = "Guest User", dob = "")
-                                    
-                                    // Award 50 coin welcome bonus to new guests (once only)
-                                    if (!authPrefs.guestWelcomeAwarded) {
-                                        db.userStatsDao().updateKrishnaCoins(50)
-                                        authPrefs.guestWelcomeAwarded = true
-                                        com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, 50, "Welcome bonus (guest)")
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.e("LoginScreen", "Failed to update Room database for guest", e)
-                                }
-                                isLoading = false
-                                onGuestLogin()
-                            }
+                            loginViewModel.handleGuestLogin()
+                            isLoading = false
+                            onGuestLogin()
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),

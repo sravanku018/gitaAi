@@ -13,46 +13,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.aipoweredgita.app.database.GitaDatabase
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.database.VerseNote
-import com.aipoweredgita.app.network.CoinApi
-import com.aipoweredgita.app.network.NoteDeleteRequest
-import com.aipoweredgita.app.network.NoteSyncItem
-import com.aipoweredgita.app.network.NotesSyncRequest
-import com.aipoweredgita.app.utils.AuthPreferences
-import kotlinx.coroutines.launch
+import com.aipoweredgita.app.viewmodel.NotesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
     onBack: () -> Unit = {},
-    onVerseClick: (chapter: Int, verse: Int) -> Unit = { _, _ -> }
+    onVerseClick: (chapter: Int, verse: Int) -> Unit = { _, _ -> },
+    viewModel: NotesViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val db = remember { GitaDatabase.getDatabase(context) }
-    val noteDao = remember { db.verseNoteDao() }
-    val notes by noteDao.getAllNotes().collectAsState(initial = emptyList())
-    val scope = rememberCoroutineScope()
+    val notes by viewModel.notes.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
-    val authPrefs = remember { AuthPreferences.getInstance(context) }
-
-    LaunchedEffect(Unit) {
-        if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
-            try {
-                val serverNotes = CoinApi.retrofitService.getNotes(authPrefs.userId!!)
-                for (sn in serverNotes) {
-                    val existing = noteDao.getNote(sn.chapter_no, sn.verse_no)
-                    if (existing == null) {
-                        noteDao.insertNote(VerseNote(chapterNo = sn.chapter_no, verseNo = sn.verse_no, note = sn.note))
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -92,14 +68,7 @@ fun NotesScreen(
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(notes) { note ->
                     NoteCard(note, onVerseClick, onDelete = {
-                        scope.launch {
-                            noteDao.deleteNote(note.id)
-                            if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
-                                try {
-                                    CoinApi.retrofitService.deleteNote(NoteDeleteRequest(authPrefs.userId!!, note.chapterNo, note.verseNo))
-                                } catch (_: Exception) {}
-                            }
-                        }
+                        viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
                     })
                 }
             }
@@ -110,22 +79,7 @@ fun NotesScreen(
         AddNoteDialog(
             onDismiss = { showAddDialog = false },
             onSave = { chapter, verse, text ->
-                scope.launch {
-                    noteDao.insertNote(
-                        VerseNote(
-                            chapterNo = chapter,
-                            verseNo = verse,
-                            note = text
-                        )
-                    )
-                    if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
-                        try {
-                            CoinApi.retrofitService.syncNotes(
-                                NotesSyncRequest(authPrefs.userId!!, listOf(NoteSyncItem(chapter, verse, text)))
-                            )
-                        } catch (_: Exception) {}
-                    }
-                }
+                viewModel.addNote(chapter, verse, text)
                 showAddDialog = false
             }
         )

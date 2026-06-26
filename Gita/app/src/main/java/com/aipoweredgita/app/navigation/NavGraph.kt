@@ -1,11 +1,10 @@
 package com.aipoweredgita.app.navigation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -38,7 +37,6 @@ sealed class Screen(val route: String) {
     object QuizConfig : Screen("quiz_config")
     object QuizMode : Screen("quiz_mode")
     object QuizSection : Screen("quiz_section")
-    object KrishnaTalks : Screen("krishna_talks")
     object VoiceStudio : Screen("voice_studio")
     object Favorites : Screen("favorites")
     object OfflineDownload : Screen("offline_download")
@@ -177,22 +175,6 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.KrishnaTalks.route) {
-            com.aipoweredgita.app.ui.VoiceStudioScreen(
-                onExit = { navController.popBackStack() },
-                onNavigateToQuiz = {
-                    navController.navigate(Screen.QuizSection.route) {
-                        popUpTo(Screen.Home.route)
-                    }
-                },
-                onNavigateToRead = {
-                    navController.navigate(Screen.ChapterSelection.route) {
-                        popUpTo(Screen.Home.route)
-                    }
-                }
-            )
-        }
-
         composable(Screen.VoiceStudio.route) {
             com.aipoweredgita.app.ui.VoiceStudioScreen(
                 onExit = { navController.popBackStack() },
@@ -252,21 +234,8 @@ fun NavGraph(
         }
 
         composable(Screen.Login.route) {
-            val context = LocalContext.current
-            val coroutineScope = rememberCoroutineScope()
             LoginScreen(
                 onLoginSuccess = { userId ->
-                    coroutineScope.launch {
-                        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-                        val dao = db.userStatsDao()
-                        dao.insertIfEmpty(com.aipoweredgita.app.database.UserStats(userId = userId))
-                        val repo = com.aipoweredgita.app.repository.StatsRepository(
-                            userStatsDao = dao,
-                            dailyActivityDao = db.dailyActivityDao(),
-                            appContext = context
-                        )
-                        repo.refreshUserState(userId)
-                    }
                     onAuthChanged()
                     navController.popBackStack()
                 },
@@ -353,7 +322,17 @@ fun NavGraph(
         composable(Screen.Meditation.route) {
             com.aipoweredgita.app.ui.MeditationTimerScreen(
                 onBack = { navController.popBackStack() },
-                onComplete = { navController.popBackStack() }
+                onComplete = { minutes ->
+                    kotlinx.coroutines.MainScope().launch {
+                        val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                            navController.context.applicationContext,
+                            com.aipoweredgita.app.services.SyncWorkerEntryPoint::class.java
+                        )
+                        val coins = minutes * 2
+                        entryPoint.statsRepository().claimDailyReward(coins, "Meditation reward")
+                    }
+                    navController.popBackStack()
+                }
             )
         }
 
@@ -365,22 +344,16 @@ fun NavGraph(
         }
 
         composable(Screen.QuizBattle.route) {
-            val context = LocalContext.current
-            val scope = rememberCoroutineScope()
             com.aipoweredgita.app.ui.QuizBattleScreen(
                 onBack = { navController.popBackStack() },
                 onGameOver = { score, maxCombo, questionsAnswered, battleCoins ->
                     if (battleCoins > 0) {
-                        scope.launch {
-                            try {
-                                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-                                val repo = com.aipoweredgita.app.repository.StatsRepository(
-                                    userStatsDao = db.userStatsDao(),
-                                    dailyActivityDao = db.dailyActivityDao(),
-                                    appContext = context
-                                )
-                                repo.trackBattleCompletion(battleCoins, score, questionsAnswered)
-                            } catch (_: Exception) {}
+                        kotlinx.coroutines.MainScope().launch {
+                            val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                navController.context.applicationContext,
+                                com.aipoweredgita.app.services.SyncWorkerEntryPoint::class.java
+                            )
+                            entryPoint.statsRepository().trackBattleCompletion(battleCoins, score, questionsAnswered)
                         }
                     }
                     navController.popBackStack()

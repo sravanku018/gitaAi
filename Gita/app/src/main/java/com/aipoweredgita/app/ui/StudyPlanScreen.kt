@@ -13,27 +13,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.aipoweredgita.app.database.GitaDatabase
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aipoweredgita.app.database.StudyPlan
+import com.aipoweredgita.app.database.StudyPlanDao
 import com.aipoweredgita.app.database.StudyPlanProgress
 import com.aipoweredgita.app.database.StudyPlanTemplates
+import com.aipoweredgita.app.viewmodel.StudyPlanViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyPlanScreen(
     onBack: () -> Unit = {},
-    onStartReading: (chapter: Int, verse: Int) -> Unit = { _, _ -> }
+    onStartReading: (chapter: Int, verse: Int) -> Unit = { _, _ -> },
+    viewModel: StudyPlanViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val db = remember { GitaDatabase.getDatabase(context) }
-    val planDao = remember { db.studyPlanDao() }
-    val activePlan by planDao.getActivePlan().collectAsState(initial = null)
-    val allPlans by planDao.getAllPlans().collectAsState(initial = emptyList())
-    val scope = rememberCoroutineScope()
+    val activePlan by viewModel.activePlan.collectAsState(initial = null)
+    val allPlans by viewModel.allPlans.collectAsState(initial = emptyList())
     var showCreateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -58,7 +56,7 @@ fun StudyPlanScreen(
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (activePlan != null) {
                 item {
-                    ActivePlanCard(activePlan!!, planDao, onStartReading)
+                    ActivePlanCard(activePlan!!, viewModel, onStartReading)
                 }
             }
 
@@ -88,9 +86,9 @@ fun StudyPlanScreen(
                     )
                 }
                 val templates = listOf(
-                    "14-Day Karma Yoga" to "Deep dive into action and duty" to { createPlan(scope, planDao, "14-Day Karma Yoga", "Deep dive into Karma Yoga teachings", 14, "karma_yoga", "2,3,4,18") },
-                    "7-Day Quiz Challenge" to "Test your Gita knowledge" to { createPlan(scope, planDao, "7-Day Quiz Challenge", "Daily quiz challenges", 7, "quiz_challenge", "") },
-                    "18-Day Complete Gita" to "Journey through all chapters" to { createPlan(scope, planDao, "18-Day Complete Gita", "Read key verses from each chapter", 18, "full_gita", "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18") }
+                    "14-Day Karma Yoga" to "Deep dive into action and duty" to { viewModel.createPlan("14-Day Karma Yoga", "Deep dive into Karma Yoga teachings", 14, "karma_yoga", "2,3,4,18") },
+                    "7-Day Quiz Challenge" to "Test your Gita knowledge" to { viewModel.createPlan("7-Day Quiz Challenge", "Daily quiz challenges", 7, "quiz_challenge", "") },
+                    "18-Day Complete Gita" to "Journey through all chapters" to { viewModel.createPlan("18-Day Complete Gita", "Read key verses from each chapter", 18, "full_gita", "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18") }
                 )
                 items(templates) { (titleDesc, createFn) ->
                     val (title, desc) = titleDesc
@@ -102,15 +100,15 @@ fun StudyPlanScreen(
 
     if (showCreateDialog) {
         CreatePlanDialog(onDismiss = { showCreateDialog = false }) { title, desc, days, chapters ->
-            createPlan(scope, planDao, title, desc, days, "custom", chapters)
+            viewModel.createPlan(title, desc, days, "custom", chapters)
             showCreateDialog = false
         }
     }
 }
 
 @Composable
-private fun ActivePlanCard(plan: StudyPlan, planDao: com.aipoweredgita.app.database.StudyPlanDao, onStartReading: (Int, Int) -> Unit) {
-    val progress by planDao.getPlanProgress(plan.id).collectAsState(initial = emptyList())
+private fun ActivePlanCard(plan: StudyPlan, viewModel: StudyPlanViewModel, onStartReading: (Int, Int) -> Unit) {
+    val progress by viewModel.getPlanProgress(plan.id).collectAsState(initial = emptyList())
     val completedDays = progress.count { it.isCompleted }
     val totalDays = plan.durationDays
     val currentDayProgress = progress.find { it.day == plan.currentDay }
@@ -184,24 +182,4 @@ private fun CreatePlanDialog(onDismiss: () -> Unit, onCreate: (String, String, I
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
-}
-
-private fun createPlan(
-    scope: kotlinx.coroutines.CoroutineScope,
-    planDao: com.aipoweredgita.app.database.StudyPlanDao,
-    title: String, desc: String, days: Int, type: String, chapters: String
-) {
-    scope.launch {
-        val plan = StudyPlan(title = title, description = desc, durationDays = days, planType = type, chapters = chapters)
-        val planId = planDao.insertPlan(plan)
-        val templates = when (type) {
-            "karma_yoga" -> StudyPlanTemplates.karmaYoga14Day()
-            "quiz_challenge" -> StudyPlanTemplates.quizChallenge7Day()
-            "full_gita" -> StudyPlanTemplates.fullGita18Day()
-            else -> StudyPlanTemplates.fullGita18Day()
-        }
-        templates.take(days).forEach { progress ->
-            planDao.insertProgress(progress.copy(planId = planId.toInt()))
-        }
-    }
 }
