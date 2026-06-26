@@ -42,7 +42,7 @@ sealed class Screen(val route: String) {
     object ActivityHistory : Screen("activity_history")
     object Settings : Screen("settings")
     object CoinHistory : Screen("coin_history")
-    object Recommendations : Screen("recommendations")
+    object Recommendations : Screen("recommendations?tab={tab}")
     object Login : Screen("login")
     object GitaSearch : Screen("gita_search")
     object Notes : Screen("notes")
@@ -106,10 +106,11 @@ fun NavGraph(
                 onNavigateToNormalMode = { navController.navigate(Screen.ChapterSelection.route) },
                 onNavigateToQuizMode = { navController.navigate(Screen.QuizSection.route) },
                 onNavigateToVoiceStudio = { navController.navigate(Screen.VoiceStudio.route) },
-                onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
+                onNavigateToRecommendations = { tab -> navController.navigate("recommendations?tab=$tab") },
                 onNavigateToRandomSloka = { navController.navigate("random_sloka") },
                 onNavigateToAwakening = { navController.navigate(Screen.Profile.route) },
-                onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) }
+                onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) },
+                onNavigateToActivityHistory = { navController.navigate(Screen.ActivityHistory.route) }
             )
         }
 
@@ -264,8 +265,15 @@ fun NavGraph(
             ActivityHistoryScreen()
         }
 
-        composable(Screen.Recommendations.route) {
+        composable(
+            route = "recommendations?tab={tab}",
+            arguments = listOf(
+                androidx.navigation.navArgument("tab") { type = androidx.navigation.NavType.IntType; defaultValue = 0 }
+            )
+        ) { backStackEntry ->
+            val tab = backStackEntry.arguments?.getInt("tab") ?: 0
             com.aipoweredgita.app.ui.RecommendationsScreen(
+                initialTab = tab,
                 onOpenChapter = { chapter -> navController.navigate("normal_mode?chapter=${chapter}&verse=1") },
                 onStartTopicQuiz = { navController.navigate(Screen.QuizConfig.route) },
                 onOpenFlashcards = { topic -> navController.navigate("flashcards?topic=${topic ?: ""}") },

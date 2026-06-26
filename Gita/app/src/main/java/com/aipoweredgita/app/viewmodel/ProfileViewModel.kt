@@ -260,6 +260,26 @@ class ProfileViewModel @Inject constructor(
     }
 
     /**
+     * Claim a daily reward (check-in, meditation, etc.)
+     */
+    fun claimDailyReward(coins: Int, description: String) {
+        viewModelScope.launch {
+            statsRepository.claimDailyReward(coins, description)
+            refreshCoinBalance()
+        }
+    }
+
+    /**
+     * Track a sloka being shared
+     */
+    fun trackSlokaShared() {
+        viewModelScope.launch {
+            statsRepository.trackSlokaShared()
+            refreshCoinBalance()
+        }
+    }
+
+    /**
      * Set coin balance directly from local value
      */
     fun setCoinBalance(balance: Int) {

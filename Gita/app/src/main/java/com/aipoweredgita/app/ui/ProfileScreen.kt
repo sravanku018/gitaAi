@@ -105,9 +105,7 @@ fun ProfileScreen(
         containerColor = appBg
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            if (isDark) {
-                AmbientOrbs(modifier = Modifier.fillMaxSize())
-            }
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
             
             when (selectedTab) {
                 0 -> StatsTab(

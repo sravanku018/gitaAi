@@ -26,6 +26,7 @@ import com.aipoweredgita.app.domain.model.UiConfigUiState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecommendationsScreen(
+    initialTab: Int = 0,
     onOpenChapter: (Int) -> Unit,
     onStartTopicQuiz: () -> Unit,
     onOpenFlashcards: (String?) -> Unit,
@@ -37,7 +38,7 @@ fun RecommendationsScreen(
     val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("For You", "Study Plans")
 
     val uiCfg = LocalUiConfig.current

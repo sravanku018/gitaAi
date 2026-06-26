@@ -74,6 +74,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.aipoweredgita.app.BuildConfig
 
 @Composable
 fun AnimatedItem(
@@ -103,38 +104,29 @@ fun DashboardScreen(
     onNavigateToNormalMode: () -> Unit,
     onNavigateToQuizMode: () -> Unit,
     onNavigateToVoiceStudio: () -> Unit = {},
-    onNavigateToRecommendations: () -> Unit,
+    onNavigateToRecommendations: (Int) -> Unit,
     onNavigateToRandomSloka: () -> Unit = {},
     onNavigateToAwakening: () -> Unit = {},
     onNavigateToCoinHistory: () -> Unit = {},
+    onNavigateToActivityHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val stats by viewModel.stats.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
-    val statsRepository = remember {
-        val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
-        com.aipoweredgita.app.repository.StatsRepository(
-            userStatsDao = db.userStatsDao(),
-            dailyActivityDao = db.dailyActivityDao(),
-            appContext = context.applicationContext
-        )
-    }
+    
     val language = remember { prefs.getString("quiz_language", "eng") ?: "eng" }
 
-    val daily by viewModel.dailyActivity.collectAsState()
     val nextAction by viewModel.nextAction.collectAsState()
     val coinBalance by viewModel.coinBalance.collectAsState()
 
     // Welcome Dialog State
     var showWelcomeDialog by remember { mutableStateOf(false) }
 
-
     LaunchedEffect(Unit) {
         val lastSeenVersion = prefs.getInt("last_seen_version", 0)
-        val currentVersion = 6 // Version 1.8.0
+        val currentVersion = BuildConfig.VERSION_CODE
         if (lastSeenVersion < currentVersion) {
             showWelcomeDialog = true
         }
@@ -176,9 +168,7 @@ fun DashboardScreen(
             )
         }
     ) {
-        if (isDark) {
-            AmbientOrbs(modifier = Modifier.fillMaxSize())
-        }
+        AmbientOrbs(modifier = Modifier.fillMaxSize())
 
         LazyColumn(
             modifier = Modifier
@@ -380,7 +370,7 @@ fun DashboardScreen(
                                             text = if (nextAction.nextStep != null && nextAction.nextLevel > 0) {
                                                 "${nextAction.nextStep ?: ""} at Level ${nextAction.nextLevel} · ${nextAction.nextReason ?: "Balance your modes"}"
                                             } else {
-                                                "Read at Level 1 · Keep consistent"
+                                                "Embark on your sacred journey through the Gita. Read verses to build your daily wisdom."
                                             },
                                             fontSize = 13.sp,
                                             color = if (isDark) Color(0xFFFFEBC8).copy(alpha = 0.75f) else textSecondary,
@@ -392,7 +382,7 @@ fun DashboardScreen(
                                                 "Read" -> "Start Reading"
                                                 "Quiz" -> "Start Quiz"
                                                 "Studio" -> if (language == "tel") "ప్రశ్న సమాధానం" else "Voice Q&A"
-                                                else -> "Explore"
+                                                else -> "Begin Reading"
                                             }
                                             val actionClick = when (nextAction.nextStep) {
                                                 "Read" -> onNavigateToNormalMode
@@ -413,7 +403,7 @@ fun DashboardScreen(
                                             }
                                             
                                             Button(
-                                                onClick = onNavigateToRecommendations,
+                                                onClick = { onNavigateToRecommendations(1) },
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                                                 shape = RoundedCornerShape(50.dp),
                                                 border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color(0xFFFFC864).copy(alpha = 0.2f) else Saffron.copy(alpha = 0.4f))
@@ -444,17 +434,8 @@ fun DashboardScreen(
                             color = textPrimary,
                             letterSpacing = (-0.3).sp
                         )
-                        var showToday by remember { mutableStateOf(false) }
-                        IconButton(onClick = { showToday = true }) {
-                            Icon(imageVector = androidx.compose.material.icons.Icons.Filled.Today, contentDescription = "Today", tint = Color(0xFFFFB450))
-                        }
-                        if (showToday) {
-                            TodaySummaryDialog(
-                                onDismiss = { showToday = false },
-                                stats = TodayStats(daily),
-                                onReadMore = onNavigateToNormalMode,
-                                onTakeQuiz = onNavigateToQuizMode
-                            )
+                        IconButton(onClick = onNavigateToActivityHistory) {
+                            Icon(imageVector = Icons.Filled.Today, contentDescription = "History", tint = Color(0xFFFFB450))
                         }
                     }
                 }
@@ -480,17 +461,11 @@ fun DashboardScreen(
                         context = context,
                         isDark = isDark,
                         coinBalance = coinBalance,
-                        onEarnCoins = remember(statsRepository, coroutineScope) {
-                            { amount, description ->
-                                coroutineScope.launch {
-                                    statsRepository.claimDailyReward(amount, description)
-                                }
-                            }
+                        onEarnCoins = { amount, description ->
+                            viewModel.claimDailyReward(amount, description)
                         },
-                        onShareClaim = remember(statsRepository) {
-                            { _, _ ->
-                                statsRepository.trackSlokaShared()
-                            }
+                        onShareClaim = { _, _ ->
+                            viewModel.trackSlokaShared()
                         }
                     )
                 }
@@ -700,18 +675,18 @@ fun DashboardScreen(
                                     
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
-                                            onClick = onNavigateToQuizMode,
+                                            onClick = { onNavigateToRecommendations(1) },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                                             shape = MaterialTheme.shapes.large,
                                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9628).copy(alpha = 0.35f)),
                                             contentPadding = PaddingValues(vertical = 11.dp)
                                         ) {
-                                            Text("Start Plan", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.White else textPrimary)
+                                            Text("View Plans", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.White else textPrimary)
                                         }
                                         
                                         Button(
-                                            onClick = onNavigateToRecommendations,
+                                            onClick = { onNavigateToRecommendations(0) },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f)),
                                             shape = MaterialTheme.shapes.large,
@@ -734,7 +709,7 @@ fun DashboardScreen(
         WelcomeDialog(
             onDismiss = {
                 showWelcomeDialog = false
-                prefs.edit().putInt("last_seen_version", 6).apply()
+                prefs.edit().putInt("last_seen_version", BuildConfig.VERSION_CODE).apply()
             }
         )
     }
@@ -748,16 +723,7 @@ data class TodayStats(
     val quizTime: Long,
     val studioTime: Long,
     val versesList: List<com.aipoweredgita.app.database.ReadVerse>
-) {
-    constructor(daily: ProfileViewModel.DailyActivityData) : this(
-        verses = daily.versesToday,
-        quizzes = daily.quizzesToday,
-        normalTime = daily.normalToday,
-        quizTime = daily.quizToday,
-        studioTime = daily.studioToday,
-        versesList = daily.versesListToday
-    )
-}
+)
 
 @Composable
 fun TodaySummaryDialog(
@@ -1002,7 +968,7 @@ fun GlassStatRow(
             card = StatCardData(
                 emoji = "📤",
                 value = stats.coinsDisplay,
-                label = "Share Streak",
+                label = "Krishna Coins",
                 valueColor = Color(0xFF64D8FF)
             )
         )
