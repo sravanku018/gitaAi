@@ -104,20 +104,18 @@ interface UserStatsDao {
         lastActiveDate: String = ""
     )
 
-    // Initialize stats if not exists
+    @Transaction
     suspend fun initializeStatsIfNeeded() {
-        val existing = getUserStatsOnce()
-        if (existing == null) {
-            insertStats(UserStats())
-        }
-        // Ensure userId is set (UUID generated once on first launch)
-        val stats = getUserStatsOnce()
-        if (stats != null && stats.userId.isEmpty()) {
-            val uuid = java.util.UUID.randomUUID().toString()
-            updateUserId(uuid)
+        // INSERT OR IGNORE ensures only one row (id=1) ever exists,
+        // even if two threads call this concurrently.
+        insertIfEmpty(UserStats())
+        val stats = getUserStatsOnce() ?: return
+        // Generate userId once on first launch
+        if (stats.userId.isEmpty()) {
+            updateUserId(java.util.UUID.randomUUID().toString())
         }
         // Fix corrupted negative coin balance (from stale server overwrites)
-        if (stats != null && stats.krishnaCoins < 0) {
+        if (stats.krishnaCoins < 0) {
             updateKrishnaCoins(0)
         }
     }

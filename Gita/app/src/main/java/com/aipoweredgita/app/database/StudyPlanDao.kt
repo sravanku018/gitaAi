@@ -15,7 +15,8 @@ data class StudyPlan(
     val currentDay: Int = 1,
     val isActive: Boolean = true,
     val startDate: Long = System.currentTimeMillis(),
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val serverUpdatedAt: String = ""
 )
 
 @Entity(tableName = "study_plan_progress")
