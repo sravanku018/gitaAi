@@ -36,7 +36,7 @@ fun DailyRewardsStrip(
     isDark: Boolean,
     coinBalance: Int,
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
-    onShareClaim: suspend (amount: Int, description: String) -> Unit = { _, _ -> }
+    onNavigateToShare: () -> Unit = {}
 ) {
     val dailyState = remember(coinBalance) { tracker.getDailyState() }
     val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
@@ -180,7 +180,6 @@ fun DailyRewardsStrip(
         // ─── Share Rewards ──────────────────────────────────────────────
         val shareState = remember(coinBalance) { tracker.getShareState() }
         var claimedShare by remember(coinBalance) { mutableStateOf(shareState.todayClaimed) }
-        val shareScope = rememberCoroutineScope()
         HorizontalDivider(color = bd)
         Text("Daily Share Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -212,19 +211,7 @@ fun DailyRewardsStrip(
                         .background(bgColor)
                         .border(if (isToday) 1.5.dp else 0.5.dp, bdColor, MaterialTheme.shapes.small)
                         .clickable(enabled = isToday) {
-                            val coins = tracker.claimShare()
-                            if (coins > 0) {
-                                claimedShare = true
-                                shareScope.launch {
-                                    if (d == 7) {
-                                        tracker.claimShareDay7BonusIfEligible()
-                                        val total = coins + tracker.getShareWeeklyState().reward
-                                        onShareClaim(total, "Share day 7 + week bonus")
-                                    } else {
-                                        onShareClaim(coins, "Share day $d")
-                                    }
-                                }
-                            }
+                            onNavigateToShare()
                         },
                     contentAlignment = Alignment.Center
                 ) {

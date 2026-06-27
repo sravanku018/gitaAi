@@ -466,9 +466,7 @@ fun DashboardScreen(
                         onEarnCoins = { amount, description ->
                             viewModel.claimDailyReward(amount, description)
                         },
-                        onShareClaim = { _, _ ->
-                            viewModel.trackSlokaShared()
-                        }
+                        onNavigateToShare = onNavigateToRandomSloka
                     )
                 }
             }

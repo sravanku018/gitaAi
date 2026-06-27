@@ -270,6 +270,16 @@ class ProfileViewModel @Inject constructor(
     }
 
     /**
+     * Claim a share reward
+     */
+    fun claimShareReward(coins: Int, description: String) {
+        viewModelScope.launch {
+            statsRepository.claimShareReward(coins, description)
+            refreshCoinBalance()
+        }
+    }
+
+    /**
      * Track a sloka being shared
      */
     fun trackSlokaShared() {

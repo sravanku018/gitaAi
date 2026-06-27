@@ -419,12 +419,21 @@ class StatsRepository(
         }
 
         // Claim locally first to mark as claimed today
-        val fallbackCoins = tracker.claimShare()
+        var fallbackCoins = tracker.claimShare()
         if (fallbackCoins <= 0) return 0
+
+        var isWeeklyBonus = false
+        if (dailyState.day == 7) {
+            val weeklyReward = tracker.getShareWeeklyState().reward
+            tracker.claimShareDay7BonusIfEligible()
+            fallbackCoins += weeklyReward
+            isWeeklyBonus = true
+        }
 
         val coinsAwarded = if (isGuest) {
             userStatsDao.addKrishnaCoins(fallbackCoins)
-            CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share")
+            val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
+            CoinTransactionLogger.log(appContext, fallbackCoins, "$desc (guest)")
             fallbackCoins
         } else {
             ensureUserSynced()
@@ -437,17 +446,20 @@ class StatsRepository(
                     val totalAwarded = response.coins_awarded + response.weekly_bonus
                     if (totalAwarded > 0) {
                         userStatsDao.addKrishnaCoins(totalAwarded)
-                        CoinTransactionLogger.log(appContext, totalAwarded, "Daily sloka share")
+                        val desc = if (response.weekly_bonus > 0) "Share day 7 + week bonus" else "Daily sloka share"
+                        CoinTransactionLogger.log(appContext, totalAwarded, desc)
                         totalAwarded
                     } else {
                         userStatsDao.addKrishnaCoins(fallbackCoins)
-                        CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share")
+                        val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
+                        CoinTransactionLogger.log(appContext, fallbackCoins, desc)
                         fallbackCoins
                     }
                 } catch (e: Exception) {
                     Log.e("StatsRepository", "Failed to track sloka share: ${e.message}")
                     userStatsDao.addKrishnaCoins(fallbackCoins)
-                    CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (offline)")
+                    val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
+                    CoinTransactionLogger.log(appContext, fallbackCoins, "$desc (offline)")
                     
                     try {
                         val hasPending = pendingSyncEventDao.getPendingEvents(uid).any { it.eventType == "SHARE" }
