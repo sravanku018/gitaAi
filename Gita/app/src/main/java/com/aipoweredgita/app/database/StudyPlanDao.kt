@@ -57,6 +57,12 @@ interface StudyPlanDao {
 
     @Query("DELETE FROM study_plans WHERE id = :id")
     suspend fun deletePlan(id: Int)
+
+    @Query("SELECT * FROM study_plan_progress WHERE planId = :planId ORDER BY day")
+    suspend fun getPlanProgressOnce(planId: Int): List<StudyPlanProgress>
+
+    @Query("UPDATE study_plans SET isActive = 0, completedAt = :time WHERE id = :planId")
+    suspend fun completePlan(planId: Int, time: Long = System.currentTimeMillis())
 }
 
 object StudyPlanTemplates {

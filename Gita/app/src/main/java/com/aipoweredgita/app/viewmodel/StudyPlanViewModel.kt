@@ -37,4 +37,21 @@ class StudyPlanViewModel @Inject constructor(
 
     fun getPlanProgress(planId: Int): Flow<List<StudyPlanProgress>> =
         planDao.getPlanProgress(planId)
+
+    fun markDayComplete(planId: Int, day: Int) {
+        viewModelScope.launch {
+            planDao.markDayComplete(planId, day)
+            // Check if all days complete → mark plan done
+            val progress = planDao.getPlanProgressOnce(planId)
+            if (progress.all { it.isCompleted }) {
+                planDao.completePlan(planId)
+            }
+        }
+    }
+
+    fun completePlan(planId: Int) {
+        viewModelScope.launch {
+            planDao.completePlan(planId)
+        }
+    }
 }

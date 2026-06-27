@@ -23,6 +23,8 @@ class NotesViewModel @Inject constructor(
     @ApplicationContext private val context: android.content.Context
 ) : ViewModel() {
 
+    private val authPrefs = AuthPreferences.getInstance(context)
+
     val notes: StateFlow<List<VerseNote>> = noteDao.getAllNotes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -32,9 +34,9 @@ class NotesViewModel @Inject constructor(
 
     private fun syncNotesFromServer() {
         viewModelScope.launch {
-            if (!AuthPreferences.getInstance(context).isGuestUser && !AuthPreferences.getInstance(context).userId.isNullOrEmpty()) {
+            if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
                 try {
-                    val serverNotes = CoinApi.retrofitService.getNotes(AuthPreferences.getInstance(context).userId!!)
+                    val serverNotes = CoinApi.retrofitService.getNotes(authPrefs.userId!!)
                     for (sn in serverNotes) {
                         val existing = noteDao.getNote(sn.chapter_no, sn.verse_no)
                         if (existing == null) {
@@ -49,10 +51,10 @@ class NotesViewModel @Inject constructor(
     fun addNote(chapter: Int, verse: Int, text: String) {
         viewModelScope.launch {
             noteDao.insertNote(VerseNote(chapterNo = chapter, verseNo = verse, note = text))
-            if (!AuthPreferences.getInstance(context).isGuestUser && !AuthPreferences.getInstance(context).userId.isNullOrEmpty()) {
+            if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
                 try {
                     CoinApi.retrofitService.syncNotes(
-                        NotesSyncRequest(AuthPreferences.getInstance(context).userId!!, listOf(NoteSyncItem(chapter, verse, text)))
+                        NotesSyncRequest(authPrefs.userId!!, listOf(NoteSyncItem(chapter, verse, text)))
                     )
                 } catch (_: Exception) {}
             }
@@ -62,9 +64,9 @@ class NotesViewModel @Inject constructor(
     fun deleteNote(noteId: Int, chapterNo: Int, verseNo: Int) {
         viewModelScope.launch {
             noteDao.deleteNote(noteId)
-            if (!AuthPreferences.getInstance(context).isGuestUser && !AuthPreferences.getInstance(context).userId.isNullOrEmpty()) {
+            if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
                 try {
-                    CoinApi.retrofitService.deleteNote(NoteDeleteRequest(AuthPreferences.getInstance(context).userId!!, chapterNo, verseNo))
+                    CoinApi.retrofitService.deleteNote(NoteDeleteRequest(authPrefs.userId!!, chapterNo, verseNo))
                 } catch (_: Exception) {}
             }
         }

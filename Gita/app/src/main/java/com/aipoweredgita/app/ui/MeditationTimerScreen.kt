@@ -25,55 +25,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-enum class MeditationDuration(val minutes: Int, val label: String) {
-    FIVE(5, "5 min"),
-    TEN(10, "10 min"),
-    FIFTEEN(15, "15 min"),
-    TWENTY(20, "20 min")
-}
-
-enum class BreathingPhase(val label: String, val seconds: Int) {
-    INHALE("Inhale", 4),
-    HOLD("Hold", 4),
-    EXHALE("Exhale", 4)
-}
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.viewmodel.MeditationViewModel
+import com.aipoweredgita.app.viewmodel.MeditationDuration
+import com.aipoweredgita.app.viewmodel.BreathingPhase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MeditationTimerScreen(
     onBack: () -> Unit = {},
-    onComplete: (minutes: Int) -> Unit = {}
+    onComplete: (minutes: Int) -> Unit = {},
+    viewModel: MeditationViewModel = hiltViewModel()
 ) {
-    var selectedDuration by remember { mutableStateOf(MeditationDuration.TEN) }
-    var isRunning by remember { mutableStateOf(false) }
-    var isPaused by remember { mutableStateOf(false) }
-    var timeLeftSeconds by remember { mutableIntStateOf(0) }
-    var totalSeconds by remember { mutableIntStateOf(0) }
-    var breathingPhase by remember { mutableStateOf(BreathingPhase.INHALE) }
-    var breathingTimer by remember { mutableIntStateOf(0) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(isRunning, isPaused) {
-        if (isRunning && !isPaused) {
-            while (timeLeftSeconds > 0) {
-                delay(1000)
-                timeLeftSeconds--
-
-                // Breathing cycle
-                breathingTimer++
-                val currentPhaseSeconds = breathingPhase.seconds
-                if (breathingTimer >= currentPhaseSeconds) {
-                    breathingTimer = 0
-                    breathingPhase = when (breathingPhase) {
-                        BreathingPhase.INHALE -> BreathingPhase.HOLD
-                        BreathingPhase.HOLD -> BreathingPhase.EXHALE
-                        BreathingPhase.EXHALE -> BreathingPhase.INHALE
-                    }
-                }
-            }
-            if (timeLeftSeconds <= 0) {
-                isRunning = false
-                onComplete(selectedDuration.minutes)
-            }
+    LaunchedEffect(uiState.isCompleted) {
+        if (uiState.isCompleted) {
+            onComplete(uiState.selectedDuration.minutes)
+            viewModel.onCompletedAcknowledged()
         }
     }
 
@@ -94,15 +63,15 @@ fun MeditationTimerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (!isRunning) {
+            if (!uiState.isRunning) {
                 // Duration selection
                 Text("Choose Duration", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(24.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MeditationDuration.entries.forEach { duration ->
                         FilterChip(
-                            selected = selectedDuration == duration,
-                            onClick = { selectedDuration = duration },
+                            selected = uiState.selectedDuration == duration,
+                            onClick = { viewModel.selectDuration(duration) },
                             label = { Text(duration.label) }
                         )
                     }
@@ -110,12 +79,7 @@ fun MeditationTimerScreen(
                 Spacer(Modifier.height(48.dp))
                 Button(
                     onClick = {
-                        totalSeconds = selectedDuration.minutes * 60
-                        timeLeftSeconds = totalSeconds
-                        breathingPhase = BreathingPhase.INHALE
-                        breathingTimer = 0
-                        isRunning = true
-                        isPaused = false
+                        viewModel.startTimer()
                     },
                     modifier = Modifier.size(120.dp),
                     shape = CircleShape,
@@ -125,9 +89,9 @@ fun MeditationTimerScreen(
                 }
             } else {
                 // Timer running
-                val progress = if (totalSeconds > 0) timeLeftSeconds.toFloat() / totalSeconds else 0f
-                val minutes = timeLeftSeconds / 60
-                val seconds = timeLeftSeconds % 60
+                val progress = if (uiState.totalSeconds > 0) uiState.timeLeftSeconds.toFloat() / uiState.totalSeconds else 0f
+                val minutes = uiState.timeLeftSeconds / 60
+                val seconds = uiState.timeLeftSeconds % 60
 
                 // Circular timer
                 Box(modifier = Modifier.size(280.dp), contentAlignment = Alignment.Center) {
@@ -161,12 +125,12 @@ fun MeditationTimerScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            breathingPhase.label,
+                            uiState.breathingPhase.label,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "${breathingTimer + 1} / ${breathingPhase.seconds}",
+                            "${uiState.breathingTimer + 1} / ${uiState.breathingPhase.seconds}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -178,7 +142,7 @@ fun MeditationTimerScreen(
                 // Controls
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     FilledIconButton(
-                        onClick = { isRunning = false; isPaused = false },
+                        onClick = { viewModel.stopTimer() },
                         modifier = Modifier.size(64.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer
@@ -187,15 +151,15 @@ fun MeditationTimerScreen(
                         Icon(Icons.Default.Stop, "Stop", modifier = Modifier.size(32.dp))
                     }
                     FilledIconButton(
-                        onClick = { isPaused = !isPaused },
+                        onClick = { if (uiState.isPaused) viewModel.startTimer() else viewModel.pauseTimer() },
                         modifier = Modifier.size(80.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     ) {
                         Icon(
-                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            if (isPaused) "Resume" else "Pause",
+                            if (uiState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            if (uiState.isPaused) "Resume" else "Pause",
                             modifier = Modifier.size(40.dp)
                         )
                     }
