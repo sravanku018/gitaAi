@@ -39,7 +39,7 @@ private val okHttpClient = OkHttpClient.Builder()
     .writeTimeout(com.aipoweredgita.app.util.GitaConstants.NETWORK_WRITE_TIMEOUT_SEC, TimeUnit.SECONDS)
     .addInterceptor(RetryInterceptor())
     .apply {
-        if (com.aipoweredgita.app.util.FeatureFlags.ENABLE_VERBOSE_NETWORK_LOGS) {
+        if (com.aipoweredgita.app.BuildConfig.DEBUG) {
             addInterceptor(LoggingInterceptor())
         }
     }

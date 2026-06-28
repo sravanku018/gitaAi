@@ -97,7 +97,6 @@ fun QuizScreen(
             options = question.options,
             correctIndex = question.correctAnswerIndex,
             selectedIndex = quizState.selectedAnswerIndex,
-            questionType = question.type,
             onSelect = { index ->
                 viewModel.selectAnswer(index)
             },
