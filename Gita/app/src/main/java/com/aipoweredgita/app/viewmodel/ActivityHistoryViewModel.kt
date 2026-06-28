@@ -10,6 +10,7 @@ import com.aipoweredgita.app.database.UserStatsDao
 import com.aipoweredgita.app.repository.DailyActivityRepository
 import com.aipoweredgita.app.repository.QuizStatsRepository
 import com.aipoweredgita.app.repository.SpiritualPathRepository
+import com.aipoweredgita.app.repository.StatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +33,11 @@ class ActivityHistoryViewModel @Inject constructor(
     private val quizStatsRepo: QuizStatsRepository,
     private val dailyActivityRepo: DailyActivityRepository,
     private val spiritualPathRepo: SpiritualPathRepository,
-    private val userStatsDao: UserStatsDao
+    private val userStatsDao: UserStatsDao,
+    private val statsRepo: StatsRepository
 ) : ViewModel() {
+
+    val coinBalance: StateFlow<Int> = statsRepo.coinBalance
 
     private val _uiState = MutableStateFlow(ActivityHistoryUiState())
     val uiState: StateFlow<ActivityHistoryUiState> = _uiState.asStateFlow()

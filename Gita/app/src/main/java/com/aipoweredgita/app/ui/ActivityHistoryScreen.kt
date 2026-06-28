@@ -64,6 +64,18 @@ fun ActivityHistoryScreen(
     viewModel: ActivityHistoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val totalCoins by viewModel.coinBalance.collectAsState()
+    
+    var yogaLevels by remember { mutableStateOf<List<com.aipoweredgita.app.network.YogaLevel>>(emptyList()) }
+    var yogaSubStages by remember { mutableStateOf<List<com.aipoweredgita.app.network.YogaSubStage>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val res = com.aipoweredgita.app.network.CoinApi.retrofitService.getYogaStages()
+            yogaLevels = res.levels
+            yogaSubStages = res.sub_stages
+        } catch (_: Exception) {}
+    }
     
     val userStats = state.userStats
     val allActivity = state.allActivity
@@ -122,7 +134,12 @@ fun ActivityHistoryScreen(
 
         // Tab Content
         when (selectedTab) {
-            0 -> OverviewTab(userStats = userStats)
+            0 -> OverviewTab(
+                userStats = userStats,
+                totalCoins = totalCoins,
+                yogaLevels = yogaLevels,
+                yogaSubStages = yogaSubStages
+            )
             1 -> QuizTab(
                 attempts = attempts,
                 averageAccuracy = averageAccuracy,
@@ -149,7 +166,12 @@ fun ActivityHistoryScreen(
 // TAB 1: OVERVIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
-private fun OverviewTab(userStats: UserStats?) {
+private fun OverviewTab(
+    userStats: UserStats?,
+    totalCoins: Int,
+    yogaLevels: List<com.aipoweredgita.app.network.YogaLevel>,
+    yogaSubStages: List<com.aipoweredgita.app.network.YogaSubStage>
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.verticalScroll(rememberScrollState())
@@ -284,9 +306,28 @@ private fun OverviewTab(userStats: UserStats?) {
         }
 
         // ── Yoga Level Card ──
-        val yogaInfo = YogaLevelManager.yogaLevelInfo(userStats)
-        val yogaLevel = YogaLevelManager.levelFor(userStats)
-        val progress = YogaLevelManager.progressInLevel(userStats)
+        val baseYogaInfo = YogaLevelManager.yogaLevelInfo(userStats)
+        val baseProgress = YogaLevelManager.progressInLevel(userStats)
+
+        val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+            ?: yogaLevels.lastOrNull()
+        val activeSubStage = yogaSubStages.find { totalCoins in it.min_coins until it.max_coins }
+            ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
+
+        val displayYogaName = activeLevel?.name ?: baseYogaInfo.yogaName
+        val displayStep = activeSubStage?.sub_level ?: baseYogaInfo.step
+        val displayEmoji = activeLevel?.let { yl ->
+            when(yl.level) { 1 -> "🌿"; 2 -> "🔥"; 3 -> "🧠"; 4 -> "📘"; else -> "🌸" }
+        } ?: baseYogaInfo.emoji
+
+        val progress = activeLevel?.let { yl ->
+            val range = yl.max_coins - yl.min_coins
+            if (range > 0) {
+                ((totalCoins - yl.min_coins).toFloat() / range).coerceIn(0f, 1f)
+            } else 0f
+        } ?: baseProgress
+
+        val yogaLevel = activeLevel?.level ?: baseYogaInfo.level
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -298,23 +339,23 @@ private fun OverviewTab(userStats: UserStats?) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = yogaInfo.emoji, fontSize = 32.sp)
+                    Text(text = displayEmoji, fontSize = 32.sp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = yogaInfo.yogaName,
+                            text = displayYogaName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Level $yogaLevel / 5",
+                            text = "Level $yogaLevel / 5 · Step $displayStep",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Text(
-                    text = yogaInfo.yogaDescription,
+                    text = activeLevel?.description ?: baseYogaInfo.yogaDescription,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
