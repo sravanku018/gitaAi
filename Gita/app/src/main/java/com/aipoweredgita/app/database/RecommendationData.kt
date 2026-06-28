@@ -3,7 +3,10 @@ package com.aipoweredgita.app.database
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "recommendation_data")
+@Entity(
+    tableName = "recommendation_data",
+    indices = [androidx.room.Index(value = ["recommendationType", "recommendationId"], unique = true)]
+)
 data class RecommendationData(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

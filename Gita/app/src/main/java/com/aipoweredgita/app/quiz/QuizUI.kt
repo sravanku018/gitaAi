@@ -40,7 +40,6 @@ fun QuizContent(
     options: List<String>,
     correctIndex: Int,
     selectedIndex: Int?,
-    questionType: QuestionType = QuestionType.MCQ,
     onSelect: (Int) -> Unit,
     onSubmitAnswer: ((String) -> Unit)? = null,
     onProceed: (wasCorrect: Boolean) -> Unit,

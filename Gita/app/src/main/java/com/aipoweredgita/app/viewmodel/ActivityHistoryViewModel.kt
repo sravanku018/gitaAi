@@ -11,6 +11,8 @@ import com.aipoweredgita.app.repository.DailyActivityRepository
 import com.aipoweredgita.app.repository.QuizStatsRepository
 import com.aipoweredgita.app.repository.SpiritualPathRepository
 import com.aipoweredgita.app.repository.StatsRepository
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,7 @@ data class QuizSizeStatsData(
 
 @HiltViewModel
 class ActivityHistoryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val quizStatsRepo: QuizStatsRepository,
     private val dailyActivityRepo: DailyActivityRepository,
     private val spiritualPathRepo: SpiritualPathRepository,
@@ -77,7 +80,6 @@ class ActivityHistoryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
-                val context = com.aipoweredgita.app.GitaApp.instance
                 val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
                 val uid = authPrefs.userId
                 val token = authPrefs.token
@@ -117,7 +119,6 @@ class ActivityHistoryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
-                val context = com.aipoweredgita.app.GitaApp.instance
                 val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
                 val uid = authPrefs.userId
                 val token = authPrefs.token

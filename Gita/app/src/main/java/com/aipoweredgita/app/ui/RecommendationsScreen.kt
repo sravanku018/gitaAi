@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.RecommendationData
 import com.aipoweredgita.app.database.StudyPlan
 import com.aipoweredgita.app.viewmodel.StudyPlanViewModel
