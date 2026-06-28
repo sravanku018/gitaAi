@@ -3,7 +3,7 @@ import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 @Dao
 interface RecommendationDataDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(recommendation: RecommendationData)
     @Query("SELECT * FROM recommendation_data WHERE status = 'pending' ORDER BY priority DESC")
     fun getPendingRecommendations(): Flow<List<RecommendationData>>
@@ -14,4 +14,7 @@ interface RecommendationDataDao {
 
     @Query("UPDATE recommendation_data SET status = 'dismissed' WHERE id = :id")
     suspend fun dismiss(id: Int)
+
+    @Query("DELETE FROM recommendation_data WHERE baseReason = 'curriculum'")
+    suspend fun clearCurriculumRecs()
 }

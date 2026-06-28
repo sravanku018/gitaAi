@@ -29,11 +29,16 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -115,6 +120,7 @@ fun VoiceStudioScreen(
     onExit: () -> Unit,
     onNavigateToQuiz: () -> Unit = {},
     onNavigateToRead: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
     voiceChatViewModel: VoiceChatViewModel = hiltViewModel()
 ) {
@@ -148,6 +154,7 @@ fun VoiceStudioScreen(
         } else {
             VoiceChatTab(
                 voiceChatViewModel = voiceChatViewModel,
+                onNavigateToSettings = onNavigateToSettings,
                 onExit = onExit
             )
         }
@@ -159,6 +166,7 @@ fun VoiceStudioScreen(
 @Composable
 private fun VoiceChatTab(
     voiceChatViewModel: VoiceChatViewModel = hiltViewModel(),
+    onNavigateToSettings: () -> Unit,
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
@@ -181,6 +189,7 @@ private fun VoiceChatTab(
         },
         onConfirmSend          = { voiceChatViewModel.confirmAndSendMessage() },
         onDismissConfirmation  = { voiceChatViewModel.dismissCoinConfirmation() },
+        onNavigateToSettings   = onNavigateToSettings,
         onExit                 = onExit
     )
 }
@@ -204,6 +213,7 @@ private fun VoiceChatContent(
     onUpdateSelectedModel: (String) -> Unit,
     onConfirmSend: () -> Unit,
     onDismissConfirmation: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
@@ -386,6 +396,15 @@ private fun VoiceChatContent(
                                         }
                                         if (!isAvailable && !option.contains("Auto")) {
                                             Text("Not Downloaded", style = MaterialTheme.typography.labelSmall, color = colors.ListenRed)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "Download",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = colors.RevolvingYellow),
+                                                modifier = Modifier.clickable {
+                                                    showModelMenu = false
+                                                    onNavigateToSettings()
+                                                }
+                                            )
                                         }
                                     }
                                 }
@@ -506,7 +525,7 @@ private fun VoiceChatContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(vertical = 14.dp)
                 ) {
-                    items(state.messages, key = { it.id }) { message ->
+                    items(state.messages.filter { it.text.isNotEmpty() }, key = { it.id }) { message ->
                         val isLastAi = !message.isUser &&
                                 message == state.messages.lastOrNull { !it.isUser }
                         ChatBubble(
@@ -606,25 +625,44 @@ private fun VoiceChatContent(
                         maxLines = 3
                     )
 
-                    // Mic button
-                    IconButton(
-                        onClick = {
-                            if (hasAudioPermission) onStartListening()
-                            else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        },
-                        enabled = !isBusy,
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(
-                                if (state.isListening) colors.ListenRed.copy(alpha = 0.25f)
-                                else (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)),
-                                CircleShape
-                            )
-                            .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
-                    ) {
-                        Icon(Icons.Default.Mic, contentDescription = "Voice Input",
-                            tint = if (state.isListening) colors.ListenRed else colors.RevolvingYellow,
-                            modifier = Modifier.size(18.dp))
+                    // Mic / Stop button
+                    if (state.isSpeaking) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f, targetValue = 1.15f,
+                            animationSpec = infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                            label = "scale"
+                        )
+                        IconButton(
+                            onClick = { onStopSpeaking() },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .scale(scale)
+                                .background(colors.ListenRed.copy(alpha = 0.15f), CircleShape)
+                                .border(1.dp, colors.ListenRed, CircleShape)
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Stop Speaking", tint = colors.ListenRed)
+                        }
+                    } else {
+                        IconButton(
+                            onClick = {
+                                if (hasAudioPermission) onStartListening()
+                                else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            },
+                            enabled = !isBusy,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(
+                                    if (state.isListening) colors.ListenRed.copy(alpha = 0.25f)
+                                    else (if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)),
+                                    CircleShape
+                                )
+                                .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Mic, contentDescription = "Voice Input",
+                                tint = if (state.isListening) colors.ListenRed else colors.RevolvingYellow,
+                                modifier = Modifier.size(18.dp))
+                        }
                     }
 
                     // Send button
@@ -831,6 +869,9 @@ private fun ChatBubble(
         val bubbleBdrColor = if (isUser) colors.UserBubbleBdr
         else (if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f))
 
+        var showMenu by remember { mutableStateOf(false) }
+        val clipboardManager = LocalClipboardManager.current
+
         Box(
             modifier = Modifier
                 .widthIn(max = 260.dp)
@@ -846,6 +887,11 @@ private fun ChatBubble(
                         )
                     )
                 }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { showMenu = true }
+                    )
+                }
         ) {
             Text(
                 text = message.text,
@@ -856,6 +902,30 @@ private fun ChatBubble(
                 ),
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
             )
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.background(if (colors.IsDark) Color(0xFF140F0A) else Color(0xFFFFFDF8))
+            ) {
+                if (isUser) {
+                    DropdownMenuItem(
+                        text = { Text("Edit & Resend", color = colors.TextPrimary) },
+                        onClick = {
+                            onEdit(message.text)
+                            showMenu = false
+                        }
+                    )
+                } else {
+                    DropdownMenuItem(
+                        text = { Text("Copy", color = colors.TextPrimary) },
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(message.text))
+                            showMenu = false
+                        }
+                    )
+                }
+            }
         }
 
         if (isUser) {
@@ -1204,7 +1274,7 @@ fun PreviewVoiceStudioIdle() {
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {}, onUpdateSelectedModel = {},
-                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
+                onConfirmSend = {}, onDismissConfirmation = {}, onNavigateToSettings = {}, onExit = {}
             )
         }
     }
@@ -1225,7 +1295,7 @@ fun PreviewVoiceStudioChat() {
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {}, onUpdateSelectedModel = {},
-                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
+                onConfirmSend = {}, onDismissConfirmation = {}, onNavigateToSettings = {}, onExit = {}
             )
         }
     }
@@ -1242,7 +1312,7 @@ fun PreviewVoiceStudioListening() {
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {}, onUpdateSelectedModel = {},
-                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
+                onConfirmSend = {}, onDismissConfirmation = {}, onNavigateToSettings = {}, onExit = {}
             )
         }
     }
@@ -1262,7 +1332,7 @@ fun PreviewVoiceStudioThinking() {
                 onClearChat = {}, onStartListening = {}, onStopListening = {},
                 onStopSpeaking = {}, onClearError = {}, onRefreshModelStatus = {},
                 onSetLanguageMode = {}, onUpdateSelectedModel = {},
-                onConfirmSend = {}, onDismissConfirmation = {}, onExit = {}
+                onConfirmSend = {}, onDismissConfirmation = {}, onNavigateToSettings = {}, onExit = {}
             )
         }
     }

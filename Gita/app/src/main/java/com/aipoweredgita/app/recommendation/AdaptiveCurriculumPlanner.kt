@@ -35,14 +35,17 @@ class AdaptiveCurriculumPlanner(
         items.add(CurriculumItem(type = "yogalevel", id = focusLevel.toString(), title = "Yoga Level $focusLevel", suggestedQuestions = prefs?.questionsPerSession ?: 10))
 
         // 2) Add weak topics based on question performance (seed generic topics if none)
-        val genericTopics = listOf("dharma", "karma", "bhakti", "gyana", "yoga")
-        genericTopics.take(3).forEach { t ->
+        val genericTopics = listOf("dharma", "karma", "bhakti", "gyana", "yoga", "mind", "action")
+        genericTopics.shuffled().take(3).forEach { t ->
             items.add(CurriculumItem(type = "topic", id = t, title = "Practice $t", suggestedQuestions = 6))
         }
 
         // 3) Add a chapter review using spaced repetition (recent chapter completed or 1)
         val recentChapter = (stats?.chaptersCompleted ?: 0).coerceAtLeast(1)
         items.add(CurriculumItem(type = "chapter", id = recentChapter.toString(), title = "Review Chapter $recentChapter", suggestedQuestions = 8))
+
+        // Clear old curriculum recommendations before inserting new ones
+        recommendationDataDao.clearCurriculumRecs()
 
         // Persist outline as recommendations for visibility
         items.forEachIndexed { idx, item ->

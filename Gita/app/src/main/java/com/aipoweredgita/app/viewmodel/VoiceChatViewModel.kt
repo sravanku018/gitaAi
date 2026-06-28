@@ -114,6 +114,9 @@ class VoiceChatViewModel @Inject constructor(
     private val MAX_CRASHES   = 3
 
     private var currentLanguageMode : LanguageMode = LanguageMode.AUTO
+    private var currentUserId = "guest"
+
+    private fun getSessionKey(): String = "krishna-${currentUserId}-${java.time.LocalDate.now()}"
 
     // ─── Current Verse State ──────────────────────────────────────────────────
     private var currentCachedVerse : CachedVerse? = null
@@ -190,6 +193,7 @@ class VoiceChatViewModel @Inject constructor(
             statsRepository.getUserStatsFlow().collect { stats ->
                 val uid = stats?.userId
                 if (uid != null && uid.isNotEmpty()) {
+                    currentUserId = uid
                     try {
                         val balance = statsRepository.getBalance()
                         _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
@@ -228,7 +232,7 @@ class VoiceChatViewModel @Inject constructor(
 
     private fun loadMessages() {
         viewModelScope.launch(Dispatchers.IO) {
-            val dbMessages = chatRepo.getAllMessages()
+            val dbMessages = chatRepo.getRecentMessages(limit = 20)
             withContext(Dispatchers.Main) {
                 _uiState.update {
                     it.copy(messages = dbMessages.map { dbm ->
@@ -265,7 +269,7 @@ class VoiceChatViewModel @Inject constructor(
         }
 
         // 2. Session summary from compressed older messages
-        val chatSummary = summaryDao.getSummary("krishna-conversation")
+        val chatSummary = summaryDao.getSummary(getSessionKey())
         if (chatSummary != null) {
             messagesArray.put(
                 JSONObject()
@@ -343,7 +347,7 @@ class VoiceChatViewModel @Inject constructor(
                 val dao = summaryDao
                 dao.setSummary(
                     com.aipoweredgita.app.database.ChatSummary(
-                        sessionId = "krishna-conversation",
+                        sessionId = getSessionKey(),
                         summary = summary,
                         lastUpdated = System.currentTimeMillis()
                     )
@@ -428,7 +432,9 @@ class VoiceChatViewModel @Inject constructor(
             val modelPath = decision.modelPath
 
             if (modelPath != null) {
-                val maxTokens  = DeviceCapability.getOptimalMaxTokens(context, decision.displayName)
+                val maxTokens  = DeviceCapability.getOptimalMaxTokens(context, decision.displayName).let {
+                    if (currentLanguageMode == com.aipoweredgita.app.utils.LanguageMode.TELUGU) (it * 0.6f).toInt() else it
+                }
                 val timeoutMs  = DeviceCapability.getOptimalTimeout(context)
                 val samplerParams = DeviceCapability.getOptimalSampler(modelPath)
                 val sampler    = com.google.ai.edge.litertlm.SamplerConfig(
@@ -454,7 +460,7 @@ class VoiceChatViewModel @Inject constructor(
                             )
                             if (success) {
                                 voiceChatEngine.updateSystemInstruction(
-                                    GitaPromptEngine.gemmaSystemPrompt(activeVerse)
+                                    GitaPromptEngine.gemmaSystemPrompt(activeVerse, currentLanguageMode)
                                 )
                                 crashCount = 0
                                 useProxy = false
@@ -660,9 +666,15 @@ class VoiceChatViewModel @Inject constructor(
                             // Trigger session summarization for long conversations
                             summarizeOldMessages(isProxy = true)
                         } else {
+                            val recentHistory = _uiState.value.messages
+                                .filter { it.text.isNotEmpty() }
+                                .dropLast(1)
+                                .takeLast(6)
+
                             val gemmaMessage = GitaPromptEngine.buildGemmaUserContent(
                                 userMessage = messageText,
-                                verse = activeVerse
+                                verse = activeVerse,
+                                history = recentHistory
                             )
                             voiceChatEngine.sendMessage(
                                 prompt    = gemmaMessage,
@@ -795,7 +807,7 @@ class VoiceChatViewModel @Inject constructor(
     fun clearChat() {
         viewModelScope.launch(Dispatchers.IO) {
             chatRepo.deleteAllMessages()
-            summaryDao.deleteSummary("krishna-conversation")
+            summaryDao.deleteSummary(getSessionKey())
             voiceChatEngine.resetConversation()
             withContext(Dispatchers.Main) {
                 _uiState.update { it.copy(messages = emptyList()) }
@@ -878,7 +890,7 @@ class VoiceChatViewModel @Inject constructor(
         aiScope.launch {
             voiceChatEngine.resetConversation()
             voiceChatEngine.updateSystemInstruction(
-                GitaPromptEngine.gemmaSystemPrompt(activeVerse)
+                GitaPromptEngine.gemmaSystemPrompt(activeVerse, currentLanguageMode)
             )
         }
     }
@@ -889,7 +901,7 @@ class VoiceChatViewModel @Inject constructor(
         activeVerse = null
         aiScope.launch {
             voiceChatEngine.updateSystemInstruction(
-                GitaPromptEngine.gemmaSystemPrompt(null)
+                GitaPromptEngine.gemmaSystemPrompt(null, currentLanguageMode)
             )
         }
     }
@@ -901,7 +913,9 @@ class VoiceChatViewModel @Inject constructor(
         _uiState.update { it.copy(currentLanguageMode = mode) }
         voiceManager.setLocale(mode.sttLocale, mode.ttsLocale)
         aiScope.launch {
-            voiceChatEngine.updateSystemInstruction(mode.systemInstruction)
+            voiceChatEngine.updateSystemInstruction(
+                GitaPromptEngine.gemmaSystemPrompt(activeVerse, mode)
+            )
         }
     }
 

@@ -10,6 +10,9 @@ interface VoiceChatMessageDao {
     @Query("SELECT * FROM voice_chat_messages ORDER BY timestamp ASC")
     suspend fun getAllMessages(): List<VoiceChatMessage>
 
+    @Query("SELECT * FROM (SELECT * FROM voice_chat_messages ORDER BY timestamp DESC LIMIT :limit) ORDER BY timestamp ASC")
+    suspend fun getRecentMessages(limit: Int): List<VoiceChatMessage>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: VoiceChatMessage)
 

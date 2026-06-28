@@ -274,7 +274,6 @@ class QuizViewModel @Inject constructor(
 
         _quizState.value = _quizState.value.copy(
             showAnswer = true,
-            showCorrectAnswer = isCorrect,
             score = if (isCorrect) _quizState.value.score + 1 else _quizState.value.score
         )
 

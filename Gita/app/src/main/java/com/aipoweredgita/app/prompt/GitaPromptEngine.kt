@@ -1,5 +1,8 @@
 package com.aipoweredgita.app.prompt
 
+import com.aipoweredgita.app.domain.model.ChatMessage
+import com.aipoweredgita.app.utils.LanguageMode
+
 // ============================================================
 //  GitaPromptEngine.kt
 //  Single source of truth for all prompts — Groq + Gemma
@@ -138,11 +141,33 @@ No anime catchphrases. No manga speech patterns. Pure Telugu."""
     //  LiteRT-LM engine injects this via updateSystemInstruction().
     //  Do NOT duplicate it in the prompt string.
     // --------------------------------------------------------
-    fun gemmaSystemPrompt(verse: VerseContext? = null): String =
-        KRISHNA_SOUL +
-        buildVerseContext(verse) +
-        FORMAT_RULES +
-        "\n\nKeep every response under 3 sentences. Each word must earn its place."
+    fun gemmaSystemPrompt(
+        verse: VerseContext? = null,
+        languageMode: LanguageMode = LanguageMode.AUTO
+    ): String {
+        val languageRule = when (languageMode) {
+            LanguageMode.TELUGU -> """
+
+--- Telugu Response Rule (STRICT)
+Respond in Telugu ONLY. Maximum 2 short sentences.
+Telugu uses more words — be even MORE brief than English.
+No poetic elaboration. No lists. Direct, warm, short."""
+            LanguageMode.ENGLISH -> """
+
+--- Language Rule
+Respond in English only. Under 3 sentences."""
+            LanguageMode.AUTO -> """
+
+--- Language Rule  
+Match the user's language. If Telugu — keep it to 2 sentences maximum."""
+        }
+
+        return KRISHNA_SOUL +
+            buildVerseContext(verse) +
+            FORMAT_RULES +
+            "\n\nKeep every response under 3 sentences. Each word must earn its place." +
+            languageRule
+    }
 
     // --------------------------------------------------------
     //  GEMMA — user message content for LiteRT-LM
@@ -154,8 +179,18 @@ No anime catchphrases. No manga speech patterns. Pure Telugu."""
     // --------------------------------------------------------
     fun buildGemmaUserContent(
         userMessage: String,
-        verse: VerseContext? = null
+        verse: VerseContext? = null,
+        history: List<ChatMessage> = emptyList()
     ): String = buildString {
+        if (history.isNotEmpty()) {
+            appendLine("Previous conversation:")
+            history.forEach { msg ->
+                val role = if (msg.isUser) "User" else "Krishna"
+                appendLine("$role: ${msg.text}")
+            }
+            appendLine("---")
+            appendLine()
+        }
         if (verse != null) {
             appendLine("[Chapter ${verse.chapter}, Verse ${verse.verse}]")
             appendLine("Translation: ${verse.translation}")

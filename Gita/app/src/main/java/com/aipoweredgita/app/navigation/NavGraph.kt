@@ -196,6 +196,9 @@ fun NavGraph(
                     navController.navigate(Screen.ChapterSelection.route) {
                         popUpTo(Screen.Home.route)
                     }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

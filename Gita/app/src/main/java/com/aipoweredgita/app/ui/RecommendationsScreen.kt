@@ -21,6 +21,7 @@ import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.RecommendationData
 import com.aipoweredgita.app.database.StudyPlan
 import com.aipoweredgita.app.viewmodel.StudyPlanViewModel
+import com.aipoweredgita.app.viewmodel.RecommendationsViewModel
 import com.aipoweredgita.app.domain.model.UiConfigUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,12 +32,10 @@ fun RecommendationsScreen(
     onStartTopicQuiz: () -> Unit,
     onOpenFlashcards: (String?) -> Unit,
     onBack: () -> Unit,
-    studyPlanViewModel: StudyPlanViewModel = hiltViewModel()
+    studyPlanViewModel: StudyPlanViewModel = hiltViewModel(),
+    recommendationsViewModel: RecommendationsViewModel = hiltViewModel()
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val db = remember { GitaDatabase.getDatabase(context) }
-    val recs by db.recommendationDataDao().getActiveRecommendations().collectAsState(initial = emptyList())
-    val scope = rememberCoroutineScope()
+    val recs by recommendationsViewModel.activeRecommendations.collectAsState(initial = emptyList())
     
     var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("For You", "Study Plans")
@@ -84,7 +83,7 @@ fun RecommendationsScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selectedTab) {
-                0 -> RecommendationsTab(recs, onOpenChapter, onStartTopicQuiz, onOpenFlashcards, db, scope, uiCfg)
+                0 -> RecommendationsTab(recs, onOpenChapter, onStartTopicQuiz, onOpenFlashcards, recommendationsViewModel, uiCfg)
                 1 -> StudyPlansTab(studyPlanViewModel, onOpenChapter)
             }
         }
@@ -97,8 +96,7 @@ private fun RecommendationsTab(
     onOpenChapter: (Int) -> Unit,
     onStartTopicQuiz: () -> Unit,
     onOpenFlashcards: (String?) -> Unit,
-    db: GitaDatabase,
-    scope: kotlinx.coroutines.CoroutineScope,
+    viewModel: RecommendationsViewModel,
     uiCfg: UiConfigUiState
 ) {
     LazyColumn(
@@ -119,11 +117,7 @@ private fun RecommendationsTab(
                             else -> Button(onClick = { onOpenFlashcards(r.recommendationId) }) { Text("View Flashcards") }
                         }
                         Button(onClick = {
-                            scope.launch {
-                                try { db.recommendationDataDao().dismiss(r.id) } catch (e: Exception) {
-                                    android.util.Log.w("RecommendationsScreen", "Failed to dismiss ${r.id}", e)
-                                }
-                            }
+                            viewModel.dismissRecommendation(r.id)
                         }) { Text("Dismiss") }
                     }
                 }
