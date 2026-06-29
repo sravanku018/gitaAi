@@ -75,11 +75,11 @@ class ModelAvailability(appContext: Context) {
             selected.contains("NVIDIA", ignoreCase = true) -> null
             selected.contains("Groq", ignoreCase = true) -> null
             selected.contains("Qwen3") && qwen3Exists -> {
-                if (feature == AppFeature.QUIZ) qwen3Path else null
+                if (feature != AppFeature.VOICE) qwen3Path else null
             }
             selected.contains("Gemma 4") && gemma4Exists -> gemma4Path
             else -> {
-                if (feature == AppFeature.QUIZ) {
+                if (feature != AppFeature.VOICE) {
                     qwen3Path ?: gemma4Path
                 } else {
                     // VOICE uses only Gemma; Qwen removed from chat path.

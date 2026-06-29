@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SportsMma
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Favorite
@@ -65,7 +66,8 @@ fun NormalModeScreen(
     modifier: Modifier = Modifier,
     viewModel: NormalModeViewModel = hiltViewModel(),
     screenConfigViewModel: ScreenConfigViewModel = hiltViewModel(),
-    onReadOfflineClick: () -> Unit = {}
+    onReadOfflineClick: () -> Unit = {},
+    onNavigateToQuizBattle: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showChapterDialog by remember { mutableStateOf(false) }
@@ -125,14 +127,15 @@ fun NormalModeScreen(
             }
 
             // ── Main content ───────────────────────────────────────────────
+            val currentVerse = state.verse
             when {
                 state.isLoading       -> GitaLoadingScreen()
                 state.error != null   -> GitaErrorScreen(
                     message = state.error ?: "",
                     onRetry = { viewModel.onEvent(NormalModeEvent.LoadVerse(state.currentChapter, state.currentVerse)) }
                 )
-                state.verse != null   -> {
-                    val verse = state.verse!!
+                currentVerse != null  -> {
+                    val verse = currentVerse
 
                     val verseAnim by animateFloatAsState(
                         targetValue = if (state.verse != null) 1f else 0f,
@@ -200,6 +203,7 @@ fun NormalModeScreen(
                         canGoNext         = !(verse.chapterNo == 18 && verse.verseNo == 78) && !state.isLoading,
                         onFavoriteToggle  = { viewModel.onEvent(NormalModeEvent.ToggleFavorite) },
                         onShare           = { shareVerse(verse) },
+                        onBattleQuiz      = onNavigateToQuizBattle,
                         onPrev            = { viewModel.onEvent(NormalModeEvent.PreviousVerse) },
                         onNext            = { viewModel.onEvent(NormalModeEvent.NextVerse) }
                     )
@@ -216,15 +220,16 @@ fun NormalModeScreen(
             onChapterSelected = { ch -> viewModel.onEvent(NormalModeEvent.GoToChapter(ch)); showChapterDialog = false }
         )
     }
-    if (showVerseDialog && state.verse != null) {
+    val currentVerseObj = state.verse
+    if (showVerseDialog && currentVerseObj != null) {
         VerseSelectionDialog(
-            currentChapter  = state.verse!!.chapterNo,
-            currentVerse    = state.verse!!.verseNo,
-            maxVerses       = com.aipoweredgita.app.util.GitaConstants.CHAPTER_VERSE_COUNTS[state.verse!!.chapterNo] ?: 47,
+            currentChapter  = currentVerseObj.chapterNo,
+            currentVerse    = currentVerseObj.verseNo,
+            maxVerses       = com.aipoweredgita.app.util.GitaConstants.CHAPTER_VERSE_COUNTS[currentVerseObj.chapterNo] ?: 47,
             combinedGroups  = state.combinedGroups,
             onDismiss       = { showVerseDialog = false },
             onVerseSelected = { v ->
-                viewModel.onEvent(NormalModeEvent.LoadVerse(state.verse!!.chapterNo, v))
+                viewModel.onEvent(NormalModeEvent.LoadVerse(currentVerseObj.chapterNo, v))
                 showVerseDialog = false
             }
         )
@@ -684,6 +689,7 @@ private fun BottomActionBar(
     canGoNext       : Boolean,
     onFavoriteToggle: () -> Unit,
     onShare         : () -> Unit,
+    onBattleQuiz    : () -> Unit,
     onPrev          : () -> Unit,
     onNext          : () -> Unit
 ) {
@@ -754,6 +760,33 @@ private fun BottomActionBar(
                         )
                         Text(
                             text       = "Share",
+                            color      = MaterialTheme.colorScheme.onSurface,
+                            fontSize   = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // Battle button — outlined
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable(onClick = onBattleQuiz),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(
+                            imageVector        = Icons.Filled.SportsMma,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.onSurface,
+                            modifier           = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text       = "Battle",
                             color      = MaterialTheme.colorScheme.onSurface,
                             fontSize   = 14.sp,
                             fontWeight = FontWeight.Medium

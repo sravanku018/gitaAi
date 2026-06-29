@@ -918,11 +918,8 @@ class VoiceChatViewModel @Inject constructor(
         currentLanguageMode = mode
         _uiState.update { it.copy(currentLanguageMode = mode) }
         voiceManager.setLocale(mode.sttLocale, mode.ttsLocale)
-        aiScope.launch {
-            voiceChatEngine.updateSystemInstruction(
-                GitaPromptEngine.gemmaSystemPrompt(activeVerse, mode)
-            )
-        }
+        // Refresh model to restore/recalculate token window based on language and update instruction
+        refreshModelStatus()
     }
 
     // ─── Session Tracking ─────────────────────────────────────────────────────

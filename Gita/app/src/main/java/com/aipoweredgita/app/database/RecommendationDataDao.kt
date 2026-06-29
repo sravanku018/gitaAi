@@ -17,4 +17,7 @@ interface RecommendationDataDao {
 
     @Query("DELETE FROM recommendation_data WHERE baseReason = 'curriculum'")
     suspend fun clearCurriculumRecs()
+
+    @Query("DELETE FROM recommendation_data")
+    suspend fun deleteAll()
 }

@@ -6,6 +6,7 @@ import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.RecommendationData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.aipoweredgita.app.ml.HuggingFaceMLManager
 
 class RecommendationEngine(private val context: Context) {
     private val TAG = "RecommendationEngine"
@@ -31,6 +32,29 @@ class RecommendationEngine(private val context: Context) {
             }
 
             val recDao = db.recommendationDataDao()
+
+            if (stats != null) {
+                try {
+                    val mlManager = HuggingFaceMLManager(context)
+                    mlManager.initializeModels()
+                    if (mlManager.isLlmInitialized()) {
+                        Log.d(TAG, "Attempting to generate recommendations via local LLM (Qwen)...")
+                        val llmRecs = mlManager.generateRecommendationsWithLlm(stats, prefs)
+                        if (llmRecs.isNotEmpty()) {
+                            // Clear old recommendations first to prevent duplicates/bloat
+                            try { recDao.deleteAll() } catch (_: Exception) {}
+                            
+                            llmRecs.forEach { rec ->
+                                recDao.insert(rec)
+                            }
+                            Log.d(TAG, "Successfully generated ${llmRecs.size} recommendations via LLM.")
+                            return@withContext
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "LLM recommendation generation failed, falling back to heuristics: ${e.message}")
+                }
+            }
 
             // Recommend practice session in preferred study mode
             recDao.insert(

@@ -2,6 +2,10 @@ package com.aipoweredgita.app.ml
 
 import android.content.Context
 import android.util.Log
+import com.aipoweredgita.app.database.UserStats
+import com.aipoweredgita.app.database.UserPreferences
+import com.aipoweredgita.app.database.RecommendationData
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.google.gson.Gson
@@ -880,6 +884,90 @@ class HuggingFaceMLManager(private val context: Context) {
     }
 
     // Create default question when generation fails
+    
+    suspend fun generateRecommendationsWithLlm(
+        stats: UserStats,
+        prefs: UserPreferences?
+    ): List<RecommendationData> = withContext(Dispatchers.IO) {
+        if (!isLlmReady) {
+            Log.d(TAG, "LLM not ready for recommendations, returning empty")
+            return@withContext emptyList<RecommendationData>()
+        }
+
+        val accuracy = if (stats.totalQuestionsAnswered > 0) {
+            (stats.totalCorrectAnswers.toFloat() / stats.totalQuestionsAnswered) * 100
+        } else 0f
+
+        val prompt = """
+            User Statistics:
+            - Daily Streak: ${stats.currentStreak} days (Longest: ${stats.longestStreak} days)
+            - Total Quizzes Taken: ${stats.totalQuizzesTaken}
+            - Total Questions Answered: ${stats.totalQuestionsAnswered}
+            - Quiz Accuracy: ${"%.1f".format(accuracy)}%
+            - Total Verses Read: ${stats.versesRead}
+            - Chapters Completed: ${stats.chaptersCompleted}
+            - Preferred Study Mode: ${prefs?.preferredStudyMode ?: "quiz"}
+            
+            Generate exactly 3 personalized recommendations for this user to continue their Bhagavad Gita study. 
+            Format the response as a valid JSON array of objects. Each object must have exactly these keys:
+            - "recommendationType": one of "chapter", "topic", "yogalevel", "study_mode"
+            - "recommendationId": string identifier (e.g. chapter number "2", topic name "karma", mode "quiz")
+            - "recommendationTitle": brief user-facing title (max 40 chars)
+            - "reason": brief explanation (max 80 chars) of why this is recommended based on their stats
+            - "priority": integer between 1 and 10 (higher is higher priority)
+            
+            Do not include any wrapper text, markdown, or backticks (e.g. ```json). Output only the raw JSON array.
+        """.trimIndent()
+
+        val originalInstruction = "You are Krishna from the Bhagavad Gita. Answer clearly."
+        val recommendationInstruction = "You are a Bhagavad Gita study recommender system. You analyze user stats and output a JSON array of recommendations. Always respond with raw valid JSON."
+
+        try {
+            voiceChatEngine.updateSystemInstruction(recommendationInstruction)
+            val response = voiceChatEngine.sendMessage(prompt)
+            Log.d(TAG, "LLM recommendations response: $response")
+            
+            // Clean up the response in case it returned markdown block
+            var jsonString = response.trim()
+            if (jsonString.startsWith("```")) {
+                val match = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(jsonString)
+                if (match != null) {
+                    jsonString = match.groupValues[1].trim()
+                }
+            }
+
+            val listType = object : TypeToken<List<RecommendationLlmDto>>() {}.type
+            val rawList = gson.fromJson<List<RecommendationLlmDto>>(jsonString, listType)
+            
+            val result = rawList.map { dto ->
+                RecommendationData(
+                    recommendationType = dto.recommendationType ?: "topic",
+                    recommendationId = dto.recommendationId ?: "karma",
+                    recommendationTitle = dto.recommendationTitle ?: "Continue Study",
+                    priority = dto.priority ?: 5,
+                    confidenceScore = 80f,
+                    relevanceScore = 85f,
+                    reason = dto.reason ?: "Based on your study habits",
+                    baseReason = "llm_monitoring",
+                    expectedBenefit = 75f,
+                    urgencyLevel = if ((dto.priority ?: 5) >= 8) "high" else if ((dto.priority ?: 5) >= 5) "medium" else "low"
+                )
+            }
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error generating LLM recommendations: ${e.message}", e)
+            emptyList()
+        } finally {
+            // Restore default instruction
+            try {
+                voiceChatEngine.updateSystemInstruction(originalInstruction)
+                voiceChatEngine.resetConversation()
+            } catch (ex: Exception) {
+                Log.w(TAG, "Failed to restore LLM settings", ex)
+            }
+        }
+    }
+
     private suspend fun createDefaultQuestion(language: String = "tel"): QuizQuestionData {
         val question = translateToLanguage("What is the core spiritual message of this verse?", language)
         val options = listOf(
@@ -933,4 +1021,10 @@ data class VerseAnalysis(
     val summary: String = ""
 )
 
-
+data class RecommendationLlmDto(
+    @SerializedName("recommendationType") val recommendationType: String? = null,
+    @SerializedName("recommendationId") val recommendationId: String? = null,
+    @SerializedName("recommendationTitle") val recommendationTitle: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("priority") val priority: Int? = null
+)

@@ -129,7 +129,8 @@ fun NavGraph(
             }
             com.aipoweredgita.app.ui.NormalModeScreen(
                 viewModel = vm,
-                onReadOfflineClick = { navController.navigate(Screen.OfflineDownload.route) }
+                onReadOfflineClick = { navController.navigate(Screen.OfflineDownload.route) },
+                onNavigateToQuizBattle = { navController.navigate(Screen.QuizBattle.route) }
             )
         }
 
