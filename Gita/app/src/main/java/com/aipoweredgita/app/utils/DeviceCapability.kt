@@ -36,7 +36,7 @@ object DeviceCapability {
 
     fun getOptimalSampler(modelName: String?): SamplerParams {
         return if (modelName?.contains("gemma", ignoreCase = true) == true) {
-            SamplerParams(topK = 20, topP = 0.85f, temperature = 0.2f) // Gemma 4 2B
+            SamplerParams(topK = 32, topP = 0.90f, temperature = 0.4f) // Gemma 4 2B
         } else {
             // Qwen 3 0.6B settings
             SamplerParams(topK = 40, topP = 0.95f, temperature = 0.7f)

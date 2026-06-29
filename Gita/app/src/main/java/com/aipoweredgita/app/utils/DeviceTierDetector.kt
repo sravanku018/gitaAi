@@ -149,6 +149,8 @@ object DeviceTierDetector {
      *   1.0 → older GPUs                     (low-mid)
      *   0   → no Vulkan                      (budget)
      */
+    fun hasVulkan(context: Context): Boolean = vulkanTier(context) > 0
+
     private fun vulkanTier(context: Context): Int {
         if (Build.VERSION.SDK_INT < 24) return 0
         val pm = context.packageManager

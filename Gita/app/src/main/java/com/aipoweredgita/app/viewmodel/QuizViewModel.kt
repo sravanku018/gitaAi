@@ -157,9 +157,25 @@ class QuizViewModel @Inject constructor(
                 // Fetch next question from DB using repository
                 // Over-fetch to have a pool to filter session-asked questions
                 val limit = 1
-                val diff = userState.skillLevel
-                val minDiff = (diff - 2).coerceAtLeast(1)
-                val maxDiff = (diff + 2).coerceAtMost(10)
+                
+                // Fetch user preferences for difficulty range if enabled
+                val prefsDao = GitaDatabase.getDatabase(application).userPreferencesDao()
+                val userPrefs = prefsDao.getPreferencesSync(1) // Assuming default user id 1
+                
+                val minDiff: Int
+                val maxDiff: Int
+                
+                if (userPrefs != null && userPrefs.enableDifficultyAdaptation == false) {
+                    // Use exact preferred range
+                    minDiff = userPrefs.preferredDifficultyMin.coerceAtLeast(1)
+                    maxDiff = userPrefs.preferredDifficultyMax.coerceAtMost(10)
+                } else {
+                    // Adaptive difficulty based on skill level
+                    val diff = userState.skillLevel
+                    minDiff = (diff - 2).coerceAtLeast(1)
+                    maxDiff = (diff + 2).coerceAtMost(10)
+                }
+                
                 val fetchLimit = maxOf(limit, 10)
                 val candidates = quizQuestionRepository.getNextQuestions(minDiff, maxDiff, fetchLimit)
                 

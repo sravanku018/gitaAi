@@ -84,6 +84,9 @@ class ProfileViewModel @Inject constructor(
     private val _recommendations = MutableStateFlow<List<com.aipoweredgita.app.database.RecommendationData>>(emptyList())
     val recommendations: StateFlow<List<com.aipoweredgita.app.database.RecommendationData>> = _recommendations.asStateFlow()
 
+    private val _coinHistory = MutableStateFlow<List<com.aipoweredgita.app.network.CoinHistoryEntry>>(emptyList())
+    val coinHistory: StateFlow<List<com.aipoweredgita.app.network.CoinHistoryEntry>> = _coinHistory.asStateFlow()
+
     init {
         loadStats()
         loadRecommendations()
@@ -256,6 +259,88 @@ class ProfileViewModel @Inject constructor(
             result.onFailure { error ->
                 _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to refresh coins"))
             }
+        }
+    }
+
+    /**
+     * Load coin history (merges local and server data)
+     */
+    fun loadCoinHistory() {
+        viewModelScope.launch {
+            val authPrefs = AuthPreferences.getInstance(appContext)
+            val isGuest = authPrefs.isGuestUser
+            val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
+                ?: _stats.value?.userId?.takeIf { it.isNotEmpty() }
+            
+            if (effectiveUid == null || effectiveUid.isEmpty()) return@launch
+
+            if (isGuest) {
+                _coinHistory.value = buildLocalHistory()
+            } else {
+                val token = authPrefs.token
+                var serverLoaded = false
+                if (token != null) {
+                    try {
+                        val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
+                            effectiveUid, "Bearer $token", limit = 500
+                        )
+                        val filteredServerHistory = serverHistory.filter { entry ->
+                            !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                        }
+                        val localHistory = buildLocalHistory()
+                        val serverKeys = filteredServerHistory.map { entry ->
+                            val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
+                            "${entry.source}_${entry.amount}_${datePart}"
+                        }.toSet()
+                        val extraLocalEntries = localHistory.filter { local ->
+                            val localDate = local.created_at?.split(" ")?.get(0) ?: ""
+                            val key = "${local.source}_${local.amount}_${localDate}"
+                            !serverKeys.contains(key)
+                        }
+                        _coinHistory.value = filteredServerHistory + extraLocalEntries
+                        serverLoaded = true
+                        
+                        if (serverHistory.isNotEmpty()) {
+                            com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
+                        }
+                    } catch (e: Exception) {
+                        // fallback below
+                    }
+                }
+                
+                if (!serverLoaded) {
+                    val localOnly = buildLocalHistory()
+                    _coinHistory.value = localOnly.filter { entry ->
+                        !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun buildLocalHistory(): List<com.aipoweredgita.app.network.CoinHistoryEntry> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val utcFmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+        com.aipoweredgita.app.coin.CoinTransactionLogger.getHistory(appContext).map { tx ->
+            com.aipoweredgita.app.network.CoinHistoryEntry(
+                amount = tx.amount,
+                type = tx.type.name,
+                source = tx.description.lowercase().let { desc ->
+                    when {
+                        desc.contains("welcome") -> "signup"
+                        desc.contains("quiz") -> "quiz_completion"
+                        desc.contains("check") || desc.contains("checkin") -> "checkin_day"
+                        desc.contains("share") -> "share_sloka"
+                        desc.contains("voice") -> "voice_chat"
+                        desc.contains("chapter") -> "chapter_completion"
+                        desc.contains("level") -> "level_up_bonus"
+                        else -> "other"
+                    }
+                },
+                description = tx.description,
+                created_at = utcFmt.format(java.util.Date(tx.timestamp))
+            )
         }
     }
 

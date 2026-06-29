@@ -10,7 +10,7 @@ data class StudyGuide(
     val chapterNo: Int = 1,
     val title: String = "",
     val summary: String = "",
-    val keyPoints: String = "", // comma-separated
+    val keyPoints: List<String> = emptyList(), // JSON list
     val createdAt: Long = System.currentTimeMillis()
 )
 

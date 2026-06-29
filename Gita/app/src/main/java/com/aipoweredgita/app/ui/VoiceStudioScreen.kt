@@ -222,7 +222,7 @@ private fun VoiceChatContent(
     val isBusy = state.isThinking || state.isSpeaking || state.isListening || !canInteract
     val colors = getVoiceStudioColors()
     var showModelMenu by remember { mutableStateOf(false) }
-    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
+    val modelOptions = listOf("Auto (Recommended)", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
 
     var hasAudioPermission by remember {
         mutableStateOf(
@@ -363,13 +363,8 @@ private fun VoiceChatContent(
                 ) {
                     modelOptions.forEach { option ->
                         val ma = com.aipoweredgita.app.ml.ModelAvailability.getInstance(context)
-                        // FIX 2: Use isAvailable(modelKey) pattern — adjust method names to match
-                        // your actual ModelAvailability API. These are the two most likely signatures:
-                        //   ma.isGemma4Available()  OR  ma.isAvailable("gemma4")
-                        //   ma.isQwen3Available()   OR  ma.isAvailable("qwen3")
                         val isAvailable = when {
                             option.contains("Gemma 4")  -> ma.isGemma4Available()
-                            option.contains("Qwen3")    -> ma.isQwen3Available()
                             else -> true // Auto / cloud models always "available"
                         }
 
@@ -381,12 +376,10 @@ private fun VoiceChatContent(
                                         val isActive = when {
                                             option.contains("NVIDIA") && state.currentModelName.contains("NVIDIA", ignoreCase = true) -> true
                                             option.contains("Groq")   && state.currentModelName.contains("Groq",  ignoreCase = true) -> true
-                                            option.contains("Qwen3")  && state.currentModelName.contains("Qwen3", ignoreCase = true) -> true
                                             option.contains("Gemma")  && state.currentModelName.contains("Gemma", ignoreCase = true) -> true
                                             option.contains("Auto")
                                                     && !state.currentModelName.contains("NVIDIA", ignoreCase = true)
                                                     && !state.currentModelName.contains("Groq",  ignoreCase = true)
-                                                    && !state.currentModelName.contains("Qwen3", ignoreCase = true)
                                                     && !state.currentModelName.contains("Gemma", ignoreCase = true) -> true
                                             else -> false
                                         }

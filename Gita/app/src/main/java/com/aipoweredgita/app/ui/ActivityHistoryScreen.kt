@@ -91,6 +91,8 @@ fun ActivityHistoryScreen(
     val karmaCount = state.karmaYogaCount
     val bhaktiCount = state.bhaktiYogaCount
     val jnanaCount = state.jnanaYogaCount
+    val dhyanaCount = state.dhyanaYogaCount
+    val rajaCount = state.rajaYogaCount
 
     var selectedTab by remember { mutableIntStateOf(initialTab) }
     val uiCfg = LocalUiConfig.current
@@ -154,7 +156,9 @@ fun ActivityHistoryScreen(
                 userStats = userStats,
                 karmaCount = karmaCount,
                 bhaktiCount = bhaktiCount,
-                jnanaCount = jnanaCount
+                jnanaCount = jnanaCount,
+                dhyanaCount = dhyanaCount,
+                rajaCount = rajaCount
             )
             2 -> CalendarTab()
             3 -> AHTipsTab(averageAccuracy = averageAccuracy)
@@ -309,9 +313,9 @@ private fun OverviewTab(
         val baseYogaInfo = YogaLevelManager.yogaLevelInfo(userStats)
         val baseProgress = YogaLevelManager.progressInLevel(userStats)
 
-        val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+        val activeLevel = yogaLevels.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
             ?: yogaLevels.lastOrNull()
-        val activeSubStage = yogaSubStages.find { totalCoins in it.min_coins until it.max_coins }
+        val activeSubStage = yogaSubStages.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
             ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
 
         val displayYogaName = activeLevel?.name ?: baseYogaInfo.yogaName
@@ -487,7 +491,9 @@ private fun QuizTab(
     userStats: UserStats?,
     karmaCount: Int,
     bhaktiCount: Int,
-    jnanaCount: Int
+    jnanaCount: Int,
+    dhyanaCount: Int,
+    rajaCount: Int
 ) {
     // Quiz Size Filter Chips
     Row(
@@ -606,7 +612,9 @@ private fun QuizTab(
             SpiritualPathRadarChart(
                 karmaCount = karmaCount,
                 bhaktiCount = bhaktiCount,
-                jnanaCount = jnanaCount
+                jnanaCount = jnanaCount,
+                dhyanaCount = dhyanaCount,
+                rajaCount = rajaCount
             )
 
             // Best attempt

@@ -11,4 +11,5 @@ class BookmarkRepository(private val dao: BookmarkDao) {
     suspend fun getBookmark(chapter: Int, verse: Int): Bookmark? = dao.getBookmark(chapter, verse)
     fun getBookmarksByType(type: BookmarkType): Flow<List<Bookmark>> = dao.getBookmarksByType(type)
     fun getAllBookmarks(): Flow<List<Bookmark>> = dao.getAllBookmarks()
+    suspend fun isBookmarked(chapter: Int, verse: Int): Boolean = dao.getBookmark(chapter, verse) != null
 }

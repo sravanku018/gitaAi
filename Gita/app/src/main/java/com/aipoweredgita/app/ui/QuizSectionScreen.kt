@@ -70,6 +70,7 @@ fun QuizSectionScreen(
     }
 
     LaunchedEffect(selectedTab) {
+        quizViewModel.resetQuiz()
         // Pre-configure but don't start
         when (selectedTab) {
             0 -> quizViewModel.setQuizLimit(15)

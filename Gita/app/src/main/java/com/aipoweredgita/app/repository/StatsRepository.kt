@@ -565,9 +565,9 @@ class StatsRepository(
                 val response = CoinApi.retrofitService.createUser(CreateUserRequest(uid, stats.userName.ifEmpty { "Gita Seeker" }, ""))
                 if (response.token != null && authPrefs.token == null) {
                     authPrefs.saveLoginState(userId = uid, loginMethod = "device", token = response.token)
-                    Log.d("StatsRepository", "Upgraded old user $uid with new backend session token")
+                    Log.d("StatsRepository", "Upgraded old user with new backend session token")
                 }
-                Log.d("StatsRepository", "User $uid successfully synced with cloud.")
+                Log.d("StatsRepository", "User successfully synced with cloud.")
             }
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to sync user with cloud: ${e.message}")
@@ -838,7 +838,7 @@ class StatsRepository(
         val uid = userId() ?: return false
         _networkState.value = NetworkState.Loading("spend")
         
-        Log.d("StatsRepository", "Attempting to spend coins for user: $uid, question: ${question.take(50)}...")
+        Log.d("StatsRepository", "Attempting to spend coins for question: ${question.take(50)}...")
         
         try {
             val response = CoinApi.retrofitService.spendCoins(

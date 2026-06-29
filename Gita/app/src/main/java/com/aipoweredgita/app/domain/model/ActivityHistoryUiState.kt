@@ -20,6 +20,8 @@ data class ActivityHistoryUiState(
     val karmaYogaCount: Int = 0,
     val bhaktiYogaCount: Int = 0,
     val jnanaYogaCount: Int = 0,
+    val dhyanaYogaCount: Int = 0,
+    val rajaYogaCount: Int = 0,
     override val isLoading: Boolean = false,
     override val error: String? = null
 ) : BaseUiState

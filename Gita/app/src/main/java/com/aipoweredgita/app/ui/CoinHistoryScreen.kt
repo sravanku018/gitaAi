@@ -22,21 +22,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.CoinHistoryEntry
 import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
-import com.aipoweredgita.app.coin.CoinTransactionLogger
-import com.aipoweredgita.app.utils.AuthPreferences
-import com.aipoweredgita.app.database.GitaDatabase
-import com.aipoweredgita.app.repository.CoinReconciliationManager
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,9 +44,8 @@ fun CoinHistoryScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val stats by viewModel.stats.collectAsState()
     val coinBalance by viewModel.coinBalance.collectAsState()
-    var allHistory by remember { mutableStateOf<List<CoinHistoryEntry>>(emptyList()) }
+    val allHistory by viewModel.coinHistory.collectAsState()
     var activeFilter by remember { mutableStateOf("all") }
-    var isGuest by remember { mutableStateOf(false) }
 
     // Refresh trigger for manual refresh and lifecycle-based refresh
     var refreshTrigger by remember { mutableIntStateOf(0) }
@@ -75,126 +69,17 @@ fun CoinHistoryScreen(
     // Initial load when screen first appears
     LaunchedEffect(Unit) {
         viewModel.refreshCoinBalance()
+        viewModel.loadCoinHistory()
         kotlinx.coroutines.delay(300)
         refreshTrigger++
     }
 
-
-
-    // Build local history from CoinTransactionLogger — used as fallback when no JWT token
-    // (users created via users/create have no token, so server API returns 401/403)
-    suspend fun buildLocalHistory(ctx: android.content.Context): List<CoinHistoryEntry> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        // Format local timestamps as UTC strings so they sort correctly alongside server entries.
-        val utcFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }
-        CoinTransactionLogger.getHistory(ctx).map { tx ->
-            CoinHistoryEntry(
-                amount = tx.amount,
-                type = tx.type.name,
-                source = tx.description.lowercase().let { desc ->
-                    when {
-                        desc.contains("welcome") -> "signup"
-                        desc.contains("quiz") -> "quiz_completion"
-                        desc.contains("check") || desc.contains("checkin") -> "checkin_day"
-                        desc.contains("share") -> "share_sloka"
-                        desc.contains("voice") -> "voice_chat"
-                        desc.contains("chapter") -> "chapter_completion"
-                        desc.contains("level") -> "level_up_bonus"
-                        else -> "other"
-                    }
-                },
-                description = tx.description,
-                created_at = utcFmt.format(java.util.Date(tx.timestamp))
-            )
-        }
+    // Fetch history from API when balance changes or refresh is triggered
+    LaunchedEffect(refreshTrigger, coinBalance) {
+        viewModel.loadCoinHistory()
     }
 
-    // Fetch history from API when userId becomes available, balance changes, or refresh is triggered
-    LaunchedEffect(stats, refreshTrigger, coinBalance) {
-        val authPrefs = AuthPreferences.getInstance(context)
-        isGuest = authPrefs.isGuestUser
 
-        // Always prefer authPrefs.userId (set synchronously on login) over stats?.userId
-        // (Room DB Flow can lag behind after login, causing 403 if wrong userId is sent)
-        val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
-            ?: stats?.userId?.takeIf { it.isNotEmpty() }
-
-        android.util.Log.d("CoinHistory", "LaunchedEffect triggered: stats=${stats?.userId}, refreshTrigger=$refreshTrigger, isGuest=$isGuest, effectiveUid=$effectiveUid, hasToken=${authPrefs.token != null}")
-
-        if (effectiveUid != null && effectiveUid.isNotEmpty()) {
-
-
-            // Small delay to ensure server has processed the transaction
-            if (refreshTrigger > 0 || coinBalance > 0) {
-                kotlinx.coroutines.delay(500)
-            }
-
-            if (isGuest) {
-                // For guests: show local transactions from CoinTransactionLogger
-                allHistory = buildLocalHistory(context)
-                android.util.Log.d("CoinHistory", "Guest: Loaded ${allHistory.size} local transactions")
-            } else {
-                val token = authPrefs.token
-                var serverLoaded = false
-                if (token != null) {
-                    // Has JWT token (auth/register users) — try server first
-                    try {
-                        val serverHistory = CoinApi.retrofitService.getHistory(
-                            effectiveUid, "Bearer $token", limit = 500
-                        )
-                        // Server is source of truth — use server data directly
-                        // Filter out guest bonus entries for non-guest users
-                        val filteredServerHistory = if (!isGuest) {
-                            serverHistory.filter { entry ->
-                                !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
-                            }
-                        } else {
-                            serverHistory
-                        }
-                        // Merge server + local: only add local entries not already on server
-                        val localHistory = buildLocalHistory(context)
-                        // Build unique keys using source + amount + date to prevent day entries from being dropped
-                        val serverKeys = filteredServerHistory.map { entry ->
-                            val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
-                            "${entry.source}_${entry.amount}_${datePart}"
-                        }.toSet()
-                        val extraLocalEntries = localHistory.filter { local ->
-                            val localDate = local.created_at?.split(" ")?.get(0) ?: ""
-                            val key = "${local.source}_${local.amount}_${localDate}"
-                            !serverKeys.contains(key)
-                        }
-                        allHistory = filteredServerHistory + extraLocalEntries
-                        serverLoaded = true
-                        // Sync server data to local (preserves it for offline use)
-                        if (serverHistory.isNotEmpty()) {
-                            CoinTransactionLogger.syncFromServer(context, serverHistory)
-                        }
-                        android.util.Log.d("CoinHistory", "Server: ${serverHistory.size} txns + ${extraLocalEntries.size} older local txns = ${allHistory.size} total for $effectiveUid")
-                    } catch (e: Exception) {
-                        android.util.Log.e("CoinHistory", "Server history failed (${e.message}), falling back to local")
-                    }
-                } else {
-                    android.util.Log.w("CoinHistory", "No JWT token (users/create user) — using local history")
-                }
-                // Fallback: no token OR server failed → show local history
-                if (!serverLoaded) {
-                    val localOnly = buildLocalHistory(context)
-                    // Filter out guest bonus entries for non-guest users
-                    allHistory = if (!isGuest) {
-                        localOnly.filter { entry ->
-                            !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
-                        }
-                    } else {
-                        localOnly
-                    }
-                    android.util.Log.d("CoinHistory", "Local fallback: Loaded ${allHistory.size} transactions")
-                }
-            }
-        } else {
-            android.util.Log.w("CoinHistory", "No userId available, stats=${stats?.userId}, authUserId=${authPrefs.userId}")
-        }
-    }
 
 
 

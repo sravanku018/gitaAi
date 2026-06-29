@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                 // User sync to cloud happens lazily via ensureUserSynced() on first coin API call
                 val stats = database.userStatsDao().getUserStatsOnce()
                 if (stats != null) {
-                    android.util.Log.d("MainActivity", "User ID: ${stats.userId}")
+                    android.util.Log.d("MainActivity", "User initialized")
                 }
                 
                 // Note: autoReconcile runs in GitaApp.onCreate() — no duplicate call here

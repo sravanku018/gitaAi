@@ -331,6 +331,8 @@ fun SpiritualPathRadarChart(
     karmaCount: Int,
     bhaktiCount: Int,
     jnanaCount: Int,
+    dhyanaCount: Int,
+    rajaCount: Int,
     modifier: Modifier = Modifier
 ) {
     val saffronGold = Color(0xFFE08A1E)
@@ -341,6 +343,8 @@ fun SpiritualPathRadarChart(
     val kp = (karmaCount / targetMax).coerceAtMost(1f)
     val bp = (bhaktiCount / targetMax).coerceAtMost(1f)
     val jp = (jnanaCount / targetMax).coerceAtMost(1f)
+    val dp = (dhyanaCount / targetMax).coerceAtMost(1f)
+    val rp = (rajaCount / targetMax).coerceAtMost(1f)
 
     // Caching Path objects to eliminate allocations inside DrawScope
     val ringPath = remember { Path() }
@@ -357,13 +361,17 @@ fun SpiritualPathRadarChart(
         animationTriggered = true
     }
 
-    val archetype = remember(karmaCount, bhaktiCount, jnanaCount) {
+    val archetype = remember(karmaCount, bhaktiCount, jnanaCount, dhyanaCount, rajaCount) {
+        val counts = listOf(karmaCount, bhaktiCount, jnanaCount, dhyanaCount, rajaCount)
+        val maxCount = counts.maxOrNull() ?: 0
         when {
-            karmaCount == 0 && bhaktiCount == 0 && jnanaCount == 0 -> "Aspirant"
-            kotlin.math.abs(karmaCount - bhaktiCount) <= 5 && kotlin.math.abs(bhaktiCount - jnanaCount) <= 5 -> "Raja Yogi"
-            karmaCount > bhaktiCount && karmaCount > jnanaCount -> "Karma Yogi"
-            bhaktiCount > karmaCount && bhaktiCount > jnanaCount -> "Bhakti Yogi"
-            jnanaCount > karmaCount && jnanaCount > bhaktiCount -> "Jnana Yogi"
+            maxCount == 0 -> "Aspirant"
+            counts.count { it >= maxCount - 5 } >= 3 -> "Balanced Yogi"
+            maxCount == karmaCount -> "Karma Yogi"
+            maxCount == bhaktiCount -> "Bhakti Yogi"
+            maxCount == jnanaCount -> "Jnana Yogi"
+            maxCount == dhyanaCount -> "Dhyana Yogi"
+            maxCount == rajaCount -> "Raja Yogi"
             else -> "Aspirant"
         }
     }
@@ -397,11 +405,13 @@ fun SpiritualPathRadarChart(
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val center = Offset(size.width / 2, size.height / 2)
                     val radius = (size.width / 2) * 0.8f
-                    val angles = listOf(-90f, 30f, 150f)
+                    val angles = listOf(-90f, -18f, 54f, 126f, 198f)
                     val progresses = listOf(
                         (kp * animationProgress).coerceAtLeast(0.05f),
                         (bp * animationProgress).coerceAtLeast(0.05f),
-                        (jp * animationProgress).coerceAtLeast(0.05f)
+                        (jp * animationProgress).coerceAtLeast(0.05f),
+                        (dp * animationProgress).coerceAtLeast(0.05f),
+                        (rp * animationProgress).coerceAtLeast(0.05f)
                     )
 
                     // Concentric rings
@@ -457,7 +467,7 @@ fun SpiritualPathRadarChart(
                         textSize = 9.sp.toPx()
                         typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
                     }
-                    val labels = listOf("Karma", "Bhakti", "Jnana")
+                    val labels = listOf("Karma", "Bhakti", "Jnana", "Dhyana", "Raja")
                     for (i in angles.indices) {
                         val rad = Math.toRadians(angles[i].toDouble())
                         val x = center.x + (radius + 15.dp.toPx()) * cos(rad).toFloat()
@@ -473,16 +483,24 @@ fun SpiritualPathRadarChart(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Action", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Act", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$karmaCount", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Devotion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Dev", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$bhaktiCount", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Knowledge", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Kno", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("$jnanaCount", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Med", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$dhyanaCount", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Mys", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$rajaCount", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 }
             }
         }

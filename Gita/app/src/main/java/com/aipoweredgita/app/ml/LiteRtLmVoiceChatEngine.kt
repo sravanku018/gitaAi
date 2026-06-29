@@ -42,7 +42,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
     companion object {
         private const val TAG = "LiteRtLmVoiceChat"
         private const val MAX_TOKENS = 2048  // Qwen3 0.6B works better with smaller window
-        private const val MAX_PROMPT_CHARS = 800  // keep prompt short, leave room for output
+        private const val MAX_PROMPT_CHARS = 1500  // keep prompt short, leave room for output
 
         private val SAMPLER = SamplerConfig(
             topK        = 40,   // wider sampling
@@ -68,11 +68,12 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                 this.timeoutMs     = timeoutMs
                 this.currentSampler = sampler
 
+                val backend = if (com.aipoweredgita.app.utils.DeviceTierDetector.hasVulkan(context)) Backend.GPU() else Backend.CPU()
                 val newEngine = Engine(
                     EngineConfig(
                         modelPath    = path,
                         maxNumTokens = maxTokens,
-                        backend      = Backend.CPU()
+                        backend      = backend
                     )
                 )
                 newEngine.initialize()

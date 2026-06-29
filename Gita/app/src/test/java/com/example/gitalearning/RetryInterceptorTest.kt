@@ -60,14 +60,10 @@ class RetryInterceptorTest {
         val client = clientWithRetry()
         val req = Request.Builder().url(server.url("/test")).build()
 
-        try {
-            client.newCall(req).execute()
-            assertTrue("Expected IOException to be thrown", false)
-        } catch (e: IOException) {
-            // This is expected - 4xx errors throw IOException
-            assertTrue(e.message?.contains("404") == true)
-            assertEquals(1, server.requestCount) // Verify no retry
-        }
+        val resp = client.newCall(req).execute()
+
+        assertEquals(404, resp.code)
+        assertEquals(1, server.requestCount) // Verify no retry
     }
 
     @Test

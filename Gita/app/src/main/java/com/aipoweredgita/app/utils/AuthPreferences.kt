@@ -103,6 +103,10 @@ class AuthPreferences(context: Context) {
         get() = prefs.getLong(KEY_LAST_LOGIN, 0)
         set(value) = prefs.edit().putLong(KEY_LAST_LOGIN, value).apply()
 
+    var authVersion: Int
+        get() = prefs.getInt("auth_version", 0)
+        set(value) = prefs.edit().putInt("auth_version", value).apply()
+
     // ── Guest Local Coins ──────────────────────────────────────────────
     // Guests earn coins locally since /guest/create is broken on server
 
@@ -144,6 +148,8 @@ class AuthPreferences(context: Context) {
             email?.let { putString(KEY_EMAIL, it) }
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             remove("guest_welcome_awarded") // Reset guest flag
+            val currentAuthVersion = prefs.getInt("auth_version", 0)
+            putInt("auth_version", currentAuthVersion + 1)
             commit() // synchronous — ensures values are written before onLoginSuccess navigates
         }
         // Store token in encrypted prefs — also synchronous
@@ -172,6 +178,7 @@ class AuthPreferences(context: Context) {
      * Get saved credentials for auto-fill (phone/email only — password is never stored).
      */
     fun getSavedCredentials(): Triple<String?, String?, String?> {
+        if (!rememberMe) return Triple(null, null, null)
         return when (loginMethod) {
             "phone" -> Triple(phone, null, null)
             "email" -> Triple(email, null, null)

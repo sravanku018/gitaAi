@@ -91,9 +91,10 @@ class OfflineCacheRepository(private val cachedVerseDao: CachedVerseDao) {
                     // Fast check using in-memory Set instead of database query
                     val verseId = "$chapter:$verse"
                     if (!cachedIds.contains(verseId)) {
-                        // Try to download new verse using raw endpoint
                         try {
                             val rawVerseData = GitaApi.retrofitService.getVerseRaw(language, chapter, verse)
+                            // Small delay to prevent overwhelming the server on every API call
+                            kotlinx.coroutines.delay(100)
 
                             // Convert to individual verses (handles grouped verses)
                             val individualVerses = rawVerseData.toIndividualVerses()
@@ -142,9 +143,6 @@ class OfflineCacheRepository(private val cachedVerseDao: CachedVerseDao) {
                                 DownloadStatus.DOWNLOADING,
                                 "Ch.$chapter:$verse • $currentCached/$totalVerses"
                             ))
-
-                            // Small delay to prevent overwhelming the server
-                            kotlinx.coroutines.delay(50)
                         } catch (e: Exception) {
                             // Any error - mark for retry (don't skip)
                             failed++

@@ -51,7 +51,7 @@ class GuestSyncManager(private val context: Context) {
         }
 
         try {
-            Log.d(TAG, "Syncing guest data: $guestId -> $realUserId")
+            Log.d(TAG, "Syncing guest data")
             
             val response = CoinApi.retrofitService.claimGuest(
                 ClaimGuestRequest(

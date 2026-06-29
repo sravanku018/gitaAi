@@ -34,4 +34,10 @@ interface ReadVerseDao {
 
     @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo BETWEEN 13 AND 18")
     fun getJnanaYogaReadCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo = 6")
+    fun getDhyanaYogaReadCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT chapterNo || '-' || verseNo) FROM read_verses WHERE chapterNo = 9")
+    fun getRajaYogaReadCountFlow(): Flow<Int>
 }

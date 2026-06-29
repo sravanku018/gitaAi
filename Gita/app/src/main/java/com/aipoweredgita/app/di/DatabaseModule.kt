@@ -95,10 +95,7 @@ object DatabaseModule {
         return database.bookmarkDao()
     }
 
-    @Provides
-    fun provideNoteDao(database: GitaDatabase): NoteDao {
-        return database.noteDao()
-    }
+
 
     @Provides
     fun provideSpacedRepetitionDao(database: GitaDatabase): SpacedRepetitionDao {

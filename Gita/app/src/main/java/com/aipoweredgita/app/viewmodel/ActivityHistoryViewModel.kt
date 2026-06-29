@@ -205,5 +205,15 @@ class ActivityHistoryViewModel @Inject constructor(
                 _uiState.update { it.copy(jnanaYogaCount = count) }
             } 
         }
+        viewModelScope.launch { 
+            spiritualPathRepo.dhyanaYogaCount.collect { count ->
+                _uiState.update { it.copy(dhyanaYogaCount = count) }
+            } 
+        }
+        viewModelScope.launch { 
+            spiritualPathRepo.rajaYogaCount.collect { count ->
+                _uiState.update { it.copy(rajaYogaCount = count) }
+            } 
+        }
     }
 }

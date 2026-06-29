@@ -70,7 +70,9 @@ fun TryNowDialog(
     // Observe WorkManager status (shared across all screens)
     val workInfo by com.aipoweredgita.app.ml.ModelDownloadStateManager.getGemmaWorkInfoLiveData(context)
         .observeAsState(initial = emptyList())
-    val isDownloading = com.aipoweredgita.app.ml.ModelDownloadStateManager.isGemmaDownloading(context)
+    val isDownloading = workInfo.any { 
+        it.state == androidx.work.WorkInfo.State.RUNNING || it.state == androidx.work.WorkInfo.State.ENQUEUED 
+    }
     val overallProgress = workInfo.firstOrNull()?.progress?.getInt("overallProgress", 0) ?: 0
     val currentModel = workInfo.firstOrNull()?.progress?.getString("currentModel") ?: ""
 

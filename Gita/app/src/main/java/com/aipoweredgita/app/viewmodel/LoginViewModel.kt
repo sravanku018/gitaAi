@@ -32,12 +32,13 @@ class LoginViewModel @Inject constructor(
     fun handleGuestLogin() {
         viewModelScope.launch {
             val guestId = "guest_${java.util.UUID.randomUUID()}"
-            AuthPreferences.getInstance(appContext).saveGuestState(guestId)
+            val authPrefs = AuthPreferences.getInstance(appContext)
+            authPrefs.saveGuestState(guestId)
             userStatsDao.updateUserId(guestId)
             userStatsDao.updateProfile(name = "Guest User", dob = "")
-            if (!AuthPreferences.getInstance(appContext).guestWelcomeAwarded) {
+            if (!authPrefs.guestWelcomeAwarded) {
                 userStatsDao.updateKrishnaCoins(50)
-                AuthPreferences.getInstance(appContext).guestWelcomeAwarded = true
+                authPrefs.guestWelcomeAwarded = true
                 CoinTransactionLogger.log(appContext, 50, "Welcome bonus (guest)")
             }
         }

@@ -75,9 +75,9 @@ fun ProfileScreen(
         } catch (_: Exception) {}
     }
 
-    val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+    val activeLevel = yogaLevels.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
         ?: yogaLevels.lastOrNull()
-    val activeSubStage = yogaSubStages.find { totalCoins in it.min_coins until it.max_coins }
+    val activeSubStage = yogaSubStages.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
         ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
 
     val displayYogaName = activeLevel?.name ?: yogaInfo.yogaName
@@ -470,7 +470,7 @@ private fun YogaPathTab(
         Spacer(Modifier.height(24.dp))
 
         if (yogaLevels.isNotEmpty()) {
-            val activeLevel = yogaLevels.find { totalCoins in it.min_coins until it.max_coins }
+            val activeLevel = yogaLevels.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
                 ?: yogaLevels.lastOrNull()
             val currentLevelIndex = activeLevel?.let { yogaLevels.indexOf(it) } ?: 0
             val currentProgress = activeLevel?.let { yl ->
@@ -491,8 +491,8 @@ private fun YogaPathTab(
 
         yogaLevels.forEachIndexed { index, yl ->
             val subs = yogaSubStages.filter { it.level == yl.level }.sortedBy { it.sub_level }
-            val done = totalCoins >= yl.max_coins
-            val active = totalCoins in yl.min_coins until yl.max_coins
+            val done = totalCoins > yl.max_coins
+            val active = totalCoins >= yl.min_coins && totalCoins <= yl.max_coins
             val locked = !done && !active
 
             YogaMargStage(
@@ -760,8 +760,8 @@ private fun YogaMargStage(
                     modifier = Modifier.padding(start = 12.dp)
                 ) {
                     subs.forEach { sub ->
-                        val subDone = currentCoins >= sub.max_coins
-                        val subActive = currentCoins in sub.min_coins until sub.max_coins
+                        val subDone = currentCoins > sub.max_coins
+                        val subActive = currentCoins >= sub.min_coins && currentCoins <= sub.max_coins
                         val subLocked = !subDone && !subActive
                         
                         Row(

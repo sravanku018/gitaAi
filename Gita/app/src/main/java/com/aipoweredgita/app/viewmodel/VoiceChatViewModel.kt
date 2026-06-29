@@ -333,15 +333,14 @@ class VoiceChatViewModel @Inject constructor(
      * messages (those beyond the last 15) into a single summary via the Groq proxy.
      * The summary is stored in Room and injected as context in future requests.
      */
-    private suspend fun summarizeOldMessages(isProxy: Boolean) {
-        if (!isProxy) return // only summarize proxy conversations
+    private suspend fun summarizeOldMessages(): Boolean {
         val allMessages = chatRepo.getAllMessages()
-        if (allMessages.size <= SUMMARY_THRESHOLD) return
+        if (allMessages.size <= SUMMARY_THRESHOLD) return false
 
         val toSummarize = allMessages.dropLast(15) // keep newest 15
-        if (toSummarize.isEmpty()) return
+        if (toSummarize.isEmpty()) return false
 
-        try {
+        return try {
             val summary = callSummarizationProxy(toSummarize)
             if (summary.isNotBlank()) {
                 val dao = summaryDao
@@ -359,10 +358,14 @@ class VoiceChatViewModel @Inject constructor(
                     chatRepo.deleteMessageById(id)
                 }
                 Log.d(tag, "Summarized ${toSummarize.size} old messages")
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             Log.w(tag, "Failed to summarize old messages", e)
             // Non-critical — conversation continues without summary
+            false
         }
     }
 
@@ -664,7 +667,7 @@ class VoiceChatViewModel @Inject constructor(
                                 }
                             }
                             // Trigger session summarization for long conversations
-                            summarizeOldMessages(isProxy = true)
+                            summarizeOldMessages()
                         } else {
                             val recentHistory = _uiState.value.messages
                                 .filter { it.text.isNotEmpty() }
@@ -740,6 +743,9 @@ class VoiceChatViewModel @Inject constructor(
                                                 _uiState.update {
                                                     it.copy(isSpeaking = false, error = "Voice output failed", errorType = VoiceChatErrorType.TTS)
                                                 }
+                                            }
+                                            if (summarizeOldMessages()) {
+                                                voiceChatEngine.resetConversation()
                                             }
                                         }
                                     }

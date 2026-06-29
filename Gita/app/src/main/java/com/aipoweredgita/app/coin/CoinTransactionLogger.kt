@@ -31,7 +31,7 @@ object CoinTransactionLogger {
             }
             arr.put(entry)
             while (arr.length() > MAX) arr.remove(0)
-            prefs.edit().putString(KEY, arr.toString()).apply()
+            prefs.edit().putString(KEY, arr.toString()).commit()
         }
     }
 
@@ -83,7 +83,7 @@ object CoinTransactionLogger {
 
             // Trim to MAX keeping the newest
             while (arr.length() > MAX) arr.remove(0)
-            prefs.edit().putString(KEY, arr.toString()).apply()
+            prefs.edit().putString(KEY, arr.toString()).commit()
         }
     }
 
@@ -111,7 +111,7 @@ object CoinTransactionLogger {
     fun clear(context: Context) {
         synchronized(this) {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().remove(KEY).apply()
+                .edit().remove(KEY).commit()
         }
     }
 
@@ -120,7 +120,7 @@ object CoinTransactionLogger {
         return try { JSONArray(raw) }
         catch (e: JSONException) {
             Log.w(TAG, "Corrupted transaction log, resetting: ${e.message}")
-            prefs.edit().remove(KEY).apply()
+            prefs.edit().remove(KEY).commit()
             JSONArray()
         }
     }

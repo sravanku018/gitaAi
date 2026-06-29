@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StudyGuideDao {
-    @Insert
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun insert(guide: StudyGuide)
 
     @Query("SELECT * FROM study_guides WHERE chapterNo = :chapter ORDER BY createdAt DESC")

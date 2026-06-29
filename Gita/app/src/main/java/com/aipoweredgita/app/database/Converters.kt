@@ -26,4 +26,15 @@ class Converters {
     fun toBookmarkType(value: String): BookmarkType {
         return BookmarkType.valueOf(value)
     }
+
+    @TypeConverter
+    fun fromStringList(value: List<String>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toStringList(value: String): List<String> {
+        val type = object : TypeToken<List<String>>() {}.type
+        return gson.fromJson(value, type) ?: emptyList()
+    }
 }

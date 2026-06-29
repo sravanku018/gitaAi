@@ -57,7 +57,7 @@ class SyncWorker(
         val authPrefs = AuthPreferences.getInstance(applicationContext)
         val currentUserId = authPrefs.userId
 
-        Log.d(TAG, "doWork() called. UserId: $currentUserId, isGuest: ${authPrefs.isGuestUser}")
+        Log.d(TAG, "doWork() called. isGuest: ${authPrefs.isGuestUser}")
 
         if (currentUserId.isNullOrEmpty() || authPrefs.isGuestUser) {
             Log.d(TAG, "No logged-in user or guest active, skipping background sync")
@@ -76,11 +76,11 @@ class SyncWorker(
         val events = dao.getPendingEvents(currentUserId)
 
         if (events.isEmpty()) {
-            Log.d(TAG, "No pending sync events found for user: $currentUserId")
+            Log.d(TAG, "No pending sync events found for user")
             return Result.success()
         }
 
-        Log.d(TAG, "Found ${events.size} pending sync events for user: $currentUserId")
+        Log.d(TAG, "Found ${events.size} pending sync events for user")
         val gson = Gson()
 
         for (event in events) {
@@ -165,7 +165,7 @@ class SyncWorker(
                         userStatsDao.updateKrishnaCoins(response.remaining_balance)
                     }
                     "CHECKIN" -> {
-                        Log.d(TAG, "Syncing CHECKIN for user: ${event.userId}")
+                        Log.d(TAG, "Syncing CHECKIN")
                         val response = CoinApi.retrofitService.checkin(mapOf("user_id" to event.userId))
                         if (response.duplicate == true) {
                             Log.w(TAG, "Checkin sync: Duplicate detected on server")
@@ -207,7 +207,7 @@ class SyncWorker(
                         }
                     }
                     "STATS_SYNC" -> {
-                        Log.d(TAG, "Syncing STATS_SYNC for user: ${event.userId}")
+                        Log.d(TAG, "Syncing STATS_SYNC")
                         val token = authPrefs.token
                         val latestStats = userStatsDao.getUserStatsOnce()
                         if (!token.isNullOrEmpty() && latestStats != null) {
@@ -284,7 +284,7 @@ class SyncWorker(
         Log.d(TAG, "All events processed successfully")
         
         // TOP-TO-BOTTOM SYNC: Fetch authoritative state from server after all offline events are processed
-        Log.d(TAG, "Fetching latest authoritative state from server for $currentUserId")
+        Log.d(TAG, "Fetching latest authoritative state from server")
         statsRepository.refreshUserState(currentUserId)
         
         return Result.success()

@@ -75,7 +75,7 @@ class AuthManager(private val context: Context) {
                     guestSyncManager.syncGuestData(response.user_id, name, email)
                 }
 
-                Log.d(TAG, "Registration successful: ${response.user_id}")
+                Log.d(TAG, "Registration successful")
                 return@withContext Result.success(
                     AuthResult(
                         userId = response.user_id,
@@ -180,7 +180,7 @@ if (response.success) {
                     Log.e(TAG, "Stats sync failed during login", e)
                 }
 
-                Log.d(TAG, "Login successful: ${response.user_id}")
+                Log.d(TAG, "Login successful")
                 return@withContext Result.success(
                     AuthResult(
                         userId = response.user_id,

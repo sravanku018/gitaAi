@@ -70,9 +70,9 @@ class RetryInterceptor : Interceptor {
                 val shouldRetry = code == 429 || (code in 500..599)
                 // Don't count auth endpoint failures (401/404 are expected)
                 if (!isExcluded && !isAuth) circuitBreaker.recordFailure()
-                response.close()
 
                 if (shouldRetry && retryCount < maxRetries) {
+                    response.close()
                     val delayMs = calculateBackoffDelay(retryCount)
                     Log.w(TAG, "HTTP $code, scheduling retry #${retryCount + 1} (backoff ${delayMs}ms)")
                     try { Thread.sleep(delayMs) } catch (_: InterruptedException) { }
@@ -86,11 +86,11 @@ class RetryInterceptor : Interceptor {
                 } else {
                     val msg = if (!shouldRetry) "Non-retryable HTTP $code" else "Max retries exceeded"
                     Log.e(TAG, msg)
-                    throw IOException("HTTP error $code")
+                    return response
                 }
             }
 
-            response
+            return response
         } catch (e: Exception) {
             // Check if error is retryable
             if (isRetryableError(e) && retryCount < maxRetries && !isAuth) {

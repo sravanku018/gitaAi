@@ -124,13 +124,7 @@ object RepositoryModule {
         )
     }
 
-    @Provides
-    @Singleton
-    fun provideNoteRepository(
-        noteDao: NoteDao
-    ): NoteRepository {
-        return NoteRepository(noteDao)
-    }
+
 
     @Provides
     @Singleton
@@ -209,13 +203,7 @@ object RepositoryModule {
         return StudyGuideRepository(studyGuideDao)
     }
 
-    @Provides
-    @Singleton
-    fun provideTranslationCacheRepository(
-        translationCacheDao: TranslationCacheDao
-    ): TranslationCacheRepository {
-        return TranslationCacheRepository(translationCacheDao)
-    }
+
 
     @Provides
     @Singleton
