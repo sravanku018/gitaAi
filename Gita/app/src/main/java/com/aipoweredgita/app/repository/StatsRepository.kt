@@ -361,7 +361,9 @@ class StatsRepository(
         val currentStats = userStatsDao.getUserStatsOnce() ?: return
 
         val today = LocalDate.now().toString()
-        val lastActiveDate = currentStats.lastActiveDate
+        val rawLastActiveDate = currentStats.lastActiveDate
+        // The server might return a full ISO timestamp (e.g. 2024-01-01T12:00:00Z). Extract just the YYYY-MM-DD part.
+        val lastActiveDate = if (rawLastActiveDate.length > 10) rawLastActiveDate.substring(0, 10) else rawLastActiveDate
 
         userStatsDao.updateLastActive(System.currentTimeMillis(), today)
 
@@ -371,7 +373,13 @@ class StatsRepository(
                 userStatsDao.updateLongestStreak(1)
                 userStatsDao.updateDaysActive(1)
             }
-            lastActiveDate == today -> {}
+            lastActiveDate == today -> {
+                // If they are active today but streak is somehow 0 (e.g. from server sync), fix it
+                if (currentStats.currentStreak == 0) {
+                    userStatsDao.updateCurrentStreak(1)
+                    if (currentStats.longestStreak == 0) userStatsDao.updateLongestStreak(1)
+                }
+            }
             isYesterday(lastActiveDate) -> {
                 val newStreak = currentStats.currentStreak + 1
                 userStatsDao.updateCurrentStreak(newStreak)
@@ -771,8 +779,8 @@ class StatsRepository(
             )
             if (response.success && response.stats != null) {
                 userStatsDao.syncRemoteStats(
-                    currentStreak = response.stats.current_streak,
-                    longestStreak = response.stats.longest_streak,
+                    currentStreak = response.stats.current_streak.coerceAtLeast(0),
+                    longestStreak = response.stats.longest_streak.coerceAtLeast(0),
                     totalQuizzesTaken = response.stats.total_quizzes_taken,
                     totalQuestionsAnswered = response.stats.total_questions_answered,
                     versesRead = response.stats.verses_read,
