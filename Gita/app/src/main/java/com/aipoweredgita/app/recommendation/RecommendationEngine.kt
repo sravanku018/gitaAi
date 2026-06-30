@@ -32,18 +32,17 @@ class RecommendationEngine(private val context: Context) {
             }
 
             val recDao = db.recommendationDataDao()
+            try { recDao.deleteByStatus("pending") } catch (_: Exception) {}
 
             if (stats != null) {
+                var mlManager: HuggingFaceMLManager? = null
                 try {
-                    val mlManager = HuggingFaceMLManager(context)
+                    mlManager = HuggingFaceMLManager(context)
                     mlManager.initializeModels()
                     if (mlManager.isLlmInitialized()) {
                         Log.d(TAG, "Attempting to generate recommendations via local LLM (Qwen)...")
                         val llmRecs = mlManager.generateRecommendationsWithLlm(stats, prefs)
                         if (llmRecs.isNotEmpty()) {
-                            // Clear old recommendations first to prevent duplicates/bloat
-                            try { recDao.deleteAll() } catch (_: Exception) {}
-                            
                             llmRecs.forEach { rec ->
                                 recDao.insert(rec)
                             }
@@ -53,6 +52,8 @@ class RecommendationEngine(private val context: Context) {
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "LLM recommendation generation failed, falling back to heuristics: ${e.message}")
+                } finally {
+                    try { mlManager?.close() } catch (_: Exception) {}
                 }
             }
 

@@ -24,36 +24,48 @@ class ExampleUnitTest {
 
     @Test
     fun difficultyAdjustment_increase() {
-        // Difficulty increases when answer is correct
-        var difficulty = 5
-        difficulty = if (true) difficulty + 1 else difficulty - 1
-        assertEquals(6, difficulty)
+        val engine = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine()
+        val user = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine.UserState(skillLevel = 5)
+        
+        // Fast correct should increase difficulty by 2
+        val newLevel = engine.updateDifficulty(user, isCorrect = true, responseTimeMs = 3000)
+        assertEquals(7, newLevel)
+        assertEquals(1, user.correctCount)
+        assertEquals(1, user.totalAnswered)
+        assertEquals(1, user.streak)
     }
 
     @Test
     fun difficultyAdjustment_decrease() {
-        // Difficulty decreases when answer is wrong
-        var difficulty = 5
-        difficulty = if (false) difficulty + 1 else difficulty - 1
-        assertEquals(4, difficulty)
+        val engine = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine()
+        val user = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine.UserState(skillLevel = 5)
+        
+        // Incorrect answer should decrease difficulty by 1
+        val newLevel = engine.updateDifficulty(user, isCorrect = false, responseTimeMs = 4000)
+        assertEquals(4, newLevel)
+        assertEquals(0, user.correctCount)
+        assertEquals(1, user.totalAnswered)
+        assertEquals(-1, user.streak)
     }
 
     @Test
     fun difficultyBounds_maximum() {
-        // Difficulty should not exceed 10
-        var difficulty = 9
-        difficulty = if (true) difficulty + 1 else difficulty - 1
-        difficulty = minOf(difficulty, 10)
-        assertEquals(10, difficulty)
+        val engine = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine()
+        val user = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine.UserState(skillLevel = 10)
+        
+        // Correct answer should clamp skill level to maximum of 10
+        val newLevel = engine.updateDifficulty(user, isCorrect = true, responseTimeMs = 2000)
+        assertEquals(10, newLevel)
     }
 
     @Test
     fun difficultyBounds_minimum() {
-        // Difficulty should not go below 1
-        var difficulty = 2
-        difficulty = if (false) difficulty + 1 else difficulty - 1
-        difficulty = maxOf(difficulty, 1)
-        assertEquals(1, difficulty)
+        val engine = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine()
+        val user = com.aipoweredgita.app.ml.AdaptiveDifficultyEngine.UserState(skillLevel = 1)
+        
+        // Incorrect answer should clamp skill level to minimum of 1
+        val newLevel = engine.updateDifficulty(user, isCorrect = false, responseTimeMs = 2000)
+        assertEquals(1, newLevel)
     }
 
     @Test

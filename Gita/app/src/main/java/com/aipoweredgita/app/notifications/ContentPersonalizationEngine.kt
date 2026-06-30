@@ -73,7 +73,7 @@ class ContentPersonalizationEngine(private val context: Context) {
         val currentLevel = calculateUserLevel(userStats)
         val completionRate = calculateCompletionRate(userStats)
 
-        return UserLearningProfile(
+        val profile = UserLearningProfile(
             accuracy = accuracy,
             preferredSegments = preferredSegments,
             weakAreas = weakAreas,
@@ -83,6 +83,95 @@ class ContentPersonalizationEngine(private val context: Context) {
             totalVersesRead = userStats.distinctVersesRead,
             completionRate = completionRate
         )
+
+        // Save insights, pattern, style to DB
+        saveInsightsToDb(profile, userStats)
+
+        return profile
+    }
+
+    private suspend fun saveInsightsToDb(profile: UserLearningProfile, stats: UserStats) {
+        try {
+            val db = GitaDatabase.getDatabase(context)
+            val insightsDao = db.learningInsightsDao()
+            val patternDao = db.learningPatternDao()
+            val styleDao = db.learningStyleDao()
+
+            // Generate insights
+            val insights = mutableListOf<com.aipoweredgita.app.database.LearningInsights>()
+            if (profile.accuracy > 85f) {
+                insights.add(
+                    com.aipoweredgita.app.database.LearningInsights(
+                        insightType = "strength",
+                        title = "High Accuracy Achievement",
+                        description = "You're demonstrating a strong understanding with ${profile.accuracy.toInt()}% accuracy.",
+                        detail = "Your accuracy shows that you are retaining the concepts well. Keep testing yourself with higher difficulty questions.",
+                        confidenceLevel = 90f,
+                        suggestedAction = "Try a harder difficulty quiz",
+                        actionPriority = "medium",
+                        impactScore = 80f,
+                        timelineValue = "short-term"
+                    )
+                )
+            } else if (profile.accuracy < 70f && profile.accuracy > 0f) {
+                insights.add(
+                    com.aipoweredgita.app.database.LearningInsights(
+                        insightType = "weakness",
+                        title = "Review Recommended",
+                        description = "Your quiz accuracy is currently ${profile.accuracy.toInt()}%. Let's strengthen it.",
+                        detail = "Spaced repetition of weak topics will help improve recall. Focus on reading translation and meaning before taking quizzes.",
+                        confidenceLevel = 85f,
+                        suggestedAction = "Review weak topics",
+                        actionPriority = "high",
+                        impactScore = 85f,
+                        timelineValue = "short-term"
+                    )
+                )
+            }
+
+            if (profile.streakDays >= 3) {
+                insights.add(
+                    com.aipoweredgita.app.database.LearningInsights(
+                        insightType = "milestone",
+                        title = "Consistency Champion",
+                        description = "You have maintained a ${profile.streakDays}-day streak!",
+                        detail = "Consistent daily study is key to spiritual progress and memory retention. Keep this momentum going.",
+                        confidenceLevel = 95f,
+                        suggestedAction = "Continue daily study",
+                        actionPriority = "high",
+                        impactScore = 90f,
+                        timelineValue = "long-term"
+                    )
+                )
+            }
+
+            insights.forEach { insight ->
+                try { insightsDao.insert(insight) } catch (_: Exception) {}
+            }
+
+            // Save pattern
+            val pattern = com.aipoweredgita.app.database.LearningPattern(
+                averageTimePerQuestion = 15,
+                preferredDifficulty = profile.currentLevel.coerceIn(1, 10),
+                weeklyStudyDays = if (profile.streakDays > 0) profile.streakDays.coerceAtMost(7) else 1,
+                learningEfficiency = profile.accuracy / 100f
+            )
+            try { patternDao.insert(pattern) } catch (_: Exception) {}
+
+            // Save style
+            val style = com.aipoweredgita.app.database.LearningStyle(
+                id = 1,
+                visualScore = if (profile.totalVersesRead > 20) 70f else 50f,
+                readingScore = 80f,
+                preferredSessionLength = 15,
+                preferredStudyTime = "morning",
+                questionTypePreference = "mixed",
+                lastUpdated = System.currentTimeMillis()
+            )
+            try { styleDao.insertLearningStyle(style) } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("ContentPersonalization", "Error saving insights to database", e)
+        }
     }
 
     /**

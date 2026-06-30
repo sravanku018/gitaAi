@@ -112,7 +112,7 @@ class RandomSlokaViewModel @Inject constructor(
                             verse = "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥",
                             translation = "You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.",
                             meaning = "Karma yoga",
-                            explanation = "Karma yoga explanation"
+                            explanation = "This is the core verse of Karma Yoga. Sri Krishna explains that a seeker has a right to perform prescribed duties, but has no claim on the results of those actions. One should perform their duty without attachment to the outcome, and without developing an attitude of laziness or inaction."
                         )
                         _uiState.update { it.copy(currentVerse = fallbackCached, isLoading = false) }
                     }

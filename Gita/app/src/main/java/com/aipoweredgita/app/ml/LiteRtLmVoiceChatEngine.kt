@@ -41,7 +41,6 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "LiteRtLmVoiceChat"
-        private const val MAX_TOKENS = 2048  // Qwen3 0.6B works better with smaller window
         private const val MAX_PROMPT_CHARS = 1500  // keep prompt short, leave room for output
 
         private val SAMPLER = SamplerConfig(
@@ -52,13 +51,22 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
 
         private const val DEFAULT_INSTRUCTION =
             "You are Krishna from the Bhagavad Gita. Answer clearly."
+
+        @Volatile
+        private var instance: LiteRtLmVoiceChatEngine? = null
+
+        fun getInstance(context: Context): LiteRtLmVoiceChatEngine {
+            return instance ?: synchronized(this) {
+                instance ?: LiteRtLmVoiceChatEngine(context.applicationContext).also { instance = it }
+            }
+        }
     }
 
     // ─── Init ─────────────────────────────────────────────────────────────────
 
     suspend fun initialize(
         path      : String,
-        maxTokens : Int  = MAX_TOKENS,
+        maxTokens : Int? = null,
         timeoutMs : Long = 240_000L,
         sampler   : com.google.ai.edge.litertlm.SamplerConfig = SAMPLER
     ): Boolean = engineMutex.withLock {
@@ -68,11 +76,13 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                 this.timeoutMs     = timeoutMs
                 this.currentSampler = sampler
 
+                val resolvedMaxTokens = maxTokens ?: com.aipoweredgita.app.utils.DeviceCapability.getOptimalMaxTokens(context, path)
+
                 val backend = if (com.aipoweredgita.app.utils.DeviceTierDetector.hasVulkan(context)) Backend.GPU() else Backend.CPU()
                 val newEngine = Engine(
                     EngineConfig(
                         modelPath    = path,
-                        maxNumTokens = maxTokens,
+                        maxNumTokens = resolvedMaxTokens,
                         backend      = backend
                     )
                 )
@@ -82,7 +92,7 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
                 conversation = newEngine.createConversation(ConversationConfig(samplerConfig = sampler))
                 isInitialized = true
                 modelPath     = path
-                Log.d(TAG, "LiteRT-LM initialized ($maxTokens tokens, timeout=${timeoutMs}ms)")
+                Log.d(TAG, "LiteRT-LM initialized ($resolvedMaxTokens tokens, timeout=${timeoutMs}ms)")
                 true
             } catch (e: Exception) {
                 Log.e(TAG, "LiteRT-LM init failed", e)

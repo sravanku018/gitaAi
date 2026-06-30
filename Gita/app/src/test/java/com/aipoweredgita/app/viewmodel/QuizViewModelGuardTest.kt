@@ -71,6 +71,8 @@ class QuizViewModelGuardTest {
         quizQuestionRepository = mockk<QuizQuestionRepository>(relaxed = true)
         val offlineCacheRepository = mockk<OfflineCacheRepository>(relaxed = true)
         val quizPreferences = mockk<QuizPreferences>(relaxed = true)
+        val userPreferencesDao = mockk<com.aipoweredgita.app.database.UserPreferencesDao>(relaxed = true)
+        coEvery { userPreferencesDao.getPreferencesSync(any()) } returns null
         val application = mockk<Application>(relaxed = true)
 
         // Mock Translation.getClient BEFORE TranslationManager constructor runs
@@ -89,6 +91,7 @@ class QuizViewModelGuardTest {
             quizQuestionRepository = quizQuestionRepository,
             offlineCacheRepository = offlineCacheRepository,
             quizPreferences = quizPreferences,
+            userPreferencesDao = userPreferencesDao,
             application = application
         )
     }

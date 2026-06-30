@@ -51,6 +51,7 @@ class QuizViewModel @Inject constructor(
     private val quizQuestionRepository: QuizQuestionRepository,
     private val offlineCacheRepository: OfflineCacheRepository,
     private val quizPreferences: QuizPreferences,
+    private val userPreferencesDao: com.aipoweredgita.app.database.UserPreferencesDao,
     private val application: Application
 ) : ViewModel() {
 
@@ -159,8 +160,7 @@ class QuizViewModel @Inject constructor(
                 val limit = 1
                 
                 // Fetch user preferences for difficulty range if enabled
-                val prefsDao = GitaDatabase.getDatabase(application).userPreferencesDao()
-                val userPrefs = prefsDao.getPreferencesSync(1) // Assuming default user id 1
+                val userPrefs = userPreferencesDao.getPreferencesSync(1) // Assuming default user id 1
                 
                 val minDiff: Int
                 val maxDiff: Int
@@ -170,10 +170,12 @@ class QuizViewModel @Inject constructor(
                     minDiff = userPrefs.preferredDifficultyMin.coerceAtLeast(1)
                     maxDiff = userPrefs.preferredDifficultyMax.coerceAtMost(10)
                 } else {
-                    // Adaptive difficulty based on skill level
+                    // Adaptive difficulty based on skill level, but clamped to user preferred bounds if present
                     val diff = userState.skillLevel
-                    minDiff = (diff - 2).coerceAtLeast(1)
-                    maxDiff = (diff + 2).coerceAtMost(10)
+                    val prefMin = userPrefs?.preferredDifficultyMin?.coerceAtLeast(1) ?: 1
+                    val prefMax = userPrefs?.preferredDifficultyMax?.coerceAtMost(10) ?: 10
+                    minDiff = (diff - 2).coerceIn(prefMin, prefMax)
+                    maxDiff = (diff + 2).coerceIn(prefMin, prefMax)
                 }
                 
                 val fetchLimit = maxOf(limit, 10)

@@ -111,43 +111,43 @@ object QuestionValidator {
             .joinToString(" ")                    // Join back
     }
 
+    fun extractJsonFromResponse(response: String): String {
+        val trimmed = response.trim()
+
+        // 1. Check if inside markdown block
+        val codeBlockMatch = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(trimmed)
+        if (codeBlockMatch != null) {
+            return codeBlockMatch.groupValues[1].trim()
+        }
+
+        // 2. Try to find the outermost JSON object
+        val firstBrace = trimmed.indexOf('{')
+        val lastBrace = trimmed.lastIndexOf('}')
+        if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            return trimmed.substring(firstBrace, lastBrace + 1)
+        }
+
+        // 3. Try to find the outermost JSON array
+        val firstBracket = trimmed.indexOf('[')
+        val lastBracket = trimmed.lastIndexOf(']')
+        if (firstBracket != -1 && lastBracket != -1 && lastBracket > firstBracket) {
+            return trimmed.substring(firstBracket, lastBracket + 1)
+        }
+
+        return trimmed
+    }
+
     /**
      * Stage 1: Try to parse JSON from raw LLM output.
      * Handles: raw JSON, markdown code blocks, embedded JSON.
      */
     private fun tryParseJson(raw: String): ParsedQuestion? {
-        val trimmed = raw.trim()
-
-        // Attempt 1: Direct JSON parse
-        try {
-            return gson.fromJson(trimmed, ParsedQuestion::class.java)
-        } catch (_: JsonSyntaxException) { }
-
-        // Attempt 2: Extract from markdown code block
-        val codeBlockMatch = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(raw)
-        if (codeBlockMatch != null) {
-            try {
-                return gson.fromJson(codeBlockMatch.groupValues[1].trim(), ParsedQuestion::class.java)
-            } catch (_: JsonSyntaxException) { }
+        val extracted = extractJsonFromResponse(raw)
+        return try {
+            gson.fromJson(extracted, ParsedQuestion::class.java)
+        } catch (_: JsonSyntaxException) {
+            null
         }
-
-        // Attempt 3: Find embedded JSON object
-        val jsonMatch = Regex("\\{[^{}]*\"question\"[^{}]*\"options\"[^{}]*\\}").find(raw)
-        if (jsonMatch != null) {
-            try {
-                return gson.fromJson(jsonMatch.value, ParsedQuestion::class.java)
-            } catch (_: JsonSyntaxException) { }
-        }
-
-        // Attempt 4: Try to find ANY JSON-like structure
-        val looseMatch = Regex("\\{[^{}]*\"[^\"]*\"[^{}]*\\}").find(raw)
-        if (looseMatch != null) {
-            try {
-                return gson.fromJson(looseMatch.value, ParsedQuestion::class.java)
-            } catch (_: JsonSyntaxException) { }
-        }
-
-        return null
     }
 
     /**

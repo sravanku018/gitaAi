@@ -96,7 +96,7 @@ class VoiceChatViewModel @Inject constructor(
     val state: StateFlow<VoiceChatUiState> = uiState
 
     private val voiceManager    = VoiceManager(application)
-    private val voiceChatEngine = LiteRtLmVoiceChatEngine(application)
+    private val voiceChatEngine = LiteRtLmVoiceChatEngine.getInstance(application)
 
     private var useProxy = false
     private val okHttpClient = GitaApi.sharedOkHttpClient

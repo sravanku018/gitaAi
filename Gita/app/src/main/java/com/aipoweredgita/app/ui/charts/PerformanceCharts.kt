@@ -357,7 +357,7 @@ fun SpiritualPathRadarChart(
         animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
         label = "ah_radar_chart_anim"
     )
-    LaunchedEffect(karmaCount, bhaktiCount, jnanaCount) {
+    LaunchedEffect(karmaCount, bhaktiCount, jnanaCount, dhyanaCount, rajaCount) {
         animationTriggered = true
     }
 

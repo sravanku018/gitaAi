@@ -21,7 +21,7 @@ class HuggingFaceMLManager(private val context: Context) {
     private val TAG = "HuggingFaceML"
     private val gson = Gson()
     private val engine by lazy { ModelInferenceEngine(context) }
-    private val voiceChatEngine by lazy { LiteRtLmVoiceChatEngine(context) }
+    private val voiceChatEngine by lazy { LiteRtLmVoiceChatEngine.getInstance(context) }
     @Volatile
     private var isLlmReady = false
     private val translationManager = TranslationManager()
@@ -609,42 +609,15 @@ class HuggingFaceMLManager(private val context: Context) {
         val response = voiceChatEngine.sendMessage(prompt)
         Log.d(TAG, "LLM quiz response: ${response.take(200)}...")
         
-        // Try strict JSON parse first
         return try {
-            val parsed = gson.fromJson(response, QuizQuestionData::class.java)
+            val jsonString = QuestionValidator.extractJsonFromResponse(response)
+            val parsed = gson.fromJson(jsonString, QuizQuestionData::class.java)
             if (parsed?.question?.isNotBlank() == true && parsed.options.size >= 2) {
                 parsed
             } else {
                 throw IllegalStateException("Parsed but question/options invalid")
             }
         } catch (e: Exception) {
-            // Fallback: try to extract JSON from markdown/code blocks
-            try {
-                val jsonMatch = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(response)
-                if (jsonMatch != null) {
-                    val jsonContent = jsonMatch.groupValues[1].trim()
-                    val parsed = gson.fromJson(jsonContent, QuizQuestionData::class.java)
-                    if (parsed?.question?.isNotBlank() == true && parsed.options.size >= 2) {
-                        Log.d(TAG, "Successfully parsed JSON from code block")
-                        return parsed
-                    }
-                }
-                
-                // Last resort: try to find any JSON object in the response
-                val jsonObjMatch = Regex("\\{[^{}]*\"question\"[^{}]*\\}").find(response)
-                if (jsonObjMatch != null) {
-                    val jsonContent = jsonObjMatch.value
-                    val parsed = gson.fromJson(jsonContent, QuizQuestionData::class.java)
-                    if (parsed?.question?.isNotBlank() == true && parsed.options.size >= 2) {
-                        Log.d(TAG, "Successfully parsed JSON from raw text")
-                        return parsed
-                    }
-                }
-            } catch (e2: Exception) {
-                Log.w(TAG, "JSON extraction failed: ${e2.message}")
-            }
-            
-            // All JSON parsing failed — throw to trigger BERT fallback
             throw IllegalStateException("LLM response could not be parsed as JSON: ${response.take(200)}", e)
         }
     }
@@ -889,6 +862,11 @@ class HuggingFaceMLManager(private val context: Context) {
         stats: UserStats,
         prefs: UserPreferences?
     ): List<RecommendationData> = withContext(Dispatchers.IO) {
+        if (stats.totalQuestionsAnswered < 10) {
+            Log.d(TAG, "User has only answered ${stats.totalQuestionsAnswered} questions (threshold: 10). Skipping LLM recommendations.")
+            return@withContext emptyList<RecommendationData>()
+        }
+
         if (!isLlmReady) {
             Log.d(TAG, "LLM not ready for recommendations, returning empty")
             return@withContext emptyList<RecommendationData>()
@@ -927,14 +905,7 @@ class HuggingFaceMLManager(private val context: Context) {
             val response = voiceChatEngine.sendMessage(prompt)
             Log.d(TAG, "LLM recommendations response: $response")
             
-            // Clean up the response in case it returned markdown block
-            var jsonString = response.trim()
-            if (jsonString.startsWith("```")) {
-                val match = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(jsonString)
-                if (match != null) {
-                    jsonString = match.groupValues[1].trim()
-                }
-            }
+            val jsonString = QuestionValidator.extractJsonFromResponse(response)
 
             val listType = object : TypeToken<List<RecommendationLlmDto>>() {}.type
             val rawList = gson.fromJson<List<RecommendationLlmDto>>(jsonString, listType)

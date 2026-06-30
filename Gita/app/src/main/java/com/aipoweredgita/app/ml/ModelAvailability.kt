@@ -59,11 +59,25 @@ class ModelAvailability(appContext: Context) {
     private val qwen3MinSize = 300_000_000L    // ~300MB floor for 0.6B
     private val gemma4MinSize = 1_000_000_000L // ~1GB floor for 2B models (handles various quantizations)
 
+    private fun getDeviceRamGb(): Float {
+        val mi = android.app.ActivityManager.MemoryInfo()
+        (context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+            .getMemoryInfo(mi)
+        return mi.totalMem / 1_073_741_824f
+    }
+
     fun isQwen3Available(): Boolean = getQwen3Path() != null
     fun isGemma4Available(): Boolean = getGemma4Path() != null
 
     fun getQwen3Path(): String? = validatedPath("qwen3-0.6b-int4.litertlm", qwen3MinSize)
-    fun getGemma4Path(): String? = validatedPath("gemma-4-E2B-it.litertlm", gemma4MinSize)
+    fun getGemma4Path(): String? {
+        val ramGb = getDeviceRamGb()
+        if (ramGb < 7.5f) {
+            Log.d(TAG, "Gemma 4 blocked: RAM capacity (%.1f GB) is below 7.5 GB".format(ramGb))
+            return null
+        }
+        return validatedPath("gemma-4-E2B-it.litertlm", gemma4MinSize)
+    }
 
     private fun resolveModelPath(feature: AppFeature, selected: String): String? {
         val qwen3Path = getQwen3Path()
