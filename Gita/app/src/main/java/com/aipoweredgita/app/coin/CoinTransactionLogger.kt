@@ -56,30 +56,52 @@ object CoinTransactionLogger {
 
             // Read existing local entries and keep only those OLDER than the oldest server entry
             // (avoids duplicates while preserving history the server no longer returns)
-            val existing = readJson(prefs)
-            val preservedLocal = mutableListOf<JSONObject>()
-            for (i in 0 until existing.length()) {
-                try {
-                    val obj = existing.getJSONObject(i)
-                    val ts = obj.optLong("timestamp", Long.MAX_VALUE)
-                    if (ts < oldestServerTs) preservedLocal.add(obj)
-                } catch (_: Exception) { /* skip corrupted */ }
-            }
-
-            // Build merged array: old local entries first, then server entries
-            val arr = JSONArray()
-            preservedLocal.forEach { arr.put(it) }
-            serverEntries.forEach { entry ->
-                val obj = JSONObject().apply {
+            // Build server entries JSON objects first
+            val serverJsonEntries = serverEntries.map { entry ->
+                JSONObject().apply {
                     put("amount", entry.amount)
                     put("description", entry.description.take(120))
                     val ts = try { fmt.parse(entry.created_at)?.time ?: System.currentTimeMillis() }
                              catch (_: Exception) { System.currentTimeMillis() }
                     put("timestamp", ts)
                     put("type", entry.type)
+                    put("source", entry.source)
                 }
-                arr.put(obj)
             }
+
+            val serverSignatures = serverJsonEntries.map { 
+                "${it.optInt("amount")}_${it.optString("description").take(20)}"
+            }.toSet()
+
+            val existing = readJson(prefs)
+            val preservedLocal = mutableListOf<JSONObject>()
+            for (i in 0 until existing.length()) {
+                try {
+                    val obj = existing.getJSONObject(i)
+                    val ts = obj.optLong("timestamp", Long.MAX_VALUE)
+                    // Keep if older than server history (fallen off the edge)
+                    if (ts < oldestServerTs) {
+                        preservedLocal.add(obj)
+                    } else {
+                        // Keep if it's a recent optimistic event NOT yet in the server history
+                        val sig = "${obj.optInt("amount")}_${obj.optString("description").take(20)}"
+                        if (!serverSignatures.contains(sig)) {
+                            preservedLocal.add(obj)
+                        }
+                    }
+                } catch (_: Exception) { /* skip corrupted */ }
+            }
+
+            // Build merged array
+            val mergedList = mutableListOf<JSONObject>()
+            preservedLocal.forEach { mergedList.add(it) }
+            serverJsonEntries.forEach { mergedList.add(it) }
+            
+            // Sort by timestamp (oldest first)
+            mergedList.sortBy { it.optLong("timestamp", 0L) }
+            
+            val arr = JSONArray()
+            mergedList.forEach { arr.put(it) }
 
             // Trim to MAX keeping the newest
             while (arr.length() > MAX) arr.remove(0)

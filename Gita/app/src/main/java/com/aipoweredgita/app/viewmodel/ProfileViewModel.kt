@@ -286,15 +286,30 @@ class ProfileViewModel @Inject constructor(
                         )
                         val filteredServerHistory = serverHistory.filter { entry ->
                             !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                        }.distinctBy { entry ->
+                            val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
+                            if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
+                                "${entry.source}_${datePart}"
+                            } else {
+                                "${entry.source}_${entry.amount}_${datePart}_${entry.description}"
+                            }
                         }
                         val localHistory = buildLocalHistory()
                         val serverKeys = filteredServerHistory.map { entry ->
                             val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
-                            "${entry.source}_${entry.amount}_${datePart}"
+                            if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
+                                "${entry.source}_${datePart}"
+                            } else {
+                                "${entry.source}_${entry.amount}_${datePart}"
+                            }
                         }.toSet()
                         val extraLocalEntries = localHistory.filter { local ->
                             val localDate = local.created_at?.split(" ")?.get(0) ?: ""
-                            val key = "${local.source}_${local.amount}_${localDate}"
+                            val key = if (local.source == "share_sloka" || local.source.contains("checkin")) {
+                                "${local.source}_${localDate}"
+                            } else {
+                                "${local.source}_${local.amount}_${localDate}"
+                            }
                             !serverKeys.contains(key)
                         }
                         _coinHistory.value = filteredServerHistory + extraLocalEntries

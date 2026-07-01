@@ -202,7 +202,18 @@ class SyncWorker(
                     }
                     "CHECKIN" -> {
                         Log.d(TAG, "Syncing CHECKIN")
-                        val response = CoinApi.retrofitService.checkin(mapOf("user_id" to event.userId))
+                        val jsonObject = try { gson.fromJson(event.payload, com.google.gson.JsonObject::class.java) } catch (_: Exception) { null }
+                        val clientDate = if (jsonObject?.has("clientDate") == true && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
+                        
+                        val requestMap = mutableMapOf(
+                            "user_id" to event.userId,
+                            "idempotency_key" to event.idempotencyKey
+                        )
+                        if (clientDate != null) {
+                            requestMap["client_date"] = clientDate
+                        }
+                        
+                        val response = CoinApi.retrofitService.checkin(requestMap)
                         if (response.duplicate == true) {
                             Log.w(TAG, "Checkin sync: Duplicate detected on server")
                         } else {
@@ -210,6 +221,9 @@ class SyncWorker(
                             if (event.userId == authPrefs.userId && response.day > 0) {
                                 DailyRewardsTracker.getInstance(applicationContext).syncWithServer(response.day, response.week)
                             }
+                        }
+                        if (response.total_coins >= 0) {
+                            userStatsDao.updateKrishnaCoins(response.total_coins)
                         }
                         if (event.userId == authPrefs.userId) {
                             DailyRewardsTracker.getInstance(applicationContext).isCheckinSynced = true
@@ -231,7 +245,8 @@ class SyncWorker(
                                 chapter = chapter,
                                 verse = verse,
                                 client_date = clientDate,
-                                country_code = countryCode
+                                country_code = countryCode,
+                                idempotency_key = event.idempotencyKey
                             )
                         )
                         if (response.duplicate == true) {
@@ -241,6 +256,9 @@ class SyncWorker(
                             if (event.userId == authPrefs.userId && response.share_day > 0) {
                                 DailyRewardsTracker.getInstance(applicationContext).syncShareWithServer(response.share_day, response.share_week)
                             }
+                        }
+                        if (response.total_coins >= 0) {
+                            userStatsDao.updateKrishnaCoins(response.total_coins)
                         }
                         if (event.userId == authPrefs.userId) {
                             DailyRewardsTracker.getInstance(applicationContext).isShareSynced = true

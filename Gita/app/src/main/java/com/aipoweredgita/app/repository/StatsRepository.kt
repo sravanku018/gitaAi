@@ -232,6 +232,7 @@ class StatsRepository(
                             idempotencyKey = "quiz_${uid}_${System.currentTimeMillis()}"
                         )
                     )
+                    if (fallback != 0) userStatsDao.addKrishnaCoins(fallback)
                     SyncWorker.schedule(appContext)
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue quiz sync event: ${dbEx.message}")
@@ -277,6 +278,7 @@ class StatsRepository(
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )
                         )
+                        if (battleCoins != 0) userStatsDao.addKrishnaCoins(battleCoins)
                         CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}")
                         SyncWorker.schedule(appContext)
                     } catch (dbEx: Exception) {
@@ -428,6 +430,7 @@ class StatsRepository(
                             idempotencyKey = "share_${uid}_${System.currentTimeMillis()}"
                         )
                     )
+                    if (fallbackCoins != 0) userStatsDao.addKrishnaCoins(fallbackCoins)
                     SyncWorker.schedule(appContext)
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue share sync event: ${dbEx.message}")
@@ -477,6 +480,7 @@ class StatsRepository(
                             idempotencyKey = "chapter_${chapterNo}_${uid}_${System.currentTimeMillis()}"
                         )
                     )
+                    userStatsDao.addKrishnaCoins(15)
                     SyncWorker.schedule(appContext)
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue chapter sync event: ${dbEx.message}")
@@ -557,6 +561,7 @@ class StatsRepository(
                         idempotencyKey = "checkin_${uid}_${System.currentTimeMillis()}"
                     )
                 )
+                if (finalCoins != 0) userStatsDao.addKrishnaCoins(finalCoins)
                 SyncWorker.schedule(appContext)
             }
         } catch (dbEx: Exception) {
@@ -604,6 +609,7 @@ class StatsRepository(
                         idempotencyKey = "share_sync_${uid}_${System.currentTimeMillis()}"
                     )
                 )
+                if (finalCoins != 0) userStatsDao.addKrishnaCoins(finalCoins)
                 SyncWorker.schedule(appContext)
             }
         } catch (dbEx: Exception) {
@@ -809,6 +815,7 @@ class StatsRepository(
                 idempotencyKey   = idempotencyKey
             )
             pendingSyncEventDao.insert(event)
+            userStatsDao.addKrishnaCoins(-offlineCost)
             SyncWorker.schedule(appContext)
         } catch (dbEx: Exception) {
             Log.e("StatsRepository", "Failed to queue spend sync event: ${dbEx.message}", dbEx)
