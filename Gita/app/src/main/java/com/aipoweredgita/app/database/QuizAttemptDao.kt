@@ -27,6 +27,9 @@ interface QuizAttemptDao {
     @Query("SELECT COUNT(*) FROM quiz_attempts")
     suspend fun getTotalAttempts(): Int
 
+    @Query("SELECT COUNT(*) FROM quiz_attempts WHERE score = :score AND totalQuestions = :totalQuestions AND ABS(timestamp - :timestamp) < 60000")
+    suspend fun countSimilarAttempts(score: Int, totalQuestions: Int, timestamp: Long): Int
+
     @Query("SELECT * FROM quiz_attempts WHERE totalQuestions > 0 ORDER BY (score * 100.0 / totalQuestions) DESC LIMIT 1")
     suspend fun getBestAttempt(): QuizAttempt?
 

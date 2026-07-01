@@ -130,20 +130,23 @@ class ActivityHistoryViewModel @Inject constructor(
                     val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }
-                    quizDao.deleteAll()
                     for (dto in serverAttempts) {
                         val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
                         val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
-                        quizDao.insertAttempt(
-                            com.aipoweredgita.app.database.QuizAttempt(
-                                score = dto.score,
-                                totalQuestions = dto.total_questions,
-                                timestamp = ts,
-                                date = dateStr,
-                                quizType = dto.quiz_type,
-                                timeSpentSeconds = dto.time_spent_seconds
+                        
+                        val exists = quizDao.countSimilarAttempts(dto.score, dto.total_questions, ts) > 0
+                        if (!exists) {
+                            quizDao.insertAttempt(
+                                com.aipoweredgita.app.database.QuizAttempt(
+                                    score = dto.score,
+                                    totalQuestions = dto.total_questions,
+                                    timestamp = ts,
+                                    date = dateStr,
+                                    quizType = dto.quiz_type,
+                                    timeSpentSeconds = dto.time_spent_seconds
+                                )
                             )
-                        )
+                        }
                     }
                 }
             } catch (_: Exception) {}
