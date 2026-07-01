@@ -1,0 +1,220 @@
+package com.aipoweredgita.app.ui.screens.quiz
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.ui.components.AmbientOrbs
+import com.aipoweredgita.app.ui.components.GlassCard
+import com.aipoweredgita.app.ui.QuizLanguageDialog
+import com.aipoweredgita.app.ui.screens.quiz.components.QuizStartLanding
+import com.aipoweredgita.app.ui.screens.quiz.components.translateLandingText
+import com.aipoweredgita.app.ui.theme.GoldSpark
+import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.viewmodel.QuizViewModel
+
+@Composable
+fun QuizSectionScreen(
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("15 Questions", "25 Questions")
+
+    // Hoist ViewModels to avoid re-creation on tab switches
+    val quizViewModel: QuizViewModel = hiltViewModel()
+    val quizState by quizViewModel.quizState.collectAsState()
+    val language = quizState.language
+
+    var isStarted by remember(selectedTab) { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    // Auto-download questions on first open
+    LaunchedEffect(Unit) {
+        quizViewModel.checkAndDownloadQuestions()
+    }
+
+    LaunchedEffect(selectedTab) {
+        quizViewModel.resetQuiz()
+        // Pre-configure but don't start
+        when (selectedTab) {
+            0 -> quizViewModel.setQuizLimit(15)
+            1 -> quizViewModel.setQuizLimit(25)
+        }
+    }
+
+    val isDark = isSystemInDarkTheme()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+    val gold = if (isDark) GoldSpark else Saffron
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(appBg)
+    ) {
+        if (isDark) {
+            AmbientOrbs(modifier = Modifier.fillMaxSize())
+        }
+
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(
+                    onClick = onExit,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), CircleShape)
+                        .size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Back",
+                        tint = textPrimary.copy(alpha = 0.9f)
+                    )
+                }
+
+                Text(
+                    text = translateLandingText("Quiz Section", language),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = gold
+                    )
+                )
+
+                Spacer(modifier = Modifier.size(40.dp))
+            }
+
+            // Tab Row
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                cornerRadius = 24.dp,
+                elevation = 4.dp,
+                tint = cardBg,
+                border = cardBorder
+            ) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = textPrimary,
+                    indicator = { tabPositions ->
+                        if (selectedTab < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                height = 3.dp,
+                                color = gold
+                            )
+                        }
+                    },
+                    divider = {}
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.School,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (selectedTab == index) gold else textPrimary.copy(alpha = 0.5f)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = translateLandingText(title, language),
+                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selectedTab == index) textPrimary else textPrimary.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Content
+            AnimatedContent(
+                targetState = selectedTab to isStarted,
+                transitionSpec = {
+                    fadeIn(tween(400)) togetherWith fadeOut(tween(300))
+                },
+                label = "tab_content",
+                modifier = Modifier.weight(1f)
+            ) { (tab, started) ->
+                if (!started) {
+                    QuizStartLanding(
+                        title = if (tab == 0) "15 Question Marathon" else "25 Question Challenge",
+                        description = if (tab == 0) 
+                            "A quick spiritual check-in to test your knowledge of the Bhagavad Gita's fundamental truths."
+                            else "An in-depth journey through the sacred verses. Ready to test your mastery of divine wisdom?",
+                        onStart = {
+                            showLanguageDialog = true
+                        },
+                        language = language
+                    )
+                } else {
+                    QuizTabContent(quizViewModel = quizViewModel, onExit = onExit)
+                }
+            }
+        }
+
+        if (showLanguageDialog) {
+            QuizLanguageDialog(
+                onLanguageSelected = { lang ->
+                    quizViewModel.setLanguage(lang)
+                    quizViewModel.resetQuiz()
+                    isStarted = true
+                    showLanguageDialog = false
+                },
+                onCancel = { showLanguageDialog = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuizTabContent(
+    quizViewModel: QuizViewModel,
+    onExit: () -> Unit
+) {
+    QuizScreen(
+        onExitQuiz = onExit,
+        viewModel = quizViewModel
+    )
+}
