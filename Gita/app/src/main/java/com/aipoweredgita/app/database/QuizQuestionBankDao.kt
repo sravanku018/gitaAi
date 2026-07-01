@@ -47,8 +47,8 @@ interface QuizQuestionBankDao {
         minDiff: Int,
         maxDiff: Int,
         limit: Int,
-        targetDifficulty: Int = 5,
-        cooldownCutoff: Long = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        targetDifficulty: Int,
+        cooldownCutoff: Long
     ): List<QuizQuestionBank>
 
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE isActive = 1 AND isApproved = 1")
@@ -65,7 +65,7 @@ interface QuizQuestionBankDao {
     // :cooldownCutoff = System.currentTimeMillis() - cooldownDurationMs
     @Query("""
         SELECT * FROM quiz_question_bank
-        WHERE topics LIKE '%' || :topic || '%'
+        WHERE INSTR(topics, :topic) > 0
         AND isActive = 1 AND isApproved = 1
         AND lastAskedAt < :cooldownCutoff
         ORDER BY usageCount ASC, qualityScore DESC, RANDOM()
@@ -74,7 +74,7 @@ interface QuizQuestionBankDao {
     suspend fun getQuestionsByTopic(
         topic: String,
         limit: Int,
-        cooldownCutoff: Long = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        cooldownCutoff: Long
     ): List<QuizQuestionBank>
 
     // FIX ISSUE 5: Deactivate low-quality questions instead of deleting them

@@ -53,7 +53,7 @@ interface StudyPlanDao {
     suspend fun updatePlan(plan: StudyPlan)
 
     @Query("UPDATE study_plan_progress SET isCompleted = 1, completedAt = :time WHERE planId = :planId AND day = :day")
-    suspend fun markDayComplete(planId: Int, day: Int, time: Long = System.currentTimeMillis())
+    suspend fun markDayComplete(planId: Int, day: Int, time: Long)
 
     @Query("DELETE FROM study_plans WHERE id = :id")
     suspend fun deletePlan(id: Int)
@@ -62,27 +62,31 @@ interface StudyPlanDao {
     suspend fun getPlanProgressOnce(planId: Int): List<StudyPlanProgress>
 
     @Query("UPDATE study_plans SET isActive = 0, completedAt = :time WHERE id = :planId")
-    suspend fun completePlan(planId: Int, time: Long = System.currentTimeMillis())
+    suspend fun completePlan(planId: Int, time: Long)
 }
 
 object StudyPlanTemplates {
+    private val verseCounts = intArrayOf(0, 47, 72, 43, 42, 29, 47, 30, 28, 34, 42, 55, 20, 35, 27, 20, 24, 28, 78)
+
     fun karmaYoga14Day(): List<StudyPlanProgress> {
         val chapters = listOf(2, 3, 4, 18)
         return (1..14).map { day ->
             val chapter = chapters[(day - 1) % chapters.size]
+            val maxVerse = verseCounts[chapter]
+            val start = ((day - 1) / chapters.size) * 10 + 1
             StudyPlanProgress(
                 planId = 0,
                 day = day,
                 chapterNo = chapter,
-                verseStart = ((day - 1) / chapters.size) * 10 + 1,
-                verseEnd = ((day - 1) / chapters.size) * 10 + 10
+                verseStart = start,
+                verseEnd = minOf(start + 9, maxVerse)
             )
         }
     }
 
     fun quizChallenge7Day(): List<StudyPlanProgress> {
         return (1..7).map { day ->
-            StudyPlanProgress(planId = 0, day = day, chapterNo = 0, verseStart = 0, verseEnd = 0)
+            StudyPlanProgress(planId = 0, day = day, chapterNo = -1, verseStart = 0, verseEnd = 0)
         }
     }
 
@@ -93,7 +97,7 @@ object StudyPlanTemplates {
                 day = day,
                 chapterNo = day,
                 verseStart = 1,
-                verseEnd = 100
+                verseEnd = verseCounts[day]
             )
         }
     }

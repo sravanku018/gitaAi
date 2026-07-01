@@ -352,10 +352,11 @@ class ModelDownloadManager @Inject constructor(
                     }
 
                     val contentLength = body.contentLength()
+                    val expectedBytes = models.find { it.fileName == outFile.name }?.expectedBytes ?: 0L
                     val total = if (contentLength > 0) {
                         if (isRangeSuccess) contentLength + existingBytes else contentLength
                     } else {
-                        measuredSizes[outFile.name] ?: outFile.length().coerceAtLeast(0L)
+                        measuredSizes[outFile.name] ?: expectedBytes
                     }
 
                     java.io.FileOutputStream(tempFile, existingBytes > 0 && isRangeSuccess).use { output ->

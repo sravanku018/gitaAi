@@ -40,18 +40,18 @@ class StudyPlanViewModel @Inject constructor(
 
     fun markDayComplete(planId: Int, day: Int) {
         viewModelScope.launch {
-            planDao.markDayComplete(planId, day)
+            planDao.markDayComplete(planId, day, System.currentTimeMillis())
             // Check if all days complete → mark plan done
             val progress = planDao.getPlanProgressOnce(planId)
             if (progress.all { it.isCompleted }) {
-                planDao.completePlan(planId)
+                planDao.completePlan(planId, System.currentTimeMillis())
             }
         }
     }
 
     fun completePlan(planId: Int) {
         viewModelScope.launch {
-            planDao.completePlan(planId)
+            planDao.completePlan(planId, System.currentTimeMillis())
         }
     }
 }

@@ -103,9 +103,9 @@ class AuthPreferences(context: Context) {
         get() = prefs.getLong(KEY_LAST_LOGIN, 0)
         set(value) = prefs.edit().putLong(KEY_LAST_LOGIN, value).apply()
 
-    var authVersion: Int
-        get() = prefs.getInt("auth_version", 0)
-        set(value) = prefs.edit().putInt("auth_version", value).apply()
+    var authVersion: Long
+        get() = prefs.getLong("auth_version", 0L)
+        set(value) = prefs.edit().putLong("auth_version", value).apply()
 
     // ── Guest Local Coins ──────────────────────────────────────────────
     // Guests earn coins locally since /guest/create is broken on server
@@ -148,8 +148,8 @@ class AuthPreferences(context: Context) {
             email?.let { putString(KEY_EMAIL, it) }
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             remove("guest_welcome_awarded") // Reset guest flag
-            val currentAuthVersion = prefs.getInt("auth_version", 0)
-            putInt("auth_version", currentAuthVersion + 1)
+            // Use timestamp to avoid read-then-write race condition
+            putLong("auth_version", System.currentTimeMillis())
             commit() // synchronous — ensures values are written before onLoginSuccess navigates
         }
         // Store token in encrypted prefs — also synchronous
@@ -209,17 +209,17 @@ class AuthPreferences(context: Context) {
             // Reset guest welcome flag on logout to start fresh
             remove("guest_welcome_awarded")
             // Always preserve email/phone/name for quick re-login
-            apply()
+            commit()
         }
         // Clear sensitive data from encrypted storage
-        securePrefs.edit().clear().apply()
+        securePrefs.edit().clear().commit()
     }
 
     /**
      * Clear all data including credentials
      */
     fun clearAll() {
-        prefs.edit().clear().apply()
-        securePrefs.edit().clear().apply()
+        prefs.edit().clear().commit()
+        securePrefs.edit().clear().commit()
     }
 }

@@ -39,7 +39,7 @@ import com.aipoweredgita.app.navigation.NavGraph
 import com.aipoweredgita.app.navigation.Screen
 import com.aipoweredgita.app.ui.screens.auth.SplashScreen
 import com.aipoweredgita.app.ui.screens.auth.ExitScreen
-import com.aipoweredgita.app.ui.MainScreen
+import com.aipoweredgita.app.ui.main.MainScreen
 import com.aipoweredgita.app.ui.UiConfigProvider
 import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import com.aipoweredgita.app.utils.ThemePreferences

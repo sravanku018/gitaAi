@@ -1,6 +1,7 @@
 package com.aipoweredgita.app.util
 
 import android.util.LruCache
+import kotlinx.coroutines.sync.withLock
 import com.aipoweredgita.app.data.GitaVerse
 
 /**
@@ -12,7 +13,8 @@ import com.aipoweredgita.app.data.GitaVerse
  */
 class VerseCacheManager(maxSizeKb: Int = 5000) {
 
-    private val cache = object : LruCache<String, GitaVerse>(maxSizeKb) {
+    // sizeOf() returns bytes, so maxSize must also be in bytes
+    private val cache = object : LruCache<String, GitaVerse>(maxSizeKb * 1024) {
         override fun sizeOf(key: String, value: GitaVerse): Int {
             // Estimate verse size: verse text + translation + purport + metadata
             val verseSize = value.verse.length
@@ -21,6 +23,9 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
             return verseSize + translationSize + purportSize + 200  // 200 bytes for metadata
         }
     }
+
+    // In-flight deduplication: prevents thundering-herd duplicate fetches for same key
+    private val inFlightMutexes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.sync.Mutex>()
 
     /**
      * Get verse from cache
@@ -39,7 +44,8 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
     }
 
     /**
-     * Get from cache or fetch if missing
+     * Get from cache or fetch if missing.
+     * Concurrent callers for the same (chapter, verse) share one in-flight fetch.
      */
     suspend fun getOrFetch(
         chapter: Int,
@@ -49,11 +55,19 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         val cached = get(chapter, verse)
         if (cached != null) return cached
 
-        val fetched = fetch()
-        if (fetched != null) {
-            put(chapter, verse, fetched)
+        val key = makeKey(chapter, verse)
+        val mutex = inFlightMutexes.getOrPut(key) { kotlinx.coroutines.sync.Mutex() }
+        
+        return mutex.withLock {
+            val doubleCheck = get(chapter, verse)
+            if (doubleCheck != null) {
+                doubleCheck
+            } else {
+                val fetched = fetch()
+                if (fetched != null) put(chapter, verse, fetched)
+                fetched
+            }
         }
-        return fetched
     }
 
     /**

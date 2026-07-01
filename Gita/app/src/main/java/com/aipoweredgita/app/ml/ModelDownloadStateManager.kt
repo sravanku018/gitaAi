@@ -16,11 +16,13 @@ object ModelDownloadStateManager {
      * Get the LiveData for Gemma download work info.
      */
     fun getGemmaWorkInfoLiveData(context: Context): LiveData<List<WorkInfo>> {
-        if (gemmaWorkInfoLiveData == null) {
-            gemmaWorkInfoLiveData = WorkManager.getInstance(context.applicationContext)
+        var liveData = gemmaWorkInfoLiveData
+        if (liveData == null) {
+            liveData = WorkManager.getInstance(context.applicationContext)
                 .getWorkInfosForUniqueWorkLiveData("gemma_download")
+            gemmaWorkInfoLiveData = liveData
         }
-        return gemmaWorkInfoLiveData!!
+        return liveData
     }
 
     /**

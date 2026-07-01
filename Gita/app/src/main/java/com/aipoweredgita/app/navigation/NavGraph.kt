@@ -20,7 +20,7 @@ import com.aipoweredgita.app.ui.screens.profile.ProfileScreen
 import com.aipoweredgita.app.ui.screens.history.ActivityHistoryScreen
 import com.aipoweredgita.app.ui.screens.explore.RandomSlokaScreen
 import com.aipoweredgita.app.ui.screens.settings.SettingsScreen
-import com.aipoweredgita.app.ui.LoginScreen
+import com.aipoweredgita.app.ui.login.LoginScreen
 import com.aipoweredgita.app.ui.ProtectedQuizConfigScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel

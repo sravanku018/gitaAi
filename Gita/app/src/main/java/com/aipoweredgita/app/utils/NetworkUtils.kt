@@ -194,11 +194,7 @@ object NetworkUtils {
             return null
         }
 
-        // Check for 5G capability
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) {
-            // Not metered means it's likely unmetered cellular (rare, but possible)
-        }
+
 
         // Use telephony manager for precise generation detection
         try {
@@ -207,8 +203,8 @@ object NetworkUtils {
 
             @SuppressLint("MissingPermission")
             val dataNetworkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    androidx.core.content.ContextCompat.checkSelfPermission(
+                // READ_PHONE_STATE is required for dataNetworkType on ALL API >= 24, not just API 31+
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
                         context,
                         android.Manifest.permission.READ_PHONE_STATE
                     ) != android.content.pm.PackageManager.PERMISSION_GRANTED) {

@@ -25,17 +25,27 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var isTtsReady = false
-    private var isListeningActive = false
+    @Volatile private var isListeningActive = false
 
     private val utteranceCallbacks = ConcurrentHashMap<String, () -> Unit>()
+    private val utteranceCounter = java.util.concurrent.atomic.AtomicLong(0)
     @Volatile private var isDestroyed = false
     private var preferredLocale: Locale = Locale.forLanguageTag("te-IN")
 
     /** Error callback for crash-safe reporting to the ViewModel layer */
+    private var pendingError: String? = null
+
     var onError: ((String) -> Unit)? = null
+        set(value) {
+            field = value
+            pendingError?.let {
+                value?.invoke(it)
+                pendingError = null
+            }
+        }
 
     /** Tracks consecutive STT errors for auto-recovery */
-    private var consecutiveSttErrors = 0
+    @Volatile private var consecutiveSttErrors = 0
     private val MAX_CONSECUTIVE_STT_ERRORS = 3
 
     init {
@@ -44,7 +54,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 tts = TextToSpeech(context, this)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to init TTS", e)
-                onError?.invoke("Text-to-Speech initialization failed")
+                val msg = "Text-to-Speech initialization failed"
+                onError?.invoke(msg) ?: run { pendingError = msg }
             }
             try {
                 if (SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -52,7 +63,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to init SpeechRecognizer", e)
-                onError?.invoke("Speech recognition initialization failed")
+                val msg = "Speech recognition initialization failed"
+                onError?.invoke(msg) ?: run { pendingError = msg }
             }
         }
     }
@@ -79,7 +91,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     fun setLanguage(locale: Locale): Boolean {
         val result = tts?.setLanguage(locale)
-        val success = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+        val success = result != null && result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
         if (!success) {
             tts?.setLanguage(Locale.getDefault())
         }
@@ -126,7 +138,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                         tts?.stop()
                         utteranceCallbacks.clear()
                     }
-                    val utteranceId = "gita_${System.currentTimeMillis()}"
+                    val utteranceId = "gita_${utteranceCounter.incrementAndGet()}"
                     if (onComplete != null) utteranceCallbacks[utteranceId] = onComplete
                     val params = Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
                     val result = tts?.speak(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, params, utteranceId)

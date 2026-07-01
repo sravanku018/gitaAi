@@ -263,13 +263,15 @@ class MLNotificationManager(
     private fun calculateDaysSinceLastActive(activities: List<com.aipoweredgita.app.database.DailyActivity>): Int {
         if (activities.isEmpty()) return 7
 
-        val lastActivityDate = activities.maxOfOrNull { activity ->
-            // Parse date string to timestamp (simplified)
-            activity.date
-        } ?: return 7
+        val lastDateStr = activities.mapNotNull { it.date.takeIf { d -> d.isNotBlank() } }.maxOrNull()
+            ?: return 7
 
-        // Simplified calculation - in real app, parse properly
-        return Calendar.getInstance().get(Calendar.DAY_OF_YEAR) - lastActivityDate.toInt()
+        return try {
+            val lastDate = java.time.LocalDate.parse(lastDateStr.take(10))
+            java.time.temporal.ChronoUnit.DAYS.between(lastDate, java.time.LocalDate.now()).toInt().coerceAtLeast(0)
+        } catch (_: Exception) {
+            7 // safe fallback if date format is unexpected
+        }
     }
 
     /**

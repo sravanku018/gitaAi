@@ -70,34 +70,44 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
         timeoutMs : Long = 240_000L,
         sampler   : com.google.ai.edge.litertlm.SamplerConfig = SAMPLER
     ): Boolean = engineMutex.withLock {
-            return@withLock try {
-                closeInternal()
-                cleanerScope       = CoroutineScope(Dispatchers.Default + Job())
-                this.timeoutMs     = timeoutMs
-                this.currentSampler = sampler
+        return@withLock initializeInternal(path, maxTokens, timeoutMs, sampler)
+    }
 
-                val resolvedMaxTokens = maxTokens ?: com.aipoweredgita.app.utils.DeviceCapability.getOptimalMaxTokens(context, path)
+    /** Lock-free init body — must only be called from within engineMutex.withLock { } */
+    private suspend fun initializeInternal(
+        path      : String,
+        maxTokens : Int? = null,
+        timeoutMs : Long = 240_000L,
+        sampler   : com.google.ai.edge.litertlm.SamplerConfig = SAMPLER
+    ): Boolean {
+        return try {
+            closeInternal()
+            cleanerScope       = CoroutineScope(Dispatchers.Default + Job())
+            this.timeoutMs     = timeoutMs
+            this.currentSampler = sampler
 
-                val backend = if (com.aipoweredgita.app.utils.DeviceTierDetector.hasVulkan(context)) Backend.GPU() else Backend.CPU()
-                val newEngine = Engine(
-                    EngineConfig(
-                        modelPath    = path,
-                        maxNumTokens = resolvedMaxTokens,
-                        backend      = backend
-                    )
+            val resolvedMaxTokens = maxTokens ?: com.aipoweredgita.app.utils.DeviceCapability.getOptimalMaxTokens(context, path)
+
+            val backend = if (com.aipoweredgita.app.utils.DeviceTierDetector.hasVulkan(context)) Backend.GPU() else Backend.CPU()
+            val newEngine = Engine(
+                EngineConfig(
+                    modelPath    = path,
+                    maxNumTokens = resolvedMaxTokens,
+                    backend      = backend
                 )
-                newEngine.initialize()
+            )
+            newEngine.initialize()
 
-                engine       = newEngine
-                conversation = newEngine.createConversation(ConversationConfig(samplerConfig = sampler))
-                isInitialized = true
-                modelPath     = path
-                Log.d(TAG, "LiteRT-LM initialized ($resolvedMaxTokens tokens, timeout=${timeoutMs}ms)")
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "LiteRT-LM init failed", e)
-                false
-            }
+            engine       = newEngine
+            conversation = newEngine.createConversation(ConversationConfig(samplerConfig = sampler))
+            isInitialized = true
+            modelPath     = path
+            Log.d(TAG, "LiteRT-LM initialized ($resolvedMaxTokens tokens, timeout=${timeoutMs}ms)")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "LiteRT-LM init failed", e)
+            false
+        }
         }
 
     // ─── Send Message ─────────────────────────────────────────────────────────
@@ -299,7 +309,9 @@ class LiteRtLmVoiceChatEngine(private val context: Context) {
 
     private suspend fun recoverModel() {
         Log.w(TAG, "Recovering model...")
-        modelPath?.let { initialize(it) }
+        // Must call initializeInternal() directly — we are already inside engineMutex.withLock from sendMessage()
+        // Calling initialize() here would deadlock (Mutex is not reentrant)
+        modelPath?.let { initializeInternal(it) }
     }
 
     /**

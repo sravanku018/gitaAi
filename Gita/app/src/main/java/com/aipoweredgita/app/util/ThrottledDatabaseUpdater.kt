@@ -28,7 +28,7 @@ class ThrottledDatabaseUpdater(
 ) {
     private val TAG = "ThrottledUpdater"
     private val batch = mutableListOf<VerseRead>()
-    private val retryCount = mutableMapOf<String, Int>()
+    private val retryCount = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var flushJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private val maxRetries = 3
@@ -117,15 +117,28 @@ class ThrottledDatabaseUpdater(
     }
 
     /**
-     * Cleanup - flush all pending writes
+     * Cleanup - flush all pending writes and await completion before cancelling scope.
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up - flushing pending writes")
-        flush()
-        scope.launch {
-            delay(500)  // Give time for flush to complete
-            scope.coroutineContext[Job]?.cancel()
+        kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            val toBatch = synchronized(batch) {
+                if (batch.isEmpty()) return@runBlocking emptyList<VerseRead>()
+                val copied = batch.toList()
+                batch.clear()
+                flushJob?.cancel()
+                flushJob = null
+                copied
+            }
+            if (toBatch.isNotEmpty()) {
+                try {
+                    onBatchWrite(toBatch)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during cleanup flush: ${e.message}")
+                }
+            }
         }
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
     data class VerseRead(

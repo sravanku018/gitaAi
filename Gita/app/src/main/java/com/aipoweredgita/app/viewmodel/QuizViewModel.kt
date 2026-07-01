@@ -1,6 +1,8 @@
 package com.aipoweredgita.app.viewmodel
 
 import android.app.Application
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.isActive
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.data.QuizQuestion
@@ -60,8 +62,8 @@ class QuizViewModel @Inject constructor(
     val uiState: StateFlow<QuizUiState> = _uiState.asStateFlow()
 
     // One-time side effects
-    private val _sideEffect = MutableSharedFlow<QuizSideEffect>()
-    val sideEffect: SharedFlow<QuizSideEffect> = _sideEffect.asSharedFlow()
+    private val _sideEffect = kotlinx.coroutines.channels.Channel<QuizSideEffect>()
+    val sideEffect: kotlinx.coroutines.flow.Flow<QuizSideEffect> = _sideEffect.receiveAsFlow()
 
     // Legacy quiz state for compatibility
     private val _quizState = MutableStateFlow(QuizState())
@@ -88,7 +90,7 @@ class QuizViewModel @Inject constructor(
             studentAbility = StudentAbility(studentId = "student", theta = (userState.skillLevel - 5) * 0.5)
             val success = com.aipoweredgita.app.ml.TranslationManager().downloadModelsIfNeeded()
             if (!success) {
-                _sideEffect.emit(QuizSideEffect.ShowError("Failed to download translation models"))
+                _sideEffect.send(QuizSideEffect.ShowError("Failed to download translation models"))
             }
             mlManager.initializeModels()
             _uiState.update { it.copy(isLoading = false) }
@@ -146,13 +148,19 @@ class QuizViewModel @Inject constructor(
      */
     fun loadNextQuestion() {
         viewModelScope.launch {
-            // Guard: don't load if we've already reached maxQuestions
-            val current = _quizState.value
-            if (current.totalQuestions >= current.maxQuestions) {
-                return@launch
+            // Guard: don't load if we've already reached maxQuestions or are already loading
+            var shouldLoad = false
+            _quizState.update { current ->
+                if (current.totalQuestions >= current.maxQuestions || current.isLoading) {
+                    current
+                } else {
+                    shouldLoad = true
+                    current.copy(isLoading = true, error = null)
+                }
             }
+            if (!shouldLoad) return@launch
+
             _uiState.update { it.copy(isLoading = true, error = null) }
-            _quizState.value = _quizState.value.copy(isLoading = true, error = null)
 
             try {
                 // Fetch next question from DB using repository
@@ -168,14 +176,16 @@ class QuizViewModel @Inject constructor(
                 if (userPrefs != null && userPrefs.enableDifficultyAdaptation == false) {
                     // Use exact preferred range
                     minDiff = userPrefs.preferredDifficultyMin.coerceAtLeast(1)
-                    maxDiff = userPrefs.preferredDifficultyMax.coerceAtMost(10)
+                    maxDiff = maxOf(minDiff, userPrefs.preferredDifficultyMax.coerceAtMost(10))
                 } else {
                     // Adaptive difficulty based on skill level, but clamped to user preferred bounds if present
                     val diff = userState.skillLevel
                     val prefMin = userPrefs?.preferredDifficultyMin?.coerceAtLeast(1) ?: 1
-                    val prefMax = userPrefs?.preferredDifficultyMax?.coerceAtMost(10) ?: 10
+                    val rawPrefMax = userPrefs?.preferredDifficultyMax?.coerceAtMost(10) ?: 10
+                    val prefMax = maxOf(prefMin, rawPrefMax)
+                    
                     minDiff = (diff - 2).coerceIn(prefMin, prefMax)
-                    maxDiff = (diff + 2).coerceIn(prefMin, prefMax)
+                    maxDiff = maxOf(minDiff, (diff + 2).coerceIn(prefMin, prefMax))
                 }
                 
                 val fetchLimit = maxOf(limit, 10)
@@ -226,7 +236,7 @@ class QuizViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
                 _quizState.value = _quizState.value.copy(isLoading = false, error = e.message)
-                _sideEffect.emit(QuizSideEffect.ShowError(e.message ?: "Failed to load question"))
+                _sideEffect.send(QuizSideEffect.ShowError(e.message ?: "Failed to load question"))
             }
         }
     }
@@ -283,20 +293,8 @@ class QuizViewModel @Inject constructor(
 
         val isCorrect = selectedAnswer == currentQuestion.options?.getOrNull(currentQuestion.correctAnswerIndex)
 
-        _uiState.update { 
-            it.copy(
-                isAnswerRevealed = true,
-                score = if (isCorrect) it.score + 1 else it.score
-            ) 
-        }
-
-        _quizState.value = _quizState.value.copy(
-            showAnswer = true,
-            score = if (isCorrect) _quizState.value.score + 1 else _quizState.value.score
-        )
-
-        updateMLEngines(isCorrect)
-        saveProgress()
+        // Delegate to the single source of truth for answer confirmation
+        confirmAnswerResult(isCorrect)
     }
 
     /**
@@ -344,7 +342,7 @@ class QuizViewModel @Inject constructor(
                     totalTimeSeconds = timeSpentSeconds
                 )
 
-                _sideEffect.emit(QuizSideEffect.QuizCompleted(
+                _sideEffect.send(QuizSideEffect.QuizCompleted(
                     score = currentState.score,
                     total = currentState.totalQuestions,
                     coinsEarned = result.third
@@ -360,7 +358,7 @@ class QuizViewModel @Inject constructor(
 
                 quizPreferences.clearQuizState()
             } catch (e: Exception) {
-                _sideEffect.emit(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz results"))
+                _sideEffect.send(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz results"))
             }
         }
     }
@@ -384,6 +382,7 @@ class QuizViewModel @Inject constructor(
 
     // Backward compatibility methods for existing UI code
     fun setQuizLimit(maxQuestions: Int) {
+        sessionAskedIds.clear()
         val currentLanguage = _quizState.value.language
         _quizState.value = com.aipoweredgita.app.data.QuizState(maxQuestions = maxQuestions, language = currentLanguage)
         _uiState.value = QuizUiState()
@@ -399,14 +398,13 @@ class QuizViewModel @Inject constructor(
 
     fun submitOpenEndedAnswer(text: String) {
         val currentQuestion = _quizState.value.currentQuestion ?: return
-        _quizState.value = _quizState.value.copy(openEndedAnswer = text)
+        _quizState.update { it.copy(openEndedAnswer = text) }
         val matched = currentQuestion.rubricKeywords.count { kw -> text.lowercase().contains(kw.lowercase()) }
-        val passThreshold = maxOf(1, currentQuestion.rubricKeywords.size / 2)
-        val isPass = matched >= passThreshold
-        _quizState.value = _quizState.value.copy(showAnswer = true, showCorrectAnswer = isPass)
-        if (isPass) {
-            _quizState.value = _quizState.value.copy(score = _quizState.value.score + 1)
-        }
+        val passThreshold = if (currentQuestion.rubricKeywords.isEmpty()) 0 else maxOf(1, currentQuestion.rubricKeywords.size / 2)
+        val isPass = text.isNotBlank() && matched >= passThreshold
+        // We only set the local states for the UI dialog. 
+        // confirmAnswerResult() will be called when user dismisses the dialog and proceeds.
+        _quizState.update { it.copy(showAnswer = true, showCorrectAnswer = isPass) }
     }
 
     fun selectAnswer(index: Int) {
@@ -424,11 +422,16 @@ class QuizViewModel @Inject constructor(
     fun resetQuiz() {
         val currentMaxQuestions = _quizState.value.maxQuestions
         val currentLanguage = _quizState.value.language
-        _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = true)
-        _uiState.value = QuizUiState(isLoading = true)
+        _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = false)
+        _uiState.value = QuizUiState(isLoading = false)
         quizStartTime = System.currentTimeMillis()
         viewModelScope.launch {
             quizPreferences.clearQuizState()
+        }
+    }
+
+    fun startQuiz() {
+        if (_quizState.value.currentQuestion == null) {
             loadNextQuestion()
         }
     }
@@ -454,7 +457,7 @@ class QuizViewModel @Inject constructor(
                         quizType = currentState.quizType
                     )
                 } catch (e: Exception) {
-                    _sideEffect.emit(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz"))
+                    _sideEffect.send(QuizSideEffect.ShowError(e.message ?: "Failed to save quiz"))
                 }
             }
         }
@@ -507,21 +510,24 @@ class QuizViewModel @Inject constructor(
         val isOpenEnded = question?.type == com.aipoweredgita.app.data.QuestionType.ESSAY ||
                 question?.type == com.aipoweredgita.app.data.QuestionType.APPLICATION
         val timeLimit = if (isOpenEnded) 60 else 30
-        _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = timeLimit, isTimerRunning = true)
+        _quizState.update { it.copy(questionTimeLeftSeconds = timeLimit, isTimerRunning = true) }
         timerJob = viewModelScope.launch {
-            while (_quizState.value.questionTimeLeftSeconds > 0) {
+            while (isActive && _quizState.value.questionTimeLeftSeconds > 0) {
                 kotlinx.coroutines.delay(1000)
-                val current = _quizState.value.questionTimeLeftSeconds
-                if (current > 0) {
-                    _quizState.value = _quizState.value.copy(questionTimeLeftSeconds = current - 1)
+                if (isActive) {
+                    _quizState.update { 
+                        val newTime = it.questionTimeLeftSeconds - 1
+                        it.copy(
+                            questionTimeLeftSeconds = maxOf(0, newTime),
+                            isTimerRunning = newTime > 0
+                        )
+                    }
                 }
             }
-            // Time ran out — mark answer as revealed (wrong since no selection)
-            stopTimer()
-            val state = _quizState.value
-            if (!state.showAnswer) {
-                _uiState.update { it.copy(isAnswerRevealed = true) }
-                _quizState.value = state.copy(showAnswer = true, showCorrectAnswer = false)
+            // Trigger timeout if they hit 0 and it wasn't cancelled
+            if (isActive && !_quizState.value.showAnswer && _uiState.value.selectedAnswer == null) {
+                _sideEffect.send(QuizSideEffect.ShowError("Time's up!"))
+                confirmAnswerResult(false)
             }
         }
     }

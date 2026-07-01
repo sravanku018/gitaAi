@@ -61,7 +61,10 @@ fun RevealAnswerSheet(
             // Auto-scroll to correct on reveal when options are present
             LaunchedEffect(revealed) {
                 if (revealed && correctIndex != null && options.isNotEmpty()) {
-                    listState.animateScrollToItem(index = correctIndex)
+                    val targetIndex = correctIndex + 1
+                    if (targetIndex in 1..options.size) {
+                        listState.animateScrollToItem(index = targetIndex)
+                    }
                 }
             }
 
@@ -121,11 +124,20 @@ fun RevealAnswerSheet(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.size(8.dp)) }
-
-                // Reveal button removed; reveal is handled inside popup dialog now.
-
-                item { Spacer(modifier = Modifier.size(8.dp)) }
+                // Reveal button
+                if (!revealed) {
+                    item {
+                        Button(
+                            onClick = {
+                                revealedState.value = true
+                                onRevealed()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reveal Answer")
+                        }
+                    }
+                }
             }
         }
     }

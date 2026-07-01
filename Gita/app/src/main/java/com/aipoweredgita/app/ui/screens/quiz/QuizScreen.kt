@@ -37,8 +37,8 @@ fun QuizScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (quizState.currentQuestion == null && !quizState.isLoading) {
+    LaunchedEffect(quizState.currentQuestion, quizState.isLoading, quizState.error) {
+        if (quizState.currentQuestion == null && !quizState.isLoading && quizState.error == null) {
             val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)
             if (!online) {
                 viewModel.setError("No Internet Connection\n\nPlease check your internet and try again.")

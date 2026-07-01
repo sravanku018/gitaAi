@@ -69,9 +69,11 @@ object CoinTransactionLogger {
                 }
             }
 
-            val serverSignatures = serverJsonEntries.map { 
-                "${it.optInt("amount")}_${it.optString("description").take(20)}"
-            }.toSet()
+            val serverSignatures = mutableMapOf<String, Int>()
+            serverJsonEntries.forEach { 
+                val sig = "${it.optInt("amount")}_${it.optString("description").take(20)}"
+                serverSignatures[sig] = serverSignatures.getOrDefault(sig, 0) + 1
+            }
 
             val existing = readJson(prefs)
             val preservedLocal = mutableListOf<JSONObject>()
@@ -85,7 +87,12 @@ object CoinTransactionLogger {
                     } else {
                         // Keep if it's a recent optimistic event NOT yet in the server history
                         val sig = "${obj.optInt("amount")}_${obj.optString("description").take(20)}"
-                        if (!serverSignatures.contains(sig)) {
+                        val serverCount = serverSignatures.getOrDefault(sig, 0)
+                        if (serverCount > 0) {
+                            // Consumed by server history, drop local optimistic duplicate
+                            serverSignatures[sig] = serverCount - 1
+                        } else {
+                            // Not in server history, keep optimistic local
                             preservedLocal.add(obj)
                         }
                     }

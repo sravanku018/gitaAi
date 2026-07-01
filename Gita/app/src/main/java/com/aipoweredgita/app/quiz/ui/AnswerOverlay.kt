@@ -35,6 +35,13 @@ fun AnswerOverlay(
     val cardColor = if (isCorrect) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
     val textColor = if (isCorrect) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
 
+    var playId by remember { mutableStateOf(0) }
+    LaunchedEffect(show, isCorrect) {
+        if (show && isCorrect) {
+            playId++
+        }
+    }
+
     AnimatedVisibility(
         visible = show,
         enter = fadeIn(),
@@ -47,12 +54,6 @@ fun AnswerOverlay(
             contentAlignment = Alignment.Center
         ) {
             if (isCorrect) {
-                var playId by remember { mutableStateOf(0) }
-                LaunchedEffect(show) {
-                    if (show) {
-                        playId++
-                    }
-                }
                 ConfettiBurst(playId = playId)
             }
 

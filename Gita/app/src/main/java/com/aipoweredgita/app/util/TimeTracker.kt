@@ -37,8 +37,12 @@ class TimeTracker(
         trackingJob?.cancel()
         trackingJob = null
 
-        // Save any remaining time
+        // Guard: if start() was never called, startTime is 0 — don't write epoch-scale garbage
+        if (startTime == 0L) return
+
+        // Save any remaining time since last periodic update
         val elapsed = (System.currentTimeMillis() - startTime) / 1000
+        startTime = 0L // Reset so repeated stop() calls don't double-count
         if (elapsed > 0) {
             totalSeconds += elapsed
             scope.launch {

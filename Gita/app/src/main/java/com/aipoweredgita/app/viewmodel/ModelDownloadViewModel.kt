@@ -150,10 +150,10 @@ class ModelDownloadViewModel @Inject constructor(
     }
 
     private fun startDownload() {
-        if (downloadService != null) {
-            downloadService!!.startBackgroundDownload()
+        downloadService?.let {
+            it.startBackgroundDownload()
             Log.d(TAG, "Download started")
-        } else {
+        } ?: run {
             Log.e(TAG, "Download service not available")
         }
     }
@@ -250,8 +250,8 @@ class ModelDownloadViewModel @Inject constructor(
     }
 
     private fun cancelDownload() {
-        if (downloadService != null) {
-            downloadService!!.cancelDownload()
+        downloadService?.let {
+            it.cancelDownload()
             Log.d(TAG, "Download cancelled")
         }
         downloadJob?.cancel()

@@ -78,12 +78,12 @@ interface UserStatsDao {
     @Query("UPDATE user_stats SET krishnaCoins = :coins WHERE id = 1")
     suspend fun updateKrishnaCoins(coins: Int)
 
-    @Query("UPDATE user_stats SET krishnaCoins = krishnaCoins + :amount WHERE id = 1")
+    @Query("UPDATE user_stats SET krishnaCoins = MAX(0, krishnaCoins + :amount) WHERE id = 1")
     suspend fun addKrishnaCoins(amount: Int)
 
     @Query("""
         UPDATE user_stats 
-        SET currentStreak = :currentStreak, 
+        SET currentStreak = MAX(currentStreak, :currentStreak),
             longestStreak = MAX(longestStreak, :longestStreak), 
             totalQuizzesTaken = MAX(totalQuizzesTaken, :totalQuizzesTaken), 
             totalQuestionsAnswered = MAX(totalQuestionsAnswered, :totalQuestionsAnswered), 
@@ -108,15 +108,20 @@ interface UserStatsDao {
     suspend fun initializeStatsIfNeeded() {
         // INSERT OR IGNORE ensures only one row (id=1) ever exists,
         // even if two threads call this concurrently.
-        insertIfEmpty(UserStats())
+        insertIfEmpty(UserStats(userId = java.util.UUID.randomUUID().toString()))
         val stats = getUserStatsOnce() ?: return
-        // Generate userId once on first launch
+        
+        // The UUID is generated on insert, but for older schemas where it might be empty:
         if (stats.userId.isEmpty()) {
-            updateUserId(java.util.UUID.randomUUID().toString())
+            updateUserIdIfEmpty(java.util.UUID.randomUUID().toString())
         }
+        
         // Fix corrupted negative coin balance (from stale server overwrites)
         if (stats.krishnaCoins < 0) {
             updateKrishnaCoins(0)
         }
     }
+
+    @Query("UPDATE user_stats SET userId = :newId WHERE id = 1 AND userId = ''")
+    suspend fun updateUserIdIfEmpty(newId: String)
 }

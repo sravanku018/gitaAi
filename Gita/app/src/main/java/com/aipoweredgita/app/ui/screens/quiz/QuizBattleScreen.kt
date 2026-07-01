@@ -59,14 +59,18 @@ fun QuizBattleScreen(
     }
 
     // Timer
-    LaunchedEffect(isTimerRunning, battleState.timeLeft) {
-        if (isTimerRunning && battleState.timeLeft > 0) {
-            delay(1000)
-            battleState = battleState.copy(timeLeft = battleState.timeLeft - 1)
-        } else if (battleState.timeLeft <= 0 && isTimerRunning) {
-            isTimerRunning = false
-            battleState = battleState.copy(isGameOver = true)
-            onGameOver(battleState.score, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            while (battleState.timeLeft > 0 && isTimerRunning) {
+                delay(1000)
+                if (!isTimerRunning) break
+                battleState = battleState.copy(timeLeft = battleState.timeLeft - 1)
+            }
+            if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver) {
+                isTimerRunning = false
+                battleState = battleState.copy(isGameOver = true)
+                onGameOver(battleState.score, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
+            }
         }
     }
 
@@ -146,32 +150,35 @@ fun QuizBattleScreen(
                         selectedAnswer = battleState.selectedAnswer,
                         isAnswerRevealed = battleState.isAnswerRevealed,
                         onAnswerSelected = { isCorrect, option ->
-                            battleState = battleState.copy(selectedAnswer = option, isAnswerRevealed = true)
+                            var nextState = battleState.copy(selectedAnswer = option, isAnswerRevealed = true)
 
                             if (isCorrect) {
-                                val comboMultiplier = (battleState.combo + 1).coerceAtMost(5)
+                                val comboMultiplier = (nextState.combo + 1).coerceAtMost(5)
                                 val points = 10 * comboMultiplier
-                                battleState = battleState.copy(
-                                    score = battleState.score + points,
-                                    combo = battleState.combo + 1,
-                                    maxCombo = maxOf(battleState.maxCombo, battleState.combo + 1),
-                                    questionsAnswered = battleState.questionsAnswered + 1,
-                                    correctAt3Hearts = if (battleState.lives == 3) battleState.correctAt3Hearts + 1 else battleState.correctAt3Hearts,
-                                    correctAt2Hearts = if (battleState.lives == 2) battleState.correctAt2Hearts + 1 else battleState.correctAt2Hearts,
-                                    correctAt1Heart = if (battleState.lives == 1) battleState.correctAt1Heart + 1 else battleState.correctAt1Heart
+                                nextState = nextState.copy(
+                                    score = nextState.score + points,
+                                    combo = nextState.combo + 1,
+                                    maxCombo = maxOf(nextState.maxCombo, nextState.combo + 1),
+                                    questionsAnswered = nextState.questionsAnswered + 1,
+                                    correctAt3Hearts = if (nextState.lives == 3) nextState.correctAt3Hearts + 1 else nextState.correctAt3Hearts,
+                                    correctAt2Hearts = if (nextState.lives == 2) nextState.correctAt2Hearts + 1 else nextState.correctAt2Hearts,
+                                    correctAt1Heart = if (nextState.lives == 1) nextState.correctAt1Heart + 1 else nextState.correctAt1Heart
                                 )
                             } else {
-                                battleState = battleState.copy(
-                                    lives = battleState.lives - 1,
+                                nextState = nextState.copy(
+                                    lives = nextState.lives - 1,
                                     combo = 0,
-                                    questionsAnswered = battleState.questionsAnswered + 1
+                                    questionsAnswered = nextState.questionsAnswered + 1
                                 )
-                                if (battleState.lives <= 0) {
+                                if (nextState.lives <= 0) {
                                     isTimerRunning = false
-                                    battleState = battleState.copy(isGameOver = true)
-                                    onGameOver(battleState.score, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
+                                    nextState = nextState.copy(isGameOver = true)
+                                    if (!battleState.isGameOver) {
+                                        onGameOver(nextState.score, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins)
+                                    }
                                 }
                             }
+                            battleState = nextState
                         }
                     )
                 } ?: if (isTimerRunning) {

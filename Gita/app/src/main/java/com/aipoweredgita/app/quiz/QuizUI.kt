@@ -152,7 +152,7 @@ fun QuizContent(
                 Button(
                     onClick = {
                         vm?.submitOpenEndedAnswer(userAnswer)
-                        showResult = true
+                        showResultDialog = true
                     },
                     enabled = userAnswer.trim().isNotEmpty() && selectedIndex == null,
                     modifier = Modifier

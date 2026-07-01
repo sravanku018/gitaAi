@@ -167,7 +167,7 @@ object QuestionValidator {
      */
     private fun checkLogic(data: ParsedQuestion): String? {
         val nonEmptyOptions = data.options.filter { it.isNotBlank() }
-        if (nonEmptyOptions.size < 2) return "Need at least 2 non-empty options (got ${nonEmptyOptions.size})"
+        if (nonEmptyOptions.size < 4) return "Need at least 4 non-empty options (got ${nonEmptyOptions.size})"
 
         val correctAnswer = data.options.getOrNull(data.correctOptionIndex)?.trim()
         if (correctAnswer.isNullOrBlank()) return "Correct answer (index ${data.correctOptionIndex}) is empty"

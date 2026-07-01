@@ -181,7 +181,7 @@ class ModelAvailability(appContext: Context) {
     }
 
     fun areVoiceFeaturesAvailable(): Boolean {
-        return isGemma4Available() || isQwen3Available()
+        return isGemma4Available()
     }
 
     fun updateSelectedModel(newModel: String) {

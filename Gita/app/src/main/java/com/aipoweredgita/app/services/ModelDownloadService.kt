@@ -86,6 +86,14 @@ class ModelDownloadService : Service() {
     private suspend fun downloadAllModels() {
         Log.d(TAG, "Starting downloadAllModels with ${models.size} models")
 
+        if (models.isEmpty()) {
+            _downloadProgress.value = _downloadProgress.value.copy(
+                status = ModelDownloadStatus.FAILED,
+                message = "No models configured for download"
+            )
+            return
+        }
+
         _downloadProgress.value = _downloadProgress.value.copy(
             status = ModelDownloadStatus.DOWNLOADING,
             message = "Initializing model downloads..."

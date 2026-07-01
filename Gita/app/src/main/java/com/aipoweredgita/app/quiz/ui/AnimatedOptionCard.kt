@@ -79,7 +79,6 @@ fun AnimatedOptionCard(
     val scale = remember { Animatable(1f) }
     val offsetY = remember { Animatable(0f) }
     val offsetX = remember { Animatable(0f) }
-    val flashAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(state) {
         when (state) {

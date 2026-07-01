@@ -78,7 +78,8 @@ class MLNotificationWorker(
 
         // 2. Streak Alert (if streak is at risk)
         if (userStats.currentStreak > 0) {
-            val daysSinceLastActive = calculateDaysSinceLastActive()
+            val database = GitaDatabase.getDatabase(applicationContext)
+            val daysSinceLastActive = calculateDaysSinceLastActive(database)
             if (daysSinceLastActive >= 1) {
                 notifications.add(NotificationType.STREAK_ALERT)
             }
@@ -151,11 +152,16 @@ class MLNotificationWorker(
     /**
      * Calculates days since last active
      */
-    private fun calculateDaysSinceLastActive(): Int {
-        // Simplified implementation
-        // In real app, query database for last activity
-        val calendar = java.util.Calendar.getInstance()
-        return calendar.get(java.util.Calendar.DAY_OF_YEAR)
+    private suspend fun calculateDaysSinceLastActive(db: GitaDatabase): Int {
+        val recentActivity = db.dailyActivityDao().getRecentActivity(1).firstOrNull() ?: return 7
+        val lastDateStr = recentActivity.date.takeIf { it.isNotBlank() } ?: return 7
+
+        return try {
+            val lastDate = java.time.LocalDate.parse(lastDateStr.take(10))
+            java.time.temporal.ChronoUnit.DAYS.between(lastDate, java.time.LocalDate.now()).toInt().coerceAtLeast(0)
+        } catch (_: Exception) {
+            7 // safe fallback
+        }
     }
 
     /**

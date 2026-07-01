@@ -15,7 +15,13 @@ class QuizQuestionRepository(
     suspend fun getTotalAvailableQuestions(): Int = questionBankDao.getTotalAvailableQuestions()
     suspend fun getTotalCount(): Int = questionBankDao.getTotalCount()
     suspend fun getNextQuestions(minDiff: Int, maxDiff: Int, limit: Int): List<QuizQuestionBank> =
-        questionBankDao.getNextQuestions(minDiff, maxDiff, limit)
+        questionBankDao.getNextQuestions(
+            minDiff, 
+            maxDiff, 
+            limit, 
+            targetDifficulty = 5, 
+            cooldownCutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        )
     suspend fun markAsAsked(id: Int) = questionBankDao.markAsAsked(id)
     suspend fun insertPerformance(p: QuestionPerformance) = questionPerformanceDao.insert(p)
     suspend fun getPerformanceByQuestion(id: String): QuestionPerformance? = questionPerformanceDao.getPerformanceByQuestion(id)
