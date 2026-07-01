@@ -369,8 +369,8 @@ class QuizViewModel @Inject constructor(
     fun restartQuiz() {
         val currentMaxQuestions = _quizState.value.maxQuestions
         val currentLanguage = _quizState.value.language
-        _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = true)
-        _uiState.value = QuizUiState(isLoading = true)
+        _quizState.value = QuizState(maxQuestions = currentMaxQuestions, language = currentLanguage, isLoading = false)
+        _uiState.value = QuizUiState(isLoading = false)
         quizStartTime = System.currentTimeMillis()
         sessionAskedIds.clear()
 

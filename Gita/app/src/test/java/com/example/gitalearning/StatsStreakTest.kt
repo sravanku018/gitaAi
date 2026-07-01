@@ -116,6 +116,12 @@ class FakeUserStatsDao : UserStatsDao {
         stats = stats?.copy(userId = userId)
     }
 
+    override suspend fun updateUserIdIfEmpty(newId: String) {
+        if (stats?.userId.isNullOrEmpty()) {
+            stats = stats?.copy(userId = newId)
+        }
+    }
+
     override suspend fun insertIfEmpty(stats: UserStats) {
         if (this.stats == null) this.stats = stats
     }

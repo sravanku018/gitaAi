@@ -262,8 +262,8 @@ class QuizViewModelGuardTest {
         viewModel.resetQuiz()
         advanceUntilIdle()
 
-        // resetQuiz resets then calls loadNextQuestion, so totalQuestions=1
-        assertEquals("After reset, totalQuestions should be 1 (first question reloaded)", 1, viewModel.quizState.value.totalQuestions)
+        // resetQuiz just resets the state, so totalQuestions=0
+        assertEquals("After reset, totalQuestions should be 0", 0, viewModel.quizState.value.totalQuestions)
     }
 
     @Test

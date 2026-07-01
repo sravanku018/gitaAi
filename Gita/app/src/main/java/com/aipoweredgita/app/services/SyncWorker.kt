@@ -133,6 +133,26 @@ class SyncWorker(
                                 country_code = countryCode
                             )
                         )
+                        
+                        try {
+                            val timeSpentSeconds = jsonObject.get("timeSpentSeconds")?.asLong ?: 0L
+                            com.aipoweredgita.app.network.CoinApi.retrofitService.recordQuizAttempt(
+                                com.aipoweredgita.app.network.QuizAttemptRequest(
+                                    user_id = event.userId,
+                                    score = score,
+                                    total_questions = totalQuestions,
+                                    quiz_type = quizType,
+                                    time_spent_seconds = timeSpentSeconds,
+                                    coins_earned = event.coinsToAdjust,
+                                    client_date = clientDate,
+                                    country_code = countryCode
+                                )
+                            )
+                            Log.d(TAG, "Quiz attempt recorded to server successfully")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to record quiz attempt to server: ${e.message}")
+                        }
+
                         userStatsDao.updateKrishnaCoins(response.total_coins)
                         Log.d(TAG, "Quiz sync success. New server balance: ${response.total_coins}")
                     }

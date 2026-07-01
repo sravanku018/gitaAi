@@ -45,7 +45,6 @@ fun QuizContent(
     onProceed: (wasCorrect: Boolean) -> Unit,
     vm: QuizViewModel? = null,
 ) {
-    var showResult by remember { mutableStateOf<Boolean?>(null) }
     var showResultDialog by remember { mutableStateOf(false) }
     var userAnswer by remember { mutableStateOf("") }
     val dialogScroll = rememberScrollState()
@@ -53,7 +52,6 @@ fun QuizContent(
 
     // Reset local state when question changes (new question = new options list)
     LaunchedEffect(options) {
-        showResult = null
         showResultDialog = false
     }
 
@@ -77,13 +75,7 @@ fun QuizContent(
         }
     }
 
-    LaunchedEffect(showResult) {
-        if (showResult != null) {
-            delay(if (showResult == true) 2000L else 1000L)
-            showResult = null
-            showResultDialog = true
-        }
-    }
+    // Removed LaunchedEffect for delay to prevent double layout
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -183,11 +175,10 @@ fun QuizContent(
                         AnimatedOptionCard(
                             text = option,
                             state = state,
-                            enabled = selectedIndex == null && showResult == null && !showResultDialog,
+                            enabled = selectedIndex == null && !showResultDialog,
                             onClick = {
                                 onSelect(index)
-                                val correct = index == correctIndex
-                                showResult = correct
+                                showResultDialog = true
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -198,13 +189,17 @@ fun QuizContent(
             Spacer(Modifier.size(24.dp))
         }
 
-        if (showResultDialog) {
-            val isCorrect = if (isOpenEnded) {
-                quizState?.value?.showCorrectAnswer == true
-            } else {
-                selectedIndex == correctIndex
-            }
+        val isCorrect = if (isOpenEnded) {
+            quizState?.value?.showCorrectAnswer == true
+        } else {
+            selectedIndex == correctIndex
+        }
 
+        if (showResultDialog && isCorrect) {
+            com.aipoweredgita.app.ui.ConfettiBurst(playId = 1)
+        }
+
+        if (showResultDialog) {
             Dialog(onDismissRequest = {
                 showResultDialog = false
                 onProceed(isCorrect)
@@ -281,7 +276,7 @@ fun QuizContent(
             }
         }
 
-        AnswerOverlay(show = showResult != null, isCorrect = showResult == true)
+        // AnswerOverlay removed to prevent double layout
     }
 }
 
