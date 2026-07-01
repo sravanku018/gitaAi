@@ -298,6 +298,7 @@ class SyncWorker(
                             }
                         } else {
                             Log.w(TAG, "No token available for stats sync, skipping")
+                            return Result.retry()
                         }
                     }
                     "ADD_NOTE" -> {
