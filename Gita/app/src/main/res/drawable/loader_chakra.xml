@@ -1,0 +1,88 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:pathData="M100,100 m-90,0 a90,90 0,1,1 180,0 a90,90 0,1,1 -180,0"
+        android:fillColor="#E3F2FD"/>
+
+    <!-- Sudarshana Chakra outer ring -->
+    <path
+        android:pathData="M100,100 m-60,0 a60,60 0,1,1 120,0 a60,60 0,1,1 -120,0"
+        android:strokeColor="#1565C0"
+        android:strokeWidth="4"/>
+
+    <!-- Chakra inner ring -->
+    <path
+        android:pathData="M100,100 m-45,0 a45,45 0,1,1 90,0 a45,45 0,1,1 -90,0"
+        android:strokeColor="#1976D2"
+        android:strokeWidth="3"/>
+
+    <!-- Center circle -->
+    <path
+        android:pathData="M100,100 m-15,0 a15,15 0,1,1 30,0 a15,15 0,1,1 -30,0"
+        android:fillColor="#FFD700"/>
+
+    <!-- Spokes/Blades (8 directions) -->
+    <path
+        android:pathData="M100,100 L100,40"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L142,58"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L160,100"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L142,142"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L100,160"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L58,142"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L40,100"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+    <path
+        android:pathData="M100,100 L58,58"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"/>
+
+    <!-- Sharp blade tips -->
+    <path
+        android:pathData="M100,40 L95,50 L100,45 L105,50 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M142,58 L132,63 L137,58 L132,53 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M160,100 L150,95 L155,100 L150,105 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M142,142 L137,132 L142,137 L147,132 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M100,160 L95,150 L100,155 L105,150 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M58,142 L63,132 L58,137 L53,132 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M40,100 L50,95 L45,100 L50,105 Z"
+        android:fillColor="#FF6B35"/>
+    <path
+        android:pathData="M58,58 L63,63 L58,58 L53,63 Z"
+        android:fillColor="#FF6B35"/>
+</vector>
