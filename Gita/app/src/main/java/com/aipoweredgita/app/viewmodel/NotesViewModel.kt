@@ -41,6 +41,8 @@ class NotesViewModel @Inject constructor(
                         val existing = noteDao.getNote(sn.chapter_no, sn.verse_no)
                         if (existing == null) {
                             noteDao.insertNote(VerseNote(chapterNo = sn.chapter_no, verseNo = sn.verse_no, note = sn.note))
+                        } else if (existing.note != sn.note) {
+                            noteDao.updateNote(existing.copy(note = sn.note, updatedAt = System.currentTimeMillis()))
                         }
                     }
                 } catch (_: Exception) {}
@@ -53,9 +55,18 @@ class NotesViewModel @Inject constructor(
             noteDao.insertNote(VerseNote(chapterNo = chapter, verseNo = verse, note = text))
             if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
                 try {
-                    CoinApi.retrofitService.syncNotes(
-                        NotesSyncRequest(authPrefs.userId!!, listOf(NoteSyncItem(chapter, verse, text)))
+                    val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
+                    val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapter, "verse" to verse, "note" to text))
+                    pendingDao.insert(
+                        com.aipoweredgita.app.database.PendingSyncEvent(
+                            userId = authPrefs.userId!!,
+                            eventType = "ADD_NOTE",
+                            payload = payloadStr,
+                            coinsToAdjust = 0,
+                            idempotencyKey = "note_${chapter}_${verse}_${authPrefs.userId!!}_${System.currentTimeMillis()}"
+                        )
                     )
+                    com.aipoweredgita.app.services.SyncWorker.schedule(context)
                 } catch (_: Exception) {}
             }
         }
@@ -66,7 +77,18 @@ class NotesViewModel @Inject constructor(
             noteDao.deleteNote(noteId)
             if (!authPrefs.isGuestUser && !authPrefs.userId.isNullOrEmpty()) {
                 try {
-                    CoinApi.retrofitService.deleteNote(NoteDeleteRequest(authPrefs.userId!!, chapterNo, verseNo))
+                    val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
+                    val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapterNo, "verse" to verseNo))
+                    pendingDao.insert(
+                        com.aipoweredgita.app.database.PendingSyncEvent(
+                            userId = authPrefs.userId!!,
+                            eventType = "DELETE_NOTE",
+                            payload = payloadStr,
+                            coinsToAdjust = 0,
+                            idempotencyKey = "delnote_${chapterNo}_${verseNo}_${authPrefs.userId!!}_${System.currentTimeMillis()}"
+                        )
+                    )
+                    com.aipoweredgita.app.services.SyncWorker.schedule(context)
                 } catch (_: Exception) {}
             }
         }

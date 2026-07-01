@@ -205,10 +205,10 @@ class SyncWorker(
                         val jsonObject = try { gson.fromJson(event.payload, com.google.gson.JsonObject::class.java) } catch (_: Exception) { null }
                         val clientDate = if (jsonObject?.has("clientDate") == true && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         
-                        val requestMap = mutableMapOf(
-                            "user_id" to event.userId,
-                            "idempotency_key" to event.idempotencyKey
+                        val requestMap = mutableMapOf<String, String>(
+                            "user_id" to event.userId
                         )
+                        event.idempotencyKey?.let { requestMap["idempotency_key"] = it }
                         if (clientDate != null) {
                             requestMap["client_date"] = clientDate
                         }
@@ -299,6 +299,27 @@ class SyncWorker(
                         } else {
                             Log.w(TAG, "No token available for stats sync, skipping")
                         }
+                    }
+                    "ADD_NOTE" -> {
+                        val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
+                        val chapter = jsonObject.get("chapter")?.asInt ?: 0
+                        val verse = jsonObject.get("verse")?.asInt ?: 0
+                        val text = jsonObject.get("note")?.asString ?: ""
+                        
+                        Log.d(TAG, "Syncing ADD_NOTE: chapter=$chapter, verse=$verse")
+                        CoinApi.retrofitService.syncNotes(
+                            com.aipoweredgita.app.network.NotesSyncRequest(event.userId, listOf(com.aipoweredgita.app.network.NoteSyncItem(chapter, verse, text)))
+                        )
+                    }
+                    "DELETE_NOTE" -> {
+                        val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
+                        val chapter = jsonObject.get("chapter")?.asInt ?: 0
+                        val verse = jsonObject.get("verse")?.asInt ?: 0
+                        
+                        Log.d(TAG, "Syncing DELETE_NOTE: chapter=$chapter, verse=$verse")
+                        CoinApi.retrofitService.deleteNote(
+                            com.aipoweredgita.app.network.NoteDeleteRequest(event.userId, chapter, verse)
+                        )
                     }
                     else -> {
                         Log.w(TAG, "Unknown event type: ${event.eventType}, deleting event")
