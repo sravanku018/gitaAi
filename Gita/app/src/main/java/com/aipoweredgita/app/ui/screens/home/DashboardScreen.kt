@@ -114,6 +114,7 @@ fun DashboardScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val stats by viewModel.stats.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     
@@ -220,20 +221,17 @@ fun DashboardScreen(
                                     modifier = Modifier.clickable { onNavigateToCoinHistory() }
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                val level = YogaLevelManager.levelFor(stats)
-                                val multiplier = YogaLevelManager.getCoinMultiplier(stats)
+                                val level = uiState.level?.level ?: YogaLevelManager.levelFor(stats)
                                 if (level > 1) {
-                                    val bonusText = if (multiplier > 1.0f) " (${multiplier}x Bonus)" else ""
                                     Text(
-                                        text = "Level $level$bonusText",
+                                        text = "Level $level",
                                         fontSize = 12.sp,
                                         color = textSecondary,
                                         modifier = Modifier.clickable { onNavigateToAwakening() }
                                     )
                                 } else {
-                                    val bonusText = if (multiplier > 1.0f) " (${multiplier}x Bonus)" else ""
                                     Text(
-                                        text = "Seeker$bonusText",
+                                        text = "Seeker",
                                         fontSize = 12.sp,
                                         color = textSecondary,
                                         modifier = Modifier.clickable { onNavigateToAwakening() }
