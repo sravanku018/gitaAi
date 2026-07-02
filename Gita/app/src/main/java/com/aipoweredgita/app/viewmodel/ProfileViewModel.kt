@@ -19,12 +19,12 @@ import com.aipoweredgita.app.repository.ContentRepository
 import com.aipoweredgita.app.repository.StatsRepository
 import com.aipoweredgita.app.utils.AuthPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -65,8 +65,8 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     // One-time side effects
-    private val _sideEffect = MutableSharedFlow<ProfileSideEffect>()
-    val sideEffect: SharedFlow<ProfileSideEffect> = _sideEffect.asSharedFlow()
+    private val _sideEffect = Channel<ProfileSideEffect>()
+    val sideEffect: Flow<ProfileSideEffect> = _sideEffect.receiveAsFlow()
 
     // Backward-compatible separate state flows for existing UI code
     private val _stats = MutableStateFlow<com.aipoweredgita.app.database.UserStats?>(null)
@@ -128,7 +128,7 @@ class ProfileViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
-                _sideEffect.emit(ProfileSideEffect.ShowError(e.message ?: "Unknown error"))
+                _sideEffect.send(ProfileSideEffect.ShowError(e.message ?: "Unknown error"))
             }
         }
     }
@@ -148,10 +148,10 @@ class ProfileViewModel @Inject constructor(
                 }
             }
             result.onFailure { error ->
-                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to generate badges"))
+                _sideEffect.send(ProfileSideEffect.ShowError(error.message ?: "Failed to generate badges"))
             }
         } catch (e: Exception) {
-            _sideEffect.emit(ProfileSideEffect.ShowError(e.message ?: "Failed to generate badges"))
+            _sideEffect.send(ProfileSideEffect.ShowError(e.message ?: "Failed to generate badges"))
         }
     }
 
@@ -220,7 +220,7 @@ class ProfileViewModel @Inject constructor(
             
             result.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false, error = error.message) }
-                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to load dashboard"))
+                _sideEffect.send(ProfileSideEffect.ShowError(error.message ?: "Failed to load dashboard"))
             }
 
             // Fetch coin balance
@@ -257,7 +257,7 @@ class ProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(coinBalance = balance) }
             }
             result.onFailure { error ->
-                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to refresh coins"))
+                _sideEffect.send(ProfileSideEffect.ShowError(error.message ?: "Failed to refresh coins"))
             }
         }
     }
@@ -403,10 +403,10 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val result = updateProfileUseCase(name, dob)
             result.onSuccess {
-                _sideEffect.emit(ProfileSideEffect.ShowToast("Profile updated successfully"))
+                _sideEffect.send(ProfileSideEffect.ShowToast("Profile updated successfully"))
             }
             result.onFailure { error ->
-                _sideEffect.emit(ProfileSideEffect.ShowError(error.message ?: "Failed to update profile"))
+                _sideEffect.send(ProfileSideEffect.ShowError(error.message ?: "Failed to update profile"))
             }
         }
     }

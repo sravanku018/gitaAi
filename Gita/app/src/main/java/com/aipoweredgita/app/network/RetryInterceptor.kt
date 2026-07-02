@@ -51,7 +51,7 @@ class RetryInterceptor : Interceptor {
 
             // Success - reset circuit breaker (skip for excluded endpoints)
             if (response.isSuccessful) {
-                if (!isExcluded) circuitBreaker.recordSuccess()
+                if (!isExcluded && !isAuth) circuitBreaker.recordSuccess()
                 Log.d(TAG, "Request successful")
                 return response
             }
