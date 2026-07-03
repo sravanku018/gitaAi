@@ -57,7 +57,7 @@ data class UserStats(
     // Computed properties
     val accuracyPercentage: Float
         get() = if (totalQuestionsAnswered > 0) {
-            (totalCorrectAnswers.toFloat() / totalQuestionsAnswered) * 100
+            ((totalCorrectAnswers.toFloat() / totalQuestionsAnswered) * 100).coerceAtMost(100f)
         } else 0f
 
     val averageScorePercentage: Float
