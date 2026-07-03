@@ -177,17 +177,20 @@ class SyncWorker(
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
                         val battleCoins = jsonObject.get("battleCoins")?.asInt ?: event.coinsToAdjust
                         val score = jsonObject.get("score")?.asInt ?: 0
+                        val questionsAnswered = jsonObject.get("questionsAnswered")?.asInt ?: 0
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
 
-                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
                                 source = "battle_quiz",
                                 metadata = mapOf(
                                     "battleCoins" to battleCoins,
-                                    "score" to score
+                                    "score" to score,
+                                    "questionsAnswered" to questionsAnswered,
+                                    "timeSpentSeconds" to 60
                                 ),
                                 client_date = clientDate,
                                 country_code = countryCode

@@ -59,6 +59,7 @@ fun QuizBattleScreen(
     val context = LocalContext.current
     var battleState by remember { mutableStateOf(BattleState()) }
     var isTimerRunning by remember { mutableStateOf(false) }
+    var hasTriggeredGameOver by remember { mutableStateOf(false) }
     val quizViewModel: QuizBattleViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     LaunchedEffect(Unit) {
@@ -74,8 +75,9 @@ fun QuizBattleScreen(
                 if (!isTimerRunning) break
                 battleState = battleState.copy(timeLeft = battleState.timeLeft - 1)
             }
-            if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver) {
+            if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver && !hasTriggeredGameOver) {
                 isTimerRunning = false
+                hasTriggeredGameOver = true
                 battleState = battleState.copy(isGameOver = true)
                 val correctAnswers = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
                 onGameOver(correctAnswers, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
@@ -121,6 +123,7 @@ fun QuizBattleScreen(
             BattleGameOverView(
                 battleState = battleState,
                 onPlayAgain = {
+                    hasTriggeredGameOver = false
                     battleState = BattleState()
                     isTimerRunning = true
                     quizViewModel.restartQuiz()
@@ -182,7 +185,8 @@ fun QuizBattleScreen(
                                 if (nextState.lives <= 0) {
                                     isTimerRunning = false
                                     nextState = nextState.copy(isGameOver = true)
-                                    if (!battleState.isGameOver) {
+                                    if (!battleState.isGameOver && !hasTriggeredGameOver) {
+                                        hasTriggeredGameOver = true
                                         val correctAnswers = nextState.correctAt3Hearts + nextState.correctAt2Hearts + nextState.correctAt1Heart
                                         onGameOver(correctAnswers, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins)
                                     }
