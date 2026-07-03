@@ -6,8 +6,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface QuizAttemptDao {
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttempt(attempt: QuizAttempt): Long
+
+    @Query("DELETE FROM quiz_attempts WHERE quizType = 'battle_quiz' AND totalQuestions = 0")
+    suspend fun deleteGlitchedBattleQuizzes()
 
     @Query("SELECT * FROM quiz_attempts ORDER BY timestamp DESC")
     fun getAllAttempts(): Flow<List<QuizAttempt>>

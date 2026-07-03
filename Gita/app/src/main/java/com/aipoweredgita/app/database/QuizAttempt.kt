@@ -22,7 +22,7 @@ data class QuizAttempt(
 ) {
     val accuracyPercentage: Float
         get() = if (totalQuestions > 0) {
-            (score.toFloat() / totalQuestions) * 100
+            ((score.toFloat() / totalQuestions) * 100).coerceAtMost(100f)
         } else 0f
 
     val timeSpentFormatted: String

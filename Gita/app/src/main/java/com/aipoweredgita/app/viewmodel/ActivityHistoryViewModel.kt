@@ -127,6 +127,10 @@ class ActivityHistoryViewModel @Inject constructor(
                         uid, "Bearer $token", limit = 500
                     )
                     val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
+                    
+                    // Cleanup any glitched battle_quiz records from before the fix
+                    quizDao.deleteGlitchedBattleQuizzes()
+
                     val fmtPlain = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }
