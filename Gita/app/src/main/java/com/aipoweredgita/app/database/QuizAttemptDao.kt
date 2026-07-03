@@ -9,7 +9,7 @@ interface QuizAttemptDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttempt(attempt: QuizAttempt): Long
 
-    @Query("DELETE FROM quiz_attempts WHERE quizType = 'battle_quiz' AND totalQuestions = 0")
+    @Query("DELETE FROM quiz_attempts WHERE quizType = 'battle_quiz' AND score > totalQuestions")
     suspend fun deleteGlitchedBattleQuizzes()
 
     @Query("SELECT * FROM quiz_attempts ORDER BY timestamp DESC")

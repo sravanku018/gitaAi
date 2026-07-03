@@ -38,6 +38,11 @@ fun BattleGameOverView(
         Text("Score: ${battleState.score}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
         Text("Max Combo: ${battleState.maxCombo}x", style = MaterialTheme.typography.titleLarge)
         Text("Questions: ${battleState.questionsAnswered}", style = MaterialTheme.typography.titleMedium)
+        
+        val correct = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
+        val accuracy = if (battleState.questionsAnswered > 0) ((correct.toFloat() / battleState.questionsAnswered) * 100).toInt() else 0
+        Text("Accuracy: $accuracy%", style = MaterialTheme.typography.titleMedium, color = if (accuracy >= 80) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface)
+
         if (battleState.battleCoins > 0) {
             Spacer(Modifier.height(8.dp))
             Text("🪙 +${battleState.battleCoins} coins", style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
