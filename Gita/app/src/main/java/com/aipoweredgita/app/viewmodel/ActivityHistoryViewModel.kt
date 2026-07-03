@@ -127,13 +127,30 @@ class ActivityHistoryViewModel @Inject constructor(
                         uid, "Bearer $token", limit = 500
                     )
                     val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
-                    val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                    val fmtPlain = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }
+                    val fmtIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }
+                    val fmtIsoShort = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }
+                    fun parseTimestamp(raw: String): Long {
+                        return try { fmtPlain.parse(raw)?.time ?: 0L }
+                        catch (_: Exception) {
+                            try { fmtIso.parse(raw)?.time ?: 0L }
+                            catch (_: Exception) {
+                                try { fmtIsoShort.parse(raw)?.time ?: 0L }
+                                catch (_: Exception) { 0L }
+                            }
+                        }
+                    }
                     for (dto in serverAttempts) {
-                        val ts = try { fmt.parse(dto.created_at)?.time ?: System.currentTimeMillis() } catch (_: Exception) { System.currentTimeMillis() }
+                        val ts = parseTimestamp(dto.created_at).takeIf { it > 0L } ?: System.currentTimeMillis()
                         val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
-                        
+                        // Use a 5-minute window to deduplicate; battle_quiz timestamps can differ from
+                        // local records by a few seconds (server processes after network round-trip).
                         val exists = quizDao.countSimilarAttempts(dto.score, dto.total_questions, ts) > 0
                         if (!exists) {
                             quizDao.insertAttempt(
@@ -188,6 +205,28 @@ class ActivityHistoryViewModel @Inject constructor(
         viewModelScope.launch {
             quizStatsRepo.getAttemptsByQuizSize(30).collect { list ->
                 _uiState.update { it.copy(quiz30Stats = buildStats(30, list)) }
+            }
+        }
+        // Battle Quiz segment
+        viewModelScope.launch {
+            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+            db.quizAttemptDao().getAttemptsByType("battle_quiz").collect { list ->
+                if (list.isEmpty()) {
+                    _uiState.update { it.copy(battleQuizStats = null) }
+                } else {
+                    val stats = db.quizAttemptDao().getStatsByType("battle_quiz")
+                    val best  = db.quizAttemptDao().getBestAttemptByType("battle_quiz")
+                    _uiState.update {
+                        it.copy(battleQuizStats = QuizSizeStatsData(
+                            quizSize = -1,
+                            attempts = list,
+                            totalAttempts = stats?.totalAttempts ?: list.size,
+                            averageAccuracy = stats?.averageAccuracy ?: 0f,
+                            averageTime = stats?.averageTime ?: 0L,
+                            bestAttempt = best
+                        ))
+                    }
+                }
             }
         }
     }

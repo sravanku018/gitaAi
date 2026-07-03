@@ -1,143 +1,130 @@
 package com.aipoweredgita.app.coin
 
 import android.content.Context
+import com.aipoweredgita.app.database.GitaDatabase
+import com.aipoweredgita.app.database.RewardState
+import com.aipoweredgita.app.database.RewardStateDao
 import java.time.LocalDate
 
 /**
  * Daily check-in, weekly bonus, and share reward tracking.
- * All state persisted in SharedPreferences — no Room needed.
+ * All state persisted in Room Database.
  *
  * Thread-safe: all write methods synchronize.
  * Corrupt dates: silently default rather than crash.
  */
-class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) {
+class DailyRewardsTracker(private val dao: RewardStateDao) {
 
     companion object {
-        // Check-in keys
-        private const val KEY_DAY = "reward_day"
-        private const val KEY_DATE = "reward_last_date"
-        private const val KEY_PROTECTION = "reward_protection"
-        private const val KEY_WEEK = "reward_week"
-
-        // Daily share keys
-        private const val KEY_SHARE_DAY = "share_reward_day"
-        private const val KEY_SHARE_DATE = "share_reward_last_date"
-        private const val KEY_SHARE_PROTECTION = "share_reward_protection"
-        private const val KEY_SHARE_WEEK = "share_reward_week"
-
-        // Same-week completion tracking (ISO week-based year + week number)
-        private const val KEY_CHECKIN_COMPLETED_WEEK = "checkin_completed_week"
-        private const val KEY_SHARE_COMPLETED_WEEK = "share_completed_week"
-        // Whether protection was already granted for a completed week
-        private const val KEY_CHECKIN_PROT_GRANTED = "checkin_protection_granted"
-        private const val KEY_SHARE_PROT_GRANTED = "share_protection_granted"
+        @Volatile
+        private var instance: DailyRewardsTracker? = null
 
         fun getInstance(context: Context): DailyRewardsTracker {
-            val p = context.getSharedPreferences("daily_rewards", Context.MODE_PRIVATE)
-            return DailyRewardsTracker(p)
+            return instance ?: synchronized(this) {
+                instance ?: DailyRewardsTracker(
+                    GitaDatabase.getDatabase(context).rewardStateDao()
+                ).also { instance = it }
+            }
         }
     }
 
+    private fun getState(): RewardState = dao.getRewardStateSync() ?: RewardState()
+    
+    private fun saveState(state: RewardState) = dao.insertOrUpdate(state)
+
     var isCheckinSynced: Boolean
         get() {
+            val state = getState()
             val today = now()
-            val lastDate = prefs.getString(KEY_DATE, "") ?: ""
-            if (lastDate != today) return false
-            return prefs.getBoolean("checkin_synced", false)
+            if (state.lastCheckinDate != today) return false
+            return state.isCheckinSynced
         }
         set(value) {
-            prefs.edit().putBoolean("checkin_synced", value).apply()
+            synchronized(this) {
+                val state = getState()
+                saveState(state.copy(isCheckinSynced = value))
+            }
         }
 
     var isShareSynced: Boolean
         get() {
+            val state = getState()
             val today = now()
-            val lastDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
-            if (lastDate != today) return false
-            return prefs.getBoolean("share_synced", false)
+            if (state.lastShareDate != today) return false
+            return state.isShareSynced
         }
         set(value) {
-            prefs.edit().putBoolean("share_synced", value).apply()
+            synchronized(this) {
+                val state = getState()
+                saveState(state.copy(isShareSynced = value))
+            }
         }
 
     fun syncWithServer(serverDay: Int, serverWeek: Int, lastCheckin: String? = null) {
-        if (serverDay in 1..7) {
-            synchronized(this) {
-                val currentDay = prefs.getInt(KEY_DAY, 1)
-                val currentWeek = prefs.getInt(KEY_WEEK, 1)
+        if (serverDay !in 1..7) return
+        synchronized(this) {
+            val state = getState()
+            val currentDay = state.checkinDay
+            val currentWeek = state.checkinWeek
 
-                // Map server state to client semantics:
-                // Server day=7 with week=N means "Week N-1 complete, transitioning to Week N"
-                // Client uses KEY_DAY=0 to mean "between weeks" and KEY_WEEK as the completed week
-                // Handles wrap: server week=1 after day=7 means completed week 4
-                val effectiveDay = if (serverDay == 7) 0 else serverDay
-                val effectiveWeek = if (serverDay == 7) {
-                    if (serverWeek == 1) 4 else serverWeek - 1
-                } else serverWeek
+            val effectiveDay = if (serverDay == 7) 0 else serverDay
+            val effectiveWeek = if (serverDay == 7) {
+                if (serverWeek == 1) 4 else serverWeek - 1
+            } else serverWeek
 
-                // Never downgrade: server must be equal or more advanced
-                if (effectiveWeek < currentWeek) return
-                if (effectiveWeek == currentWeek) {
-                    val localComplete = currentDay == 0
-                    val serverComplete = effectiveDay == 0
-                    // Local week complete but server says still in-progress — don't downgrade
-                    if (localComplete && !serverComplete) return
-                    // Both in-progress — don't downgrade day
-                    if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
-                }
-
-                prefs.edit().apply {
-                    putInt(KEY_DAY, effectiveDay)
-                    putInt(KEY_WEEK, effectiveWeek)
-                    // Only overwrite local date if server date is more recent
-                    if (lastCheckin != null) {
-                        val currentDate = prefs.getString(KEY_DATE, "") ?: ""
-                        if (currentDate.isEmpty() || lastCheckin > currentDate) {
-                            putString(KEY_DATE, lastCheckin)
-                        }
-                    }
-                }.commit()
+            if (effectiveWeek < currentWeek) return
+            if (effectiveWeek == currentWeek) {
+                val localComplete = currentDay == 0
+                val serverComplete = effectiveDay == 0
+                if (localComplete && !serverComplete) return
+                if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
             }
+
+            var newDate = state.lastCheckinDate
+            if (lastCheckin != null && (newDate.isEmpty() || lastCheckin > newDate)) {
+                newDate = lastCheckin
+            }
+
+            saveState(state.copy(
+                checkinDay = effectiveDay,
+                checkinWeek = effectiveWeek,
+                lastCheckinDate = newDate
+            ))
         }
     }
 
     fun syncShareWithServer(serverDay: Int, serverWeek: Int, lastShare: String? = null) {
-        if (serverDay in 1..7) {
-            synchronized(this) {
-                val currentDay = prefs.getInt(KEY_SHARE_DAY, 1)
-                val currentWeek = prefs.getInt(KEY_SHARE_WEEK, 1)
+        if (serverDay !in 1..7) return
+        synchronized(this) {
+            val state = getState()
+            val currentDay = state.shareDay
+            val currentWeek = state.shareWeek
 
-                // Map server state to client semantics (same as syncWithServer)
-                val effectiveDay = if (serverDay == 7) 0 else serverDay
-                val effectiveWeek = if (serverDay == 7) {
-                    if (serverWeek == 1) 4 else serverWeek - 1
-                } else serverWeek
+            val effectiveDay = if (serverDay == 7) 0 else serverDay
+            val effectiveWeek = if (serverDay == 7) {
+                if (serverWeek == 1) 4 else serverWeek - 1
+            } else serverWeek
 
-                // Never downgrade: server must be equal or more advanced
-                if (effectiveWeek < currentWeek) return
-                if (effectiveWeek == currentWeek) {
-                    val localComplete = currentDay == 0
-                    val serverComplete = effectiveDay == 0
-                    if (localComplete && !serverComplete) return
-                    if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
-                }
-
-                prefs.edit().apply {
-                    putInt(KEY_SHARE_DAY, effectiveDay)
-                    putInt(KEY_SHARE_WEEK, effectiveWeek)
-                    // Only overwrite local date if server date is more recent
-                    if (lastShare != null) {
-                        val currentDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
-                        if (currentDate.isEmpty() || lastShare > currentDate) {
-                            putString(KEY_SHARE_DATE, lastShare)
-                        }
-                    }
-                }.commit()
+            if (effectiveWeek < currentWeek) return
+            if (effectiveWeek == currentWeek) {
+                val localComplete = currentDay == 0
+                val serverComplete = effectiveDay == 0
+                if (localComplete && !serverComplete) return
+                if (!localComplete && !serverComplete && effectiveDay <= currentDay) return
             }
+
+            var newDate = state.lastShareDate
+            if (lastShare != null && (newDate.isEmpty() || lastShare > newDate)) {
+                newDate = lastShare
+            }
+
+            saveState(state.copy(
+                shareDay = effectiveDay,
+                shareWeek = effectiveWeek,
+                lastShareDate = newDate
+            ))
         }
     }
-
-    // ── Daily Check-in ───────────────────────────────────────────────────────
 
     data class DailyState(
         val day: Int, 
@@ -148,26 +135,20 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
         val week: Int
     )
 
-    fun getDailyState(): DailyState {
+    // Using a separate method for logic without hitting DB repeatedly
+    private fun getDailyStateInternal(st: RewardState): Pair<DailyState, RewardState> {
         val today = now()
         val yesterday = yesterdayStr(today)
-        var lastDate = prefs.getString(KEY_DATE, "") ?: ""
-        var week = prefs.getInt(KEY_WEEK, 1).coerceIn(1, 4)
-        val protection = prefs.getInt(KEY_PROTECTION, 0).coerceAtLeast(0)
-        var rawDay = prefs.getInt(KEY_DAY, 1).coerceIn(0, 7)
+        var lastDate = st.lastCheckinDate
+        var week = st.checkinWeek.coerceIn(1, 4)
+        val protection = if (st.checkinProtectionUsed) 0 else 1 // Simplified: bool to int logic
+        var rawDay = st.checkinDay.coerceIn(0, 7)
+        var newState = st
 
-        // Migration: after claimDay7BonusIfEligible, KEY_DAY is set to 0.
-        // If it's still 7 with lastDate==today and week>1, the old server sync overwrote it.
-        // Fix: restore KEY_DAY=0, undo the premature week advance, and push KEY_DATE
-        // to yesterday so getDailyState() falls into the "next day" branch (day 1 of next week).
         if (rawDay == 7 && lastDate == today && week > 1) {
             rawDay = 0
             week = if (week == 1) 4 else week - 1
-            prefs.edit().apply {
-                putInt(KEY_DAY, 0)
-                putInt(KEY_WEEK, week)
-                putString(KEY_DATE, yesterday)
-            }.commit()
+            newState = newState.copy(checkinDay = 0, checkinWeek = week, lastCheckinDate = yesterday)
             lastDate = yesterday
         }
 
@@ -176,21 +157,14 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
                 day = if (rawDay == 0) 7 else rawDay,
                 todayClaimed = true,
                 reward = if (rawDay == 0) 7 else rawDay,
-                hasProtection = protection > 0,
+                hasProtection = !newState.checkinProtectionUsed,
                 protectionWillAutoAdvance = false,
                 week = week
-            )
+            ) to newState
         }
 
         if (lastDate.isEmpty()) {
-            return DailyState(
-                day = 1,
-                todayClaimed = false,
-                reward = 1,
-                hasProtection = protection > 0,
-                protectionWillAutoAdvance = false,
-                week = 1
-            )
+            return DailyState(1, false, 1, !newState.checkinProtectionUsed, false, 1) to newState
         }
 
         if (lastDate == yesterday) {
@@ -198,99 +172,92 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
                 if (week >= 4) 1 else week + 1
             } else week
-            return DailyState(
-                day = nextDay,
-                todayClaimed = false,
-                reward = nextDay,
-                hasProtection = protection > 0,
-                protectionWillAutoAdvance = false,
-                week = nextWeek
-            )
+            return DailyState(nextDay, false, nextDay, !newState.checkinProtectionUsed, false, nextWeek) to newState
         }
 
-        // Missed day(s)
-        if (protection > 0) {
+        if (!newState.checkinProtectionUsed && newState.checkinProtectionGranted) {
             val nextDay = if (rawDay == 0 || rawDay == 7) 1 else rawDay + 1
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
                 if (week >= 4) 1 else week + 1
             } else week
-            return DailyState(
-                day = nextDay,
-                todayClaimed = false,
-                reward = nextDay,
-                hasProtection = true,
-                protectionWillAutoAdvance = true,
-                week = nextWeek
-            )
+            return DailyState(nextDay, false, nextDay, true, true, nextWeek) to newState
         }
 
-        // Reset to Week 1, Day 1 — persist so stale KEY_WEEK doesn't leak into next claim
-        prefs.edit().apply {
-            putInt(KEY_DAY, 1)
-            putInt(KEY_WEEK, 1)
-            putInt(KEY_PROTECTION, 0)
-        }.commit()
-        return DailyState(
-            day = 1,
-            todayClaimed = false,
-            reward = 1,
-            hasProtection = false,
-            protectionWillAutoAdvance = false,
-            week = 1
+        newState = newState.copy(
+            checkinDay = 1,
+            checkinWeek = 1,
+            checkinProtectionUsed = false,
+            checkinProtectionGranted = false
         )
+        return DailyState(1, false, 1, false, false, 1) to newState
+    }
+
+    fun getDailyState(): DailyState {
+        synchronized(this) {
+            val state = getState()
+            val (ds, newState) = getDailyStateInternal(state)
+            if (state != newState) saveState(newState)
+            return ds
+        }
     }
 
     fun claimDaily(): Int {
-        val s = getDailyState()
-        if (s.todayClaimed) return 0
-        val today = now()
         synchronized(this) {
-            if (prefs.getString(KEY_DATE, "") == today) return 0
-            val editor = prefs.edit()
-            if (s.protectionWillAutoAdvance) {
-                val p = (prefs.getInt(KEY_PROTECTION, 0) - 1).coerceAtLeast(0)
-                editor.putInt(KEY_PROTECTION, p)
+            val state = getState()
+            val (ds, newState) = getDailyStateInternal(state)
+            if (ds.todayClaimed) {
+                if (state != newState) saveState(newState)
+                return 0
             }
-            editor.putInt(KEY_DAY, s.day)
-            editor.putInt(KEY_WEEK, s.week)
-            editor.putString(KEY_DATE, today)
-            editor.putBoolean("checkin_synced", false)
-            editor.commit()  // synchronous — prevents race with async reads
-            return s.reward
+            val today = now()
+            if (newState.lastCheckinDate == today) {
+                if (state != newState) saveState(newState)
+                return 0
+            }
+            
+            var updatedState = newState
+            if (ds.protectionWillAutoAdvance) {
+                updatedState = updatedState.copy(checkinProtectionUsed = true)
+            }
+            updatedState = updatedState.copy(
+                checkinDay = ds.day,
+                checkinWeek = ds.week,
+                lastCheckinDate = today,
+                isCheckinSynced = false
+            )
+            saveState(updatedState)
+            return ds.reward
         }
     }
 
     fun claimDay7BonusIfEligible(): Int = synchronized(this) {
-        val day = prefs.getInt(KEY_DAY, 1)
-        val last = prefs.getString(KEY_DATE, "") ?: ""
+        var state = getState()
+        val day = state.checkinDay
+        val last = state.lastCheckinDate
         val today = now()
+        
         if (day == 7 && last == today) {
-            // Mark check-in week as completed
             val calWeek = currentCalendarWeek()
-            prefs.edit().apply {
-                putInt(KEY_DAY, 0)
-                putString(KEY_CHECKIN_COMPLETED_WEEK, calWeek)
-                putBoolean(KEY_CHECKIN_PROT_GRANTED, false)
-            }.commit()
-            // If share also completed Day 7 this same week, grant protection to both
-            grantBothProtectionsIfNeeded(calWeek)
+            state = state.copy(
+                checkinDay = 0,
+                checkinCompletedWeek = calWeek,
+                checkinProtectionGranted = false
+            )
+            state = grantBothProtectionsIfNeeded(calWeek, state)
+            saveState(state)
             return 7
         }
         return 0
     }
 
-    fun getCurrentCheckinDay(): Int = prefs.getInt(KEY_DAY, 1).coerceIn(1, 7)
-
-    // ── Weekly Bonus (auto-claimed with Day 7) ──────────────────────────────
+    fun getCurrentCheckinDay(): Int = getState().checkinDay.coerceIn(1, 7)
 
     data class WeeklyState(val week: Int, val reward: Int)
 
     fun getWeeklyState(): WeeklyState {
-        val week = prefs.getInt(KEY_WEEK, 1).coerceIn(1, 4)
+        val week = getState().checkinWeek.coerceIn(1, 4)
         return WeeklyState(week, if (week == 4) 20 else 10)
     }
-
-    // ── Daily Share ──────────────────────────────────────────────────────────
 
     data class ShareState(
         val day: Int, 
@@ -301,23 +268,18 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
         val week: Int
     )
 
-    fun getShareState(): ShareState {
+    private fun getShareStateInternal(st: RewardState): Pair<ShareState, RewardState> {
         val today = now()
         val yesterday = yesterdayStr(today)
-        var lastDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
-        var week = prefs.getInt(KEY_SHARE_WEEK, 1).coerceIn(1, 4)
-        val protection = prefs.getInt(KEY_SHARE_PROTECTION, 0).coerceAtLeast(0)
-        var rawDay = prefs.getInt(KEY_SHARE_DAY, 1).coerceIn(0, 7)
+        var lastDate = st.lastShareDate
+        var week = st.shareWeek.coerceIn(1, 4)
+        var rawDay = st.shareDay.coerceIn(0, 7)
+        var newState = st
 
-        // Migration: same as getDailyState — fix corrupted KEY_SHARE_DAY=7 from old sync (week>1 only)
         if (rawDay == 7 && lastDate == today && week > 1) {
             rawDay = 0
             week = if (week == 1) 4 else week - 1
-            prefs.edit().apply {
-                putInt(KEY_SHARE_DAY, 0)
-                putInt(KEY_SHARE_WEEK, week)
-                putString(KEY_SHARE_DATE, yesterday)
-            }.commit()
+            newState = newState.copy(shareDay = 0, shareWeek = week, lastShareDate = yesterday)
             lastDate = yesterday
         }
 
@@ -326,14 +288,14 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
                 day = if (rawDay == 0) 7 else rawDay,
                 todayClaimed = true,
                 reward = if (rawDay == 0) 7 else rawDay,
-                hasProtection = protection > 0,
+                hasProtection = !newState.shareProtectionUsed,
                 protectionWillAutoAdvance = false,
                 week = week
-            )
+            ) to newState
         }
 
         if (lastDate.isEmpty()) {
-            return ShareState(1, false, 1, protection > 0, false, 1)
+            return ShareState(1, false, 1, !newState.shareProtectionUsed, false, 1) to newState
         }
 
         if (lastDate == yesterday) {
@@ -341,78 +303,93 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
                 if (week >= 4) 1 else week + 1
             } else week
-            return ShareState(nextDay, false, nextDay, protection > 0, false, nextWeek)
+            return ShareState(nextDay, false, nextDay, !newState.shareProtectionUsed, false, nextWeek) to newState
         }
 
-        if (protection > 0) {
+        if (!newState.shareProtectionUsed && newState.shareProtectionGranted) {
             val nextDay = if (rawDay == 0 || rawDay == 7) 1 else rawDay + 1
             val nextWeek = if (rawDay == 0 || rawDay == 7) {
                 if (week >= 4) 1 else week + 1
             } else week
-            return ShareState(nextDay, false, nextDay, true, true, nextWeek)
+            return ShareState(nextDay, false, nextDay, true, true, nextWeek) to newState
         }
 
-        // Reset to Week 1, Day 1 — persist so stale KEY_SHARE_WEEK doesn't leak into next claim
-        prefs.edit().apply {
-            putInt(KEY_SHARE_DAY, 1)
-            putInt(KEY_SHARE_WEEK, 1)
-            putInt(KEY_SHARE_PROTECTION, 0)
-        }.commit()
-        return ShareState(1, false, 1, false, false, 1)
+        newState = newState.copy(
+            shareDay = 1,
+            shareWeek = 1,
+            shareProtectionUsed = false,
+            shareProtectionGranted = false
+        )
+        return ShareState(1, false, 1, false, false, 1) to newState
+    }
+
+    fun getShareState(): ShareState {
+        synchronized(this) {
+            val state = getState()
+            val (ds, newState) = getShareStateInternal(state)
+            if (state != newState) saveState(newState)
+            return ds
+        }
     }
 
     fun claimShare(): Int {
-        val s = getShareState()
-        if (s.todayClaimed) return 0
         synchronized(this) {
-            if (prefs.getString(KEY_SHARE_DATE, "") == now()) return 0
-            val editor = prefs.edit()
-            if (s.protectionWillAutoAdvance) {
-                val p = (prefs.getInt(KEY_SHARE_PROTECTION, 0) - 1).coerceAtLeast(0)
-                editor.putInt(KEY_SHARE_PROTECTION, p)
+            val state = getState()
+            val (ds, newState) = getShareStateInternal(state)
+            if (ds.todayClaimed) {
+                if (state != newState) saveState(newState)
+                return 0
             }
-            editor.putInt(KEY_SHARE_DAY, s.day)
-            editor.putInt(KEY_SHARE_WEEK, s.week)
-            editor.putString(KEY_SHARE_DATE, now())
-            editor.putBoolean("share_synced", false)
-            editor.commit()  // synchronous — prevents race with async reads
-            return s.reward
+            val today = now()
+            if (newState.lastShareDate == today) {
+                if (state != newState) saveState(newState)
+                return 0
+            }
+            
+            var updatedState = newState
+            if (ds.protectionWillAutoAdvance) {
+                updatedState = updatedState.copy(shareProtectionUsed = true)
+            }
+            updatedState = updatedState.copy(
+                shareDay = ds.day,
+                shareWeek = ds.week,
+                lastShareDate = today,
+                isShareSynced = false
+            )
+            saveState(updatedState)
+            return ds.reward
         }
     }
 
     fun claimShareDay7BonusIfEligible(): Int = synchronized(this) {
-        val day = prefs.getInt(KEY_SHARE_DAY, 1)
-        val last = prefs.getString(KEY_SHARE_DATE, "") ?: ""
+        var state = getState()
+        val day = state.shareDay
+        val last = state.lastShareDate
         val today = now()
+        
         if (day == 7 && last == today) {
-            // Mark share week as completed
             val calWeek = currentCalendarWeek()
-            prefs.edit().apply {
-                putInt(KEY_SHARE_DAY, 0)
-                putString(KEY_SHARE_COMPLETED_WEEK, calWeek)
-                putBoolean(KEY_SHARE_PROT_GRANTED, false)
-            }.commit()
-            // If check-in also completed Day 7 this same week, grant protection to both
-            grantBothProtectionsIfNeeded(calWeek)
+            state = state.copy(
+                shareDay = 0,
+                shareCompletedWeek = calWeek,
+                shareProtectionGranted = false
+            )
+            state = grantBothProtectionsIfNeeded(calWeek, state)
+            saveState(state)
             return 7
         }
         return 0
     }
 
     fun getShareWeeklyState(): WeeklyState {
-        val week = prefs.getInt(KEY_SHARE_WEEK, 1).coerceIn(1, 4)
+        val week = getState().shareWeek.coerceIn(1, 4)
         return WeeklyState(week, if (week == 4) 20 else 10)
     }
 
-    // ── Fresh install detection ──────────────────────────────────────────────
-
     fun isFreshInstall(): Boolean {
-        val checkinDate = prefs.getString(KEY_DATE, "") ?: ""
-        val shareDate = prefs.getString(KEY_SHARE_DATE, "") ?: ""
-        return checkinDate.isEmpty() && shareDate.isEmpty()
+        val state = getState()
+        return state.lastCheckinDate.isEmpty() && state.lastShareDate.isEmpty()
     }
-
-    // ── Internal ─────────────────────────────────────────────────────────────
 
     private fun now() = LocalDate.now(java.time.ZoneId.systemDefault()).toString()
     
@@ -424,7 +401,6 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
         ""
     }
 
-    /** ISO week-based year + week number, e.g. "2025-W23" */
     private fun currentCalendarWeek(): String {
         val date = LocalDate.now(java.time.ZoneId.systemDefault())
         val week = date.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
@@ -432,25 +408,22 @@ class DailyRewardsTracker(private val prefs: android.content.SharedPreferences) 
         return "${year}-W${week}"
     }
 
-    /**
-     * Called after either activity completes Day 7.
-     * If BOTH check-in and share completed Day 7 in the same calendar week,
-     * grant 1 protection token to each (once per week).
-     */
-    private fun grantBothProtectionsIfNeeded(calWeek: String) {
-        val checkinWeek = prefs.getString(KEY_CHECKIN_COMPLETED_WEEK, "") ?: ""
-        val shareWeek = prefs.getString(KEY_SHARE_COMPLETED_WEEK, "") ?: ""
-        if (checkinWeek == calWeek && shareWeek == calWeek) {
-            val editor = prefs.edit()
-            if (!prefs.getBoolean(KEY_CHECKIN_PROT_GRANTED, false)) {
-                editor.putInt(KEY_PROTECTION, prefs.getInt(KEY_PROTECTION, 0) + 1)
-                editor.putBoolean(KEY_CHECKIN_PROT_GRANTED, true)
+    private fun grantBothProtectionsIfNeeded(calWeek: String, currentState: RewardState): RewardState {
+        var newState = currentState
+        if (newState.checkinCompletedWeek == calWeek && newState.shareCompletedWeek == calWeek) {
+            if (!newState.checkinProtectionGranted) {
+                newState = newState.copy(
+                    checkinProtectionGranted = true,
+                    checkinProtectionUsed = false // grant 1 protection
+                )
             }
-            if (!prefs.getBoolean(KEY_SHARE_PROT_GRANTED, false)) {
-                editor.putInt(KEY_SHARE_PROTECTION, prefs.getInt(KEY_SHARE_PROTECTION, 0) + 1)
-                editor.putBoolean(KEY_SHARE_PROT_GRANTED, true)
+            if (!newState.shareProtectionGranted) {
+                newState = newState.copy(
+                    shareProtectionGranted = true,
+                    shareProtectionUsed = false
+                )
             }
-            editor.commit()
         }
+        return newState
     }
 }

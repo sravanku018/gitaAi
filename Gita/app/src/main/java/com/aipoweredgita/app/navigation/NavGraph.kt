@@ -61,7 +61,8 @@ fun NavGraph(
     modifier: Modifier = Modifier,
     isDarkTheme: Boolean = false,
     onThemeToggle: (Boolean) -> Unit = {},
-    onAuthChanged: () -> Unit = {}
+    onAuthChanged: () -> Unit = {},
+    sharedProfileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel? = null
 ) {
     val context = LocalContext.current
     val authPrefs = remember { com.aipoweredgita.app.utils.AuthPreferences.getInstance(context) }
@@ -104,6 +105,7 @@ fun NavGraph(
         }
 
         composable(Screen.Home.route) {
+            val vm = sharedProfileViewModel ?: hiltViewModel()
             DashboardScreen(
                 onNavigateToNormalMode = { navController.navigate(Screen.ChapterSelection.route) },
                 onNavigateToQuizMode = { navController.navigate(Screen.QuizSection.route) },
@@ -112,7 +114,8 @@ fun NavGraph(
                 onNavigateToRandomSloka = { navController.navigate("random_sloka") },
                 onNavigateToAwakening = { navController.navigate("profile?tab=2") },
                 onNavigateToCoinHistory = { navController.navigate(Screen.CoinHistory.route) },
-                onNavigateToActivityHistory = { navController.navigate(Screen.ActivityHistory.route) }
+                onNavigateToActivityHistory = { navController.navigate(Screen.ActivityHistory.route) },
+                viewModel = vm
             )
         }
 
@@ -226,7 +229,7 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val tab = backStackEntry.arguments?.getInt("tab") ?: 0
-            val profileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel = hiltViewModel()
+            val profileViewModel = sharedProfileViewModel ?: hiltViewModel()
             ProfileScreen(
                 initialTab = tab,
                 onNavigateToQuizStats = {
@@ -362,7 +365,6 @@ fun NavGraph(
                             entryPoint.statsRepository().trackBattleCompletion(battleCoins, score, questionsAnswered)
                         }
                     }
-                    navController.popBackStack()
                 }
             )
         }

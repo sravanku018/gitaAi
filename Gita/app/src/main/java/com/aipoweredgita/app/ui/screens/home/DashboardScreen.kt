@@ -221,22 +221,18 @@ fun DashboardScreen(
                                     modifier = Modifier.clickable { onNavigateToCoinHistory() }
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                val level = uiState.level?.level ?: YogaLevelManager.levelFor(stats)
-                                if (level > 1) {
-                                    Text(
-                                        text = "Level $level",
-                                        fontSize = 12.sp,
-                                        color = textSecondary,
-                                        modifier = Modifier.clickable { onNavigateToAwakening() }
-                                    )
-                                } else {
-                                    Text(
-                                        text = "Seeker",
-                                        fontSize = 12.sp,
-                                        color = textSecondary,
-                                        modifier = Modifier.clickable { onNavigateToAwakening() }
-                                    )
-                                }
+                                val yogaName = uiState.serverYogaLevel?.name 
+                                    ?: YogaLevelManager.yogaLevelInfo(stats).yogaName
+                                val step = uiState.serverYogaSubStage?.sub_level 
+                                    ?: YogaLevelManager.stepFor(stats)
+                                
+                                Text(
+                                    text = "$yogaName · Step $step",
+                                    fontSize = 12.sp,
+                                    color = textSecondary,
+                                    modifier = Modifier.clickable { onNavigateToAwakening() }
+                                )
+
                             }
                         }
                         

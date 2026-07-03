@@ -201,14 +201,14 @@ class StatsRepository(
         val coins = if (isGuest) {
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
-                CoinTransactionLogger.log(appContext, result.totalCoins, "${result.breakdown} (guest)")
+                CoinTransactionLogger.log(appContext, result.totalCoins, "${result.breakdown} (guest)", source = "quiz_completion")
             }
             result.totalCoins
         } else {
             userId()?.let { uid ->
                 val fallback = result.totalCoins
                 userStatsDao.addKrishnaCoins(fallback)
-                CoinTransactionLogger.log(appContext, fallback, result.breakdown)
+                CoinTransactionLogger.log(appContext, fallback, result.breakdown, source = "quiz_completion")
 
                 try {
                     val payloadMap = mapOf(
@@ -248,6 +248,30 @@ class StatsRepository(
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(questionsAnswered)
         userStatsDao.addCorrectAnswers(score)
+        
+        userStatsDao.addQuizModeTime(60)
+
+        val stats = userStatsDao.getUserStatsOnce()
+        stats?.let {
+            val currentBestPercentage = if (it.bestScoreOutOf > 0)
+                (it.bestScore.toFloat() / it.bestScoreOutOf) * 100
+            else 0f
+            val newPercentage = if (questionsAnswered > 0) (score.toFloat() / questionsAnswered) * 100 else 0f
+            if (newPercentage > currentBestPercentage)
+                userStatsDao.updateBestScore(score, questionsAnswered)
+        }
+
+        // Record the battle attempt in the history
+        val db = GitaDatabase.getDatabase(appContext)
+        db.quizAttemptDao().insertAttempt(
+            com.aipoweredgita.app.database.QuizAttempt(
+                score = score,
+                totalQuestions = questionsAnswered,
+                coinsEarned = battleCoins,
+                quizType = "battle_quiz",
+                timeSpentSeconds = 60
+            )
+        )
 
         val today = LocalDate.now().toString()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
@@ -260,7 +284,7 @@ class StatsRepository(
         if (isGuest) {
             if (battleCoins > 0) {
                 userStatsDao.addKrishnaCoins(battleCoins)
-                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)")
+                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)", source = "battle_quiz")
             }
         } else {
             userId()?.let { uid ->
@@ -277,7 +301,7 @@ class StatsRepository(
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )
                         )
-                        CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}")
+                        CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}", source = "battle_quiz")
                         SyncWorker.schedule(appContext)
                     } catch (dbEx: Exception) {
                         Log.e("StatsRepository", "Failed to queue battle sync event: ${dbEx.message}")
@@ -398,14 +422,14 @@ class StatsRepository(
         val coinsAwarded = if (isGuest) {
             userStatsDao.addKrishnaCoins(fallbackCoins)
             val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
-            CoinTransactionLogger.log(appContext, fallbackCoins, "$desc (guest)")
+            CoinTransactionLogger.log(appContext, fallbackCoins, "$desc (guest)", source = "share_sloka")
             fallbackCoins
         } else {
             ensureUserSynced()
             userId()?.let { uid ->
                 userStatsDao.addKrishnaCoins(fallbackCoins)
                 val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
-                CoinTransactionLogger.log(appContext, fallbackCoins, desc)
+                CoinTransactionLogger.log(appContext, fallbackCoins, desc, source = "share_sloka")
                 tracker.isShareSynced = true
 
                 try {
@@ -454,12 +478,12 @@ class StatsRepository(
 
         if (isGuest) {
             userStatsDao.addKrishnaCoins(15)
-            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)")
+            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
         } else {
             ensureUserSynced()
             userId()?.let { uid ->
                 userStatsDao.addKrishnaCoins(15)
-                CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion")
+                CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion", source = "chapter_completion")
                 
                 try {
                     val payloadMap = mapOf(

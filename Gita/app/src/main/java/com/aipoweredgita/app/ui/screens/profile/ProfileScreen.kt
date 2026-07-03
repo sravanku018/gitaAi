@@ -45,21 +45,11 @@ fun ProfileScreen(
     val yogaInfo = YogaLevelManager.yogaLevelInfo(stats)
     val levelProgress = YogaLevelManager.progressInLevel(stats)
 
-    var yogaLevels by remember { mutableStateOf<List<YogaLevel>>(emptyList()) }
-    var yogaSubStages by remember { mutableStateOf<List<YogaSubStage>>(emptyList()) }
+    val yogaLevels = viewModel.yogaLevels
+    val yogaSubStages = viewModel.yogaSubStages
 
-    LaunchedEffect(Unit) {
-        try {
-            val res = CoinApi.retrofitService.getYogaStages()
-            yogaLevels = res.levels
-            yogaSubStages = res.sub_stages
-        } catch (_: Exception) {}
-    }
-
-    val activeLevel = yogaLevels.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
-        ?: yogaLevels.lastOrNull()
-    val activeSubStage = yogaSubStages.find { totalCoins >= it.min_coins && totalCoins <= it.max_coins }
-        ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
+    val activeLevel = uiState.serverYogaLevel
+    val activeSubStage = uiState.serverYogaSubStage
 
     val displayYogaName = activeLevel?.name ?: yogaInfo.yogaName
     val displayStep = activeSubStage?.sub_level ?: yogaInfo.step

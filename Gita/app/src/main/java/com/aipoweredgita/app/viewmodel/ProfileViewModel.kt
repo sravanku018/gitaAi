@@ -72,6 +72,11 @@ class ProfileViewModel @Inject constructor(
     private val _stats = MutableStateFlow<com.aipoweredgita.app.database.UserStats?>(null)
     val stats: StateFlow<com.aipoweredgita.app.database.UserStats?> = _stats.asStateFlow()
 
+    var yogaLevels = emptyList<com.aipoweredgita.app.network.YogaLevel>()
+        private set
+    var yogaSubStages = emptyList<com.aipoweredgita.app.network.YogaSubStage>()
+        private set
+
     private val _coinBalance = MutableStateFlow(0)
     val coinBalance: StateFlow<Int> = _coinBalance.asStateFlow()
 
@@ -90,6 +95,7 @@ class ProfileViewModel @Inject constructor(
     init {
         loadStats()
         loadRecommendations()
+        loadYogaStages()
         observeCoinBalance()
     }
 
@@ -179,8 +185,30 @@ class ProfileViewModel @Inject constructor(
             statsRepository.coinBalance.collect { balance ->
                 _coinBalance.value = balance
                 _uiState.update { it.copy(coinBalance = balance) }
+                updateServerLevel(balance)
             }
         }
+    }
+
+    private fun loadYogaStages() {
+        viewModelScope.launch {
+            try {
+                val res = com.aipoweredgita.app.network.CoinApi.retrofitService.getYogaStages()
+                yogaLevels = res.levels
+                yogaSubStages = res.sub_stages
+                updateServerLevel(_coinBalance.value)
+            } catch (e: Exception) {
+                // Ignore failure
+            }
+        }
+    }
+
+    private fun updateServerLevel(balance: Int) {
+        if (yogaLevels.isEmpty()) return
+        val activeLevel = yogaLevels.find { balance >= it.min_coins && balance <= it.max_coins } ?: yogaLevels.lastOrNull()
+        val activeSubStage = yogaSubStages.find { balance >= it.min_coins && balance <= it.max_coins } 
+            ?: yogaSubStages.filter { it.level == activeLevel?.level }.maxByOrNull { it.sub_level }
+        _uiState.update { it.copy(serverYogaLevel = activeLevel, serverYogaSubStage = activeSubStage) }
     }
 
     /**
@@ -253,8 +281,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val result = getCoinBalanceUseCase()
             result.onSuccess { balance ->
-                _coinBalance.value = balance
-                _uiState.update { it.copy(coinBalance = balance) }
+                setCoinBalance(balance)
             }
             result.onFailure { error ->
                 _sideEffect.send(ProfileSideEffect.ShowError(error.message ?: "Failed to refresh coins"))
@@ -290,6 +317,8 @@ class ProfileViewModel @Inject constructor(
                             val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
                             if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
                                 "${entry.source}_${datePart}"
+                            } else if (entry.source == "battle_quiz" || entry.source == "quiz_completion") {
+                                "${entry.source}_${entry.created_at}"
                             } else {
                                 "${entry.source}_${entry.amount}_${datePart}_${entry.description}"
                             }
@@ -299,6 +328,8 @@ class ProfileViewModel @Inject constructor(
                             val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
                             if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
                                 "${entry.source}_${datePart}"
+                            } else if (entry.source == "battle_quiz" || entry.source == "quiz_completion") {
+                                "${entry.source}_${entry.created_at}"
                             } else {
                                 "${entry.source}_${entry.amount}_${datePart}"
                             }
@@ -307,6 +338,8 @@ class ProfileViewModel @Inject constructor(
                             val localDate = local.created_at?.split(" ")?.get(0) ?: ""
                             val key = if (local.source == "share_sloka" || local.source.contains("checkin")) {
                                 "${local.source}_${localDate}"
+                            } else if (local.source == "battle_quiz" || local.source == "quiz_completion") {
+                                "${local.source}_${local.created_at}"
                             } else {
                                 "${local.source}_${local.amount}_${localDate}"
                             }
@@ -344,6 +377,7 @@ class ProfileViewModel @Inject constructor(
                 source = tx.description.lowercase().let { desc ->
                     when {
                         desc.contains("welcome") -> "signup"
+                        desc.contains("battle") -> "battle_quiz"
                         desc.contains("quiz") -> "quiz_completion"
                         desc.contains("check") || desc.contains("checkin") -> "checkin_day"
                         desc.contains("share") -> "share_sloka"

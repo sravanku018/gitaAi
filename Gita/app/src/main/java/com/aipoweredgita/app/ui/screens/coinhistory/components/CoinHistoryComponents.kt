@@ -198,11 +198,12 @@ fun CoinTransactionItem(
         entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
         entry.source == "signup" -> "Welcome bonus"
         entry.source == "quiz_completion" -> "Quiz completed"
+        entry.source == "battle_quiz" -> "Battle Quiz"
         entry.source == "chapter_completion" -> "Chapter completed"
         entry.source == "checkin_day" || entry.source == "checkin" ||
         entry.source == "daily_checkin" || entry.source.contains("checkin") -> "Daily check-in"
         entry.source == "share_sloka" || entry.source == "share" ||
-        entry.source == "daily_share" || entry.source.contains("share") -> "Verse shared"
+        entry.source == "daily_share" || entry.source.contains("share") -> "Daily share"
         entry.source == "voice_chat" || entry.source == "voice" ->
             if (isEarn) "Voice chat" else "Voice chat question"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "Level up bonus"
@@ -212,6 +213,7 @@ fun CoinTransactionItem(
     val icon = when {
         entry.source == "signup" -> "🎉"
         entry.source == "quiz_completion" -> "📚"
+        entry.source == "battle_quiz" -> "⚔️"
         entry.source == "chapter_completion" -> "📚"
         entry.source == "checkin_day" || entry.source == "checkin" ||
         entry.source == "daily_checkin" || entry.source.contains("checkin") -> "☀️"
@@ -233,6 +235,7 @@ fun CoinTransactionItem(
     } else when {
         entry.source == "signup" -> "Welcome"
         entry.source == "quiz_completion" -> "Completed"
+        entry.source == "battle_quiz" -> "Battle fought"
         entry.source == "chapter_completion" -> "Chapter done"
         isCheckinSource -> "Daily reward"
         isShareSource -> "Shared"

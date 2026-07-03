@@ -6,6 +6,9 @@ import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.ml.UserBadge
 import com.aipoweredgita.app.ml.UserLevel
 
+import com.aipoweredgita.app.network.YogaLevel
+import com.aipoweredgita.app.network.YogaSubStage
+
 /**
  * UI State for Profile Screen
  * Single source of truth for all profile-related UI state
@@ -14,6 +17,8 @@ data class ProfileUiState(
     val stats: UserStats? = null,
     val badges: List<UserBadge> = emptyList(),
     val level: UserLevel? = null,
+    val serverYogaLevel: YogaLevel? = null,
+    val serverYogaSubStage: YogaSubStage? = null,
     val dailyActivity: DailyActivityData = DailyActivityData(),
     val nextAction: NextActionData = NextActionData(),
     val coinBalance: Int = 0,

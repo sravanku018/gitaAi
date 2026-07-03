@@ -299,7 +299,8 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding),
                 isDarkTheme = isDarkTheme,
                 onThemeToggle = onThemeToggle,
-                onAuthChanged = { authVersion++ }
+                onAuthChanged = { authVersion++ },
+                sharedProfileViewModel = profileViewModel
             )
         }
     }

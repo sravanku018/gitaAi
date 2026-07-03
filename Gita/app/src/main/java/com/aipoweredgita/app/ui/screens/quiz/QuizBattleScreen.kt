@@ -37,8 +37,16 @@ data class BattleState(
 ) {
     val battleCoins: Int
         get() {
-            val raw = correctAt3Hearts * 1.0 + correctAt2Hearts * 0.5 + correctAt1Heart * 0.25
-            return raw.toInt()
+            val correctAnswers = correctAt3Hearts + correctAt2Hearts + correctAt1Heart
+            if (correctAnswers <= 0) return 0
+            var a = 1
+            var b = 1
+            for (i in 3..correctAnswers) {
+                val temp = a + b
+                a = b
+                b = temp
+            }
+            return if (correctAnswers == 1) a else b
         }
 }
 
@@ -69,7 +77,8 @@ fun QuizBattleScreen(
             if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver) {
                 isTimerRunning = false
                 battleState = battleState.copy(isGameOver = true)
-                onGameOver(battleState.score, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
+                val correctAnswers = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
+                onGameOver(correctAnswers, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
             }
         }
     }
@@ -174,7 +183,8 @@ fun QuizBattleScreen(
                                     isTimerRunning = false
                                     nextState = nextState.copy(isGameOver = true)
                                     if (!battleState.isGameOver) {
-                                        onGameOver(nextState.score, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins)
+                                        val correctAnswers = nextState.correctAt3Hearts + nextState.correctAt2Hearts + nextState.correctAt1Heart
+                                        onGameOver(correctAnswers, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins)
                                     }
                                 }
                             }

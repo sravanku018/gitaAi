@@ -16,6 +16,7 @@ data class ActivityHistoryUiState(
     val quiz20Stats: QuizSizeStatsData? = null,
     val quiz25Stats: QuizSizeStatsData? = null,
     val quiz30Stats: QuizSizeStatsData? = null,
+    val battleQuizStats: QuizSizeStatsData? = null,
     val selectedQuizSize: Int? = null,
     val karmaYogaCount: Int = 0,
     val bhaktiYogaCount: Int = 0,

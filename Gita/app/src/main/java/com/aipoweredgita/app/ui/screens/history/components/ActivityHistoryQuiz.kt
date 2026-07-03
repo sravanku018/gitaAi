@@ -29,6 +29,7 @@ fun QuizTab(
     quiz20Stats: QuizSizeStatsData?,
     quiz25Stats: QuizSizeStatsData?,
     quiz30Stats: QuizSizeStatsData?,
+    battleQuizStats: QuizSizeStatsData?,
     selectedQuizSize: Int?,
     onSelectQuizSize: (Int?) -> Unit,
     userStats: UserStats?,
@@ -39,60 +40,82 @@ fun QuizTab(
     rajaCount: Int
 ) {
     // Quiz Size Filter Chips
-    Row(
+    androidx.compose.foundation.lazy.LazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        FilterChip(
-            selected = selectedQuizSize == null,
-            onClick = { onSelectQuizSize(null) },
-            label = { Text("All") }
-        )
-        if (quiz10Stats != null) {
+        item {
             FilterChip(
-                selected = selectedQuizSize == 10,
-                onClick = { onSelectQuizSize(10) },
-                label = { Text("10Q (${quiz10Stats.totalAttempts})") }
+                selected = selectedQuizSize == null,
+                onClick = { onSelectQuizSize(null) },
+                label = { Text("All") }
             )
+        }
+        if (battleQuizStats != null) {
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == -1,
+                    onClick = { onSelectQuizSize(-1) },
+                    label = { Text("⚔️ Battle (${battleQuizStats.totalAttempts})") }
+                )
+            }
+        }
+        if (quiz10Stats != null) {
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == 10,
+                    onClick = { onSelectQuizSize(10) },
+                    label = { Text("10Q (${quiz10Stats.totalAttempts})") }
+                )
+            }
         }
         if (quiz15Stats != null) {
-            FilterChip(
-                selected = selectedQuizSize == 15,
-                onClick = { onSelectQuizSize(15) },
-                label = { Text("15Q (${quiz15Stats.totalAttempts})") }
-            )
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == 15,
+                    onClick = { onSelectQuizSize(15) },
+                    label = { Text("15Q (${quiz15Stats.totalAttempts})") }
+                )
+            }
         }
         if (quiz20Stats != null) {
-            FilterChip(
-                selected = selectedQuizSize == 20,
-                onClick = { onSelectQuizSize(20) },
-                label = { Text("20Q (${quiz20Stats.totalAttempts})") }
-            )
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == 20,
+                    onClick = { onSelectQuizSize(20) },
+                    label = { Text("20Q (${quiz20Stats.totalAttempts})") }
+                )
+            }
         }
         if (quiz25Stats != null) {
-            FilterChip(
-                selected = selectedQuizSize == 25,
-                onClick = { onSelectQuizSize(25) },
-                label = { Text("25Q (${quiz25Stats.totalAttempts})") }
-            )
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == 25,
+                    onClick = { onSelectQuizSize(25) },
+                    label = { Text("25Q (${quiz25Stats.totalAttempts})") }
+                )
+            }
         }
         if (quiz30Stats != null) {
-            FilterChip(
-                selected = selectedQuizSize == 30,
-                onClick = { onSelectQuizSize(30) },
-                label = { Text("30Q (${quiz30Stats.totalAttempts})") }
-            )
+            item {
+                FilterChip(
+                    selected = selectedQuizSize == 30,
+                    onClick = { onSelectQuizSize(30) },
+                    label = { Text("30Q (${quiz30Stats.totalAttempts})") }
+                )
+            }
         }
     }
 
     Spacer(modifier = Modifier.height(12.dp))
 
     val currentStats = when (selectedQuizSize) {
-        10 -> quiz10Stats
-        15 -> quiz15Stats
-        20 -> quiz20Stats
-        25 -> quiz25Stats
-        30 -> quiz30Stats
+        -1   -> battleQuizStats
+        10   -> quiz10Stats
+        15   -> quiz15Stats
+        20   -> quiz20Stats
+        25   -> quiz25Stats
+        30   -> quiz30Stats
         else -> null
     }
     val displayAttempts = currentStats?.attempts ?: attempts
@@ -161,23 +184,24 @@ fun QuizTab(
             )
 
             // Best attempt
+            val isBattle = selectedQuizSize == -1
             val best = currentStats?.bestAttempt ?: displayAttempts.maxByOrNull { it.accuracyPercentage }
             best?.let {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                        containerColor = (if (isBattle) Color(0xFFB45309) else MaterialTheme.colorScheme.primaryContainer).copy(alpha = 0.2f)
                     )
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "🏆", fontSize = 32.sp)
+                        Text(text = if (isBattle) "⚔️" else "🏆", fontSize = 32.sp)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Best Performance",
+                                text = if (isBattle) "Best Battle" else "Best Performance",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -198,12 +222,12 @@ fun QuizTab(
 
             // Recent attempts
             Text(
-                text = "Recent Attempts",
+                text = if (selectedQuizSize == -1) "Recent Battles" else "Recent Attempts",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            displayAttempts.take(5).forEach { attempt ->
-                AHQuizAttemptCard(attempt = attempt)
+            displayAttempts.take(10).forEach { attempt ->
+                AHQuizAttemptCard(attempt = attempt, isBattle = attempt.quizType == "battle_quiz")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -247,8 +271,9 @@ fun AHPerformanceCard(
 }
 
 @Composable
-fun AHQuizAttemptCard(attempt: QuizAttempt) {
+fun AHQuizAttemptCard(attempt: QuizAttempt, isBattle: Boolean = false) {
     val statusColor = when {
+        isBattle -> Color(0xFFB45309) // amber for battle
         attempt.accuracyPercentage >= 90 -> MaterialTheme.colorScheme.primary
         attempt.accuracyPercentage >= 75 -> MaterialTheme.colorScheme.secondary
         attempt.accuracyPercentage >= 60 -> MaterialTheme.colorScheme.tertiary
@@ -275,7 +300,7 @@ fun AHQuizAttemptCard(attempt: QuizAttempt) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = attempt.performanceEmoji,
+                        text = if (isBattle) "⚔️" else attempt.performanceEmoji,
                         fontSize = 28.sp
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -343,7 +368,7 @@ fun AHQuizAttemptCard(attempt: QuizAttempt) {
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = attempt.performanceLevel,
+                        text = if (isBattle) "Battle Quiz" else attempt.performanceLevel,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = statusColor,

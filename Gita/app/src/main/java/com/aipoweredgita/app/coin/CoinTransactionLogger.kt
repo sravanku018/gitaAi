@@ -17,7 +17,7 @@ object CoinTransactionLogger {
     private const val MAX = 200
     private const val TAG = "CoinTxLogger"
 
-    fun log(context: Context, amount: Int, description: String) {
+    fun log(context: Context, amount: Int, description: String, source: String = "") {
         if (amount == 0) return
         val safeDesc = description.take(120)
         synchronized(this) {
@@ -28,6 +28,7 @@ object CoinTransactionLogger {
                 put("description", safeDesc)
                 put("timestamp", System.currentTimeMillis())
                 put("type", if (amount > 0) CoinTxType.EARN.name else CoinTxType.SPEND.name)
+                if (source.isNotEmpty()) put("source", source)
             }
             arr.put(entry)
             while (arr.length() > MAX) arr.remove(0)
@@ -71,7 +72,11 @@ object CoinTransactionLogger {
 
             val serverSignatures = mutableMapOf<String, Int>()
             serverJsonEntries.forEach { 
-                val sig = "${it.optInt("amount")}_${it.optString("description").take(20)}"
+                // Use source-based sig if available (reliable), otherwise fall back to desc
+                val sig = if (it.has("source") && it.optString("source").isNotEmpty())
+                    "${it.optString("source")}_${it.optInt("amount")}"
+                else
+                    "${it.optInt("amount")}_${it.optString("description").take(20)}"
                 serverSignatures[sig] = serverSignatures.getOrDefault(sig, 0) + 1
             }
 
@@ -86,7 +91,11 @@ object CoinTransactionLogger {
                         preservedLocal.add(obj)
                     } else {
                         // Keep if it's a recent optimistic event NOT yet in the server history
-                        val sig = "${obj.optInt("amount")}_${obj.optString("description").take(20)}"
+                        // Prefer source-based sig (reliable), fall back to desc-based
+                        val sig = if (obj.has("source") && obj.optString("source").isNotEmpty())
+                            "${obj.optString("source")}_${obj.optInt("amount")}"
+                        else
+                            "${obj.optInt("amount")}_${obj.optString("description").take(20)}"
                         val serverCount = serverSignatures.getOrDefault(sig, 0)
                         if (serverCount > 0) {
                             // Consumed by server history, drop local optimistic duplicate

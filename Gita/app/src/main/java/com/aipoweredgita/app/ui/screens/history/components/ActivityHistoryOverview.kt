@@ -28,7 +28,8 @@ fun OverviewTab(
     userStats: UserStats?,
     totalCoins: Int,
     yogaLevels: List<YogaLevel>,
-    yogaSubStages: List<YogaSubStage>
+    yogaSubStages: List<YogaSubStage>,
+    totalQuizAttempts: Int
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -156,7 +157,7 @@ fun OverviewTab(
             )
             OverviewStatCard(
                 icon = "📝",
-                value = "${userStats?.totalQuizzesTaken ?: 0}",
+                value = "$totalQuizAttempts",
                 label = "Quizzes Taken",
                 color = Color(0xFF3B82F6),
                 modifier = Modifier.weight(1f)

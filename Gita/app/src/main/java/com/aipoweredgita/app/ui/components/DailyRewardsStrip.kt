@@ -162,6 +162,6 @@ fun DailyRewardsStrip(
             bdColor = bd,
             animateEntry = true
         )
-        Text("Share a verse from Random Sloka", fontSize = 10.sp, color = dim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text("Share a sloka from Random Sloka", fontSize = 10.sp, color = dim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }

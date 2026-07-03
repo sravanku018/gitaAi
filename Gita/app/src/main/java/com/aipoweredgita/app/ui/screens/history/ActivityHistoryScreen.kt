@@ -92,6 +92,7 @@ fun ActivityHistoryScreen(
     val quiz20Stats = state.quiz20Stats
     val quiz25Stats = state.quiz25Stats
     val quiz30Stats = state.quiz30Stats
+    val battleQuizStats = state.battleQuizStats
     val selectedQuizSize = state.selectedQuizSize
     val karmaCount = state.karmaYogaCount
     val bhaktiCount = state.bhaktiYogaCount
@@ -145,7 +146,8 @@ fun ActivityHistoryScreen(
                 userStats = userStats,
                 totalCoins = totalCoins,
                 yogaLevels = yogaLevels,
-                yogaSubStages = yogaSubStages
+                yogaSubStages = yogaSubStages,
+                totalQuizAttempts = attempts.size
             )
             1 -> QuizTab(
                 attempts = attempts,
@@ -156,6 +158,7 @@ fun ActivityHistoryScreen(
                 quiz20Stats = quiz20Stats,
                 quiz25Stats = quiz25Stats,
                 quiz30Stats = quiz30Stats,
+                battleQuizStats = battleQuizStats,
                 selectedQuizSize = selectedQuizSize,
                 onSelectQuizSize = { viewModel.onEvent(ActivityHistoryEvent.SelectQuizSize(it)) },
                 userStats = userStats,

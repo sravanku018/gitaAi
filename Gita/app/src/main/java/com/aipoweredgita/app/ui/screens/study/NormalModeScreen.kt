@@ -66,7 +66,7 @@ fun NormalModeScreen(
             Intent.createChooser(
                 Intent(Intent.ACTION_SEND).apply {
                     putExtra(Intent.EXTRA_TEXT, text); type = "text/plain"
-                }, "Share verse via"
+                }, "Share sloka via"
             )
         )
         viewModel.onEvent(com.aipoweredgita.app.domain.model.NormalModeEvent.TrackShare)

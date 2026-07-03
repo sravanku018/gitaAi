@@ -13,9 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StudyGuide::class, Flashcard::class, Bookmark::class,
         SpacedRepetitionItem::class, LearningStyle::class, YogaProgression::class, RandomVerseHistory::class,
         VoiceChatMessage::class, TranslationCache::class, ChatSummary::class, PendingSyncEvent::class,
-        VerseNote::class, VerseFts::class, StudyPlan::class, StudyPlanProgress::class
+        VerseNote::class, VerseFts::class, StudyPlan::class, StudyPlanProgress::class, RewardState::class
     ],
-    version = 41,
+    version = 42,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -24,6 +24,7 @@ abstract class GitaDatabase : RoomDatabase() {
     abstract fun favoriteVerseDao(): FavoriteVerseDao
     abstract fun cachedVerseDao(): CachedVerseDao
     abstract fun userStatsDao(): UserStatsDao
+    abstract fun rewardStateDao(): RewardStateDao
     abstract fun quizAttemptDao(): QuizAttemptDao
     abstract fun readVerseDao(): ReadVerseDao
     abstract fun dailyActivityDao(): DailyActivityDao
@@ -695,6 +696,32 @@ abstract class GitaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_41_42 = object : Migration(41, 42) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `reward_state` (
+                        `id` INTEGER NOT NULL, 
+                        `checkinDay` INTEGER NOT NULL, 
+                        `checkinWeek` INTEGER NOT NULL, 
+                        `lastCheckinDate` TEXT NOT NULL, 
+                        `checkinProtectionUsed` INTEGER NOT NULL, 
+                        `checkinCompletedWeek` TEXT NOT NULL, 
+                        `checkinProtectionGranted` INTEGER NOT NULL, 
+                        `shareDay` INTEGER NOT NULL, 
+                        `shareWeek` INTEGER NOT NULL, 
+                        `lastShareDate` TEXT NOT NULL, 
+                        `shareProtectionUsed` INTEGER NOT NULL, 
+                        `shareCompletedWeek` TEXT NOT NULL, 
+                        `shareProtectionGranted` INTEGER NOT NULL, 
+                        `isCheckinSynced` INTEGER NOT NULL, 
+                        `isShareSynced` INTEGER NOT NULL, 
+                        PRIMARY KEY(`id`)
+                    )
+                """)
+                database.execSQL("INSERT OR IGNORE INTO `reward_state` (`id`, `checkinDay`, `checkinWeek`, `lastCheckinDate`, `checkinProtectionUsed`, `checkinCompletedWeek`, `checkinProtectionGranted`, `shareDay`, `shareWeek`, `lastShareDate`, `shareProtectionUsed`, `shareCompletedWeek`, `shareProtectionGranted`, `isCheckinSynced`, `isShareSynced`) VALUES (1, 1, 1, '', 0, '', 0, 1, 1, '', 0, '', 0, 0, 0)")
+            }
+        }
+
         fun getDatabase(context: Context): GitaDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -702,7 +729,8 @@ abstract class GitaDatabase : RoomDatabase() {
                     GitaDatabase::class.java,
                     "gita_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41)
+                .allowMainThreadQueries()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42)
                 // Safety net: if a migration path is missing, fall back to destructive
                 // on downgrade only (not missing upgrades). Prevents crash on rollback.
                 .fallbackToDestructiveMigrationOnDowngrade()
