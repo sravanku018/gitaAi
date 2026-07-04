@@ -21,6 +21,47 @@ import com.aipoweredgita.app.network.CoinHistoryEntry
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import java.util.Date
+
+private fun parseDateRobust(dateStr: String?): Date? {
+    if (dateStr.isNullOrEmpty()) return null
+    
+    // Check if it's a numeric Unix timestamp
+    val asLong = dateStr.toLongOrNull()
+    if (asLong != null) {
+        // If it's less than 30000000000 (year 2920), it's likely seconds. Otherwise milliseconds.
+        return if (asLong < 30000000000L) Date(asLong * 1000) else Date(asLong)
+    }
+
+    var normalized = dateStr
+    
+    // Fix 6-digit microseconds before a timezone (e.g. .267992+05:30 -> .267+05:30)
+    val microRegex = Regex("\\.(\\d{6})([+-]\\d{2}:?\\d{2}|Z)")
+    normalized = microRegex.replace(normalized) { matchResult ->
+        ".${matchResult.groupValues[1].take(3)}${matchResult.groupValues[2]}"
+    }
+
+    val formats = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+        "yyyy-MM-dd'T'HH:mm:ssXXX",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-dd"
+    )
+    for (formatStr in formats) {
+        try {
+            val sdf = SimpleDateFormat(formatStr, Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val parsed = sdf.parse(normalized)
+            if (parsed != null) return parsed
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+    return null
+}
 
 @Composable
 fun CoinBalanceCard(
@@ -186,11 +227,8 @@ fun CoinTransactionItem(
     )
 
     val dateStr = try {
-        val utcParse = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
         val localFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val parsed = utcParse.parse(entry.created_at)
+        val parsed = parseDateRobust(entry.created_at)
         if (parsed != null) localFmt.format(parsed) else ""
     } catch (_: Exception) { "" }
 

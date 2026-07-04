@@ -311,46 +311,16 @@ class ProfileViewModel @Inject constructor(
                         val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
                             effectiveUid, "Bearer $token", limit = 500
                         )
-                        val filteredServerHistory = serverHistory.filter { entry ->
-                            !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
-                        }.distinctBy { entry ->
-                            val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
-                            if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
-                                "${entry.source}_${datePart}"
-                            } else if (entry.source == "battle_quiz" || entry.source == "quiz_completion") {
-                                "${entry.source}_${entry.created_at}"
-                            } else {
-                                "${entry.source}_${entry.amount}_${datePart}_${entry.description}"
-                            }
-                        }
-                        val localHistory = buildLocalHistory()
-                        val serverKeys = filteredServerHistory.map { entry ->
-                            val datePart = entry.created_at?.split(" ")?.get(0) ?: ""
-                            if (entry.source == "share_sloka" || entry.source.contains("checkin")) {
-                                "${entry.source}_${datePart}"
-                            } else if (entry.source == "battle_quiz" || entry.source == "quiz_completion") {
-                                "${entry.source}_${entry.created_at}"
-                            } else {
-                                "${entry.source}_${entry.amount}_${datePart}"
-                            }
-                        }.toSet()
-                        val extraLocalEntries = localHistory.filter { local ->
-                            val localDate = local.created_at?.split(" ")?.get(0) ?: ""
-                            val key = if (local.source == "share_sloka" || local.source.contains("checkin")) {
-                                "${local.source}_${localDate}"
-                            } else if (local.source == "battle_quiz" || local.source == "quiz_completion") {
-                                "${local.source}_${local.created_at}"
-                            } else {
-                                "${local.source}_${local.amount}_${localDate}"
-                            }
-                            !serverKeys.contains(key)
-                        }
-                        _coinHistory.value = filteredServerHistory + extraLocalEntries
-                        serverLoaded = true
-                        
                         if (serverHistory.isNotEmpty()) {
                             com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
                         }
+                        
+                        val mergedHistory = buildLocalHistory()
+                        _coinHistory.value = mergedHistory.filter { entry ->
+                            !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                        }
+                        
+                        serverLoaded = true
                     } catch (e: Exception) {
                         // fallback below
                     }

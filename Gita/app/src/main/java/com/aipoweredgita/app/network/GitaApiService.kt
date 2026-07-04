@@ -323,6 +323,7 @@ data class CoinHistoryEntry(
     val source: String = "",
     val description: String = "",
     val idempotency_key: String? = null,
+    @com.google.gson.annotations.SerializedName(value = "created_at", alternate = ["createdAt"])
     val created_at: String = ""
 )
 

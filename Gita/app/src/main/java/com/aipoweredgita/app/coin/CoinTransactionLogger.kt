@@ -39,19 +39,15 @@ object CoinTransactionLogger {
     fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            // Server stores timestamps in UTC ("yyyy-MM-dd HH:mm:ss" without timezone suffix).
-            // We MUST parse with UTC or Java will interpret them as device local time, which
-            // shifts timestamps by the device's UTC offset (e.g. IST = +5:30 → 5.5 hr error).
-            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
-                timeZone = java.util.TimeZone.getTimeZone("UTC")
-            }
+            // Server stores timestamps in UTC or ISO 8601 with offset
+            // We use parseDateRobust to correctly resolve them into absolute time (ms)
 
             // Parse server entries (oldest first — server comes newest-first so reverse)
             val serverEntries = serverHistory.reversed().takeLast(MAX)
 
             // Find the oldest timestamp in the server data
             val oldestServerTs = serverEntries.minOfOrNull { entry ->
-                try { fmt.parse(entry.created_at)?.time ?: Long.MAX_VALUE }
+                try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: Long.MAX_VALUE }
                 catch (_: Exception) { Long.MAX_VALUE }
             } ?: Long.MAX_VALUE
 
@@ -62,7 +58,7 @@ object CoinTransactionLogger {
                 JSONObject().apply {
                     put("amount", entry.amount)
                     put("description", entry.description.take(120))
-                    val ts = try { fmt.parse(entry.created_at)?.time ?: System.currentTimeMillis() }
+                    val ts = try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: System.currentTimeMillis() }
                              catch (_: Exception) { System.currentTimeMillis() }
                     put("timestamp", ts)
                     put("type", entry.type)
