@@ -1,10 +1,15 @@
 package com.example.gitalearning
 
+import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.repository.ModeType
 import com.aipoweredgita.app.repository.StatsRepository
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,16 +24,30 @@ class StatsRepositoryTest {
     private lateinit var dao: FakeUserStatsDao
     private lateinit var pendingDao: FakePendingSyncEventDao
     private lateinit var repo: StatsRepository
+    private lateinit var mockTracker: DailyRewardsTracker
 
     @Before
     fun setup() {
         dao = FakeUserStatsDao()
         pendingDao = FakePendingSyncEventDao()
+
+        mockTracker = mockk(relaxed = true)
+        every { mockTracker.getCurrentCheckinDay() } returns 1
+
+        // Mock the companion object's getInstance to return our mock tracker
+        mockkObject(DailyRewardsTracker.Companion)
+        every { DailyRewardsTracker.getInstance(any()) } returns mockTracker
+
         repo = StatsRepository(
             userStatsDao = dao,
             appContext = RuntimeEnvironment.getApplication(),
             pendingSyncEventDao = pendingDao
         )
+    }
+
+    @After
+    fun tearDown() {
+        unmockkObject(DailyRewardsTracker.Companion)
     }
 
     @Test
