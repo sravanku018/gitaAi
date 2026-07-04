@@ -1,25 +1,24 @@
 package com.example.gitalearning
 
-import android.content.SharedPreferences
 import com.aipoweredgita.app.coin.DailyRewardsTracker
+import com.aipoweredgita.app.database.RewardState
+import com.aipoweredgita.app.database.RewardStateDao
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
-import org.robolectric.annotation.Config
 import java.time.LocalDate
 import java.time.ZoneId
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
 class DailyRewardsTrackerTest {
 
-    private lateinit var prefs: SharedPreferences
+    private lateinit var dao: RewardStateDao
     private lateinit var tracker: DailyRewardsTracker
+    private var currentState: RewardState = RewardState()
 
     private val today = LocalDate.now(ZoneId.systemDefault()).toString()
     private val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1).toString()
@@ -27,10 +26,15 @@ class DailyRewardsTrackerTest {
 
     @Before
     fun setup() {
-        prefs = RuntimeEnvironment.getApplication()
-            .getSharedPreferences("daily_rewards_test", android.content.Context.MODE_PRIVATE)
-        prefs.edit().clear().commit()
-        tracker = DailyRewardsTracker(prefs)
+        currentState = RewardState()
+        val stateSlot = slot<RewardState>()
+        dao = mockk(relaxed = true) {
+            every { getRewardStateSync() } answers { currentState }
+            every { insertOrUpdate(capture(stateSlot)) } answers {
+                currentState = stateSlot.captured
+            }
+        }
+        tracker = DailyRewardsTracker(dao)
     }
 
     // ── Fresh install ──────────────────────────────────────────────
@@ -44,19 +48,19 @@ class DailyRewardsTrackerTest {
     }
 
     @Test
-    fun `isFreshInstall is true on clean prefs`() {
+    fun `isFreshInstall is true on clean state`() {
         assertTrue(tracker.isFreshInstall())
     }
 
     @Test
     fun `isFreshInstall is false after checkin`() {
-        prefs.edit().putString("reward_last_date", today).commit()
+        currentState = currentState.copy(lastCheckinDate = today)
         assertFalse(tracker.isFreshInstall())
     }
 
     @Test
     fun `isFreshInstall is false after share`() {
-        prefs.edit().putString("share_reward_last_date", today).commit()
+        currentState = currentState.copy(lastShareDate = today)
         assertFalse(tracker.isFreshInstall())
     }
 
@@ -102,15 +106,14 @@ class DailyRewardsTrackerTest {
     // ── Day 7 completion and week transition ──────────────────────
 
     @Test
-    fun `after day 7 claim, KEY_DAY becomes 0`() {
+    fun `after day 7 claim, checkinDay becomes 0`() {
         for (d in 1..7) {
             if (d > 1) simulateNextDay()
             tracker.claimDaily()
         }
-        // claimDay7BonusIfEligible sets KEY_DAY=0
         val bonus = tracker.claimDay7BonusIfEligible()
         assertEquals(7, bonus)
-        assertEquals(0, prefs.getInt("reward_day", -1))
+        assertEquals(0, currentState.checkinDay)
     }
 
     @Test
@@ -144,152 +147,141 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `sync server day 7 week 2 maps to day 0 week 1`() {
-        // Simulate fresh state after week 1 day 7 claim
-        prefs.edit()
-            .putInt("reward_day", 0)
-            .putInt("reward_week", 1)
-            .putString("reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 0,
+            checkinWeek = 1,
+            lastCheckinDate = today
+        )
 
         tracker.syncWithServer(7, 2, today)
 
-        assertEquals(0, prefs.getInt("reward_day", -1))
-        assertEquals(1, prefs.getInt("reward_week", -1))
+        assertEquals(0, currentState.checkinDay)
+        assertEquals(1, currentState.checkinWeek)
     }
 
     @Test
     fun `sync server day 3 week 1 updates day normally`() {
-        prefs.edit()
-            .putInt("reward_day", 1)
-            .putInt("reward_week", 1)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 1,
+            checkinWeek = 1
+        )
 
         tracker.syncWithServer(3, 1)
 
-        assertEquals(3, prefs.getInt("reward_day", -1))
-        assertEquals(1, prefs.getInt("reward_week", -1))
+        assertEquals(3, currentState.checkinDay)
+        assertEquals(1, currentState.checkinWeek)
     }
 
     // ── syncWithServer — never downgrade ───────────────────────────
 
     @Test
     fun `sync does not downgrade week`() {
-        prefs.edit()
-            .putInt("reward_day", 3)
-            .putInt("reward_week", 2)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 3,
+            checkinWeek = 2
+        )
 
-        // Server has older week — should not overwrite
         tracker.syncWithServer(5, 1)
 
-        assertEquals(3, prefs.getInt("reward_day", -1))
-        assertEquals(2, prefs.getInt("reward_week", -1))
+        assertEquals(3, currentState.checkinDay)
+        assertEquals(2, currentState.checkinWeek)
     }
 
     @Test
     fun `sync does not downgrade day in same week`() {
-        prefs.edit()
-            .putInt("reward_day", 5)
-            .putInt("reward_week", 1)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 5,
+            checkinWeek = 1
+        )
 
         tracker.syncWithServer(3, 1)
 
-        assertEquals(5, prefs.getInt("reward_day", -1))
+        assertEquals(5, currentState.checkinDay)
     }
 
     @Test
     fun `sync does not downgrade from complete to in-progress`() {
-        prefs.edit()
-            .putInt("reward_day", 0) // week complete
-            .putInt("reward_week", 1)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 0,
+            checkinWeek = 1
+        )
 
-        // Server says day 3 of same week — local is already complete
         tracker.syncWithServer(3, 1)
 
-        assertEquals(0, prefs.getInt("reward_day", -1))
-        assertEquals(1, prefs.getInt("reward_week", -1))
+        assertEquals(0, currentState.checkinDay)
+        assertEquals(1, currentState.checkinWeek)
     }
 
     @Test
     fun `sync upgrades from in-progress to complete`() {
-        prefs.edit()
-            .putInt("reward_day", 3)
-            .putInt("reward_week", 1)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 3,
+            checkinWeek = 1
+        )
 
-        // Server says day 7 week 2 → effective day 0 week 1 (completed week 1)
         tracker.syncWithServer(7, 2)
 
-        assertEquals(0, prefs.getInt("reward_day", -1))
-        assertEquals(1, prefs.getInt("reward_week", -1))
+        assertEquals(0, currentState.checkinDay)
+        assertEquals(1, currentState.checkinWeek)
     }
 
     @Test
     fun `sync upgrades to newer week from another device`() {
-        prefs.edit()
-            .putInt("reward_day", 2)
-            .putInt("reward_week", 1)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 2,
+            checkinWeek = 1
+        )
 
-        // Server has week 2 day 3 (user completed week 1 on another device)
         tracker.syncWithServer(3, 2)
 
-        assertEquals(3, prefs.getInt("reward_day", -1))
-        assertEquals(2, prefs.getInt("reward_week", -1))
+        assertEquals(3, currentState.checkinDay)
+        assertEquals(2, currentState.checkinWeek)
     }
 
-    // ── Migration: corrupted KEY_DAY=7 from old sync ──────────────
+    // ── Migration: corrupted checkinDay=7 from old sync ──────────
 
     @Test
     fun `migration fixes corrupted day 7 week 2 on same day`() {
-        // Simulate corrupted state: old sync set KEY_DAY=7, KEY_WEEK=2, KEY_DATE=today
-        prefs.edit()
-            .putInt("reward_day", 7)
-            .putInt("reward_week", 2)
-            .putString("reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 7,
+            checkinWeek = 2,
+            lastCheckinDate = today
+        )
 
         val state = tracker.getDailyState()
 
-        // Migration resets KEY_DATE to yesterday, so "next day" logic fires:
-        // rawDay=0, week=1 → nextDay=1, nextWeek=2
         assertEquals(1, state.day)
         assertEquals(2, state.week)
         assertFalse(state.todayClaimed)
 
-        // Verify persisted fix
-        assertEquals(0, prefs.getInt("reward_day", -1))
-        assertEquals(1, prefs.getInt("reward_week", -1))
+        assertEquals(0, currentState.checkinDay)
+        assertEquals(1, currentState.checkinWeek)
     }
 
     @Test
     fun `migration does not affect normal day 7 claim`() {
-        // Normal state: KEY_DAY=7, KEY_WEEK=1, KEY_DATE=today (claim in progress)
-        prefs.edit()
-            .putInt("reward_day", 7)
-            .putInt("reward_week", 1)
-            .putString("reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 7,
+            checkinWeek = 1,
+            lastCheckinDate = today
+        )
 
         val state = tracker.getDailyState()
 
-        // Migration: week 1 → week-1=0 → clamped to 1. day 7 → 0 → displayed as 7
         assertEquals(7, state.day)
         assertEquals(1, state.week)
         assertTrue(state.todayClaimed)
     }
 
-    // ── Migration: corrupted KEY_SHARE_DAY=7 ──────────────────────
+    // ── Migration: corrupted shareDay=7 ──────────────────────────
 
     @Test
     fun `share migration fixes corrupted day 7 week 2`() {
-        prefs.edit()
-            .putInt("share_reward_day", 7)
-            .putInt("share_reward_week", 2)
-            .putString("share_reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            shareDay = 7,
+            shareWeek = 2,
+            lastShareDate = today
+        )
 
         val state = tracker.getShareState()
 
@@ -302,14 +294,10 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `full week 1 then sync then week 2 day 1`() {
-        // 1. Complete week 1 locally
         completeWeek1()
 
-        // 2. Server syncs day=7 week=2 (the old bug scenario)
         tracker.syncWithServer(7, 2, today)
 
-        // 3. Verify state: sync maps to day=0 week=1, KEY_DATE=today
-        //    getDailyState sees rawDay=0, lastDate=today → day=7, week=1, todayClaimed=true
         val daily = tracker.getDailyState()
         assertEquals(7, daily.day)
         assertEquals(1, daily.week)
@@ -318,7 +306,6 @@ class DailyRewardsTrackerTest {
         val weekly = tracker.getWeeklyState()
         assertEquals(1, weekly.week)
 
-        // 4. Next day: should show day 1 of week 2
         simulateNextDay()
         val nextDay = tracker.getDailyState()
         assertEquals(1, nextDay.day)
@@ -330,27 +317,27 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `share sync server day 7 week 2 maps to day 0 week 1`() {
-        prefs.edit()
-            .putInt("share_reward_day", 0)
-            .putInt("share_reward_week", 1)
-            .putString("share_reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            shareDay = 0,
+            shareWeek = 1,
+            lastShareDate = today
+        )
 
         tracker.syncShareWithServer(7, 2, today)
 
-        assertEquals(0, prefs.getInt("share_reward_day", -1))
-        assertEquals(1, prefs.getInt("share_reward_week", -1))
+        assertEquals(0, currentState.shareDay)
+        assertEquals(1, currentState.shareWeek)
     }
 
     // ── Week 4 wraps to Week 1 ────────────────────────────────────
 
     @Test
     fun `week 4 day 7 wraps to week 1`() {
-        prefs.edit()
-            .putInt("reward_day", 0)
-            .putInt("reward_week", 4)
-            .putString("reward_last_date", yesterday)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 0,
+            checkinWeek = 4,
+            lastCheckinDate = yesterday
+        )
 
         val state = tracker.getDailyState()
         assertEquals(1, state.day)
@@ -359,37 +346,31 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `sync server day 7 week 1 maps to day 0 week 4 (wrap)`() {
-        // Server wrapped: day=7, week=1 means week 4 just completed
-        prefs.edit()
-            .putInt("reward_day", 0)
-            .putInt("reward_week", 4)
-            .putString("reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 0,
+            checkinWeek = 4,
+            lastCheckinDate = today
+        )
 
         tracker.syncWithServer(7, 1, today)
 
-        assertEquals(0, prefs.getInt("reward_day", -1))
-        assertEquals(4, prefs.getInt("reward_week", -1))
+        assertEquals(0, currentState.checkinDay)
+        assertEquals(4, currentState.checkinWeek)
     }
 
     @Test
     fun `day 7 week 1 with today date is treated as in-progress claim (not corrupted)`() {
-        // KEY_DAY=7, KEY_WEEK=1, lastDate=today — could be:
-        // (a) legitimate day 7 claim in week 1 (app crashed before bonus), or
-        // (b) corrupted data from week 4 wrap
-        // We treat it as (a) since week=1 is the common case for new users.
-        prefs.edit()
-            .putInt("reward_day", 7)
-            .putInt("reward_week", 1)
-            .putString("reward_last_date", today)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 7,
+            checkinWeek = 1,
+            lastCheckinDate = today
+        )
 
         val state = tracker.getDailyState()
 
         assertEquals(7, state.day)
         assertEquals(1, state.week)
         assertTrue(state.todayClaimed)
-        // No migration — KEY_DAY stays 7 (will be fixed by claimDay7BonusIfEligible on retry)
     }
 
     @Test
@@ -429,7 +410,6 @@ class DailyRewardsTrackerTest {
     fun `week 2 sync then week 3 starts correctly`() {
         completeWeek(2)
         tracker.syncWithServer(7, 3, today)
-        // Should be: day=0, week=2 (not corrupted to day=7 week=3)
         val daily = tracker.getDailyState()
         assertEquals(7, daily.day)
         assertEquals(2, daily.week)
@@ -458,7 +438,6 @@ class DailyRewardsTrackerTest {
     @Test
     fun `week 4 sync then week 1 starts correctly (wrap)`() {
         completeWeek(4)
-        // Server wrapped: week=1 after completing week 4
         tracker.syncWithServer(7, 1, today)
         val daily = tracker.getDailyState()
         assertEquals(7, daily.day)
@@ -474,12 +453,12 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `protection allows advancing past missed day`() {
-        prefs.edit()
-            .putInt("reward_day", 3)
-            .putInt("reward_week", 1)
-            .putInt("reward_protection", 1)
-            .putString("reward_last_date", twoDaysAgo)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 3,
+            checkinWeek = 1,
+            checkinProtectionGranted = true,
+            lastCheckinDate = twoDaysAgo
+        )
 
         val state = tracker.getDailyState()
         assertEquals(4, state.day)
@@ -491,11 +470,11 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `missed days without protection resets to week 1`() {
-        prefs.edit()
-            .putInt("reward_day", 5)
-            .putInt("reward_week", 2)
-            .putString("reward_last_date", twoDaysAgo)
-            .commit()
+        currentState = currentState.copy(
+            checkinDay = 5,
+            checkinWeek = 2,
+            lastCheckinDate = twoDaysAgo
+        )
 
         val state = tracker.getDailyState()
         assertEquals(1, state.day)
@@ -510,13 +489,12 @@ class DailyRewardsTrackerTest {
     }
 
     private fun completeWeek(weekNum: Int) {
-        // Set up state as if we're at the start of the given week
         if (weekNum > 1) {
-            prefs.edit()
-                .putInt("reward_day", 0)
-                .putInt("reward_week", weekNum - 1)
-                .putString("reward_last_date", yesterday)
-                .commit()
+            currentState = currentState.copy(
+                checkinDay = 0,
+                checkinWeek = weekNum - 1,
+                lastCheckinDate = yesterday
+            )
             simulateNextDay()
         }
         for (d in 1..7) {
@@ -527,9 +505,9 @@ class DailyRewardsTrackerTest {
     }
 
     private fun simulateNextDay() {
-        // Set KEY_DATE to yesterday so getDailyState() sees lastDate == yesterday
-        prefs.edit().putString("reward_last_date", yesterday)
-            .putString("share_reward_last_date", yesterday)
-            .commit()
+        currentState = currentState.copy(
+            lastCheckinDate = yesterday,
+            lastShareDate = yesterday
+        )
     }
 }
