@@ -23,10 +23,32 @@ object CoinTransactionLogger {
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val arr = readJson(prefs)
+            val nowMs = System.currentTimeMillis()
+            val dateStr = getEntryDateStr(nowMs)
+            val normSrc = normalizeSource(source, safeDesc)
+
+            if (normSrc == "checkin" || normSrc == "share") {
+                val key = "${normSrc}_${amount}_${dateStr}"
+                for (i in 0 until arr.length()) {
+                    try {
+                        val obj = arr.getJSONObject(i)
+                        val objSrc = obj.optString("source", "")
+                        val objDesc = obj.optString("description", "")
+                        val objAmt = obj.optInt("amount", 0)
+                        val objTs = obj.optLong("timestamp", 0L)
+                        val objDateStr = getEntryDateStr(objTs)
+                        val objNormSrc = normalizeSource(objSrc, objDesc)
+                        if ("${objNormSrc}_${objAmt}_${objDateStr}" == key) {
+                            return
+                        }
+                    } catch (_: Exception) { }
+                }
+            }
+
             val entry = JSONObject().apply {
                 put("amount", amount)
                 put("description", safeDesc)
-                put("timestamp", System.currentTimeMillis())
+                put("timestamp", nowMs)
                 put("type", if (amount > 0) CoinTxType.EARN.name else CoinTxType.SPEND.name)
                 if (source.isNotEmpty()) put("source", source)
             }
@@ -59,16 +81,31 @@ object CoinTransactionLogger {
         }
     }
 
+    private fun deduplicateJsonEntries(entries: List<JSONObject>): List<JSONObject> {
+        val seen = mutableSetOf<String>()
+        val deduplicated = mutableListOf<JSONObject>()
+        // Sort newest first to keep the newest entry of duplicates
+        val sorted = entries.sortedByDescending { it.optLong("timestamp", 0L) }
+        for (obj in sorted) {
+            val src = obj.optString("source", "")
+            val desc = obj.optString("description", "")
+            val amount = obj.optInt("amount", 0)
+            val ts = obj.optLong("timestamp", 0L)
+            val dateStr = getEntryDateStr(ts)
+            val normSrc = normalizeSource(src, desc)
+            val key = "${normSrc}_${amount}_${dateStr}"
+            if (seen.add(key)) {
+                deduplicated.add(obj)
+            }
+        }
+        return deduplicated.sortedBy { it.optLong("timestamp", 0L) }
+    }
+
     fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            // Server stores timestamps in UTC or ISO 8601 with offset
-            // We use parseDateRobust to correctly resolve them into absolute time (ms)
-
-            // Parse server entries (oldest first — server comes newest-first so reverse)
             val serverEntries = serverHistory.reversed().takeLast(MAX)
 
-            // Find the oldest timestamp in the server data
             val oldestServerTs = serverEntries.minOfOrNull { entry ->
                 try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: Long.MAX_VALUE }
                 catch (_: Exception) { Long.MAX_VALUE }
@@ -104,7 +141,6 @@ object CoinTransactionLogger {
                 try {
                     val obj = existing.getJSONObject(i)
                     val ts = obj.optLong("timestamp", Long.MAX_VALUE)
-                    // Keep if older than server history (fallen off the edge)
                     if (ts < oldestServerTs) {
                         preservedLocal.add(obj)
                     } else {
@@ -116,28 +152,23 @@ object CoinTransactionLogger {
                         val sig = "${normSrc}_${amount}_${dateStr}"
                         val serverCount = serverSignatures.getOrDefault(sig, 0)
                         if (serverCount > 0) {
-                            // Consumed by server history match, drop local optimistic duplicate
                             serverSignatures[sig] = serverCount - 1
                         } else {
-                            // Not in server history, keep optimistic local
                             preservedLocal.add(obj)
                         }
                     }
                 } catch (_: Exception) { /* skip corrupted */ }
             }
 
-            // Build merged array
             val mergedList = mutableListOf<JSONObject>()
             preservedLocal.forEach { mergedList.add(it) }
             serverJsonEntries.forEach { mergedList.add(it) }
             
-            // Sort by timestamp (oldest first)
-            mergedList.sortBy { it.optLong("timestamp", 0L) }
+            val cleanList = deduplicateJsonEntries(mergedList)
             
             val arr = JSONArray()
-            mergedList.forEach { arr.put(it) }
+            cleanList.forEach { arr.put(it) }
 
-            // Trim to MAX keeping the newest
             while (arr.length() > MAX) arr.remove(0)
             prefs.edit().putString(KEY, arr.toString()).commit()
         }
@@ -145,11 +176,27 @@ object CoinTransactionLogger {
 
     fun getHistory(context: Context): List<CoinEntry> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val arr = readJson(prefs)
-        val result = mutableListOf<CoinEntry>()
-        for (i in 0 until arr.length()) {
+        val rawArr = readJson(prefs)
+        val rawList = mutableListOf<JSONObject>()
+        for (i in 0 until rawArr.length()) {
             try {
-                val obj = arr.getJSONObject(i)
+                rawList.add(rawArr.getJSONObject(i))
+            } catch (_: JSONException) { }
+        }
+
+        val cleanList = deduplicateJsonEntries(rawList)
+
+        if (cleanList.size < rawList.size) {
+            synchronized(this) {
+                val cleanArr = JSONArray()
+                cleanList.forEach { cleanArr.put(it) }
+                prefs.edit().putString(KEY, cleanArr.toString()).commit()
+            }
+        }
+
+        val result = mutableListOf<CoinEntry>()
+        for (obj in cleanList) {
+            try {
                 result.add(CoinEntry(
                     amount = obj.optInt("amount", 0),
                     description = obj.optString("description", ""),
