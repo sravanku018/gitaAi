@@ -36,6 +36,29 @@ object CoinTransactionLogger {
         }
     }
 
+    private fun getEntryDateStr(ts: Long): String {
+        return try {
+            java.time.Instant.ofEpochMilli(ts)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+                .toString()
+        } catch (_: Exception) { "" }
+    }
+
+    private fun normalizeSource(source: String, description: String): String {
+        val src = source.lowercase()
+        val desc = description.lowercase()
+        return when {
+            src.contains("check") || desc.contains("check") -> "checkin"
+            src.contains("share") || desc.contains("share") -> "share"
+            src.contains("quiz") || desc.contains("quiz") -> "quiz"
+            src.contains("voice") || desc.contains("voice") -> "voice"
+            src.contains("chapter") || desc.contains("chapter") -> "chapter"
+            src.contains("signup") || src.contains("welcome") || desc.contains("welcome") -> "signup"
+            else -> src.ifEmpty { desc.take(20) }
+        }
+    }
+
     fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -51,9 +74,6 @@ object CoinTransactionLogger {
                 catch (_: Exception) { Long.MAX_VALUE }
             } ?: Long.MAX_VALUE
 
-            // Read existing local entries and keep only those OLDER than the oldest server entry
-            // (avoids duplicates while preserving history the server no longer returns)
-            // Build server entries JSON objects first
             val serverJsonEntries = serverEntries.map { entry ->
                 JSONObject().apply {
                     put("amount", entry.amount)
@@ -68,11 +88,13 @@ object CoinTransactionLogger {
 
             val serverSignatures = mutableMapOf<String, Int>()
             serverJsonEntries.forEach { 
-                // Use source-based sig if available (reliable), otherwise fall back to desc
-                val sig = if (it.has("source") && it.optString("source").isNotEmpty())
-                    "${it.optString("source")}_${it.optInt("amount")}"
-                else
-                    "${it.optInt("amount")}_${it.optString("description").take(20)}"
+                val src = it.optString("source", "")
+                val desc = it.optString("description", "")
+                val amount = it.optInt("amount", 0)
+                val ts = it.optLong("timestamp", 0L)
+                val dateStr = getEntryDateStr(ts)
+                val normSrc = normalizeSource(src, desc)
+                val sig = "${normSrc}_${amount}_${dateStr}"
                 serverSignatures[sig] = serverSignatures.getOrDefault(sig, 0) + 1
             }
 
@@ -86,15 +108,15 @@ object CoinTransactionLogger {
                     if (ts < oldestServerTs) {
                         preservedLocal.add(obj)
                     } else {
-                        // Keep if it's a recent optimistic event NOT yet in the server history
-                        // Prefer source-based sig (reliable), fall back to desc-based
-                        val sig = if (obj.has("source") && obj.optString("source").isNotEmpty())
-                            "${obj.optString("source")}_${obj.optInt("amount")}"
-                        else
-                            "${obj.optInt("amount")}_${obj.optString("description").take(20)}"
+                        val src = obj.optString("source", "")
+                        val desc = obj.optString("description", "")
+                        val amount = obj.optInt("amount", 0)
+                        val dateStr = getEntryDateStr(ts)
+                        val normSrc = normalizeSource(src, desc)
+                        val sig = "${normSrc}_${amount}_${dateStr}"
                         val serverCount = serverSignatures.getOrDefault(sig, 0)
                         if (serverCount > 0) {
-                            // Consumed by server history, drop local optimistic duplicate
+                            // Consumed by server history match, drop local optimistic duplicate
                             serverSignatures[sig] = serverCount - 1
                         } else {
                             // Not in server history, keep optimistic local

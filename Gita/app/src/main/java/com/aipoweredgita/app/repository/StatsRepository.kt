@@ -671,7 +671,7 @@ class StatsRepository(
 
     suspend fun claimDailyReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description)
+        CoinTransactionLogger.log(appContext, coins, description, source = "daily_checkin")
 
         if (!authPrefs.isGuestUser) {
             syncCheckinToCloud(coins)
@@ -680,7 +680,7 @@ class StatsRepository(
 
     suspend fun claimShareReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description)
+        CoinTransactionLogger.log(appContext, coins, description, source = "share_sloka")
 
         if (!authPrefs.isGuestUser) {
             syncShareToCloud(coins)
