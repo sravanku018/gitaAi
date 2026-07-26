@@ -10,10 +10,10 @@ import kotlinx.coroutines.withContext
 /**
  * PRODUCTION INGESTION PIPELINE for the Bhagavad Gita QA dataset.
  * 
- * Raw CSV format: chapter_no, verse_no, question, answer (open-ended source)
+ * Raw CSV format: chapter_no, verse_no, question_en, question_te, answer_en, answer_te
  * 
  * Pipeline stages:
- * 1. Download CSV from HuggingFace
+ * 1. Read bundled offline CSV asset
  * 2. Parse rows
  * 3. Convert Raw Data → MCQ format (generate 3 distractors from answer context)
  * 4. Normalize text (remove quotes, fix encoding)
@@ -21,25 +21,20 @@ import kotlinx.coroutines.withContext
  * 6. Assign difficulty based on verse complexity
  * 7. Batch insert to DB
  * 
- * Result: Clean, production-ready MCQ questions ready for quiz use.
+ * Result: Clean, production-ready MCQ questions ready for quiz use without external network dependencies.
  */
 class DatasetIngestionPipeline(
     private val context: Context,
     private val questionBankDao: QuizQuestionBankDao
 ) {
-    private val TAG = "DatasetIngestion"
-
-    private val DATASET_URLS = mapOf(
-        "english" to "https://huggingface.co/datasets/JDhruv14/Bhagavad-Gita-QA/resolve/main/English/english.csv",
-        "hindi" to "https://huggingface.co/datasets/JDhruv14/Bhagavad-Gita-QA/resolve/main/Hindi/hindi.csv",
-        "gujarati" to "https://huggingface.co/datasets/JDhruv14/Bhagavad-Gita-QA/resolve/main/Gujarati/gujarati.csv"
-    )
-
-    // Cooldown period: don't re-ask same question within 24 hours
-    private val COOLDOWN_MS = 24 * 60 * 60 * 1000L
+    companion object {
+        private const val TAG = "DatasetIngestion"
+        private const val BUNDLED_ASSET_NAME = "english_telugu_bilingual.csv"
+        private const val COOLDOWN_MS = 24 * 60 * 60 * 1000L
+    }
 
     /**
-     * Full pipeline: download → convert → dedup → normalize → store.
+     * Full pipeline: load from asset → convert → dedup → normalize → store.
      */
     suspend fun ingestDataset(
         language: String = "english",
@@ -48,66 +43,59 @@ class DatasetIngestionPipeline(
     ): Int = withContext(Dispatchers.IO) {
         var totalImported = 0
 
-        val languages = if (language == "all") DATASET_URLS.keys else listOf(language)
+        Log.d(TAG, "Ingesting $language dataset from local asset $BUNDLED_ASSET_NAME...")
 
-        for (lang in languages) {
-            val url = DATASET_URLS[lang] ?: continue
-            Log.d(TAG, "Downloading $lang dataset from $url...")
+        try {
+            val csvContent = readCsvFromAssets(BUNDLED_ASSET_NAME)
+            val rawQuestions = parseCsv(csvContent, language)
+            Log.d(TAG, "Parsed ${rawQuestions.size} raw questions from $language")
 
-            try {
-                val csvContent = downloadCsv(url)
-                val rawQuestions = parseCsv(csvContent, lang)
-                Log.d(TAG, "Parsed ${rawQuestions.size} raw questions from $lang")
+            // STAGE 3: Convert Raw Data → MCQ
+            val mcqQuestions = convertToMCQ(rawQuestions)
+            Log.d(TAG, "Converted ${mcqQuestions.size} questions to MCQ format")
 
-                // STAGE 3: Convert Raw Data → MCQ
-                val mcqQuestions = convertToMCQ(rawQuestions)
-                Log.d(TAG, "Converted ${mcqQuestions.size} questions to MCQ format")
+            // STAGE 4: Normalize
+            val normalized = mcqQuestions.map { normalizeQuestion(it) }
 
-                // STAGE 4: Normalize
-                val normalized = mcqQuestions.map { normalizeQuestion(it) }
+            // STAGE 5: Deduplicate (skip if hash already in DB)
+            val dedupedQuestions = mutableListOf<QuizQuestionBank>()
+            val existingHashes = mutableSetOf<String>()
 
-                // STAGE 5: Deduplicate (skip if hash already in DB)
-                val dedupedQuestions = mutableListOf<QuizQuestionBank>()
-                val existingHashes = mutableSetOf<String>()
-
-                for (question in normalized) {
-                    if (!existingHashes.contains(question.questionHash)) {
-                        val count = questionBankDao.countByHash(question.questionHash)
-                        if (count == 0) {
-                            dedupedQuestions.add(question)
-                            existingHashes.add(question.questionHash)
-                        }
+            for (question in normalized) {
+                if (!existingHashes.contains(question.questionHash)) {
+                    val count = questionBankDao.countByHash(question.questionHash)
+                    if (count == 0) {
+                        dedupedQuestions.add(question)
+                        existingHashes.add(question.questionHash)
                     }
                 }
-
-                Log.d(TAG, "Deduplicated: ${rawQuestions.size} → ${dedupedQuestions.size} unique questions")
-
-                // STAGE 7: Batch insert
-                var batchStart = 0
-                while (batchStart < dedupedQuestions.size) {
-                    val batchEnd = minOf(batchStart + batchSize, dedupedQuestions.size)
-                    val batch = dedupedQuestions.subList(batchStart, batchEnd)
-                    
-                    questionBankDao.insertAll(batch)
-                    
-                    totalImported += batch.size
-                    onProgress(totalImported, dedupedQuestions.size)
-                    
-                    batchStart = batchEnd
-                }
-
-                Log.d(TAG, "✓ Successfully imported ${dedupedQuestions.size} clean $lang questions")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to ingest $lang dataset: ${e.message}", e)
             }
+
+            Log.d(TAG, "Deduplicated: ${rawQuestions.size} → ${dedupedQuestions.size} unique questions")
+
+            // STAGE 7: Batch insert
+            var batchStart = 0
+            while (batchStart < dedupedQuestions.size) {
+                val batchEnd = minOf(batchStart + batchSize, dedupedQuestions.size)
+                val batch = dedupedQuestions.subList(batchStart, batchEnd)
+                
+                questionBankDao.insertAll(batch)
+                
+                totalImported += batch.size
+                onProgress(totalImported, dedupedQuestions.size)
+                
+                batchStart = batchEnd
+            }
+
+            Log.d(TAG, "✓ Successfully imported ${dedupedQuestions.size} clean $language questions from bundled asset")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to ingest $language dataset from asset: ${e.message}", e)
         }
 
-        // FIX ISSUE 5: Deactivate low-quality questions instead of deleting them
         try {
             questionBankDao.deactivateLowQualityQuestions()
         } catch (_: Exception) { }
 
-        // FIX ISSUE 6: Apply daily quality decay
         try {
             questionBankDao.applyQualityDecay()
         } catch (_: Exception) { }
@@ -115,21 +103,8 @@ class DatasetIngestionPipeline(
         totalImported
     }
 
-    private fun downloadCsv(url: String): String {
-        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        conn.connectTimeout = 30_000   // 30 s connect
-        conn.readTimeout    = 120_000  // 2 min read (large CSV)
-        conn.setRequestProperty("User-Agent", "GitaApp/1.0 (Android)")
-        conn.connect()
-        if (conn.responseCode !in 200..299) {
-            conn.disconnect()
-            throw Exception("HTTP ${conn.responseCode} downloading $url")
-        }
-        return try {
-            conn.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            conn.disconnect()
-        }
+    private fun readCsvFromAssets(filename: String): String {
+        return context.assets.open(filename).bufferedReader(Charsets.UTF_8).use { it.readText() }
     }
 
     private fun parseCsv(csvContent: String, language: String): List<RawQuestion> {
@@ -149,12 +124,35 @@ class DatasetIngestionPipeline(
 
                 val chapterNo = fields[0].trim().toIntOrNull() ?: continue
                 val verseNo = fields[1].trim().toIntOrNull() ?: continue
-                val question = fields[2].trim().removeSurrounding("\"").trim()
-                val answer = fields[3].trim().removeSurrounding("\"").trim()
 
-                if (question.isBlank() || answer.isBlank()) continue
+                val qEn = fields.getOrNull(2)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                val qTe = fields.getOrNull(3)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                val aEn = fields.getOrNull(4)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                val aTe = fields.getOrNull(5)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
 
-                questions.add(RawQuestion(chapterNo, verseNo, question, answer))
+                when (language.lowercase()) {
+                    "telugu" -> {
+                        if (qTe.isNotBlank() && aTe.isNotBlank()) {
+                            questions.add(RawQuestion(chapterNo, verseNo, qTe, aTe))
+                        } else if (qEn.isNotBlank() && aEn.isNotBlank()) {
+                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
+                        }
+                    }
+                    "english" -> {
+                        if (qEn.isNotBlank() && aEn.isNotBlank()) {
+                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
+                        }
+                    }
+                    else -> {
+                        // "all" or default: include both English and Telugu questions
+                        if (qEn.isNotBlank() && aEn.isNotBlank()) {
+                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
+                        }
+                        if (qTe.isNotBlank() && aTe.isNotBlank()) {
+                            questions.add(RawQuestion(chapterNo, verseNo, qTe, aTe))
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse line: ${e.message}")
             }
@@ -184,11 +182,9 @@ class DatasetIngestionPipeline(
 
     /**
      * STAGE 3: Convert open-ended raw data to MCQ format.
-     * FIX ISSUE 6: Use topic-based distractors instead of negation.
      * Builds an index of topic → answers, then uses answers from same topic as distractors.
      */
     private fun convertToMCQ(rawQuestions: List<RawQuestion>): List<QuizQuestionBank> {
-        // Build topic → answers index for realistic distractors
         val topicAnswers = mutableMapOf<String, MutableList<String>>()
         rawQuestions.forEach { q ->
             val topics = extractKeyConcepts(q.answer)
@@ -199,11 +195,8 @@ class DatasetIngestionPipeline(
 
         return rawQuestions.map { raw ->
             val topics = extractKeyConcepts(raw.answer)
-            
-            // FIX ISSUE 6: Get distractors from same topic (realistic wrong answers)
             val distractors = getTopicBasedDistractors(raw.answer, topics, topicAnswers, count = 3)
             
-            // Shuffle options so correct answer isn't always first
             val options = listOf(raw.answer) + distractors
             val shuffledOptions = options.shuffled()
             val correctIndex = shuffledOptions.indexOf(raw.answer)
@@ -237,10 +230,6 @@ class DatasetIngestionPipeline(
         }
     }
 
-    /**
-     * FIX ISSUE 6: Get realistic distractors from same topic.
-     * Uses answers from other questions on the same topic as wrong options.
-     */
     private fun getTopicBasedDistractors(
         correctAnswer: String,
         topics: List<String>,
@@ -249,13 +238,11 @@ class DatasetIngestionPipeline(
     ): List<String> {
         val distractors = mutableSetOf<String>()
         
-        // Collect answers from same topics
         topics.forEach { topic ->
             val answers = topicAnswers[topic] ?: emptyList()
             answers.filter { it != correctAnswer && it.length > 10 }.forEach { distractors.add(it) }
         }
         
-        // If not enough topic-based distractors, add general Gita distractors
         val generalDistractors = listOf(
             "By performing rituals and ceremonies",
             "By accumulating wealth and power",
@@ -276,9 +263,6 @@ class DatasetIngestionPipeline(
         return distractors.take(count).toList()
     }
 
-    /**
-     * Extract key concepts from answer text.
-     */
     private fun extractKeyConcepts(answer: String): List<String> {
         val concepts = mutableListOf<String>()
         val lower = answer.lowercase()
@@ -305,9 +289,6 @@ class DatasetIngestionPipeline(
         return concepts
     }
 
-    /**
-     * STAGE 4: Normalize text (remove artifacts, fix encoding).
-     */
     private fun normalizeQuestion(question: QuizQuestionBank): QuizQuestionBank {
         fun clean(text: String) = text
             .replace(Regex("\\s+"), " ")
@@ -327,9 +308,6 @@ class DatasetIngestionPipeline(
         )
     }
 
-    /**
-     * Estimate difficulty based on chapter/verse (early chapters = easier).
-     */
     private fun estimateDifficulty(chapter: Int, verse: Int): Int {
         return when {
             chapter <= 6 -> (3 + chapter / 2).coerceIn(1, 10)
@@ -338,9 +316,6 @@ class DatasetIngestionPipeline(
         }
     }
 
-    /**
-     * Check if questions have already been imported.
-     */
     suspend fun hasQuestions(): Boolean = withContext(Dispatchers.IO) {
         try {
             val count = questionBankDao.getQuestionsBySource("dataset_import")

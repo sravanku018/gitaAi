@@ -18,7 +18,7 @@ class QuestionIngestionWorker(
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
                 .setRequiresDeviceIdle(false)
                 .setRequiresCharging(false)
                 .setRequiresBatteryNotLow(false)
