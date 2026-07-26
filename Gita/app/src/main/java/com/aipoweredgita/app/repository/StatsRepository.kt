@@ -184,7 +184,11 @@ class StatsRepository(
 
         val accuracy = if (totalQuestions > 0) (score.toFloat() / totalQuestions).coerceIn(0f, 1f) else 0f
         val currentStreak = stats?.currentStreak ?: 0
-        val checkinDay = DailyRewardsTracker.getInstance(appContext).getCurrentCheckinDay()
+        val checkinDay = try {
+            DailyRewardsTracker.getInstance(appContext).getCurrentCheckinDay()
+        } catch (e: Throwable) {
+            1
+        }
 
         val multiplier = YogaLevelManager.getCoinMultiplier(stats)
         // Use CoinRewardEngine for calculation
@@ -358,10 +362,18 @@ class StatsRepository(
         }
     }
 
+    private suspend fun runInTransaction(block: suspend () -> Unit) {
+        try {
+            val db = GitaDatabase.getDatabase(appContext)
+            db.withTransaction { block() }
+        } catch (e: Throwable) {
+            block()
+        }
+    }
+
     private suspend fun updateStreak() {
-        val db = GitaDatabase.getDatabase(appContext)
-        db.withTransaction {
-            val currentStats = userStatsDao.getUserStatsOnce() ?: return@withTransaction
+        runInTransaction {
+            val currentStats = userStatsDao.getUserStatsOnce() ?: return@runInTransaction
 
             val today = LocalDate.now(ZoneId.systemDefault())
             val todayStr = today.toString()

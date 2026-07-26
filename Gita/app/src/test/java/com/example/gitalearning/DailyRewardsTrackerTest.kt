@@ -3,22 +3,41 @@ package com.example.gitalearning
 import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.database.RewardState
 import com.aipoweredgita.app.database.RewardStateDao
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.LocalDate
 import java.time.ZoneId
 
+class FakeRewardStateDao : RewardStateDao {
+    var state: RewardState = RewardState()
+
+    override fun getRewardStateFlow(): Flow<RewardState?> = flowOf(state)
+
+    override fun getRewardStateSync(): RewardState? = state
+
+    override fun insertOrUpdate(state: RewardState) {
+        this.state = state
+    }
+
+    override fun update(state: RewardState) {
+        this.state = state
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
 class DailyRewardsTrackerTest {
 
-    private lateinit var dao: RewardStateDao
+    private lateinit var dao: FakeRewardStateDao
     private lateinit var tracker: DailyRewardsTracker
-    private var currentState: RewardState = RewardState()
 
     private val today = LocalDate.now(ZoneId.systemDefault()).toString()
     private val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1).toString()
@@ -26,14 +45,7 @@ class DailyRewardsTrackerTest {
 
     @Before
     fun setup() {
-        currentState = RewardState()
-        val stateSlot = slot<RewardState>()
-        dao = mockk(relaxed = true) {
-            every { getRewardStateSync() } answers { currentState }
-            every { insertOrUpdate(capture(stateSlot)) } answers {
-                currentState = stateSlot.captured
-            }
-        }
+        dao = FakeRewardStateDao()
         tracker = DailyRewardsTracker(dao)
     }
 
@@ -54,13 +66,13 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `isFreshInstall is false after checkin`() {
-        currentState = currentState.copy(lastCheckinDate = today)
+        dao.state = dao.state.copy(lastCheckinDate = today)
         assertFalse(tracker.isFreshInstall())
     }
 
     @Test
     fun `isFreshInstall is false after share`() {
-        currentState = currentState.copy(lastShareDate = today)
+        dao.state = dao.state.copy(lastShareDate = today)
         assertFalse(tracker.isFreshInstall())
     }
 
@@ -113,7 +125,7 @@ class DailyRewardsTrackerTest {
         }
         val bonus = tracker.claimDay7BonusIfEligible()
         assertEquals(7, bonus)
-        assertEquals(0, currentState.checkinDay)
+        assertEquals(0, dao.state.checkinDay)
     }
 
     @Test
@@ -147,106 +159,80 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `sync server day 7 week 2 maps to day 0 week 1`() {
-        currentState = currentState.copy(
-            checkinDay = 0,
-            checkinWeek = 1,
-            lastCheckinDate = today
-        )
+        dao.state = dao.state.copy(checkinDay = 0, checkinWeek = 1, lastCheckinDate = today)
 
         tracker.syncWithServer(7, 2, today)
 
-        assertEquals(0, currentState.checkinDay)
-        assertEquals(1, currentState.checkinWeek)
+        assertEquals(0, dao.state.checkinDay)
+        assertEquals(1, dao.state.checkinWeek)
     }
 
     @Test
     fun `sync server day 3 week 1 updates day normally`() {
-        currentState = currentState.copy(
-            checkinDay = 1,
-            checkinWeek = 1
-        )
+        dao.state = dao.state.copy(checkinDay = 1, checkinWeek = 1)
 
         tracker.syncWithServer(3, 1)
 
-        assertEquals(3, currentState.checkinDay)
-        assertEquals(1, currentState.checkinWeek)
+        assertEquals(3, dao.state.checkinDay)
+        assertEquals(1, dao.state.checkinWeek)
     }
 
     // ── syncWithServer — never downgrade ───────────────────────────
 
     @Test
     fun `sync does not downgrade week`() {
-        currentState = currentState.copy(
-            checkinDay = 3,
-            checkinWeek = 2
-        )
+        dao.state = dao.state.copy(checkinDay = 3, checkinWeek = 2)
 
         tracker.syncWithServer(5, 1)
 
-        assertEquals(3, currentState.checkinDay)
-        assertEquals(2, currentState.checkinWeek)
+        assertEquals(3, dao.state.checkinDay)
+        assertEquals(2, dao.state.checkinWeek)
     }
 
     @Test
     fun `sync does not downgrade day in same week`() {
-        currentState = currentState.copy(
-            checkinDay = 5,
-            checkinWeek = 1
-        )
+        dao.state = dao.state.copy(checkinDay = 5, checkinWeek = 1)
 
         tracker.syncWithServer(3, 1)
 
-        assertEquals(5, currentState.checkinDay)
+        assertEquals(5, dao.state.checkinDay)
     }
 
     @Test
     fun `sync does not downgrade from complete to in-progress`() {
-        currentState = currentState.copy(
-            checkinDay = 0,
-            checkinWeek = 1
-        )
+        dao.state = dao.state.copy(checkinDay = 0, checkinWeek = 1)
 
         tracker.syncWithServer(3, 1)
 
-        assertEquals(0, currentState.checkinDay)
-        assertEquals(1, currentState.checkinWeek)
+        assertEquals(0, dao.state.checkinDay)
+        assertEquals(1, dao.state.checkinWeek)
     }
 
     @Test
     fun `sync upgrades from in-progress to complete`() {
-        currentState = currentState.copy(
-            checkinDay = 3,
-            checkinWeek = 1
-        )
+        dao.state = dao.state.copy(checkinDay = 3, checkinWeek = 1)
 
         tracker.syncWithServer(7, 2)
 
-        assertEquals(0, currentState.checkinDay)
-        assertEquals(1, currentState.checkinWeek)
+        assertEquals(0, dao.state.checkinDay)
+        assertEquals(1, dao.state.checkinWeek)
     }
 
     @Test
     fun `sync upgrades to newer week from another device`() {
-        currentState = currentState.copy(
-            checkinDay = 2,
-            checkinWeek = 1
-        )
+        dao.state = dao.state.copy(checkinDay = 2, checkinWeek = 1)
 
         tracker.syncWithServer(3, 2)
 
-        assertEquals(3, currentState.checkinDay)
-        assertEquals(2, currentState.checkinWeek)
+        assertEquals(3, dao.state.checkinDay)
+        assertEquals(2, dao.state.checkinWeek)
     }
 
-    // ── Migration: corrupted checkinDay=7 from old sync ──────────
+    // ── Migration: corrupted KEY_DAY=7 from old sync ──────────────
 
     @Test
     fun `migration fixes corrupted day 7 week 2 on same day`() {
-        currentState = currentState.copy(
-            checkinDay = 7,
-            checkinWeek = 2,
-            lastCheckinDate = today
-        )
+        dao.state = dao.state.copy(checkinDay = 7, checkinWeek = 2, lastCheckinDate = today)
 
         val state = tracker.getDailyState()
 
@@ -254,17 +240,13 @@ class DailyRewardsTrackerTest {
         assertEquals(2, state.week)
         assertFalse(state.todayClaimed)
 
-        assertEquals(0, currentState.checkinDay)
-        assertEquals(1, currentState.checkinWeek)
+        assertEquals(0, dao.state.checkinDay)
+        assertEquals(1, dao.state.checkinWeek)
     }
 
     @Test
     fun `migration does not affect normal day 7 claim`() {
-        currentState = currentState.copy(
-            checkinDay = 7,
-            checkinWeek = 1,
-            lastCheckinDate = today
-        )
+        dao.state = dao.state.copy(checkinDay = 7, checkinWeek = 1, lastCheckinDate = today)
 
         val state = tracker.getDailyState()
 
@@ -273,15 +255,11 @@ class DailyRewardsTrackerTest {
         assertTrue(state.todayClaimed)
     }
 
-    // ── Migration: corrupted shareDay=7 ──────────────────────────
+    // ── Migration: corrupted KEY_SHARE_DAY=7 ──────────────────────
 
     @Test
     fun `share migration fixes corrupted day 7 week 2`() {
-        currentState = currentState.copy(
-            shareDay = 7,
-            shareWeek = 2,
-            lastShareDate = today
-        )
+        dao.state = dao.state.copy(shareDay = 7, shareWeek = 2, lastShareDate = today)
 
         val state = tracker.getShareState()
 
@@ -317,27 +295,19 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `share sync server day 7 week 2 maps to day 0 week 1`() {
-        currentState = currentState.copy(
-            shareDay = 0,
-            shareWeek = 1,
-            lastShareDate = today
-        )
+        dao.state = dao.state.copy(shareDay = 0, shareWeek = 1, lastShareDate = today)
 
         tracker.syncShareWithServer(7, 2, today)
 
-        assertEquals(0, currentState.shareDay)
-        assertEquals(1, currentState.shareWeek)
+        assertEquals(0, dao.state.shareDay)
+        assertEquals(1, dao.state.shareWeek)
     }
 
     // ── Week 4 wraps to Week 1 ────────────────────────────────────
 
     @Test
     fun `week 4 day 7 wraps to week 1`() {
-        currentState = currentState.copy(
-            checkinDay = 0,
-            checkinWeek = 4,
-            lastCheckinDate = yesterday
-        )
+        dao.state = dao.state.copy(checkinDay = 0, checkinWeek = 4, lastCheckinDate = yesterday)
 
         val state = tracker.getDailyState()
         assertEquals(1, state.day)
@@ -346,25 +316,17 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `sync server day 7 week 1 maps to day 0 week 4 (wrap)`() {
-        currentState = currentState.copy(
-            checkinDay = 0,
-            checkinWeek = 4,
-            lastCheckinDate = today
-        )
+        dao.state = dao.state.copy(checkinDay = 0, checkinWeek = 4, lastCheckinDate = today)
 
         tracker.syncWithServer(7, 1, today)
 
-        assertEquals(0, currentState.checkinDay)
-        assertEquals(4, currentState.checkinWeek)
+        assertEquals(0, dao.state.checkinDay)
+        assertEquals(4, dao.state.checkinWeek)
     }
 
     @Test
     fun `day 7 week 1 with today date is treated as in-progress claim (not corrupted)`() {
-        currentState = currentState.copy(
-            checkinDay = 7,
-            checkinWeek = 1,
-            lastCheckinDate = today
-        )
+        dao.state = dao.state.copy(checkinDay = 7, checkinWeek = 1, lastCheckinDate = today)
 
         val state = tracker.getDailyState()
 
@@ -453,9 +415,10 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `protection allows advancing past missed day`() {
-        currentState = currentState.copy(
+        dao.state = dao.state.copy(
             checkinDay = 3,
             checkinWeek = 1,
+            checkinProtectionUsed = false,
             checkinProtectionGranted = true,
             lastCheckinDate = twoDaysAgo
         )
@@ -470,9 +433,10 @@ class DailyRewardsTrackerTest {
 
     @Test
     fun `missed days without protection resets to week 1`() {
-        currentState = currentState.copy(
+        dao.state = dao.state.copy(
             checkinDay = 5,
             checkinWeek = 2,
+            checkinProtectionUsed = true,
             lastCheckinDate = twoDaysAgo
         )
 
@@ -490,7 +454,7 @@ class DailyRewardsTrackerTest {
 
     private fun completeWeek(weekNum: Int) {
         if (weekNum > 1) {
-            currentState = currentState.copy(
+            dao.state = dao.state.copy(
                 checkinDay = 0,
                 checkinWeek = weekNum - 1,
                 lastCheckinDate = yesterday
@@ -505,7 +469,7 @@ class DailyRewardsTrackerTest {
     }
 
     private fun simulateNextDay() {
-        currentState = currentState.copy(
+        dao.state = dao.state.copy(
             lastCheckinDate = yesterday,
             lastShareDate = yesterday
         )
