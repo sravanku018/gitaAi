@@ -215,7 +215,7 @@ if (response.success) {
 
     /**
      * Delete user account from server and clear all local data.
-     * Returns true if server deletion succeeded (or was unreachable but local cleanup done).
+     * Returns Result.success(Unit) if server deletion succeeded, or Result.failure(Exception) if remote deletion failed.
      */
     suspend fun deleteAccount(): Result<Unit> = withContext(Dispatchers.IO) {
         val token = authPrefs.token
@@ -224,10 +224,11 @@ if (response.success) {
                 CoinApi.retrofitService.deleteAccount("Bearer $token")
                 Log.d(TAG, "Account deleted from server")
             } catch (e: Exception) {
-                Log.w(TAG, "Delete account API error (proceeding with local cleanup): ${e.message}")
+                Log.e(TAG, "Delete account API error: ${e.message}")
+                return@withContext Result.failure(e)
             }
         }
-        // Clear ALL local data including credentials
+        // Clear ALL local data including credentials on successful server deletion
         authPrefs.clearAll()
         Result.success(Unit)
     }

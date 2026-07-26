@@ -34,4 +34,5 @@ ksp_error.log
 # Signing
 *.jks
 *.keystore
+keystore.properties
 opencode.json

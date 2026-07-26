@@ -31,7 +31,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import androidx.room.withTransaction
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class StatsRepository(
@@ -338,48 +341,65 @@ class StatsRepository(
         updateStreak()
     }
 
+    private fun parseLocalDate(rawDateString: String): LocalDate? {
+        if (rawDateString.isBlank()) return null
+        return try {
+            if (rawDateString.contains("T")) {
+                Instant.parse(rawDateString).atZone(ZoneId.systemDefault()).toLocalDate()
+            } else {
+                LocalDate.parse(rawDateString.take(10), DateTimeFormatter.ISO_LOCAL_DATE)
+            }
+        } catch (e: Exception) {
+            try {
+                LocalDate.parse(rawDateString.take(10), DateTimeFormatter.ISO_LOCAL_DATE)
+            } catch (ex: Exception) {
+                null
+            }
+        }
+    }
+
     private suspend fun updateStreak() {
-        val currentStats = userStatsDao.getUserStatsOnce() ?: return
+        val db = GitaDatabase.getDatabase(appContext)
+        db.withTransaction {
+            val currentStats = userStatsDao.getUserStatsOnce() ?: return@withTransaction
 
-        val today = LocalDate.now().toString()
-        val rawLastActiveDate = currentStats.lastActiveDate
-        // The server might return a full ISO timestamp (e.g. 2024-01-01T12:00:00Z). Extract just the YYYY-MM-DD part.
-        val lastActiveDate = if (rawLastActiveDate.length > 10) rawLastActiveDate.substring(0, 10) else rawLastActiveDate
+            val today = LocalDate.now(ZoneId.systemDefault())
+            val todayStr = today.toString()
+            val rawLastActiveDate = currentStats.lastActiveDate
+            val lastActiveLocalDate = parseLocalDate(rawLastActiveDate)
 
-        userStatsDao.updateLastActive(System.currentTimeMillis(), today)
+            userStatsDao.updateLastActive(System.currentTimeMillis(), todayStr)
 
-        when {
-            lastActiveDate.isEmpty() -> {
-                userStatsDao.updateCurrentStreak(1)
-                userStatsDao.updateLongestStreak(1)
-                userStatsDao.updateDaysActive(1)
-            }
-            lastActiveDate == today -> {
-                // If they are active today but streak is somehow 0 (e.g. from server sync), fix it
-                if (currentStats.currentStreak == 0) {
+            when {
+                lastActiveLocalDate == null -> {
                     userStatsDao.updateCurrentStreak(1)
-                    if (currentStats.longestStreak == 0) userStatsDao.updateLongestStreak(1)
+                    userStatsDao.updateLongestStreak(1)
+                    userStatsDao.updateDaysActive(1)
                 }
-            }
-            isYesterday(lastActiveDate) -> {
-                val newStreak = currentStats.currentStreak + 1
-                userStatsDao.updateCurrentStreak(newStreak)
-                if (newStreak > currentStats.longestStreak) {
-                    userStatsDao.updateLongestStreak(newStreak)
+                lastActiveLocalDate == today -> {
+                    if (currentStats.currentStreak == 0) {
+                        userStatsDao.updateCurrentStreak(1)
+                        if (currentStats.longestStreak == 0) userStatsDao.updateLongestStreak(1)
+                    }
                 }
-                userStatsDao.updateDaysActive(currentStats.daysActive + 1)
-            }
-            else -> {
-                userStatsDao.updateCurrentStreak(1)
-                userStatsDao.updateDaysActive(currentStats.daysActive + 1)
+                lastActiveLocalDate == today.minusDays(1) -> {
+                    val newStreak = currentStats.currentStreak + 1
+                    userStatsDao.updateCurrentStreak(newStreak)
+                    if (newStreak > currentStats.longestStreak) {
+                        userStatsDao.updateLongestStreak(newStreak)
+                    }
+                    userStatsDao.updateDaysActive(currentStats.daysActive + 1)
+                }
+                else -> {
+                    userStatsDao.updateCurrentStreak(1)
+                    userStatsDao.updateDaysActive(currentStats.daysActive + 1)
+                }
             }
         }
 
-        // Continually back up monotonic stats (quizzes taken, verses read) to the server
-        // We use a PendingSyncEvent instead of a direct coroutine to ensure this runs 
-        // AFTER the current SQLite transaction completely commits.
+        val currentStats = userStatsDao.getUserStatsOnce() ?: return
         try {
-            val payloadString = "{}" // SyncWorker now reads fresh stats directly from DB
+            val payloadString = "{}"
             pendingSyncEventDao.insert(
                 com.aipoweredgita.app.database.PendingSyncEvent(
                     userId = currentStats.userId,

@@ -431,18 +431,27 @@ interface CoinApiService {
     ): CoinBalanceResponse
 
     @POST("coins/award")
-    suspend fun awardCoins(@Body request: CoinAwardRequest): CoinAwardResponse
+    suspend fun awardCoins(
+        @Body request: CoinAwardRequest,
+        @Header("Authorization") token: String? = null
+    ): CoinAwardResponse
 
     @POST("coins/spend")
-    suspend fun spendCoins(@Body request: CoinSpendRequest): CoinSpendResponse
+    suspend fun spendCoins(
+        @Body request: CoinSpendRequest,
+        @Header("Authorization") token: String? = null
+    ): CoinSpendResponse
 
     @POST("coins/reconcile")
-    suspend fun reconcileBalance(@Body request: ReconcileRequest): ReconcileResponse
+    suspend fun reconcileBalance(
+        @Body request: ReconcileRequest,
+        @Header("Authorization") token: String? = null
+    ): ReconcileResponse
 
     @POST("coins/auto-reconcile")
     suspend fun autoReconcile(
-        @Header("Authorization") token: String? = null,
-        @Body request: AutoReconcileRequest
+        @Body request: AutoReconcileRequest,
+        @Header("Authorization") token: String? = null
     ): AutoReconcileResponse
 
     @GET("coins/voice-cost")
@@ -460,13 +469,22 @@ interface CoinApiService {
     suspend fun getLeaderboard(): List<LeaderboardEntry>
 
     @POST("checkin")
-    suspend fun checkin(@Body request: Map<String, String>): CheckinResponse
+    suspend fun checkin(
+        @Body request: Map<String, String>,
+        @Header("Authorization") token: String? = null
+    ): CheckinResponse
 
     @POST("share")
-    suspend fun share(@Body request: ShareSlokaRequest): ShareResponse
+    suspend fun share(
+        @Body request: ShareSlokaRequest,
+        @Header("Authorization") token: String? = null
+    ): ShareResponse
 
     @POST("quiz/attempt")
-    suspend fun recordQuizAttempt(@Body request: QuizAttemptRequest): Map<String, Any>
+    suspend fun recordQuizAttempt(
+        @Body request: QuizAttemptRequest,
+        @Header("Authorization") token: String? = null
+    ): Map<String, Any>
 
     @GET("quiz/history")
     suspend fun getQuizHistory(
@@ -488,7 +506,10 @@ interface CoinApiService {
     suspend fun createGuest(): CreateGuestResponse
 
     @POST("guest/claim")
-    suspend fun claimGuest(@Body request: ClaimGuestRequest): ClaimGuestResponse
+    suspend fun claimGuest(
+        @Body request: ClaimGuestRequest,
+        @Header("Authorization") token: String? = null
+    ): ClaimGuestResponse
 
     // ── Auth Endpoints ───────────────────────────────────────────────────
 
@@ -509,20 +530,27 @@ interface CoinApiService {
 
     @POST("users/stats/sync")
     suspend fun syncUserStats(
-        @Header("Authorization") token: String? = null,
-        @Body request: UserStatsSyncRequest
+        @Body request: UserStatsSyncRequest,
+        @Header("Authorization") token: String? = null
     ): UserStatsSyncResponse
 
     @GET("notes")
     suspend fun getNotes(
-        @Query("user_id") userId: String
+        @Query("user_id") userId: String,
+        @Header("Authorization") token: String? = null
     ): List<ServerNote>
 
     @POST("notes/sync")
-    suspend fun syncNotes(@Body request: NotesSyncRequest): NotesSyncResponse
+    suspend fun syncNotes(
+        @Body request: NotesSyncRequest,
+        @Header("Authorization") token: String? = null
+    ): NotesSyncResponse
 
     @POST("notes/delete")
-    suspend fun deleteNote(@Body request: NoteDeleteRequest): Map<String, Any>
+    suspend fun deleteNote(
+        @Body request: NoteDeleteRequest,
+        @Header("Authorization") token: String? = null
+    ): Map<String, Any>
 }
 
 object CoinApi {
