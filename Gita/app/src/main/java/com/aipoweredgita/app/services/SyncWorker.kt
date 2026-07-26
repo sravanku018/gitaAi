@@ -242,7 +242,8 @@ class SyncWorker(
                         } else {
                             Log.d(TAG, "Checkin sync success. Coins awarded: ${response.coins_awarded}")
                             if (event.userId == authPrefs.userId && response.day > 0) {
-                                DailyRewardsTracker.getInstance(applicationContext).syncWithServer(response.day, response.week)
+                                val syncDate = clientDate?.take(10) ?: DailyRewardsTracker.getInstance(applicationContext).nowLocal()
+                                DailyRewardsTracker.getInstance(applicationContext).syncWithServer(response.day, response.week, syncDate)
                             }
                         }
                         if (response.total_coins >= 0) {
@@ -277,7 +278,8 @@ class SyncWorker(
                         } else {
                             Log.d(TAG, "Share sync success. Coins awarded: ${response.coins_awarded}")
                             if (event.userId == authPrefs.userId && response.share_day > 0) {
-                                DailyRewardsTracker.getInstance(applicationContext).syncShareWithServer(response.share_day, response.share_week)
+                                val syncDate = clientDate?.take(10) ?: DailyRewardsTracker.getInstance(applicationContext).nowLocal()
+                                DailyRewardsTracker.getInstance(applicationContext).syncShareWithServer(response.share_day, response.share_week, syncDate)
                             }
                         }
                         if (response.total_coins >= 0) {

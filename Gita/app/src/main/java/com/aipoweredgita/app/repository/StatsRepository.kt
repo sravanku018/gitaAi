@@ -470,7 +470,7 @@ class StatsRepository(
                         "chapter" to chapter,
                         "verse" to verse,
                         "slokaId" to slokaId,
-                        "clientDate" to java.time.OffsetDateTime.now().toString(),
+                        "clientDate" to tracker.nowLocal(),
                         "countryCode" to java.util.Locale.getDefault().country,
                         "isWeeklyBonus" to isWeeklyBonus
                     )
@@ -632,6 +632,9 @@ class StatsRepository(
                 Log.d("StatsRepository", "Share already synced (duplicate)")
             } else {
                 Log.d("StatsRepository", "Share synced. Coins awarded: ${response.coins_awarded}")
+                if (response.share_day > 0) {
+                    DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
+                }
             }
             refreshUserState(uid)
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
