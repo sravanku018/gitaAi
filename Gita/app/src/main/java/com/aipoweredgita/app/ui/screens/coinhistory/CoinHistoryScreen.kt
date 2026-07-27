@@ -126,9 +126,9 @@ fun CoinHistoryScreen(
                         yesterdayStr -> "Yesterday"
                         else -> displayDateFmt.format(parsed)
                     }
-                } else if (entry.created_at.isNullOrEmpty()) "No Date" else "Unparseable: ${entry.created_at}"
+                } else "Recent Activity"
             } catch (e: Exception) {
-                if (entry.created_at.isNullOrEmpty()) "No Date" else "Error: ${entry.created_at}"
+                "Recent Activity"
             }
         }
     }

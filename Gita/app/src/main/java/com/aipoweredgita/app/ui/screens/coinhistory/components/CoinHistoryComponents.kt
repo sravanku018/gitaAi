@@ -219,7 +219,7 @@ fun CoinTransactionItem(
     entry: CoinHistoryEntry,
     index: Int
 ) {
-    val isEarn = entry.type == "EARN"
+    val isEarn = entry.amount > 0 || (entry.amount == 0 && entry.type == "EARN")
     val alpha by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(300, delayMillis = (minOf(index, 25) * 40)),
@@ -321,7 +321,7 @@ fun CoinTransactionItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (isEarn) "+${entry.amount}" else "${entry.amount}",
+                    if (entry.amount > 0) "+${entry.amount}" else "${entry.amount}",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isEarn) Color(0xFF1B6B36) else Color(0xFFBA1A1A)

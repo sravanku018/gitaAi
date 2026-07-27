@@ -185,6 +185,7 @@ class DatasetIngestionPipeline(
      * Builds an index of topic → answers, then uses answers from same topic as distractors.
      */
     private fun convertToMCQ(rawQuestions: List<RawQuestion>, language: String = "english"): List<QuizQuestionBank> {
+        val isTelugu = language.lowercase().contains("tel")
         val topicAnswers = mutableMapOf<String, MutableList<String>>()
         rawQuestions.forEach { q ->
             val topics = extractKeyConcepts(q.answer)
@@ -193,9 +194,13 @@ class DatasetIngestionPipeline(
             }
         }
 
+        val allDatasetAnswers = rawQuestions.map { it.answer }.filter { it.isNotBlank() }
+
         return rawQuestions.map { raw ->
             val topics = extractKeyConcepts(raw.answer)
-            val distractors = getTopicBasedDistractors(raw.answer, topics, topicAnswers, count = 3)
+            val distractors = getTopicBasedDistractors(
+                raw.answer, topics, topicAnswers, allDatasetAnswers, count = 3, isTelugu = isTelugu
+            )
             
             val options = listOf(raw.answer) + distractors
             val shuffledOptions = options.shuffled()
@@ -235,16 +240,36 @@ class DatasetIngestionPipeline(
         correctAnswer: String,
         topics: List<String>,
         topicAnswers: Map<String, List<String>>,
-        count: Int
+        allDatasetAnswers: List<String>,
+        count: Int,
+        isTelugu: Boolean
     ): List<String> {
         val distractors = mutableSetOf<String>()
         
         topics.forEach { topic ->
             val answers = topicAnswers[topic] ?: emptyList()
-            answers.filter { it != correctAnswer && it.length > 10 }.forEach { distractors.add(it) }
+            answers.filter { it != correctAnswer && it.length > 5 }.forEach { distractors.add(it) }
+        }
+
+        val shuffledPool = allDatasetAnswers.shuffled()
+        for (ans in shuffledPool) {
+            if (distractors.size >= count) break
+            if (ans != correctAnswer && !distractors.contains(ans)) {
+                distractors.add(ans)
+            }
         }
         
-        val generalDistractors = listOf(
+        val teluguGeneralDistractors = listOf(
+            "కర్మలు మరియు ఆచారాలను పాటించడం ద్వారా",
+            "సంపద మరియు అధికారాన్ని కూడబెట్టడం ద్వారా",
+            "లౌకిక ధర్మాలన్నింటినీ వదిలివేయడం ద్వారా",
+            "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా",
+            "అర్థం చేసుకోకుండా సంప్రదాయాన్ని అనుసరించడం ద్వారా",
+            "కేవలం మేధోపరమైన జ్ఞానంపై మాత్రమే ఆధారపడటం ద్వారా",
+            "సమాజం నుండి తన్ను తాను వేరు చేసుకోవడం ద్వారా"
+        )
+
+        val englishGeneralDistractors = listOf(
             "By performing rituals and ceremonies",
             "By accumulating wealth and power",
             "By avoiding all worldly duties",
@@ -253,6 +278,8 @@ class DatasetIngestionPipeline(
             "By relying solely on intellectual knowledge",
             "By isolating oneself from society"
         )
+        
+        val generalDistractors = if (isTelugu) teluguGeneralDistractors else englishGeneralDistractors
         
         for (d in generalDistractors) {
             if (distractors.size >= count) break

@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.aipoweredgita.app.ui.theme.*
 
 @Composable
@@ -21,56 +22,46 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.2) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.3) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
-    Dialog(onDismissRequest = {
-        android.util.Log.d("WelcomeDialog", "Dialog dismissed via onDismissRequest")
-        onDismiss()
-    }) {
+    Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Close button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
+                // Header Icon
+                Text(
+                    text = "🎉",
+                    style = MaterialTheme.typography.displayMedium
+                )
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.0.2",
+                    text = "✨ What's New in v2.0.3",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
                     textAlign = TextAlign.Center
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                
                 // Introduction
                 Text(
-                    text = "Quiz history now separates Battle vs Normal, Qwen removed, and mixed-language questions fixed!",
+                    text = "Clean battle stats separation, removed 10Q legacy bar, and robust question loading!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface

@@ -60,15 +60,6 @@ fun QuizTab(
                 )
             }
         }
-        if (quiz10Stats != null) {
-            item {
-                FilterChip(
-                    selected = selectedQuizSize == 10,
-                    onClick = { onSelectQuizSize(10) },
-                    label = { Text("10Q (${quiz10Stats.totalAttempts})") }
-                )
-            }
-        }
         if (quiz15Stats != null) {
             item {
                 FilterChip(
