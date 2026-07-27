@@ -80,6 +80,9 @@ interface QuizQuestionBankDao {
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE generationMethod = :method")
     suspend fun getQuestionsBySource(method: String): Int
 
+    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE modelVersion = :language AND isActive = 1")
+    suspend fun getQuestionsByLanguage(language: String): Int
+
     // Check for duplicate questions by hash
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE questionHash = :hash")
     suspend fun countByHash(hash: String): Int

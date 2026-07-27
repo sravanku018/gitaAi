@@ -98,14 +98,22 @@ class QuizViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val db = GitaDatabase.getDatabase(application)
-                val count = db.quizQuestionBankDao().getTotalCount()
-                if (count < 100) {
-                    android.util.Log.d("QuizViewModel", "Auto-downloading questions (current: $count)...")
-                    val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, db.quizQuestionBankDao())
-                    // Import English only by default — Telugu imported separately when user selects it
+                val dao = db.quizQuestionBankDao()
+                val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, dao)
+
+                // Check per-language counts so both are imported correctly
+                val enCount = dao.getQuestionsByLanguage("english")
+                val teCount = dao.getQuestionsByLanguage("telugu")
+
+                if (enCount < 100) {
+                    android.util.Log.d("QuizViewModel", "Importing English questions (current: $enCount)...")
                     val imported = importer.importDataset(language = "english", batchSize = 500)
-                    val newCount = db.quizQuestionBankDao().getTotalCount()
-                    android.util.Log.d("QuizViewModel", "Auto-download complete: $imported → $newCount questions")
+                    android.util.Log.d("QuizViewModel", "English import done: $imported questions")
+                }
+                if (teCount < 100) {
+                    android.util.Log.d("QuizViewModel", "Importing Telugu questions (current: $teCount)...")
+                    val imported = importer.importDataset(language = "telugu", batchSize = 500)
+                    android.util.Log.d("QuizViewModel", "Telugu import done: $imported questions")
                 }
             } catch (e: Exception) {
                 android.util.Log.w("QuizViewModel", "Auto-download failed: ${e.message}")
@@ -184,9 +192,10 @@ class QuizViewModel @Inject constructor(
                 }
                 
                 val fetchLimit = maxOf(limit, 10)
-                // Use language-filtered query to avoid mixing English/Telugu questions
-                val currentLanguage = _quizState.value.language.lowercase().let {
-                    if (it.contains("tel")) "telugu" else "english"
+                // Map short language codes to modelVersion tags used during import
+                val currentLanguage = when (_quizState.value.language.lowercase().trim()) {
+                    "tel", "telugu", "te" -> "telugu"
+                    else -> "english"
                 }
                 val candidates = quizQuestionRepository.getNextQuestionsForLanguage(
                     minDiff, maxDiff, fetchLimit, currentLanguage
