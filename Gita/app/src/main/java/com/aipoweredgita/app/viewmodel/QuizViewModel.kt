@@ -197,17 +197,25 @@ class QuizViewModel @Inject constructor(
                     "tel", "telugu", "te" -> "telugu"
                     else -> "english"
                 }
+
+                android.util.Log.d("QuizViewModel", "=== NORMAL/TELUGU QUIZ LOAD ===")
+                android.util.Log.d("QuizViewModel", "Raw language: '${_quizState.value.language}', Mapped language: '$currentLanguage'")
+                android.util.Log.d("QuizViewModel", "Difficulty range: minDiff=$minDiff, maxDiff=$maxDiff, limit=$fetchLimit")
+
                 var candidates = quizQuestionRepository.getNextQuestionsForLanguage(
                     minDiff, maxDiff, fetchLimit, currentLanguage
                 )
+                android.util.Log.d("QuizViewModel", "Initial candidates for '$currentLanguage': count=${candidates.size}")
                 
                 // Filter out questions already asked in this quiz session
                 var available = candidates.filter { it.id !in sessionAskedIds }
+                android.util.Log.d("QuizViewModel", "Available candidates after session filter: count=${available.size}")
 
                 if (available.isEmpty()) {
-                    // Fallback 1: Ignore strict difficulty range and 24h cooldown for current language
+                    android.util.Log.d("QuizViewModel", "Fallback 1: Loading getFallbackQuestions for '$currentLanguage'...")
                     candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, currentLanguage)
                     available = candidates.filter { it.id !in sessionAskedIds }
+                    android.util.Log.d("QuizViewModel", "Fallback 1 candidates for '$currentLanguage': count=${candidates.size}, available=${available.size}")
                     if (available.isEmpty() && candidates.isNotEmpty()) {
                         sessionAskedIds.clear()
                         available = candidates
@@ -215,29 +223,32 @@ class QuizViewModel @Inject constructor(
                 }
 
                 if (available.isEmpty()) {
-                    // Fallback 2: Synchronous dataset import if questions are missing from DB
+                    android.util.Log.d("QuizViewModel", "Fallback 2: Synchronous dataset import for '$currentLanguage'...")
                     try {
                         val db = GitaDatabase.getDatabase(application)
                         val dao = db.quizQuestionBankDao()
                         val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, dao)
-                        importer.importDataset(language = currentLanguage, batchSize = 500)
-                        importer.importDataset(language = "english", batchSize = 500)
+                        val impTe = importer.importDataset(language = "telugu", batchSize = 500)
+                        val impEn = importer.importDataset(language = "english", batchSize = 500)
+                        android.util.Log.d("QuizViewModel", "Fallback 2 import results: telugu=$impTe, english=$impEn")
                         candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, currentLanguage)
                         available = candidates
                     } catch (e: Exception) {
-                        android.util.Log.w("QuizViewModel", "Fallback import failed: ${e.message}")
+                        android.util.Log.w("QuizViewModel", "Fallback 2 import failed: ${e.message}")
                     }
                 }
 
                 if (available.isEmpty()) {
-                    // Fallback 3: Get ANY active question from database regardless of language
+                    android.util.Log.d("QuizViewModel", "Fallback 3: Getting ANY active question regardless of language...")
                     candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, "")
                     available = candidates
+                    android.util.Log.d("QuizViewModel", "Fallback 3 candidates: count=${candidates.size}")
                 }
                 
                 if (available.isNotEmpty()) {
                     val q = available.first()
                     sessionAskedIds.add(q.id)
+                    android.util.Log.d("QuizViewModel", "SELECTED QUESTION: id=${q.id}, lang=${q.language}, text=${q.question.take(50)}")
                     val options = listOf(q.optionA, q.optionB, q.optionC, q.optionD).filter { it.isNotBlank() }
                     val correctAnswerIndex = when (q.correctAnswer.trim().uppercase()) {
                         "A" -> 0
