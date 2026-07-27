@@ -238,22 +238,24 @@ fun CoinTransactionItem(
     val isShareSource = entry.source == "share_sloka" || entry.source == "share" ||
         entry.source == "daily_share" || entry.source.contains("share")
 
+    val cleanDesc = if (entry.description.trim().startsWith("{")) "" else entry.description
+
     val label = when {
-        entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
+        entry.source == "signup" && cleanDesc.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
         entry.source == "signup" -> "Welcome bonus"
-        entry.source == "quiz_completion" -> "Quiz completed"
+        entry.source == "quiz_completion" || entry.source == "quiz" -> "Quiz completed"
         entry.source == "battle_quiz" -> "Battle Quiz"
         entry.source == "chapter_completion" -> "Chapter completed"
         isCheckinSource -> "Daily check-in"
         isShareSource -> "Daily share"
         isVoiceSource -> if (isEarn) "Voice chat" else "Voice chat question"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "Level up bonus"
-        else -> if (isEarn) "Earned coins" else "Spent coins"
+        else -> if (cleanDesc.isNotBlank()) cleanDesc else if (isEarn) "Earned coins" else "Spent coins"
     }
     
     val icon = when {
         entry.source == "signup" -> "🎉"
-        entry.source == "quiz_completion" -> "📚"
+        entry.source == "quiz_completion" || entry.source == "quiz" -> "📚"
         entry.source == "battle_quiz" -> "⚔️"
         entry.source == "chapter_completion" -> "📚"
         isCheckinSource -> "☀️"
@@ -264,10 +266,10 @@ fun CoinTransactionItem(
     }
         
     val supporting = when {
-        isVoiceSource && !isEarn -> entry.description.replace(Regex("(?i)asked question:\\s*"), "").take(35)
+        isVoiceSource && !isEarn -> cleanDesc.replace(Regex("(?i)asked question:\\s*"), "").take(35)
         entry.source == "signup" -> "Welcome bonus"
-        entry.source == "quiz_completion" -> "Quiz completed"
-        entry.source == "battle_quiz" -> "Battle fought"
+        entry.source == "quiz_completion" || entry.source == "quiz" -> "Quiz reward"
+        entry.source == "battle_quiz" -> "Battle reward"
         entry.source == "chapter_completion" -> "Chapter done"
         isCheckinSource -> "Daily reward"
         isShareSource -> "Sloka shared"
