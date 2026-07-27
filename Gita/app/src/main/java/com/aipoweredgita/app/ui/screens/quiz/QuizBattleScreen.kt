@@ -64,7 +64,8 @@ fun QuizBattleScreen(
 
     LaunchedEffect(Unit) {
         quizViewModel.setQuizLimit(999)  // Battle = unlimited questions
-        quizViewModel.setQuizLanguage("en")
+        val currentLang = java.util.Locale.getDefault().language
+        quizViewModel.setQuizLanguage(if (currentLang.startsWith("te")) "telugu" else "english")
     }
 
     // Timer
