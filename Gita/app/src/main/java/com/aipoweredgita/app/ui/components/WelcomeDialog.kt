@@ -24,7 +24,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.4) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.5) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -58,7 +58,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.0.4",
+                    text = "✨ What's New in v2.0.5",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,

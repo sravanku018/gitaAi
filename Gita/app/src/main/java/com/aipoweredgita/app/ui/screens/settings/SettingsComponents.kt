@@ -182,7 +182,7 @@ fun AboutSectionCard(context: android.content.Context) {
     val versionText = remember(context) {
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val name = packageInfo.versionName ?: "2.0.4"
+            val name = packageInfo.versionName ?: "2.0.5"
             val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode
             } else {
@@ -191,7 +191,7 @@ fun AboutSectionCard(context: android.content.Context) {
             }
             "Version: v$name - Build $code"
         } catch (e: Exception) {
-            "Version: v2.0.4 - Build 11"
+            "Version: v2.0.5 - Build 12"
         }
     }
 
