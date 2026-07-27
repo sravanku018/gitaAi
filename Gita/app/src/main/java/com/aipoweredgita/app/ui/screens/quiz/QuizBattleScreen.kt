@@ -62,9 +62,12 @@ fun QuizBattleScreen(
     var hasTriggeredGameOver by remember { mutableStateOf(false) }
     val quizViewModel: QuizBattleViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
+    val systemLang = if (java.util.Locale.getDefault().language.startsWith("te")) "telugu" else "english"
+    var selectedLanguage by remember { mutableStateOf(systemLang) }
+
     LaunchedEffect(Unit) {
         quizViewModel.setQuizLimit(999)  // Battle = unlimited questions
-        quizViewModel.setQuizLanguage("both")
+        quizViewModel.setQuizLanguage(selectedLanguage)
     }
 
     // Timer
@@ -111,6 +114,28 @@ fun QuizBattleScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = {
+                        val nextLang = when (selectedLanguage) {
+                            "english" -> "telugu"
+                            "telugu" -> "both"
+                            else -> "english"
+                        }
+                        selectedLanguage = nextLang
+                        quizViewModel.setQuizLanguage(nextLang)
+                        quizViewModel.loadNextQuestion()
+                    }) {
+                        Text(
+                            text = when (selectedLanguage) {
+                                "telugu" -> "తెలుగు"
+                                "both" -> "EN + TE"
+                                else -> "English"
+                            },
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
