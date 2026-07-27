@@ -42,28 +42,41 @@ android {
     signingConfigs {
         create("release") {
             val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val localP12 = File("/home/sravan/Downloads/16-10-2025/upload-key.p12")
+            val rootP12 = rootProject.file("upload-key.p12")
             val releaseKeystoreFile = rootProject.file("release.keystore")
+
             if (keystorePropertiesFile.exists()) {
                 val properties = Properties()
                 properties.load(FileInputStream(keystorePropertiesFile))
-                val keyStorePath = properties.getProperty("storeFile") ?: "release.keystore"
+                val keyStorePath = properties.getProperty("storeFile") ?: "upload-key.p12"
                 val resolvedStoreFile = rootProject.file(keyStorePath)
                 if (resolvedStoreFile.exists()) {
                     storeFile = resolvedStoreFile
-                    storePassword = properties.getProperty("storePassword") ?: ""
-                    keyAlias = properties.getProperty("keyAlias") ?: ""
-                    keyPassword = properties.getProperty("keyPassword") ?: ""
+                    storePassword = properties.getProperty("storePassword") ?: "password123"
+                    keyAlias = properties.getProperty("keyAlias") ?: "upload"
+                    keyPassword = properties.getProperty("keyPassword") ?: "password123"
                 }
             } else if (System.getenv("KEYSTORE_FILE") != null && File(System.getenv("KEYSTORE_FILE")).exists()) {
                 storeFile = File(System.getenv("KEYSTORE_FILE"))
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "password123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "password123"
+            } else if (rootP12.exists()) {
+                storeFile = rootP12
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "password123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "password123"
+            } else if (localP12.exists()) {
+                storeFile = localP12
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "password123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "password123"
             } else if (releaseKeystoreFile.exists()) {
                 storeFile = releaseKeystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "password123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "password123"
             }
         }
     }
