@@ -67,13 +67,27 @@ object CoinRewardEngine {
         val total = (preMultiplier * safe.yogaMultiplier).toInt().coerceAtLeast(0)
 
         val segCoins = if (safe.segmentCorrectMap.isNotEmpty()) {
-            val totalCorrect = safe.segmentCorrectMap.values.sum().coerceAtLeast(1)
-            safe.segmentCorrectMap.entries.associate { (seg, correct) ->
-                val ratio = correct.toFloat() / totalCorrect
-                val coins = ((accuracyBonus + streakBonus + checkinBonus) * safe.yogaMultiplier * ratio)
-                    .toInt().coerceAtLeast(0)
-                seg to coins
-            }.filter { it.value > 0 }
+            val canonicalCorrectMap = safe.segmentCorrectMap
+                .map { (segment, correct) ->
+                    val key = com.aipoweredgita.app.data.LearningSegment.values().find {
+                        it.name.equals(segment, ignoreCase = true) ||
+                        it.displayName.equals(segment, ignoreCase = true)
+                    }?.name ?: segment.uppercase().replace(" ", "_")
+
+                    key to correct
+                }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, counts) -> counts.sum() }
+
+            val totalCorrect = canonicalCorrectMap.values.sum().coerceAtLeast(1)
+
+            canonicalCorrectMap.mapValues { (_, correct) ->
+                ((accuracyBonus + streakBonus + checkinBonus) *
+                    safe.yogaMultiplier *
+                    (correct.toFloat() / totalCorrect))
+                    .toInt()
+                    .coerceAtLeast(0)
+            }.filterValues { it > 0 }
         } else emptyMap()
 
         val breakdown = buildString {

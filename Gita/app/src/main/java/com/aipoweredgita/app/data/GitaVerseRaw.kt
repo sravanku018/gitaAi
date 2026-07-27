@@ -129,6 +129,26 @@ data class GitaVerseRaw(
         // Determine if these verses were originally combined
         val wasCombined = verseNumbers.size > 1
 
+        if (verseNumbers.size > 1 && verseTexts.size == 1) {
+            // Preserve the combined item rather than pretending it represents only the first verse
+            return listOf(
+                GitaVerse(
+                    chapterNo = chapterNo,
+                    verseNo = verseNumbers.first(),
+                    chapterName = chapterName,
+                    language = language,
+                    verse = verseTexts.first(),
+                    transliteration = transliteration,
+                    synonyms = synonyms,
+                    audioLink = audioLink,
+                    translation = translation,
+                    purport = purportTexts,
+                    wasSeparated = false,
+                    originalCombinedGroup = verseNumbers
+                )
+            )
+        }
+
         // Create individual GitaVerse objects - one per verse text
         val count = if (verseTexts.isNotEmpty()) verseTexts.size else maxOf(verseNumbers.size, 1)
         val result = mutableListOf<GitaVerse>()

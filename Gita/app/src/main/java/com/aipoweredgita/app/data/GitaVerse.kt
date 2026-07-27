@@ -82,8 +82,9 @@ data class GitaVerse(
     // Original combined verse numbers (e.g., [4, 5, 6] if this was part of verses 4-5-6)
     val originalCombinedGroup: List<Int> = emptyList()
 ) {
-    // Helper properties for backward compatibility
-    val verseNoSerial: Int = 0
+    // Helper properties for backward compatibility and stable identity
+    val stableId: String get() = "$chapterNo:$verseNo"
+    val verseNoSerial: Int get() = verseNo
     val meaning: String get() = translation
     val explanation: String get() = purport.joinToString("\n\n")
 }

@@ -17,7 +17,7 @@ object CoinTransactionLogger {
     private const val MAX = 200
     private const val TAG = "CoinTxLogger"
 
-    fun log(context: Context, amount: Int, description: String, source: String = "") {
+    fun log(context: Context, amount: Int, description: String, source: String = "", eventKey: String? = null, id: String = java.util.UUID.randomUUID().toString()) {
         if (amount == 0) return
         val safeDesc = description.take(120)
         synchronized(this) {
@@ -44,6 +44,8 @@ object CoinTransactionLogger {
             }
 
             val entry = JSONObject().apply {
+                put("id", id)
+                if (!eventKey.isNullOrEmpty()) put("eventKey", eventKey)
                 put("amount", amount)
                 put("description", safeDesc)
                 put("timestamp", nowMs)
@@ -69,12 +71,10 @@ object CoinTransactionLogger {
         val src = source.lowercase()
         val desc = description.lowercase()
         return when {
-            src == "checkin_daily" || src == "daily_checkin" -> "checkin_daily"
-            src == "share_daily" || src == "daily_share" -> "share_daily"
-            src == "checkin_day7_bonus" || desc.contains("7-day check-in") || desc.contains("day 7") -> "checkin_day7_bonus"
-            src == "share_day7_bonus" || desc.contains("7-day share") -> "share_day7_bonus"
-            src.contains("check") || desc.contains("check") -> "checkin"
-            src.contains("share") || desc.contains("share") -> "share"
+            src == "checkin_day7_bonus" || desc.contains("7-day check-in") || desc.contains("day 7 check-in") -> "checkin_day7_bonus"
+            src == "share_day7_bonus" || desc.contains("7-day share") || desc.contains("day 7 share") -> "share_day7_bonus"
+            src.contains("check") || desc.contains("check") -> "checkin_daily"
+            src.contains("share") || desc.contains("share") -> "share_daily"
             src.contains("quiz") || desc.contains("quiz") -> "quiz"
             src.contains("voice") || desc.contains("voice") -> "voice"
             src.contains("chapter") || desc.contains("chapter") -> "chapter"
@@ -84,9 +84,22 @@ object CoinTransactionLogger {
     }
 
     private fun deduplicateJsonEntries(entries: List<JSONObject>): List<JSONObject> {
-        // Keep all transactions unless there is a real transaction/event ID
-        // to compare. Same-day equal-value transactions are valid.
-        return entries.sortedBy { it.optLong("timestamp", 0L) }
+        val seenKeys = mutableSetOf<String>()
+        val deduplicated = mutableListOf<JSONObject>()
+        val sorted = entries.sortedBy { it.optLong("timestamp", 0L) }
+        for (obj in sorted) {
+            val id = obj.optString("id", "")
+            val eventKey = obj.optString("eventKey", "")
+            val key = eventKey.ifEmpty { id }
+            if (key.isNotEmpty()) {
+                if (seenKeys.add(key)) {
+                    deduplicated.add(obj)
+                }
+            } else {
+                deduplicated.add(obj)
+            }
+        }
+        return deduplicated
     }
 
     fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
@@ -101,64 +114,41 @@ object CoinTransactionLogger {
 
             val serverJsonEntries = serverEntries.map { entry ->
                 JSONObject().apply {
+                    put("id", entry.id?.toString() ?: java.util.UUID.randomUUID().toString())
                     put("amount", entry.amount)
                     put("description", entry.description.take(120))
                     val ts = try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: System.currentTimeMillis() }
                              catch (_: Exception) { System.currentTimeMillis() }
                     put("timestamp", ts)
-                    put("type", entry.type)
-                    put("source", entry.source)
+                    put("type", if (entry.amount > 0) CoinTxType.EARN.name else CoinTxType.SPEND.name)
+                    val rawDesc = entry.description
+                    val src = when {
+                        rawDesc.contains("battle", ignoreCase = true) -> "battle_quiz"
+                        rawDesc.contains("quiz", ignoreCase = true) -> "quiz_completion"
+                        rawDesc.contains("check", ignoreCase = true) -> "checkin_daily"
+                        rawDesc.contains("share", ignoreCase = true) -> "share_daily"
+                        else -> "server_sync"
+                    }
+                    put("source", src)
                 }
             }
 
-            val serverSignatures = mutableMapOf<String, Int>()
-            serverJsonEntries.forEach { 
-                val src = it.optString("source", "")
-                val desc = it.optString("description", "")
-                val amount = it.optInt("amount", 0)
-                val ts = it.optLong("timestamp", 0L)
-                val dateStr = getEntryDateStr(ts)
-                val normSrc = normalizeSource(src, desc)
-                val sig = "${normSrc}_${amount}_${dateStr}"
-                serverSignatures[sig] = serverSignatures.getOrDefault(sig, 0) + 1
-            }
-
-            val existing = readJson(prefs)
-            val preservedLocal = mutableListOf<JSONObject>()
-            for (i in 0 until existing.length()) {
+            val existingArr = readJson(prefs)
+            val localOnlyList = mutableListOf<JSONObject>()
+            for (i in 0 until existingArr.length()) {
                 try {
-                    val obj = existing.getJSONObject(i)
-                    val ts = obj.optLong("timestamp", Long.MAX_VALUE)
+                    val obj = existingArr.getJSONObject(i)
+                    val ts = obj.optLong("timestamp", 0L)
                     if (ts < oldestServerTs) {
-                        preservedLocal.add(obj)
-                    } else {
-                        val src = obj.optString("source", "")
-                        val desc = obj.optString("description", "")
-                        val amount = obj.optInt("amount", 0)
-                        val dateStr = getEntryDateStr(ts)
-                        val normSrc = normalizeSource(src, desc)
-                        val sig = "${normSrc}_${amount}_${dateStr}"
-                        val serverCount = serverSignatures.getOrDefault(sig, 0)
-                        if (serverCount > 0) {
-                            serverSignatures[sig] = serverCount - 1
-                        } else {
-                            preservedLocal.add(obj)
-                        }
+                        localOnlyList.add(obj)
                     }
-                } catch (_: Exception) { /* skip corrupted */ }
+                } catch (_: Exception) { }
             }
 
-            val mergedList = mutableListOf<JSONObject>()
-            preservedLocal.forEach { mergedList.add(it) }
-            serverJsonEntries.forEach { mergedList.add(it) }
-            
-            val cleanList = deduplicateJsonEntries(mergedList)
-            
-            val arr = JSONArray()
-            cleanList.forEach { arr.put(it) }
-
-            while (arr.length() > MAX) arr.remove(0)
-            prefs.edit().putString(KEY, arr.toString()).commit()
+            val merged = deduplicateJsonEntries(localOnlyList + serverJsonEntries)
+            val finalArr = JSONArray()
+            merged.takeLast(MAX).forEach { finalArr.put(it) }
+            prefs.edit().putString(KEY, finalArr.toString()).commit()
         }
     }
 
@@ -185,12 +175,18 @@ object CoinTransactionLogger {
         val result = mutableListOf<CoinEntry>()
         for (obj in cleanList) {
             try {
+                val idStr = obj.optString("id", "").ifEmpty { java.util.UUID.randomUUID().toString() }
+                val eventKeyStr = obj.optString("eventKey", "").ifEmpty { null }
+                val srcStr = obj.optString("source", "").ifEmpty { null }
                 result.add(CoinEntry(
+                    id = idStr,
+                    eventKey = eventKeyStr,
                     amount = obj.optInt("amount", 0),
                     description = obj.optString("description", ""),
                     timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
                     type = try { CoinTxType.valueOf(obj.optString("type", CoinTxType.EARN.name)) }
-                        catch (_: IllegalArgumentException) { CoinTxType.EARN }
+                        catch (_: IllegalArgumentException) { CoinTxType.EARN },
+                    source = srcStr
                 ))
             } catch (_: JSONException) {
                 // skip corrupted entry
