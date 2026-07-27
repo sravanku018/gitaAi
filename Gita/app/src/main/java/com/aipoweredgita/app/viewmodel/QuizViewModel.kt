@@ -69,7 +69,6 @@ class QuizViewModel @Inject constructor(
     private val _quizState = MutableStateFlow(QuizState())
     val quizState: StateFlow<QuizState> = _quizState.asStateFlow()
 
-    private val mlManager = HuggingFaceMLManager(application)
     private val difficultyEngine = AdaptiveDifficultyEngine()
     private var userState = AdaptiveDifficultyEngine.UserState()
     private val eloSystem = EloRatingSystem()
@@ -88,11 +87,6 @@ class QuizViewModel @Inject constructor(
             userState = AdaptiveDifficultyEngine.loadState(prefs)
             studentEntity = ELOEntity(id = "student", rating = 1500.0 + (userState.skillLevel - 5) * 50.0, type = EntityType.STUDENT)
             studentAbility = StudentAbility(studentId = "student", theta = (userState.skillLevel - 5) * 0.5)
-            val success = com.aipoweredgita.app.ml.TranslationManager().downloadModelsIfNeeded()
-            if (!success) {
-                _sideEffect.send(QuizSideEffect.ShowError("Failed to download translation models"))
-            }
-            mlManager.initializeModels()
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -500,7 +494,6 @@ class QuizViewModel @Inject constructor(
         super.onCleared()
         val prefs = application.getSharedPreferences("quiz_prefs", android.content.Context.MODE_PRIVATE)
         AdaptiveDifficultyEngine.saveState(userState, prefs)
-        mlManager.close()
     }
 
     private fun startTimer() {
