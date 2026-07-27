@@ -21,7 +21,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.1) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.2) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -59,7 +59,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.0.1",
+                    text = "✨ What's New in v2.0.2",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -70,7 +70,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Mahabharata Battle Quiz, Groq AI by default, and fully offline datasets — all in this update!",
+                    text = "Quiz history now separates Battle vs Normal, Qwen removed, and mixed-language questions fixed!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface

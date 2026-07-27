@@ -118,7 +118,13 @@ fun QuizTab(
         30   -> quiz30Stats
         else -> null
     }
-    val displayAttempts = currentStats?.attempts ?: attempts
+    // When viewing "All" or a specific quiz size, exclude battle_quiz attempts
+    // When viewing "⚔️ Battle", only show battle_quiz attempts
+    val displayAttempts = when {
+        selectedQuizSize == -1 -> currentStats?.attempts ?: attempts.filter { it.quizType == "battle_quiz" }
+        currentStats != null   -> currentStats.attempts
+        else                   -> attempts.filter { it.quizType != "battle_quiz" }
+    }
     val displayAvgAccuracy = currentStats?.averageAccuracy ?: averageAccuracy
     val displayAvgTime = currentStats?.averageTime ?: averageTime
 
@@ -220,13 +226,13 @@ fun QuizTab(
                 }
             }
 
-            // Recent attempts
+            // Recent attempts — show all (no arbitrary 10-item cap)
             Text(
                 text = if (selectedQuizSize == -1) "Recent Battles" else "Recent Attempts",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            displayAttempts.take(10).forEach { attempt ->
+            displayAttempts.forEach { attempt ->
                 AHQuizAttemptCard(attempt = attempt, isBattle = attempt.quizType == "battle_quiz")
             }
 

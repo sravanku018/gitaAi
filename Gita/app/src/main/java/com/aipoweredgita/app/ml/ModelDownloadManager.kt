@@ -50,12 +50,6 @@ class ModelDownloadManager @Inject constructor(
 
     private val allModels = listOf(
         ModelInfo(
-            name = "Qwen3 0.6B",
-            size = "580 MB",
-            fileName = "qwen3-0.6b-int4.litertlm",
-            expectedBytes = 580_000_000L
-        ),
-        ModelInfo(
             name = "Gemma 4 2B",
             size = "2.58 GB",
             fileName = "gemma-4-E2B-it.litertlm",
@@ -66,9 +60,9 @@ class ModelDownloadManager @Inject constructor(
     val models: List<ModelInfo>
         get() = allModels
 
-    // Only Qwen3 is mandatory/downloaded automatically. Gemma 4 is optional on user instruction.
+    // Gemma 4 2B is the only offline model (optional, flagship only). Groq/NVIDIA used by default.
     private val mandatoryModelFileName: String
-        get() = "qwen3-0.6b-int4.litertlm"
+        get() = "gemma-4-E2B-it.litertlm"
 
     fun hasEnoughSpaceForModel(expectedBytes: Long): Boolean {
         val freeSpace = context.filesDir.freeSpace
@@ -101,7 +95,7 @@ class ModelDownloadManager @Inject constructor(
 
     /**
      * Check if all mandatory models are downloaded.
-     * High-end: requires Gemma 4. Others: requires Qwen3.
+     * Gemma 4 2B is optional (flagship offline voice only); cloud (Groq/NVIDIA) is the default.
      * MUST be called from Dispatchers.IO.
      */
     suspend fun areAllModelsDownloaded(): Boolean = withContext(Dispatchers.IO) {
@@ -193,8 +187,8 @@ class ModelDownloadManager @Inject constructor(
                 val manifest = loadManifest()
                 probeModelSizes(manifest)
                 
-                // Only download Qwen3 automatically; do not download Gemma 4 automatically.
-                val targets = models.filter { !it.name.contains("Gemma 4") }
+                // Only download Gemma 4 when user explicitly requests it — cloud (Groq/NVIDIA) is default.
+                val targets = models.filter { it.name.contains("Gemma 4") && modelExists(it.fileName) }
                 val expectedTotal = targets.sumOf { measuredSizes[it.fileName] ?: it.expectedBytes }
                 
                 // Pre-flight space check
