@@ -325,7 +325,11 @@ data class CoinHistoryEntry(
     val idempotency_key: String? = null,
     @com.google.gson.annotations.SerializedName(value = "created_at", alternate = ["createdAt"])
     val created_at: String = ""
-)
+) {
+    val isSpend: Boolean get() = type.equals("SPEND", ignoreCase = true) || amount < 0
+    val isEarn: Boolean get() = !isSpend
+    val signedAmount: Int get() = if (isSpend) -kotlin.math.abs(amount) else kotlin.math.abs(amount)
+}
 
 data class VoiceCostResponse(
     val cost: Int = 2,

@@ -35,8 +35,8 @@ interface QuizQuestionBankDao {
     @Query("""
         SELECT * FROM quiz_question_bank
         WHERE difficulty BETWEEN :minDiff AND :maxDiff
-        AND isActive = 1 AND isApproved = 1
-        AND lastAskedAt < :cooldownCutoff
+        AND (isActive = 1 OR isActive IS NULL)
+        AND (lastAskedAt IS NULL OR lastAskedAt = 0 OR lastAskedAt < :cooldownCutoff)
         ORDER BY 
             usageCount ASC,
             ABS(difficulty - :targetDifficulty) ASC,
@@ -52,13 +52,12 @@ interface QuizQuestionBankDao {
     ): List<QuizQuestionBank>
 
     // LANGUAGE-FILTERED QUERY: same as above but only returns questions in specified language.
-    // language maps to modelVersion field ("english" or "telugu").
     @Query("""
         SELECT * FROM quiz_question_bank
-        WHERE (language = :language OR modelVersion = :language)
+        WHERE (:language = '' OR LOWER(language) = LOWER(:language) OR LOWER(modelVersion) = LOWER(:language))
         AND difficulty BETWEEN :minDiff AND :maxDiff
-        AND isActive = 1 AND isApproved = 1
-        AND lastAskedAt < :cooldownCutoff
+        AND (isActive = 1 OR isActive IS NULL)
+        AND (lastAskedAt IS NULL OR lastAskedAt = 0 OR lastAskedAt < :cooldownCutoff)
         ORDER BY 
             usageCount ASC,
             ABS(difficulty - :targetDifficulty) ASC,
@@ -77,8 +76,8 @@ interface QuizQuestionBankDao {
     // FALLBACK QUERY: ignores difficulty and cooldown to ensure questions are always returned
     @Query("""
         SELECT * FROM quiz_question_bank
-        WHERE isActive = 1 AND isApproved = 1
-        AND (:language = '' OR language = :language OR modelVersion = :language)
+        WHERE (isActive = 1 OR isActive IS NULL)
+        AND (:language = '' OR LOWER(language) = LOWER(:language) OR LOWER(modelVersion) = LOWER(:language))
         ORDER BY usageCount ASC, RANDOM()
         LIMIT :limit
     """)

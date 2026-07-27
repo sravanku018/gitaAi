@@ -219,7 +219,7 @@ fun CoinTransactionItem(
     entry: CoinHistoryEntry,
     index: Int
 ) {
-    val isEarn = entry.amount > 0 || (entry.amount == 0 && entry.type == "EARN")
+    val isEarn = entry.isEarn
     val alpha by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(300, delayMillis = (minOf(index, 25) * 40)),
@@ -317,10 +317,10 @@ fun CoinTransactionItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (entry.amount > 0) "+${entry.amount}" else "${entry.amount}",
+                    if (isEarn) "+${kotlin.math.abs(entry.signedAmount)}" else "-${kotlin.math.abs(entry.signedAmount)}",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isEarn) Color(0xFF1B6B36) else Color(0xFFBA1A1A)
+                    color = iconColor
                 )
                 Text(dateStr, fontSize = 10.sp, color = Color(0xFF9A8D71))
             }

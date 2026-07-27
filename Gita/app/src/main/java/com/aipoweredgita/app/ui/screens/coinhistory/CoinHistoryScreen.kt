@@ -99,12 +99,12 @@ fun CoinHistoryScreen(
     }
 
     val filtered = when (activeFilter) {
-        "earned" -> allHistory.filter { it.amount > 0 }
-        "spent" -> allHistory.filter { it.amount < 0 }
+        "earned" -> allHistory.filter { it.isEarn }
+        "spent" -> allHistory.filter { it.isSpend }
         else -> allHistory
     }
 
-    val totalSpent = allHistory.filter { it.amount < 0 }.sumOf { -it.amount }
+    val totalSpent = allHistory.filter { it.isSpend }.sumOf { kotlin.math.abs(it.signedAmount) }
     val displayNet = coinBalance
     val totalEarned = displayNet + totalSpent
 
