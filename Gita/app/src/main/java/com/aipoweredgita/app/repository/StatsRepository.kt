@@ -453,15 +453,23 @@ class StatsRepository(
 
         val coinsAwarded = if (isGuest) {
             userStatsDao.addKrishnaCoins(fallbackCoins)
-            val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
-            CoinTransactionLogger.log(appContext, fallbackCoins, "$desc (guest)", source = "share_sloka")
+            if (isWeeklyBonus) {
+                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share (guest)", source = "share_daily")
+                CoinTransactionLogger.log(appContext, 10, "7-day share bonus (guest)", source = "share_day7_bonus")
+            } else {
+                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily")
+            }
             fallbackCoins
         } else {
             ensureUserSynced()
             userId()?.let { uid ->
                 userStatsDao.addKrishnaCoins(fallbackCoins)
-                val desc = if (isWeeklyBonus) "Share day 7 + week bonus" else "Daily sloka share"
-                CoinTransactionLogger.log(appContext, fallbackCoins, desc, source = "share_sloka")
+                if (isWeeklyBonus) {
+                    CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share", source = "share_daily")
+                    CoinTransactionLogger.log(appContext, 10, "7-day share bonus", source = "share_day7_bonus")
+                } else {
+                    CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share", source = "share_daily")
+                }
                 tracker.isShareSynced = true
 
                 try {
@@ -674,7 +682,7 @@ class StatsRepository(
 
     suspend fun claimDailyReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description, source = "daily_checkin")
+        CoinTransactionLogger.log(appContext, coins, description, source = "checkin_daily")
 
         if (!authPrefs.isGuestUser) {
             syncCheckinToCloud(coins)
@@ -683,7 +691,7 @@ class StatsRepository(
 
     suspend fun claimShareReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description, source = "share_sloka")
+        CoinTransactionLogger.log(appContext, coins, description, source = "share_daily")
 
         if (!authPrefs.isGuestUser) {
             syncShareToCloud(coins)

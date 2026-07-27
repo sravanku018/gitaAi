@@ -284,7 +284,7 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         return 0
     }
 
-    fun getCurrentCheckinDay(): Int = getState().checkinDay.coerceIn(1, 7)
+    fun getCurrentCheckinDay(): Int = getState().checkinDay.coerceIn(0, 7)
 
     data class WeeklyState(val week: Int, val reward: Int)
 

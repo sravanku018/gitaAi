@@ -27,18 +27,16 @@ object CoinTransactionLogger {
             val dateStr = getEntryDateStr(nowMs)
             val normSrc = normalizeSource(source, safeDesc)
 
-            if (normSrc == "checkin" || normSrc == "share") {
-                val key = "${normSrc}_${amount}_${dateStr}"
+            if (normSrc == "checkin_daily" || normSrc == "share_daily") {
                 for (i in 0 until arr.length()) {
                     try {
                         val obj = arr.getJSONObject(i)
                         val objSrc = obj.optString("source", "")
                         val objDesc = obj.optString("description", "")
-                        val objAmt = obj.optInt("amount", 0)
                         val objTs = obj.optLong("timestamp", 0L)
                         val objDateStr = getEntryDateStr(objTs)
                         val objNormSrc = normalizeSource(objSrc, objDesc)
-                        if ("${objNormSrc}_${objAmt}_${objDateStr}" == key) {
+                        if (objNormSrc == normSrc && objDateStr == dateStr) {
                             return
                         }
                     } catch (_: Exception) { }
@@ -71,6 +69,10 @@ object CoinTransactionLogger {
         val src = source.lowercase()
         val desc = description.lowercase()
         return when {
+            src == "checkin_daily" || src == "daily_checkin" -> "checkin_daily"
+            src == "share_daily" || src == "daily_share" -> "share_daily"
+            src == "checkin_day7_bonus" || desc.contains("7-day check-in") || desc.contains("day 7") -> "checkin_day7_bonus"
+            src == "share_day7_bonus" || desc.contains("7-day share") -> "share_day7_bonus"
             src.contains("check") || desc.contains("check") -> "checkin"
             src.contains("share") || desc.contains("share") -> "share"
             src.contains("quiz") || desc.contains("quiz") -> "quiz"
@@ -82,23 +84,9 @@ object CoinTransactionLogger {
     }
 
     private fun deduplicateJsonEntries(entries: List<JSONObject>): List<JSONObject> {
-        val seen = mutableSetOf<String>()
-        val deduplicated = mutableListOf<JSONObject>()
-        // Sort newest first to keep the newest entry of duplicates
-        val sorted = entries.sortedByDescending { it.optLong("timestamp", 0L) }
-        for (obj in sorted) {
-            val src = obj.optString("source", "")
-            val desc = obj.optString("description", "")
-            val amount = obj.optInt("amount", 0)
-            val ts = obj.optLong("timestamp", 0L)
-            val dateStr = getEntryDateStr(ts)
-            val normSrc = normalizeSource(src, desc)
-            val key = "${normSrc}_${amount}_${dateStr}"
-            if (seen.add(key)) {
-                deduplicated.add(obj)
-            }
-        }
-        return deduplicated.sortedBy { it.optLong("timestamp", 0L) }
+        // Keep all transactions unless there is a real transaction/event ID
+        // to compare. Same-day equal-value transactions are valid.
+        return entries.sortedBy { it.optLong("timestamp", 0L) }
     }
 
     fun syncFromServer(context: Context, serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>) {
