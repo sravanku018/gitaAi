@@ -555,7 +555,7 @@ fun SettingsScreen(
                                                 context,
                                                 com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizQuestionBankDao()
                                             )
-                                            val count = importer.importDataset(language = "english") { imported, total ->
+                                            val count = importer.importDataset(language = "all") { imported, total ->
                                                 datasetImportProgress = "Imported $imported questions..."
                                                 val progress = if (total > 0) (imported * 100 / total) else 0
                                                 com.aipoweredgita.app.ui.showDatasetImportNotification(

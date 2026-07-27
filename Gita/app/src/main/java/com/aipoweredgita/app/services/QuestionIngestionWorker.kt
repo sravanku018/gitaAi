@@ -54,7 +54,7 @@ class QuestionIngestionWorker(
             val importer = BhagavadGitaQAImporter(applicationContext, dao)
 
             val imported = importer.importDataset(
-                language = "english",
+                language = "all",
                 batchSize = 500
             ) { count, total ->
                 Log.d(TAG, "Importing: $count / $total")

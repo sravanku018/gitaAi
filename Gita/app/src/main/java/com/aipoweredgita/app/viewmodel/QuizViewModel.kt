@@ -108,7 +108,7 @@ class QuizViewModel @Inject constructor(
                 if (count < 100) {
                     android.util.Log.d("QuizViewModel", "Auto-downloading questions (current: $count)...")
                     val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, db.quizQuestionBankDao())
-                    val imported = importer.importDataset(language = "english", batchSize = 500)
+                    val imported = importer.importDataset(language = "all", batchSize = 500)
                     val newCount = db.quizQuestionBankDao().getTotalCount()
                     android.util.Log.d("QuizViewModel", "Auto-download complete: $imported → $newCount questions")
                 }
