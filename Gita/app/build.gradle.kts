@@ -42,17 +42,25 @@ android {
     signingConfigs {
         create("release") {
             val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val releaseKeystoreFile = rootProject.file("release.keystore")
             if (keystorePropertiesFile.exists()) {
                 val properties = Properties()
                 properties.load(FileInputStream(keystorePropertiesFile))
                 val keyStorePath = properties.getProperty("storeFile") ?: "release.keystore"
-                storeFile = rootProject.file(keyStorePath)
-                storePassword = properties.getProperty("storePassword") ?: ""
-                keyAlias = properties.getProperty("keyAlias") ?: ""
-                keyPassword = properties.getProperty("keyPassword") ?: ""
-            } else {
-                val envKeystore = System.getenv("KEYSTORE_FILE") ?: "release.keystore"
-                storeFile = rootProject.file(envKeystore)
+                val resolvedStoreFile = rootProject.file(keyStorePath)
+                if (resolvedStoreFile.exists()) {
+                    storeFile = resolvedStoreFile
+                    storePassword = properties.getProperty("storePassword") ?: ""
+                    keyAlias = properties.getProperty("keyAlias") ?: ""
+                    keyPassword = properties.getProperty("keyPassword") ?: ""
+                }
+            } else if (System.getenv("KEYSTORE_FILE") != null && File(System.getenv("KEYSTORE_FILE")).exists()) {
+                storeFile = File(System.getenv("KEYSTORE_FILE"))
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            } else if (releaseKeystoreFile.exists()) {
+                storeFile = releaseKeystoreFile
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: ""
@@ -64,7 +72,12 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
