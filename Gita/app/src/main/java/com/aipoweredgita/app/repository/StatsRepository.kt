@@ -159,7 +159,7 @@ class StatsRepository(
         userStatsDao.addCorrectAnswers(score)
 
         // Track quiz time in daily activity
-        val today = LocalDate.now().toString()
+        val today = DailyRewardsTracker.getInstance(appContext).nowLocal()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
         dailyActivityDao?.addQuizSeconds(today, if (timeSpentSeconds > 0) timeSpentSeconds else 60)
 
@@ -320,7 +320,7 @@ class StatsRepository(
 
     suspend fun trackVerseRead() {
         userStatsDao.incrementVersesRead()
-        val today = LocalDate.now().toString()
+        val today = DailyRewardsTracker.getInstance(appContext).nowLocal()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
         dailyActivityDao?.addVerses(today, 1)
         updateStreak()
@@ -334,7 +334,7 @@ class StatsRepository(
         }
 
         // Also update daily_activity table for calendar heat map
-        val today = LocalDate.now().toString()
+        val today = DailyRewardsTracker.getInstance(appContext).nowLocal()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
         when (mode) {
             ModeType.NORMAL -> dailyActivityDao?.addNormalSeconds(today, seconds)
