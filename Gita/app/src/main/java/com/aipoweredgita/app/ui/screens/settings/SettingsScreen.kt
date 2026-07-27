@@ -62,11 +62,7 @@ fun SettingsScreen(
     var modelStatuses by remember { mutableStateOf<List<ModelDownloadManager.ModelStatus>>(emptyList()) }
     val allDownloaded = remainingBytes <= 0L
 
-    val qwenWorkInfo by com.aipoweredgita.app.services.QwenDownloadWorker
-        .getDownloadStatusFlow(context, "Qwen3 0.6B")
-        .collectAsStateWithLifecycle(initialValue = null)
-    val isQwenDownloading = com.aipoweredgita.app.services.QwenDownloadWorker.isDownloading(context, "Qwen3 0.6B")
-    val qwenDownloadProgress = qwenWorkInfo?.progress?.getInt("overallProgress", 0) ?: 0
+    // Qwen removed — Groq/NVIDIA are default cloud providers
 
     val gemmaWorkInfo by com.aipoweredgita.app.services.GemmaDownloadWorker
         .getDownloadStatusFlow(context)
@@ -79,8 +75,8 @@ fun SettingsScreen(
     val uiCfg = LocalUiConfig.current
     val tier = com.aipoweredgita.app.utils.DeviceTierDetector.detect(context)
     val deviceTier = tier
-    var selectedModel by remember { mutableStateOf(prefs.getString("selected_ai_model", "Auto (Recommended)") ?: "Auto (Recommended)") }
-    val modelOptions = listOf("Auto (Recommended)", "Qwen3 0.6B", "Gemma 4 2B (Advanced)", "NVIDIA 70B (Cloud)", "Groq (Cloud)")
+    var selectedModel by remember { mutableStateOf(prefs.getString("selected_ai_model", "Groq (Cloud)") ?: "Groq (Cloud)") }
+    val modelOptions = listOf("Groq (Cloud)", "NVIDIA 70B (Cloud)", "Gemma 4 2B (Offline Voice)")
 
     // FIX: declare refreshStats BEFORE LaunchedEffect that calls it
     fun refreshStats() {
@@ -106,9 +102,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) { refreshStats() }
 
     // Auto-refresh when downloads complete
-    LaunchedEffect(qwenWorkInfo) {
-        if (qwenWorkInfo?.state == androidx.work.WorkInfo.State.SUCCEEDED) refreshStats()
-    }
+    // Qwen removed — no download tracking needed
     LaunchedEffect(gemmaWorkInfo) {
         if (gemmaWorkInfo?.state == androidx.work.WorkInfo.State.SUCCEEDED) refreshStats()
     }
@@ -272,7 +266,7 @@ fun SettingsScreen(
                         Text("AI Model Selection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = textPrimary.copy(alpha = 0.9f))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Choose which AI model to use for quiz generation and analysis:", style = MaterialTheme.typography.bodySmall, color = textSecondary)
+                    Text("Choose AI provider for chat, analysis and recommendations:", style = MaterialTheme.typography.bodySmall, color = textSecondary)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     modelOptions.forEach { model ->
@@ -280,15 +274,12 @@ fun SettingsScreen(
                         val isGemma4 = model.contains("Gemma 4")
                         val isDisabled = isGemma4 && !isDeviceHighEnd
                         val modelDescription = when {
-                            model.contains("Auto") -> "Dynamically select the best model based on your device specs"
-                            model.contains("Qwen3") -> "Fast 580MB LLM optimized for multilingual text"
-                            model.contains("Gemma 4") -> "Powerful 2.58GB LLM for voice + deep analysis (8GB+ RAM)"
-                            model.contains("NVIDIA") -> "Nemotron 70B — fast, Telugu-optimized (cloud-based)"
-                            model.contains("Groq") -> "Fastest cloud responses via Groq (requires internet)"
+                            model.contains("Groq") -> "⚡ Default — fastest cloud AI, no download required"
+                            model.contains("NVIDIA") -> "🔥 NVIDIA Nemotron 70B — powerful cloud AI, Telugu-optimized"
+                            model.contains("Gemma 4") -> "📴 Offline voice AI — 2.58GB download, requires 8GB+ RAM"
                             else -> ""
                         }
-                        val isSelected = selectedModel == model ||
-                                (model == "Auto (Recommended)" && !selectedModel.contains("Qwen3") && !selectedModel.contains("Gemma") && !selectedModel.contains("NVIDIA") && !selectedModel.contains("Groq"))
+                        val isSelected = selectedModel == model
 
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).graphicsLayer { alpha = if (isDisabled) 0.5f else 1f },
@@ -316,31 +307,7 @@ fun SettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    val qwenStatus = modelStatuses.firstOrNull { it.name.contains("Qwen3") }
-                    if (qwenStatus != null) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (qwenStatus.isDownloaded) "✓ Qwen3 model downloaded" else "⚠ Qwen3 model not downloaded",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (qwenStatus.isDownloaded) gold else CrimsonDeep
-                                )
-                                if (isQwenDownloading) {
-                                    Text("Downloading: $qwenDownloadProgress%", style = MaterialTheme.typography.bodySmall, color = gold)
-                                }
-                            }
-                            if (!qwenStatus.isDownloaded) {
-                                if (isQwenDownloading) {
-                                    TextButton(onClick = {
-                                        com.aipoweredgita.app.services.QwenDownloadWorker.cancelDownload(context)
-                                        scope.launch { delay(500); refreshStats() }
-                                    }, colors = ButtonDefaults.textButtonColors(contentColor = gold)) { Text("Cancel") }
-                                } else {
-                                    TextButton(onClick = { com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context) }, colors = ButtonDefaults.textButtonColors(contentColor = gold)) { Text("Download") }
-                                }
-                            }
-                        }
-                    }
+                    // Groq/NVIDIA are cloud — no download status needed
 
                     Spacer(modifier = Modifier.height(8.dp))
                     val gemmaStatus = modelStatuses.firstOrNull { it.name.contains("Gemma 4") }
@@ -426,13 +393,10 @@ fun SettingsScreen(
                                         if (modelStatus.isDownloaded) {
                                             Icon(Icons.Default.CheckCircle, contentDescription = "Ready", tint = gold)
                                         } else {
-                                            val isThisModelDownloading = (isGemmaDownloading && modelStatus.name.contains("Gemma 4", ignoreCase = true)) ||
-                                                    (isQwenDownloading && modelStatus.name.contains("Qwen3", ignoreCase = true))
+                                            val isThisModelDownloading = isGemmaDownloading && modelStatus.name.contains("Gemma 4", ignoreCase = true)
                                             
                                             if (isThisModelDownloading) {
-                                                val prog = if (modelStatus.name.contains("Qwen3", ignoreCase = true)) qwenDownloadProgress 
-                                                           else gemmaDownloadProgress
-                                                Text("$prog%", color = gold)
+                                                Text("$gemmaDownloadProgress%", color = gold)
                                             } else {
                                                 val isGemma4Locked = modelStatus.name.contains("Gemma 4") && deviceTier != com.aipoweredgita.app.utils.DeviceTier.FLAGSHIP
                                                 
@@ -440,11 +404,9 @@ fun SettingsScreen(
                                                     onClick = {
                                                         if (modelStatus.name.contains("Gemma 4", ignoreCase = true)) {
                                                             com.aipoweredgita.app.services.GemmaDownloadWorker.scheduleImmediateDownload(context)
-                                                        } else if (modelStatus.name.contains("Qwen", ignoreCase = true)) {
-                                                            com.aipoweredgita.app.services.QwenDownloadWorker.scheduleImmediateDownload(context, modelStatus.name)
                                                         }
                                                     },
-                                                    enabled = !checkingModels && !isGemmaDownloading && !isQwenDownloading && !isGemma4Locked,
+                                                    enabled = !checkingModels && !isGemmaDownloading && !isGemma4Locked,
                                                     colors = ButtonDefaults.outlinedButtonColors(
                                                         contentColor = if (isGemma4Locked) textSecondary else gold
                                                     ),
