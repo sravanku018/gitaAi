@@ -351,10 +351,10 @@ class ProfileViewModel @Inject constructor(
                         desc.contains("quiz") -> "quiz_completion"
                         desc.contains("check") || desc.contains("checkin") -> "checkin_day"
                         desc.contains("share") -> "share_sloka"
-                        desc.contains("voice") -> "voice_chat"
+                        desc.contains("voice") || desc.contains("asked") || desc.contains("question") -> "voice_chat"
                         desc.contains("chapter") -> "chapter_completion"
                         desc.contains("level") -> "level_up_bonus"
-                        else -> "other"
+                        else -> if (tx.amount < 0) "voice_chat" else "other"
                     }
                 },
                 description = tx.description,

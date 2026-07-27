@@ -232,20 +232,23 @@ fun CoinTransactionItem(
         if (parsed != null) localFmt.format(parsed) else ""
     } catch (_: Exception) { "" }
 
+    val isVoiceSource = entry.source == "voice_chat" || entry.source == "voice" || entry.description.lowercase().contains("question") || entry.description.lowercase().contains("asked")
+    val isCheckinSource = entry.source == "checkin_day" || entry.source == "checkin" ||
+        entry.source == "daily_checkin" || entry.source.contains("checkin")
+    val isShareSource = entry.source == "share_sloka" || entry.source == "share" ||
+        entry.source == "daily_share" || entry.source.contains("share")
+
     val label = when {
         entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
         entry.source == "signup" -> "Welcome bonus"
         entry.source == "quiz_completion" -> "Quiz completed"
         entry.source == "battle_quiz" -> "Battle Quiz"
         entry.source == "chapter_completion" -> "Chapter completed"
-        entry.source == "checkin_day" || entry.source == "checkin" ||
-        entry.source == "daily_checkin" || entry.source.contains("checkin") -> "Daily check-in"
-        entry.source == "share_sloka" || entry.source == "share" ||
-        entry.source == "daily_share" || entry.source.contains("share") -> "Daily share"
-        entry.source == "voice_chat" || entry.source == "voice" ->
-            if (isEarn) "Voice chat" else "Voice chat question"
+        isCheckinSource -> "Daily check-in"
+        isShareSource -> "Daily share"
+        isVoiceSource -> if (isEarn) "Voice chat" else "Voice chat question"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "Level up bonus"
-        else -> entry.description.ifBlank { if (isEarn) "Earned" else "Spent" }
+        else -> if (isEarn) "Earned coins" else "Spent coins"
     }
     
     val icon = when {
@@ -253,30 +256,21 @@ fun CoinTransactionItem(
         entry.source == "quiz_completion" -> "📚"
         entry.source == "battle_quiz" -> "⚔️"
         entry.source == "chapter_completion" -> "📚"
-        entry.source == "checkin_day" || entry.source == "checkin" ||
-        entry.source == "daily_checkin" || entry.source.contains("checkin") -> "☀️"
-        entry.source == "share_sloka" || entry.source == "share" ||
-        entry.source == "daily_share" || entry.source.contains("share") -> "📖"
-        entry.source == "voice_chat" || entry.source == "voice" -> "🎙"
+        isCheckinSource -> "☀️"
+        isShareSource -> "📖"
+        isVoiceSource -> "🎙"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "⬆"
         else -> if (isEarn) "✦" else "◈"
     }
-    
-    val isVoiceSource = entry.source == "voice_chat" || entry.source == "voice"
-    val isCheckinSource = entry.source == "checkin_day" || entry.source == "checkin" ||
-        entry.source == "daily_checkin" || entry.source.contains("checkin")
-    val isShareSource = entry.source == "share_sloka" || entry.source == "share" ||
-        entry.source == "daily_share" || entry.source.contains("share")
         
-    val supporting = if (isVoiceSource && !isEarn) {
-        entry.description.take(40)
-    } else when {
-        entry.source == "signup" -> "Welcome"
-        entry.source == "quiz_completion" -> "Completed"
+    val supporting = when {
+        isVoiceSource && !isEarn -> entry.description.replace(Regex("(?i)asked question:\\s*"), "").take(35)
+        entry.source == "signup" -> "Welcome bonus"
+        entry.source == "quiz_completion" -> "Quiz completed"
         entry.source == "battle_quiz" -> "Battle fought"
         entry.source == "chapter_completion" -> "Chapter done"
         isCheckinSource -> "Daily reward"
-        isShareSource -> "Shared"
+        isShareSource -> "Sloka shared"
         isVoiceSource -> "Voice chat"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "Bonus"
         else -> ""
