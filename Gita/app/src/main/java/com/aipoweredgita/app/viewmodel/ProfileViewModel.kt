@@ -299,14 +299,12 @@ class ProfileViewModel @Inject constructor(
             val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
                 ?: _stats.value?.userId?.takeIf { it.isNotEmpty() }
             
-            if (effectiveUid == null || effectiveUid.isEmpty()) return@launch
-
-            if (isGuest) {
+            if (isGuest || effectiveUid == null || effectiveUid.isEmpty()) {
                 _coinHistory.value = buildLocalHistory()
             } else {
                 val token = authPrefs.token
                 var serverLoaded = false
-                if (token != null) {
+                if (!token.isNullOrEmpty()) {
                     try {
                         val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
                             effectiveUid, "Bearer $token", limit = 500
@@ -327,7 +325,7 @@ class ProfileViewModel @Inject constructor(
                         
                         serverLoaded = true
                     } catch (e: Exception) {
-                        // fallback below
+                        android.util.Log.e("ProfileViewModel", "Failed to fetch server coin history: ${e.message}")
                     }
                 }
                 
@@ -346,20 +344,23 @@ class ProfileViewModel @Inject constructor(
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }
         com.aipoweredgita.app.coin.CoinTransactionLogger.getHistory(appContext).map { tx ->
+            val isSpend = tx.type == com.aipoweredgita.app.coin.CoinTxType.SPEND || tx.amount < 0
+            val signedAmt = if (isSpend) -kotlin.math.abs(tx.amount) else kotlin.math.abs(tx.amount)
+            val txType = if (isSpend) "SPEND" else "EARN"
             com.aipoweredgita.app.network.CoinHistoryEntry(
-                amount = tx.amount,
-                type = tx.type.name,
-                source = tx.description.lowercase().let { desc ->
+                amount = signedAmt,
+                type = txType,
+                source = tx.source ?: tx.description.lowercase().let { desc ->
                     when {
                         desc.contains("welcome") -> "signup"
                         desc.contains("battle") -> "battle_quiz"
                         desc.contains("quiz") -> "quiz_completion"
-                        desc.contains("check") || desc.contains("checkin") -> "checkin_day"
-                        desc.contains("share") -> "share_sloka"
+                        desc.contains("check") || desc.contains("checkin") -> "checkin_daily"
+                        desc.contains("share") -> "share_daily"
                         desc.contains("voice") || desc.contains("asked") || desc.contains("question") -> "voice_chat"
                         desc.contains("chapter") -> "chapter_completion"
                         desc.contains("level") -> "level_up_bonus"
-                        else -> if (tx.amount < 0) "voice_chat" else "other"
+                        else -> if (isSpend) "voice_chat" else "other"
                     }
                 },
                 description = tx.description,

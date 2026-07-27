@@ -113,21 +113,28 @@ object CoinTransactionLogger {
             } ?: Long.MAX_VALUE
 
             val serverJsonEntries = serverEntries.map { entry ->
+                val isSpendEntry = entry.type.equals("SPEND", ignoreCase = true) || entry.amount < 0
+                val signedAmt = if (isSpendEntry) -kotlin.math.abs(entry.amount) else kotlin.math.abs(entry.amount)
+                val txType = if (isSpendEntry) CoinTxType.SPEND.name else CoinTxType.EARN.name
+
                 JSONObject().apply {
                     put("id", entry.id?.toString() ?: java.util.UUID.randomUUID().toString())
-                    put("amount", entry.amount)
+                    put("amount", signedAmt)
                     put("description", entry.description.take(120))
                     val ts = try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: System.currentTimeMillis() }
                              catch (_: Exception) { System.currentTimeMillis() }
                     put("timestamp", ts)
-                    put("type", if (entry.amount > 0) CoinTxType.EARN.name else CoinTxType.SPEND.name)
+                    put("type", txType)
                     val rawDesc = entry.description
-                    val src = when {
-                        rawDesc.contains("battle", ignoreCase = true) -> "battle_quiz"
-                        rawDesc.contains("quiz", ignoreCase = true) -> "quiz_completion"
-                        rawDesc.contains("check", ignoreCase = true) -> "checkin_daily"
-                        rawDesc.contains("share", ignoreCase = true) -> "share_daily"
-                        else -> "server_sync"
+                    val src = entry.source.ifEmpty {
+                        when {
+                            rawDesc.contains("battle", ignoreCase = true) -> "battle_quiz"
+                            rawDesc.contains("quiz", ignoreCase = true) -> "quiz_completion"
+                            rawDesc.contains("check", ignoreCase = true) -> "checkin_daily"
+                            rawDesc.contains("share", ignoreCase = true) -> "share_daily"
+                            rawDesc.contains("voice", ignoreCase = true) || rawDesc.contains("asked", ignoreCase = true) -> "voice_chat"
+                            else -> "server_sync"
+                        }
                     }
                     put("source", src)
                 }
