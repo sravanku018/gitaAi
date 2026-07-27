@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SportsMma
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -32,10 +33,11 @@ import com.aipoweredgita.app.viewmodel.QuizViewModel
 @Composable
 fun QuizSectionScreen(
     onExit: () -> Unit,
+    onNavigateToQuizBattle: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("15 Questions", "25 Questions")
+    val tabs = listOf("15 Questions", "25 Questions", "⚔️ Battle Quiz")
 
     // Hoist ViewModels to avoid re-creation on tab switches
     val quizViewModel: QuizViewModel = hiltViewModel()
@@ -148,7 +150,7 @@ fun QuizSectionScreen(
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.School,
+                                        imageVector = if (index == 2) Icons.Filled.SportsMma else Icons.Filled.School,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp),
                                         tint = if (selectedTab == index) gold else textPrimary.copy(alpha = 0.5f)
@@ -177,7 +179,16 @@ fun QuizSectionScreen(
                 label = "tab_content",
                 modifier = Modifier.weight(1f)
             ) { (tab, started) ->
-                if (!started) {
+                if (tab == 2) {
+                    QuizStartLanding(
+                        title = "⚔️ Mahabharata Battle Quiz",
+                        description = "10,091 sequence MCQs (5,000 medium + 5,091 hard) in English & Telugu! Test your epic battle timeline knowledge in rapid-fire rounds.",
+                        onStart = {
+                            onNavigateToQuizBattle()
+                        },
+                        language = language
+                    )
+                } else if (!started) {
                     QuizStartLanding(
                         title = if (tab == 0) "15 Question Marathon" else "25 Question Challenge",
                         description = if (tab == 0) 

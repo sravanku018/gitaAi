@@ -705,7 +705,8 @@ fun DashboardScreen(
             onDismiss = {
                 showWelcomeDialog = false
                 prefs.edit().putInt("last_seen_version", BuildConfig.VERSION_CODE).apply()
-            }
+            },
+            onNavigateToBattleQuiz = onNavigateToQuizMode
         )
     }
 

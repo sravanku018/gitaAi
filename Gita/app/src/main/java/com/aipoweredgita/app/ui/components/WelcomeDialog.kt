@@ -16,11 +16,12 @@ import com.aipoweredgita.app.ui.theme.*
 @Composable
 fun WelcomeDialog(
     onDismiss: () -> Unit,
+    onNavigateToBattleQuiz: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.0) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -58,7 +59,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v1.8.0",
+                    text = "✨ What's New in v2.0.0",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -69,7 +70,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "We've introduced the Krishna Coin system and expanded Yoga Levels!",
+                    text = "Mahabharata Battle Quiz is now live with 10,091 sequence MCQs & bundled offline datasets!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -83,45 +84,60 @@ fun WelcomeDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     FeatureItem(
+                        icon = "⚔️",
+                        title = "Mahabharata Battle Quiz",
+                        description = "10,091 Mahabharata sequence MCQs (5,000 medium + 5,091 hard) in English & Telugu side-by-side!"
+                    )
+                    
+                    FeatureItem(
+                        icon = "📚",
+                        title = "Bundled Offline Datasets",
+                        description = "3,501 pre-translated English & Telugu Q&A pairs embedded offline — zero network downloads needed."
+                    )
+                    
+                    FeatureItem(
                         icon = "🪙",
-                        title = "Krishna Coins",
-                        description = "Earn coins by sharing random sloka every day and completing chapters."
+                        title = "Krishna Coins & Daily Rewards",
+                        description = "Fixed daily share & daily check-in coin rewards with automatic duplicate purging."
                     )
                     
                     FeatureItem(
                         icon = "🧘",
-                        title = "Yoga Levels & Bonuses",
-                        description = "Progress from Seeker to Top Tier. Higher levels unlock coin multipliers!"
+                        title = "Yoga Levels & Multipliers",
+                        description = "Progress through Seeker, Yogi, and Sage levels to unlock high coin reward multipliers!"
                     )
                     
                     FeatureItem(
-                        icon = "🎙️",
-                        title = "Sacred Inquiries",
-                        description = "Use your coins in Voice Studio for deep spiritual guidance from Krishna."
-                    )
-                    
-                    FeatureItem(
-                        icon = "📊",
-                        title = "Progress Tracking",
-                        description = "New detailed breakdown of coins earned by spiritual segment."
-                    )
-                    
-                    FeatureItem(
-                        icon = "✨",
-                        title = "New Animations",
-                        description = "Global animations for earning coins, burning energy, and leveling up."
+                        icon = "⚡",
+                        title = "Instant Offline Ingestion",
+                        description = "Rapid response time with local database loading across all study and battle quiz modes."
                     )
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Get Started button
-                Button(
-                    onClick = onDismiss,
+                // Buttons
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Get Started")
+                    Button(
+                        onClick = {
+                            onDismiss()
+                            onNavigateToBattleQuiz()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text("⚔️ Play Battle Quiz Now", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Explore Gita App")
+                    }
                 }
             }
         }

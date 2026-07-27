@@ -186,6 +186,9 @@ fun NavGraph(
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
+                },
+                onNavigateToQuizBattle = {
+                    navController.navigate(Screen.QuizBattle.route)
                 }
             )
         }
