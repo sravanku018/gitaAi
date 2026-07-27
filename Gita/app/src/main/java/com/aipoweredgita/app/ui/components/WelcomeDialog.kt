@@ -21,7 +21,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.0) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.1) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -59,7 +59,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.0.0",
+                    text = "✨ What's New in v2.0.1",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -70,7 +70,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Mahabharata Battle Quiz is now live with 10,091 sequence MCQs & bundled offline datasets!",
+                    text = "Mahabharata Battle Quiz, Groq AI by default, and fully offline datasets — all in this update!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -84,9 +84,15 @@ fun WelcomeDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     FeatureItem(
+                        icon = "⚡",
+                        title = "Groq AI — Now Default",
+                        description = "No model downloads needed! Groq & NVIDIA power all AI features instantly from the cloud."
+                    )
+                    
+                    FeatureItem(
                         icon = "⚔️",
                         title = "Mahabharata Battle Quiz",
-                        description = "10,091 Mahabharata sequence MCQs (5,000 medium + 5,091 hard) in English & Telugu side-by-side!"
+                        description = "10,091 Mahabharata sequence MCQs (5,000 medium + 5,091 hard) in English & Telugu with live language toggle!"
                     )
                     
                     FeatureItem(
