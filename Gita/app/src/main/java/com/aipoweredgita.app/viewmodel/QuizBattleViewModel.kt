@@ -24,11 +24,12 @@ class QuizBattleViewModel @Inject constructor(
     val quizState: StateFlow<QuizState> = _quizState.asStateFlow()
 
     private val sessionAskedIndices = mutableSetOf<Int>()
-    private var currentLanguage = "english"
+    private var currentLanguage = "both"
 
     fun setQuizLanguage(language: String) {
-        if (currentLanguage != language) {
-            currentLanguage = language
+        val targetLang = if (language.isBlank() || language == "en" || language == "te") "both" else language
+        if (currentLanguage != targetLang) {
+            currentLanguage = targetLang
             sessionAskedIndices.clear()
         }
     }

@@ -30,8 +30,13 @@ class MahabharataSequenceRepository @Inject constructor(
     private var teluguQuestions: List<MahabharataSequenceQuestion>? = null
     private val gson = Gson()
 
-    suspend fun getQuestions(language: String = "english"): List<QuizQuestion> = withContext(Dispatchers.IO) {
-        val isTelugu = language.equals("telugu", ignoreCase = true) || language.equals("te", ignoreCase = true)
+    suspend fun getQuestions(language: String = "both"): List<QuizQuestion> = withContext(Dispatchers.IO) {
+        val lang = language.lowercase()
+        if (lang == "both" || lang == "bilingual" || lang == "all") {
+            return@withContext getBilingualQuestions()
+        }
+
+        val isTelugu = lang.contains("te") || lang.contains("telugu")
         val rawList = if (isTelugu) {
             if (teluguQuestions == null) {
                 teluguQuestions = loadFromAsset("mahabharata_sequence_mcq_telugu.json")
@@ -51,6 +56,38 @@ class MahabharataSequenceRepository @Inject constructor(
                 options = item.options,
                 correctAnswerIndex = item.answerIndex.coerceIn(0, (item.options.size - 1).coerceAtLeast(0)),
                 explanation = if (isTelugu) "మహాభారత కాలక్రమ వరుస శ్లోక ప్రశ్న" else "Mahabharata chronological sequence question"
+            )
+        }
+    }
+
+    suspend fun getBilingualQuestions(): List<QuizQuestion> = withContext(Dispatchers.IO) {
+        if (englishQuestions == null) {
+            englishQuestions = loadFromAsset("mahabharata_sequence_mcq.json")
+        }
+        if (teluguQuestions == null) {
+            teluguQuestions = loadFromAsset("mahabharata_sequence_mcq_telugu.json")
+        }
+
+        val enList = englishQuestions ?: emptyList()
+        val teList = teluguQuestions ?: emptyList()
+
+        val count = minOf(enList.size, teList.size)
+        (0 until count).map { index ->
+            val en = enList[index]
+            val te = teList[index]
+
+            val combinedQuestion = "${en.question}\n${te.question}"
+            val combinedOptions = en.options.mapIndexed { optIdx, enOpt ->
+                val teOpt = te.options.getOrNull(optIdx) ?: ""
+                if (teOpt.isNotBlank()) "$enOpt\n$teOpt" else enOpt
+            }
+
+            QuizQuestion(
+                verse = GitaVerse(chapterNo = 0, verseNo = index + 1),
+                question = combinedQuestion,
+                options = combinedOptions,
+                correctAnswerIndex = en.answerIndex.coerceIn(0, (combinedOptions.size - 1).coerceAtLeast(0)),
+                explanation = "Mahabharata sequence / మహాభారత శ్లోక వరుస"
             )
         }
     }
