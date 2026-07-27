@@ -1,12 +1,18 @@
 package com.aipoweredgita.app.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "quiz_question_bank")
+@Entity(
+    tableName = "quiz_question_bank",
+    indices = [Index(value = ["language"])]
+)
 data class QuizQuestionBank(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+
+    val language: String = "english", // "english" or "telugu"
 
     // Question identification
     val questionHash: String = "", // unique hash for deduplication

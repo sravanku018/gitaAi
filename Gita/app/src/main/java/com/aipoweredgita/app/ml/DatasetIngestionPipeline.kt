@@ -209,6 +209,7 @@ class DatasetIngestionPipeline(
             val difficulty = estimateDifficulty(raw.chapterNo, raw.verseNo)
 
             QuizQuestionBank(
+                language = language.lowercase(),
                 questionHash = "${language}_${raw.question.trim().lowercase().hashCode()}",
                 questionType = "MCQ",
                 difficulty = difficulty,

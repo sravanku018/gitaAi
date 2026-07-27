@@ -55,10 +55,10 @@ interface QuizQuestionBankDao {
     // language maps to modelVersion field ("english" or "telugu").
     @Query("""
         SELECT * FROM quiz_question_bank
-        WHERE difficulty BETWEEN :minDiff AND :maxDiff
+        WHERE (language = :language OR modelVersion = :language)
+        AND difficulty BETWEEN :minDiff AND :maxDiff
         AND isActive = 1 AND isApproved = 1
         AND lastAskedAt < :cooldownCutoff
-        AND (modelVersion = :language OR modelVersion = '' OR modelVersion IS NULL)
         ORDER BY 
             usageCount ASC,
             ABS(difficulty - :targetDifficulty) ASC,
@@ -78,7 +78,7 @@ interface QuizQuestionBankDao {
     @Query("""
         SELECT * FROM quiz_question_bank
         WHERE isActive = 1 AND isApproved = 1
-        AND (:language = '' OR modelVersion = :language OR modelVersion = '' OR modelVersion IS NULL)
+        AND (:language = '' OR language = :language OR modelVersion = :language)
         ORDER BY usageCount ASC, RANDOM()
         LIMIT :limit
     """)
@@ -93,7 +93,7 @@ interface QuizQuestionBankDao {
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE generationMethod = :method")
     suspend fun getQuestionsBySource(method: String): Int
 
-    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE modelVersion = :language AND isActive = 1")
+    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE (language = :language OR modelVersion = :language) AND isActive = 1")
     suspend fun getQuestionsByLanguage(language: String): Int
 
     // Check for duplicate questions by hash
