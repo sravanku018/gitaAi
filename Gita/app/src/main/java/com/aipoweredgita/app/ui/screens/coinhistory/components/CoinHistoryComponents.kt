@@ -278,8 +278,8 @@ fun CoinTransactionItem(
         else -> ""
     }
 
-    val iconBg = if (isEarn) Color(0xFFD1EBC7) else Color(0xFFFFDAD6)
-    val iconColor = if (isEarn) Color(0xFF0B2009) else Color(0xFFBA1A1A)
+    val iconBg = if (isEarn) Color(0x334CAF50) else Color(0x33FF5252)
+    val amountColor = if (isEarn) Color(0xFF81C784) else Color(0xFFFF8A80)
 
     Card(
         modifier = Modifier
@@ -318,11 +318,11 @@ fun CoinTransactionItem(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     if (isEarn) "+${kotlin.math.abs(entry.signedAmount)}" else "-${kotlin.math.abs(entry.signedAmount)}",
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = iconColor
+                    color = amountColor
                 )
-                Text(dateStr, fontSize = 10.sp, color = Color(0xFF9A8D71))
+                Text(dateStr, fontSize = 11.sp, color = Color(0xFFD0C3A4))
             }
         }
     }
