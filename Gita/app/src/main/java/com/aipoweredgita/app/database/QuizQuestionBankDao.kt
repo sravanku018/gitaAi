@@ -96,6 +96,9 @@ interface QuizQuestionBankDao {
     suspend fun getQuestionsByLanguage(language: String): Int
 
     // Check for duplicate questions by hash
+    @Query("SELECT questionHash FROM quiz_question_bank")
+    suspend fun getAllQuestionHashes(): List<String>
+
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE questionHash = :hash")
     suspend fun countByHash(hash: String): Int
 

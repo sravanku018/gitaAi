@@ -62,15 +62,12 @@ class DatasetIngestionPipeline(
 
             // STAGE 5: Deduplicate (skip if hash already in DB)
             val dedupedQuestions = mutableListOf<QuizQuestionBank>()
-            val existingHashes = mutableSetOf<String>()
+            val existingHashes = questionBankDao.getAllQuestionHashes().toMutableSet()
 
             for (question in normalized) {
                 if (!existingHashes.contains(question.questionHash)) {
-                    val count = questionBankDao.countByHash(question.questionHash)
-                    if (count == 0) {
-                        dedupedQuestions.add(question)
-                        existingHashes.add(question.questionHash)
-                    }
+                    dedupedQuestions.add(question)
+                    existingHashes.add(question.questionHash)
                 }
             }
 
@@ -108,6 +105,8 @@ class DatasetIngestionPipeline(
 
     private fun readCsvFromAssets(filename: String): String {
         return context.assets.open(filename).bufferedReader(Charsets.UTF_8).use { it.readText() }
+            .removePrefix("\uFEFF")
+            .trim()
     }
 
     private fun parseCsv(csvContent: String, language: String): List<RawQuestion> {
@@ -121,6 +120,7 @@ class DatasetIngestionPipeline(
         }
 
         val isTelugu = language.lowercase().contains("tel")
+        Log.d(TAG, "parseCsv: Total CSV lines=${lines.size}, dataLines=${dataLines.size}, isTelugu=$isTelugu")
 
         for (line in dataLines) {
             try {
@@ -250,11 +250,15 @@ class DatasetIngestionPipeline(
             answers.filter { it != correctAnswer && it.length > 5 }.forEach { distractors.add(it) }
         }
 
-        val shuffledPool = allDatasetAnswers.shuffled()
-        for (ans in shuffledPool) {
-            if (distractors.size >= count) break
-            if (ans != correctAnswer && !distractors.contains(ans)) {
-                distractors.add(ans)
+        if (allDatasetAnswers.isNotEmpty()) {
+            val random = java.util.Random()
+            var attempts = 0
+            while (distractors.size < count && attempts < 30) {
+                attempts++
+                val ans = allDatasetAnswers[random.nextInt(allDatasetAnswers.size)]
+                if (ans != correctAnswer && !distractors.contains(ans)) {
+                    distractors.add(ans)
+                }
             }
         }
         
