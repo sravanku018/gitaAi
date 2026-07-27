@@ -29,7 +29,8 @@ class DatasetIngestionPipeline(
 ) {
     companion object {
         private const val TAG = "DatasetIngestion"
-        private const val BUNDLED_ASSET_NAME = "english_telugu_bilingual.csv"
+        private const val ENGLISH_ASSET_NAME = "english.csv"
+        private const val TELUGU_ASSET_NAME = "telugu.csv"
         private const val COOLDOWN_MS = 24 * 60 * 60 * 1000L
     }
 
@@ -43,12 +44,14 @@ class DatasetIngestionPipeline(
     ): Int = withContext(Dispatchers.IO) {
         var totalImported = 0
 
-        Log.d(TAG, "Ingesting $language dataset from local asset $BUNDLED_ASSET_NAME...")
+        val targetAsset = if (language.lowercase().trim().contains("tel")) TELUGU_ASSET_NAME else ENGLISH_ASSET_NAME
+
+        Log.d(TAG, "Ingesting $language dataset from local asset $targetAsset...")
 
         try {
-            val csvContent = readCsvFromAssets(BUNDLED_ASSET_NAME)
+            val csvContent = readCsvFromAssets(targetAsset)
             val rawQuestions = parseCsv(csvContent, language)
-            Log.d(TAG, "Parsed ${rawQuestions.size} raw questions from $language")
+            Log.d(TAG, "Parsed ${rawQuestions.size} raw questions from $language ($targetAsset)")
 
             // STAGE 3: Convert Raw Data → MCQ
             val mcqQuestions = convertToMCQ(rawQuestions, language)
@@ -87,9 +90,9 @@ class DatasetIngestionPipeline(
                 batchStart = batchEnd
             }
 
-            Log.d(TAG, "✓ Successfully imported ${dedupedQuestions.size} clean $language questions from bundled asset")
+            Log.d(TAG, "✓ Successfully imported ${dedupedQuestions.size} clean $language questions from $targetAsset")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to ingest $language dataset from asset: ${e.message}", e)
+            Log.e(TAG, "Failed to ingest $language dataset from asset $targetAsset: ${e.message}", e)
         }
 
         try {
@@ -117,6 +120,8 @@ class DatasetIngestionPipeline(
             lines
         }
 
+        val isTelugu = language.lowercase().contains("tel")
+
         for (line in dataLines) {
             try {
                 val fields = parseCsvLine(line)
@@ -125,32 +130,25 @@ class DatasetIngestionPipeline(
                 val chapterNo = fields[0].trim().toIntOrNull() ?: continue
                 val verseNo = fields[1].trim().toIntOrNull() ?: continue
 
-                val qEn = fields.getOrNull(2)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
-                val qTe = fields.getOrNull(3)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
-                val aEn = fields.getOrNull(4)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
-                val aTe = fields.getOrNull(5)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                if (fields.size >= 6) {
+                    // Legacy 6-column format: chapter_no, verse_no, question_en, question_te, answer_en, answer_te
+                    val qEn = fields.getOrNull(2)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                    val qTe = fields.getOrNull(3)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                    val aEn = fields.getOrNull(4)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                    val aTe = fields.getOrNull(5)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
 
-                when (language.lowercase()) {
-                    "telugu" -> {
-                        if (qTe.isNotBlank() && aTe.isNotBlank()) {
-                            questions.add(RawQuestion(chapterNo, verseNo, qTe, aTe))
-                        } else if (qEn.isNotBlank() && aEn.isNotBlank()) {
-                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
-                        }
+                    if (isTelugu && qTe.isNotBlank() && aTe.isNotBlank()) {
+                        questions.add(RawQuestion(chapterNo, verseNo, qTe, aTe))
+                    } else if (qEn.isNotBlank() && aEn.isNotBlank()) {
+                        questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
                     }
-                    "english" -> {
-                        if (qEn.isNotBlank() && aEn.isNotBlank()) {
-                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
-                        }
-                    }
-                    else -> {
-                        // "all" or default: include both English and Telugu questions
-                        if (qEn.isNotBlank() && aEn.isNotBlank()) {
-                            questions.add(RawQuestion(chapterNo, verseNo, qEn, aEn))
-                        }
-                        if (qTe.isNotBlank() && aTe.isNotBlank()) {
-                            questions.add(RawQuestion(chapterNo, verseNo, qTe, aTe))
-                        }
+                } else {
+                    // Standard 4-column dedicated file format: chapter_no, verse_no, question, answer
+                    val q = fields.getOrNull(2)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+                    val a = fields.getOrNull(3)?.trim()?.removeSurrounding("\"")?.trim() ?: ""
+
+                    if (q.isNotBlank() && a.isNotBlank()) {
+                        questions.add(RawQuestion(chapterNo, verseNo, q, a))
                     }
                 }
             } catch (e: Exception) {
