@@ -129,6 +129,7 @@ class QuizViewModelGuardTest {
     fun `loadNextQuestion increments totalQuestions correctly`() = runTest {
         val questions = (1..3).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()
@@ -151,6 +152,7 @@ class QuizViewModelGuardTest {
     fun `guard blocks loading at maxQuestions 15`() = runTest {
         val questions = (1..20).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()
@@ -172,6 +174,7 @@ class QuizViewModelGuardTest {
     fun `guard blocks loading at maxQuestions 25`() = runTest {
         val questions = (1..30).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(25, "en"))
         advanceUntilIdle()
@@ -193,6 +196,7 @@ class QuizViewModelGuardTest {
     fun `no extra questions beyond 15 even with repeated calls`() = runTest {
         val questions = (1..30).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()
@@ -210,6 +214,7 @@ class QuizViewModelGuardTest {
     fun `no extra questions beyond 25 even with repeated calls`() = runTest {
         val questions = (1..50).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(25, "en"))
         advanceUntilIdle()
@@ -227,6 +232,7 @@ class QuizViewModelGuardTest {
     fun `restartQuiz resets totalQuestions and reloads first question`() = runTest {
         val questions = (1..10).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()
@@ -250,6 +256,7 @@ class QuizViewModelGuardTest {
     fun `resetQuiz resets totalQuestions and reloads first question`() = runTest {
         val questions = (1..10).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()
@@ -270,6 +277,7 @@ class QuizViewModelGuardTest {
     fun `all questions are unique within a quiz`() = runTest {
         val questions = (1..15).map { createQuestion(it) }
         coEvery { quizQuestionRepository.getNextQuestions(any(), any(), any()) } returns questions
+        coEvery { quizQuestionRepository.getNextQuestionsForLanguage(any(), any(), any(), any()) } returns questions
 
         viewModel.onEvent(com.aipoweredgita.app.domain.model.QuizEvent.SetQuizConfig(15, "en"))
         advanceUntilIdle()

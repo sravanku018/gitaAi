@@ -102,7 +102,8 @@ class QuizViewModel @Inject constructor(
                 if (count < 100) {
                     android.util.Log.d("QuizViewModel", "Auto-downloading questions (current: $count)...")
                     val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, db.quizQuestionBankDao())
-                    val imported = importer.importDataset(language = "all", batchSize = 500)
+                    // Import English only by default — Telugu imported separately when user selects it
+                    val imported = importer.importDataset(language = "english", batchSize = 500)
                     val newCount = db.quizQuestionBankDao().getTotalCount()
                     android.util.Log.d("QuizViewModel", "Auto-download complete: $imported → $newCount questions")
                 }
@@ -183,7 +184,13 @@ class QuizViewModel @Inject constructor(
                 }
                 
                 val fetchLimit = maxOf(limit, 10)
-                val candidates = quizQuestionRepository.getNextQuestions(minDiff, maxDiff, fetchLimit)
+                // Use language-filtered query to avoid mixing English/Telugu questions
+                val currentLanguage = _quizState.value.language.lowercase().let {
+                    if (it.contains("tel")) "telugu" else "english"
+                }
+                val candidates = quizQuestionRepository.getNextQuestionsForLanguage(
+                    minDiff, maxDiff, fetchLimit, currentLanguage
+                )
                 
                 // Filter out questions already asked in this quiz session
                 val available = candidates.filter { it.id !in sessionAskedIds }

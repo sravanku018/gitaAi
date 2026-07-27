@@ -51,7 +51,7 @@ class DatasetIngestionPipeline(
             Log.d(TAG, "Parsed ${rawQuestions.size} raw questions from $language")
 
             // STAGE 3: Convert Raw Data → MCQ
-            val mcqQuestions = convertToMCQ(rawQuestions)
+            val mcqQuestions = convertToMCQ(rawQuestions, language)
             Log.d(TAG, "Converted ${mcqQuestions.size} questions to MCQ format")
 
             // STAGE 4: Normalize
@@ -184,7 +184,7 @@ class DatasetIngestionPipeline(
      * STAGE 3: Convert open-ended raw data to MCQ format.
      * Builds an index of topic → answers, then uses answers from same topic as distractors.
      */
-    private fun convertToMCQ(rawQuestions: List<RawQuestion>): List<QuizQuestionBank> {
+    private fun convertToMCQ(rawQuestions: List<RawQuestion>, language: String = "english"): List<QuizQuestionBank> {
         val topicAnswers = mutableMapOf<String, MutableList<String>>()
         rawQuestions.forEach { q ->
             val topics = extractKeyConcepts(q.answer)
@@ -204,7 +204,7 @@ class DatasetIngestionPipeline(
             val difficulty = estimateDifficulty(raw.chapterNo, raw.verseNo)
 
             QuizQuestionBank(
-                questionHash = "${raw.question.trim().lowercase().hashCode()}",
+                questionHash = "${language}_${raw.question.trim().lowercase().hashCode()}",
                 questionType = "MCQ",
                 difficulty = difficulty,
                 question = raw.question,
@@ -221,6 +221,7 @@ class DatasetIngestionPipeline(
                 topics = topics.joinToString(","),
                 generatedBy = "Bhagavad-Gita-QA Dataset",
                 generationMethod = "dataset_import",
+                modelVersion = language.lowercase(), // Store language here for filtering
                 qualityScore = 80f,
                 relevanceScore = 75f,
                 isVerified = true,

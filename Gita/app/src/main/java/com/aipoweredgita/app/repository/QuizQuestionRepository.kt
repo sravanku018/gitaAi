@@ -22,6 +22,18 @@ class QuizQuestionRepository(
             targetDifficulty = 5, 
             cooldownCutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
         )
+
+    suspend fun getNextQuestionsForLanguage(
+        minDiff: Int, maxDiff: Int, limit: Int, language: String
+    ): List<QuizQuestionBank> =
+        questionBankDao.getNextQuestionsFiltered(
+            minDiff,
+            maxDiff,
+            limit,
+            targetDifficulty = 5,
+            cooldownCutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L,
+            language = language.lowercase()
+        )
     suspend fun markAsAsked(id: Int) = questionBankDao.markAsAsked(id)
     suspend fun insertPerformance(p: QuestionPerformance) = questionPerformanceDao.insert(p)
     suspend fun getPerformanceByQuestion(id: String): QuestionPerformance? = questionPerformanceDao.getPerformanceByQuestion(id)

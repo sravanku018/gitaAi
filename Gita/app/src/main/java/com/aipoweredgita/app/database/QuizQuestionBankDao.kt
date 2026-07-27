@@ -51,6 +51,29 @@ interface QuizQuestionBankDao {
         cooldownCutoff: Long
     ): List<QuizQuestionBank>
 
+    // LANGUAGE-FILTERED QUERY: same as above but only returns questions in specified language.
+    // language maps to modelVersion field ("english" or "telugu").
+    @Query("""
+        SELECT * FROM quiz_question_bank
+        WHERE difficulty BETWEEN :minDiff AND :maxDiff
+        AND isActive = 1 AND isApproved = 1
+        AND lastAskedAt < :cooldownCutoff
+        AND (modelVersion = :language OR modelVersion = '' OR modelVersion IS NULL)
+        ORDER BY 
+            usageCount ASC,
+            ABS(difficulty - :targetDifficulty) ASC,
+            RANDOM()
+        LIMIT :limit
+    """)
+    suspend fun getNextQuestionsFiltered(
+        minDiff: Int,
+        maxDiff: Int,
+        limit: Int,
+        targetDifficulty: Int,
+        cooldownCutoff: Long,
+        language: String
+    ): List<QuizQuestionBank>
+
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE isActive = 1 AND isApproved = 1")
     suspend fun getTotalAvailableQuestions(): Int
 
