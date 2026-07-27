@@ -313,11 +313,16 @@ class ProfileViewModel @Inject constructor(
                         )
                         if (serverHistory.isNotEmpty()) {
                             com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
-                        }
-                        
-                        val mergedHistory = buildLocalHistory()
-                        _coinHistory.value = mergedHistory.filter { entry ->
-                            !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                            _coinHistory.value = serverHistory
+                                .distinctBy { it.id ?: "${it.created_at}_${it.amount}_${it.description}" }
+                                .filter { entry ->
+                                    !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                                }
+                        } else {
+                            val mergedHistory = buildLocalHistory()
+                            _coinHistory.value = mergedHistory.filter { entry ->
+                                !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                            }
                         }
                         
                         serverLoaded = true
