@@ -34,6 +34,13 @@ class QuizQuestionRepository(
             cooldownCutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L,
             language = language.lowercase()
         )
+
+    suspend fun getFallbackQuestions(
+        limit: Int, language: String
+    ): List<QuizQuestionBank> =
+        questionBankDao.getFallbackQuestions(
+            limit, language.lowercase()
+        )
     suspend fun markAsAsked(id: Int) = questionBankDao.markAsAsked(id)
     suspend fun insertPerformance(p: QuestionPerformance) = questionPerformanceDao.insert(p)
     suspend fun getPerformanceByQuestion(id: String): QuestionPerformance? = questionPerformanceDao.getPerformanceByQuestion(id)

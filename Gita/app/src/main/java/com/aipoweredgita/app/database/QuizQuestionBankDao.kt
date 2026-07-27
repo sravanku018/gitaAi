@@ -74,6 +74,19 @@ interface QuizQuestionBankDao {
         language: String
     ): List<QuizQuestionBank>
 
+    // FALLBACK QUERY: ignores difficulty and cooldown to ensure questions are always returned
+    @Query("""
+        SELECT * FROM quiz_question_bank
+        WHERE isActive = 1 AND isApproved = 1
+        AND (:language = '' OR modelVersion = :language OR modelVersion = '' OR modelVersion IS NULL)
+        ORDER BY usageCount ASC, RANDOM()
+        LIMIT :limit
+    """)
+    suspend fun getFallbackQuestions(
+        limit: Int,
+        language: String
+    ): List<QuizQuestionBank>
+
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE isActive = 1 AND isApproved = 1")
     suspend fun getTotalAvailableQuestions(): Int
 
