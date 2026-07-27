@@ -16,7 +16,12 @@ data class QuizAttempt(
     val totalQuestions: Int,
     val timeSpentSeconds: Long = 0,
     val timestamp: Long = System.currentTimeMillis(),
-    val date: String = LocalDate.now().toString(),
+    val date: String = try {
+        Instant.ofEpochMilli(if (timestamp > 0) timestamp else System.currentTimeMillis())
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+            .toString()
+    } catch (_: Exception) { LocalDate.now().toString() },
     val coinsEarned: Int = 0,
     val quizType: String = "general"
 ) {

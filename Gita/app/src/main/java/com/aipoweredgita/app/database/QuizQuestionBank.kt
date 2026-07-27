@@ -6,7 +6,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "quiz_question_bank",
-    indices = [Index(value = ["language"])]
+    indices = [
+        Index(value = ["language"]),
+        Index(value = ["language", "isActive", "difficulty", "lastAskedAt"])
+    ]
 )
 data class QuizQuestionBank(
     @PrimaryKey(autoGenerate = true)

@@ -54,7 +54,7 @@ interface QuizQuestionBankDao {
     // LANGUAGE-FILTERED QUERY: same as above but only returns questions in specified language.
     @Query("""
         SELECT * FROM quiz_question_bank
-        WHERE (:language = '' OR LOWER(language) = LOWER(:language) OR LOWER(modelVersion) = LOWER(:language))
+        WHERE (:language = '' OR LOWER(language) = LOWER(:language))
         AND difficulty BETWEEN :minDiff AND :maxDiff
         AND (isActive = 1 OR isActive IS NULL)
         AND (lastAskedAt IS NULL OR lastAskedAt = 0 OR lastAskedAt < :cooldownCutoff)
@@ -77,7 +77,7 @@ interface QuizQuestionBankDao {
     @Query("""
         SELECT * FROM quiz_question_bank
         WHERE (isActive = 1 OR isActive IS NULL)
-        AND (:language = '' OR LOWER(language) = LOWER(:language) OR LOWER(modelVersion) = LOWER(:language))
+        AND (:language = '' OR LOWER(language) = LOWER(:language))
         ORDER BY usageCount ASC, RANDOM()
         LIMIT :limit
     """)
@@ -86,13 +86,13 @@ interface QuizQuestionBankDao {
         language: String
     ): List<QuizQuestionBank>
 
-    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE isActive = 1 AND isApproved = 1")
+    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE (isActive = 1 OR isActive IS NULL)")
     suspend fun getTotalAvailableQuestions(): Int
 
     @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE generationMethod = :method")
     suspend fun getQuestionsBySource(method: String): Int
 
-    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE (language = :language OR modelVersion = :language) AND isActive = 1")
+    @Query("SELECT COUNT(*) FROM quiz_question_bank WHERE LOWER(language) = LOWER(:language) AND (isActive = 1 OR isActive IS NULL)")
     suspend fun getQuestionsByLanguage(language: String): Int
 
     // Check for duplicate questions by hash
@@ -100,12 +100,11 @@ interface QuizQuestionBankDao {
     suspend fun countByHash(hash: String): Int
 
     // Get questions by topic for weak topic targeting.
-    // :cooldownCutoff = System.currentTimeMillis() - cooldownDurationMs
     @Query("""
         SELECT * FROM quiz_question_bank
         WHERE INSTR(topics, :topic) > 0
-        AND isActive = 1 AND isApproved = 1
-        AND lastAskedAt < :cooldownCutoff
+        AND (isActive = 1 OR isActive IS NULL)
+        AND (lastAskedAt IS NULL OR lastAskedAt = 0 OR lastAskedAt < :cooldownCutoff)
         ORDER BY usageCount ASC, qualityScore DESC, RANDOM()
         LIMIT :limit
     """)
@@ -115,12 +114,12 @@ interface QuizQuestionBankDao {
         cooldownCutoff: Long
     ): List<QuizQuestionBank>
 
-    // FIX ISSUE 5: Deactivate low-quality questions instead of deleting them
+    // Deactivate low-quality questions instead of deleting them
     @Query("UPDATE quiz_question_bank SET isActive = 0 WHERE qualityScore < 20 AND usageCount > 10")
     suspend fun deactivateLowQualityQuestions()
 
-    // FIX ISSUE 6: Apply daily decay to quality scores (0.99 multiplier)
-    @Query("UPDATE quiz_question_bank SET qualityScore = qualityScore * 0.99")
+    // Apply daily decay to quality scores with a baseline floor (only for unverified questions)
+    @Query("UPDATE quiz_question_bank SET qualityScore = MAX(50.0, qualityScore * 0.99) WHERE isVerified = 0")
     suspend fun applyQualityDecay()
 
     @Query("SELECT COUNT(*) FROM quiz_question_bank")
