@@ -39,12 +39,7 @@ fun QuizScreen(
 
     LaunchedEffect(quizState.currentQuestion, quizState.isLoading, quizState.error) {
         if (quizState.currentQuestion == null && !quizState.isLoading && quizState.error == null) {
-            val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)
-            if (!online) {
-                viewModel.setError("No Internet Connection\n\nPlease check your internet and try again.")
-            } else {
-                viewModel.loadNextQuestion()
-            }
+            viewModel.loadNextQuestion()
         }
     }
 
@@ -52,12 +47,7 @@ fun QuizScreen(
         LoadingScreen(message = stringResource(id = R.string.quiz_loading_question))
     } else if (quizState.error != null) {
         ErrorScreen(message = quizState.error ?: "An unknown error occurred") {
-            val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)
-            if (online) {
-                viewModel.loadNextQuestion()
-            } else {
-                viewModel.setError("No Internet Connection\n\nPlease check your internet and try again.")
-            }
+            viewModel.loadNextQuestion()
         }
     } else if (quizState.currentQuestion != null) {
         val question = quizState.currentQuestion ?: return
