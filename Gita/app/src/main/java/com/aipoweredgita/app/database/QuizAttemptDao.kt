@@ -30,14 +30,32 @@ interface QuizAttemptDao {
     @Query("SELECT COUNT(*) FROM quiz_attempts WHERE quizType != 'battle_quiz'")
     suspend fun getTotalAttempts(): Int
 
-    @Query("SELECT COUNT(*) FROM quiz_attempts WHERE score = :score AND totalQuestions = :totalQuestions AND ABS(timestamp - :timestamp) < 60000")
-    suspend fun countSimilarAttempts(score: Int, totalQuestions: Int, timestamp: Long): Int
+    @Query("""
+        SELECT COUNT(*) FROM quiz_attempts
+        WHERE score = :score
+          AND totalQuestions = :totalQuestions
+          AND quizType = :quizType
+          AND ABS(timestamp - :timestamp) < :windowMs
+    """)
+    suspend fun countSimilarAttempts(
+        score: Int,
+        totalQuestions: Int,
+        quizType: String,
+        timestamp: Long,
+        windowMs: Long = 5 * 60 * 1000L
+    ): Int
 
     @Query("SELECT * FROM quiz_attempts WHERE totalQuestions > 0 AND quizType != 'battle_quiz' ORDER BY (score * 100.0 / totalQuestions) DESC LIMIT 1")
     suspend fun getBestAttempt(): QuizAttempt?
 
     @Query("DELETE FROM quiz_attempts")
     suspend fun deleteAll()
+
+    @Query("SELECT * FROM quiz_attempts")
+    suspend fun getAllAttemptsDirect(): List<QuizAttempt>
+
+    @Delete
+    suspend fun deleteAttempt(attempt: QuizAttempt)
 
     @Query("SELECT * FROM quiz_attempts WHERE quizType != 'battle_quiz' ORDER BY timestamp DESC LIMIT 10")
     suspend fun getLast10Attempts(): List<QuizAttempt>

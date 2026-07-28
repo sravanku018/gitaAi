@@ -141,6 +141,14 @@ class ActivityHistoryViewModel @Inject constructor(
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }
                     fun parseTimestamp(raw: String): Long {
+                        if (raw.isBlank()) return 0L
+                        // Try OffsetDateTime first to robustly parse ISO-8601 strings (Z, offsets like +05:30)
+                        try {
+                            return java.time.OffsetDateTime.parse(raw).toInstant().toEpochMilli()
+                        } catch (_: Exception) {}
+                        try {
+                            return raw.toLong()
+                        } catch (_: Exception) {}
                         return try { fmtPlain.parse(raw)?.time ?: 0L }
                         catch (_: Exception) {
                             try { fmtIso.parse(raw)?.time ?: 0L }
@@ -151,23 +159,45 @@ class ActivityHistoryViewModel @Inject constructor(
                         }
                     }
                     for (dto in serverAttempts) {
-                        val ts = parseTimestamp(dto.created_at).takeIf { it > 0L } ?: System.currentTimeMillis()
-                        val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(ts))
-                        // Use a 5-minute window to deduplicate; battle_quiz timestamps can differ from
-                        // local records by a few seconds (server processes after network round-trip).
-                        val exists = quizDao.countSimilarAttempts(dto.score, dto.total_questions, ts) > 0
+                        val parsedTimestamp = parseTimestamp(dto.created_at)
+                        if (parsedTimestamp <= 0L) {
+                            continue
+                        }
+                        val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(parsedTimestamp))
+                        val exists = quizDao.countSimilarAttempts(
+                            score = dto.score,
+                            totalQuestions = dto.total_questions,
+                            quizType = dto.quiz_type,
+                            timestamp = parsedTimestamp
+                        ) > 0
                         if (!exists) {
                             quizDao.insertAttempt(
                                 com.aipoweredgita.app.database.QuizAttempt(
                                     score = dto.score,
                                     totalQuestions = dto.total_questions,
-                                    timestamp = ts,
+                                    timestamp = parsedTimestamp,
                                     date = dateStr,
                                     quizType = dto.quiz_type,
                                     timeSpentSeconds = dto.time_spent_seconds
                                 )
                             )
                         }
+                    }
+                    
+                    // Deduplicate existing local DB records (clean up duplicates from prior sync bugs)
+                    try {
+                        val allAttempts = quizDao.getAllAttemptsDirect()
+                        val seen = mutableSetOf<String>()
+                        for (attempt in allAttempts) {
+                            val key = "${attempt.score}_${attempt.totalQuestions}_${attempt.quizType}_${attempt.timeSpentSeconds}_${attempt.date}"
+                            if (seen.contains(key)) {
+                                quizDao.deleteAttempt(attempt)
+                            } else {
+                                seen.add(key)
+                            }
+                        }
+                    } catch (dedupEx: Exception) {
+                        android.util.Log.e("ActivityHistoryVM", "Failed to deduplicate local database: ${dedupEx.message}")
                     }
                 }
             } catch (_: Exception) {}
