@@ -151,7 +151,8 @@ class StatsRepository(
         totalQuestions: Int,
         segmentCorrectMap: Map<String, Int> = emptyMap(),
         quizType: String = "general",
-        timeSpentSeconds: Long = 0
+        timeSpentSeconds: Long = 0,
+        attemptId: String? = null
     ): Int {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
@@ -227,7 +228,8 @@ class StatsRepository(
                         "quizType" to quizType,
                         "timeSpentSeconds" to timeSpentSeconds,
                         "clientDate" to java.time.OffsetDateTime.now().toString(),
-                        "countryCode" to java.util.Locale.getDefault().country
+                        "countryCode" to java.util.Locale.getDefault().country,
+                        "attemptId" to attemptId
                     )
                     val payloadString = Gson().toJson(payloadMap)
                     pendingSyncEventDao.insert(
@@ -270,15 +272,14 @@ class StatsRepository(
 
         // Record the battle attempt in the history
         val db = GitaDatabase.getDatabase(appContext)
-        db.quizAttemptDao().insertAttempt(
-            com.aipoweredgita.app.database.QuizAttempt(
-                score = score,
-                totalQuestions = questionsAnswered,
-                coinsEarned = battleCoins,
-                quizType = "battle_quiz",
-                timeSpentSeconds = 60
-            )
+        val battleAttempt = com.aipoweredgita.app.database.QuizAttempt(
+            score = score,
+            totalQuestions = questionsAnswered,
+            coinsEarned = battleCoins,
+            quizType = "battle_quiz",
+            timeSpentSeconds = 60
         )
+        db.quizAttemptDao().insertAttempt(battleAttempt)
 
         val today = LocalDate.now().toString()
         dailyActivityDao?.insertIfAbsent(com.aipoweredgita.app.database.DailyActivity(date = today))
@@ -303,7 +304,7 @@ class StatsRepository(
                             com.aipoweredgita.app.database.PendingSyncEvent(
                                 userId = uid,
                                 eventType = "BATTLE",
-                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}"}""",
+                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}"}""",
                                 coinsToAdjust = battleCoins,
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )

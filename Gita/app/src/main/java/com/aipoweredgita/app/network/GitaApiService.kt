@@ -238,7 +238,8 @@ data class QuizAttemptRequest(
     val time_spent_seconds: Long = 0,
     val coins_earned: Int = 0,
     val client_date: String? = null,
-    val country_code: String? = null
+    val country_code: String? = null,
+    val attempt_id: String? = null
 )
 
 data class QuizAttemptDto(
@@ -250,7 +251,8 @@ data class QuizAttemptDto(
     val avg_time_per_question: Int = 0,
     val coins_earned: Int = 0,
     val accuracy: Int = 0,
-    val created_at: String = ""
+    val created_at: String = "",
+    val attempt_id: String? = null
 )
 
 data class ActivityDayDto(

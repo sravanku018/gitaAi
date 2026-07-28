@@ -115,20 +115,23 @@ class SyncWorker(
                         val quizType = jsonObject.get("quizType")?.asString ?: "general"
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
+                        val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
 
-                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode, attemptId=$attemptId")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
                                 source = "quiz_completion",
-                                metadata = mapOf(
+                                metadata = mapOf<String, Any>(
                                     "accuracy" to accuracy,
                                     "score" to score,
                                     "totalQuestions" to totalQuestions,
                                     "streakDays" to streakDays,
                                     "checkinDay" to checkinDay,
                                     "quizType" to quizType
-                                ),
+                                ).let {
+                                    if (attemptId != null) it + ("attemptId" to attemptId) else it
+                                },
                                 client_date = clientDate,
                                 country_code = countryCode
                             )
@@ -145,7 +148,8 @@ class SyncWorker(
                                     time_spent_seconds = timeSpentSeconds,
                                     coins_earned = event.coinsToAdjust,
                                     client_date = clientDate,
-                                    country_code = countryCode
+                                    country_code = countryCode,
+                                    attempt_id = attemptId
                                 )
                             )
                             Log.d(TAG, "Quiz attempt recorded to server successfully")
@@ -180,18 +184,21 @@ class SyncWorker(
                         val questionsAnswered = jsonObject.get("questionsAnswered")?.asInt ?: 0
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
+                        val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
 
-                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode, attemptId=$attemptId")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
                                 source = "battle_quiz",
-                                metadata = mapOf(
+                                metadata = mapOf<String, Any>(
                                     "battleCoins" to battleCoins,
                                     "score" to score,
                                     "questionsAnswered" to questionsAnswered,
                                     "timeSpentSeconds" to 60
-                                ),
+                                ).let {
+                                    if (attemptId != null) it + ("attemptId" to attemptId) else it
+                                },
                                 client_date = clientDate,
                                 country_code = countryCode
                             )

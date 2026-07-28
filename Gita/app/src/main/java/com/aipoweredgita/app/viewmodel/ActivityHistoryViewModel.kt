@@ -164,15 +164,25 @@ class ActivityHistoryViewModel @Inject constructor(
                             continue
                         }
                         val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(parsedTimestamp))
-                        val exists = quizDao.countSimilarAttempts(
-                            score = dto.score,
-                            totalQuestions = dto.total_questions,
-                            quizType = dto.quiz_type,
-                            timestamp = parsedTimestamp
-                        ) > 0
+                        
+                        val attemptId = dto.attempt_id
+                        val exists = if (!attemptId.isNullOrEmpty()) {
+                            false // UNIQUE constraint will ignore automatically on insert
+                        } else {
+                            // Fallback to fuzzy match only for legacy server records
+                            quizDao.countSimilarAttempts(
+                                score = dto.score,
+                                totalQuestions = dto.total_questions,
+                                quizType = dto.quiz_type,
+                                timestamp = parsedTimestamp
+                            ) > 0
+                        }
+
                         if (!exists) {
                             quizDao.insertAttempt(
                                 com.aipoweredgita.app.database.QuizAttempt(
+                                    attemptId = attemptId ?: java.util.UUID.randomUUID().toString(),
+                                    syncStatus = "SYNCED",
                                     score = dto.score,
                                     totalQuestions = dto.total_questions,
                                     timestamp = parsedTimestamp,

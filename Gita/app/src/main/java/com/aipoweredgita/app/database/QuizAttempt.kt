@@ -2,16 +2,22 @@ package com.aipoweredgita.app.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@Entity(tableName = "quiz_attempts")
+@Entity(
+    tableName = "quiz_attempts",
+    indices = [Index(value = ["attemptId"], unique = true)]
+)
 data class QuizAttempt(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
+    val attemptId: String = java.util.UUID.randomUUID().toString(),
+    val syncStatus: String = "PENDING",
     val score: Int,
     val totalQuestions: Int,
     val timeSpentSeconds: Long = 0,
