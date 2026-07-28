@@ -198,6 +198,10 @@ class StatsRepository(
         }
 
         // Use CoinRewardEngine for calculation with pre-sync multiplier
+        // NOTE: We intentionally do NOT apply the yoga multiplier locally.
+        // The server applies the real multiplier when syncing.
+        // Using local DB level for multiplier causes incorrect display because
+        // the DB accumulates server quiz history which inflates the level calculation.
         val result = CoinRewardEngine.calculate(
             CoinRewardEngine.Input(
                 score = score,
@@ -205,7 +209,7 @@ class StatsRepository(
                 segmentCorrectMap = segmentCorrectMap,
                 currentStreakDays = currentStreak,
                 dailyCheckinDay = checkinDay,
-                yogaMultiplier = multiplier
+                yogaMultiplier = 1.0f   // multiplier applied server-side
             )
         )
 
