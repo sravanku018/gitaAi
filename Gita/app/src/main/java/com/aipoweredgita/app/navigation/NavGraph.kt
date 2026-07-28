@@ -358,14 +358,14 @@ fun NavGraph(
         composable(Screen.QuizBattle.route) {
             com.aipoweredgita.app.ui.screens.quiz.QuizBattleScreen(
                 onBack = { navController.popBackStack() },
-                onGameOver = { score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int ->
+                onGameOver = { score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int, language: String ->
                     if (battleCoins > 0) {
                         kotlinx.coroutines.MainScope().launch {
                             val entryPoint = dagger.hilt.android.EntryPointAccessors.fromApplication(
                                 navController.context.applicationContext,
                                 com.aipoweredgita.app.services.SyncWorkerEntryPoint::class.java
                             )
-                            entryPoint.statsRepository().trackBattleCompletion(battleCoins, score, questionsAnswered)
+                            entryPoint.statsRepository().trackBattleCompletion(battleCoins, score, questionsAnswered, language)
                         }
                     }
                 }

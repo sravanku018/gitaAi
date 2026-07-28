@@ -358,6 +358,16 @@ fun AHQuizAttemptCard(attempt: QuizAttempt, isBattle: Boolean = false) {
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    // Language
+                    Text("🌐", fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = attempt.language.replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 // Performance level badge
                 Surface(

@@ -254,7 +254,7 @@ class StatsRepository(
         return coins
     }
 
-    suspend fun trackBattleCompletion(battleCoins: Int, score: Int, questionsAnswered: Int) {
+    suspend fun trackBattleCompletion(battleCoins: Int, score: Int, questionsAnswered: Int, language: String = "en") {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(questionsAnswered)
@@ -279,7 +279,8 @@ class StatsRepository(
             totalQuestions = questionsAnswered,
             coinsEarned = battleCoins,
             quizType = "battle_quiz",
-            timeSpentSeconds = 60
+            timeSpentSeconds = 60,
+            language = language
         )
         db.quizAttemptDao().insertAttempt(battleAttempt)
 

@@ -54,7 +54,7 @@ data class BattleState(
 @Composable
 fun QuizBattleScreen(
     onBack: () -> Unit = {},
-    onGameOver: (score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int) -> Unit = { _, _, _, _ -> }
+    onGameOver: (score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int, language: String) -> Unit = { _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var battleState by remember { mutableStateOf(BattleState()) }
@@ -78,12 +78,12 @@ fun QuizBattleScreen(
                 if (!isTimerRunning) break
                 battleState = battleState.copy(timeLeft = battleState.timeLeft - 1)
             }
-            if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver && !hasTriggeredGameOver) {
+             if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver && !hasTriggeredGameOver) {
                 isTimerRunning = false
                 hasTriggeredGameOver = true
                 battleState = battleState.copy(isGameOver = true)
                 val correctAnswers = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
-                onGameOver(correctAnswers, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins)
+                onGameOver(correctAnswers, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins, selectedLanguage)
             }
         }
     }
@@ -213,7 +213,7 @@ fun QuizBattleScreen(
                                     if (!battleState.isGameOver && !hasTriggeredGameOver) {
                                         hasTriggeredGameOver = true
                                         val correctAnswers = nextState.correctAt3Hearts + nextState.correctAt2Hearts + nextState.correctAt1Heart
-                                        onGameOver(correctAnswers, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins)
+                                        onGameOver(correctAnswers, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins, selectedLanguage)
                                     }
                                 }
                             }
