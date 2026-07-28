@@ -106,6 +106,7 @@ fun QuizScreen(
             score = quizState.score,
             total = quizState.totalQuestions,
             coins = quizState.coinsEarned,
+            breakdown = quizState.coinBreakdown,
             totalTimeSeconds = quizState.totalTimeSeconds,
             onExit = onExitQuiz,
             onRestart = { 

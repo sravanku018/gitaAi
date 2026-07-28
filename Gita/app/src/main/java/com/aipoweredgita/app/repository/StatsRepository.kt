@@ -154,7 +154,7 @@ class StatsRepository(
         timeSpentSeconds: Long = 0,
         attemptId: String? = null,
         language: String = "en"
-    ): Int {
+    ): Pair<Int, String> {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(totalQuestions)
@@ -205,6 +205,8 @@ class StatsRepository(
             )
         )
 
+        Log.d("CoinsCalc", "trackQuizCompletion: score=$score, totalQ=$totalQuestions, streak=$currentStreak, checkin=$checkinDay, multiplier=$multiplier, calculated=${result.totalCoins}, breakdown=${result.breakdown}")
+
         val isGuest = authPrefs.isGuestUser
 
         val coins = if (isGuest) {
@@ -251,7 +253,7 @@ class StatsRepository(
             } ?: 0
         }
 
-        return coins
+        return Pair(coins, result.breakdown)
     }
 
     suspend fun trackBattleCompletion(battleCoins: Int, score: Int, questionsAnswered: Int, language: String = "en") {

@@ -389,21 +389,22 @@ class QuizViewModel @Inject constructor(
                     quizType = currentState.quizType
                 )
 
-                _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.third) }
+                _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.coinsEarned) }
                 _quizState.value = _quizState.value.copy(
                     isQuizComplete = true,
-                    coinsEarned = result.third,
+                    coinsEarned = result.coinsEarned,
+                    coinBreakdown = result.breakdown,
                     totalTimeSeconds = timeSpentSeconds
                 )
 
                 _sideEffect.send(QuizSideEffect.QuizCompleted(
                     score = currentState.score,
                     total = currentState.totalQuestions,
-                    coinsEarned = result.third
+                    coinsEarned = result.coinsEarned
                 ))
 
-                if (result.first && result.second != null) {
-                    val level = result.second ?: return@launch
+                if (result.didLevelUp && result.newLevel != null) {
+                    val level = result.newLevel ?: return@launch
                     com.aipoweredgita.app.notifications.YogaLevelUpNotificationManager.showLevelUpNotification(
                         application,
                         level

@@ -36,6 +36,7 @@ data class QuizState(
     val isTimerRunning: Boolean = false,
     val language: String = "en",
     val coinsEarned: Int = 0,
+    val coinBreakdown: String = "",
     val segmentCorrectAnswers: Map<String, Int> = emptyMap(),
     val totalTimeSeconds: Long = 0,
     val quizType: String = "general"

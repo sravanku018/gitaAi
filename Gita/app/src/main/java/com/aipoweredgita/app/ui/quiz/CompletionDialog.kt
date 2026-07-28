@@ -21,6 +21,7 @@ fun CompletionDialog(
     score: Int,
     total: Int,
     coins: Int = 0,
+    breakdown: String = "",
     totalTimeSeconds: Long = 0,
     onExit: () -> Unit,
     onRestart: () -> Unit
@@ -118,6 +119,14 @@ fun CompletionDialog(
                                 color = GoldSpark
                             )
                             Text("Coins", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (breakdown.isNotEmpty()) {
+                                Text(
+                                    text = breakdown,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
