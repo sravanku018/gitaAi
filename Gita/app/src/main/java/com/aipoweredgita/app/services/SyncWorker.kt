@@ -116,8 +116,9 @@ class SyncWorker(
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
                         val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
+                        val language = if (jsonObject.has("language") && !jsonObject.get("language").isJsonNull) jsonObject.get("language").asString else "en"
 
-                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode, attemptId=$attemptId")
+                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode, attemptId=$attemptId, language=$language")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
@@ -128,7 +129,8 @@ class SyncWorker(
                                     "totalQuestions" to totalQuestions,
                                     "streakDays" to streakDays,
                                     "checkinDay" to checkinDay,
-                                    "quizType" to quizType
+                                    "quizType" to quizType,
+                                    "language" to language
                                 ).let {
                                     if (attemptId != null) it + ("attemptId" to attemptId) else it
                                 },
@@ -149,7 +151,8 @@ class SyncWorker(
                                     coins_earned = event.coinsToAdjust,
                                     client_date = clientDate,
                                     country_code = countryCode,
-                                    attempt_id = attemptId
+                                    attempt_id = attemptId,
+                                    language = language
                                 )
                             )
                             Log.d(TAG, "Quiz attempt recorded to server successfully")
@@ -185,8 +188,9 @@ class SyncWorker(
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
                         val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
+                        val language = if (jsonObject.has("language") && !jsonObject.get("language").isJsonNull) jsonObject.get("language").asString else "en"
 
-                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode, attemptId=$attemptId")
+                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode, attemptId=$attemptId, language=$language")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
@@ -195,7 +199,8 @@ class SyncWorker(
                                     "battleCoins" to battleCoins,
                                     "score" to score,
                                     "questionsAnswered" to questionsAnswered,
-                                    "timeSpentSeconds" to 60
+                                    "timeSpentSeconds" to 60,
+                                    "language" to language
                                 ).let {
                                     if (attemptId != null) it + ("attemptId" to attemptId) else it
                                 },

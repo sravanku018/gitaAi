@@ -152,7 +152,8 @@ class StatsRepository(
         segmentCorrectMap: Map<String, Int> = emptyMap(),
         quizType: String = "general",
         timeSpentSeconds: Long = 0,
-        attemptId: String? = null
+        attemptId: String? = null,
+        language: String = "en"
     ): Int {
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
@@ -229,7 +230,8 @@ class StatsRepository(
                         "timeSpentSeconds" to timeSpentSeconds,
                         "clientDate" to java.time.OffsetDateTime.now().toString(),
                         "countryCode" to java.util.Locale.getDefault().country,
-                        "attemptId" to attemptId
+                        "attemptId" to attemptId,
+                        "language" to language
                     )
                     val payloadString = Gson().toJson(payloadMap)
                     pendingSyncEventDao.insert(
@@ -304,7 +306,7 @@ class StatsRepository(
                             com.aipoweredgita.app.database.PendingSyncEvent(
                                 userId = uid,
                                 eventType = "BATTLE",
-                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}"}""",
+                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
                                 coinsToAdjust = battleCoins,
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )

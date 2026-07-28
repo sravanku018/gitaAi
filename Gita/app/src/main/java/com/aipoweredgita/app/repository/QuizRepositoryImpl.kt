@@ -20,7 +20,7 @@ class QuizRepositoryImpl(
         quizType: String
     ): Triple<Boolean, Int?, Int> {
         return database.withTransaction {
-            val coinsEarned = statsRepository.trackQuizCompletion(score, totalQuestions, segmentCorrectMap, quizType, attempt.timeSpentSeconds, attempt.attemptId)
+            val coinsEarned = statsRepository.trackQuizCompletion(score, totalQuestions, segmentCorrectMap, quizType, attempt.timeSpentSeconds, attempt.attemptId, attempt.language)
             quizAttemptDao.insertAttempt(attempt.copy(coinsEarned = coinsEarned))
             val (didLevelUp, newLevel) = yogaProgressionRepository.updateFromQuiz(score, totalQuestions)
             Triple(didLevelUp, newLevel, coinsEarned)

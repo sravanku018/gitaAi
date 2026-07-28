@@ -183,6 +183,7 @@ class ActivityHistoryViewModel @Inject constructor(
                                 com.aipoweredgita.app.database.QuizAttempt(
                                     attemptId = attemptId ?: java.util.UUID.randomUUID().toString(),
                                     syncStatus = "SYNCED",
+                                    language = dto.language,
                                     score = dto.score,
                                     totalQuestions = dto.total_questions,
                                     timestamp = parsedTimestamp,

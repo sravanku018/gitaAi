@@ -376,7 +376,8 @@ class QuizViewModel @Inject constructor(
                 score = currentState.score,
                 totalQuestions = currentState.totalQuestions,
                 timeSpentSeconds = timeSpentSeconds,
-                quizType = currentState.quizType
+                quizType = currentState.quizType,
+                language = currentState.language
             )
 
             try {
@@ -500,7 +501,8 @@ class QuizViewModel @Inject constructor(
                         score = currentState.score,
                         totalQuestions = currentState.totalQuestions,
                         timeSpentSeconds = timeSpentSeconds,
-                        quizType = currentState.quizType
+                        quizType = currentState.quizType,
+                        language = currentState.language
                     )
                     quizRepository.saveQuizAttemptWithStats(
                         attempt = quizAttempt,

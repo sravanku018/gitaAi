@@ -18,6 +18,7 @@ data class QuizAttempt(
 
     val attemptId: String = java.util.UUID.randomUUID().toString(),
     val syncStatus: String = "PENDING",
+    val language: String = "en",
     val score: Int,
     val totalQuestions: Int,
     val timeSpentSeconds: Long = 0,
