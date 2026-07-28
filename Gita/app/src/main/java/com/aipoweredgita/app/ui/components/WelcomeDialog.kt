@@ -24,7 +24,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.7) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.0.9) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -58,7 +58,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.0.7",
+                    text = "✨ What's New in v2.0.9",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -67,7 +67,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Enhanced coin history deduplication, distinct reward logs, and scrollable updates dialog!",
+                    text = "Enforced UUID-based quiz history sync to prevent duplicates completely, plus quiz language tracking in history!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
@@ -100,8 +100,8 @@ fun WelcomeDialog(
                     
                     FeatureItem(
                         icon = "🪙",
-                        title = "Krishna Coins & Daily Rewards",
-                        description = "Fixed daily share & daily check-in coin rewards with automatic duplicate purging."
+                        title = "Robust Sync & Duplicate Purging",
+                        description = "Unique client-side UUID matching with strict INSERT OR IGNORE logic on the server to prevent duplicates, with quiz language tracking."
                     )
                     
                     FeatureItem(
