@@ -53,7 +53,7 @@ object CoinRewardEngine {
             (safe.score.toFloat() / safe.totalQuestions).coerceIn(0f, 1f)
         } else 0f
 
-        val base = 5
+        val base = 6
         val accuracyBonus = (accuracy * accuracy * 6f).toInt().coerceIn(0, 6)
         val streakBonus = (safe.currentStreakDays / 5).coerceAtMost(3)
         val checkinBonus = when (safe.dailyCheckinDay) {
