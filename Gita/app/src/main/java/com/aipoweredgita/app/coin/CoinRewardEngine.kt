@@ -54,7 +54,15 @@ object CoinRewardEngine {
         } else 0f
 
         val base = 6
-        val accuracyBonus = (accuracy * accuracy * 6f).toInt().coerceIn(0, 6)
+        // Tiered accuracy bonus: <50%→1, 50%→2, 60%→3, 70%→4, 80%→5, 90%/100%→6
+        val accuracyBonus = when {
+            accuracy >= 0.9f -> 6
+            accuracy >= 0.8f -> 5
+            accuracy >= 0.7f -> 4
+            accuracy >= 0.6f -> 3
+            accuracy >= 0.5f -> 2
+            else             -> 1
+        }
         val streakBonus = (safe.currentStreakDays / 5).coerceAtMost(3)
         val checkinBonus = when (safe.dailyCheckinDay) {
             7 -> 3
