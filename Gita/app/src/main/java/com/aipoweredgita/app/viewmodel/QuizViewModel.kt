@@ -389,12 +389,12 @@ class QuizViewModel @Inject constructor(
                     quizType = currentState.quizType
                 )
 
-                // End card shows coins from CoinRewardEngine which now exactly matches server formula
+                // End card shows total coins from CoinRewardEngine
                 _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.coinsEarned) }
                 _quizState.value = _quizState.value.copy(
                     isQuizComplete = true,
                     coinsEarned = result.coinsEarned,
-                    coinBreakdown = result.breakdown,
+                    coinBreakdown = "",
                     totalTimeSeconds = timeSpentSeconds
                 )
 
