@@ -389,11 +389,14 @@ class QuizViewModel @Inject constructor(
                     quizType = currentState.quizType
                 )
 
-                _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.coinsEarned) }
+                // End card displays correct answers as coins (accuracy-based, intuitive)
+                val displayCoins = currentState.score
+
+                _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = displayCoins) }
                 _quizState.value = _quizState.value.copy(
                     isQuizComplete = true,
-                    coinsEarned = result.coinsEarned,
-                    coinBreakdown = result.breakdown,
+                    coinsEarned = displayCoins,
+                    coinBreakdown = "",
                     totalTimeSeconds = timeSpentSeconds
                 )
 
