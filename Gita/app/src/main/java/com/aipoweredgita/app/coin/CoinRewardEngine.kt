@@ -100,11 +100,10 @@ object CoinRewardEngine {
 
         val breakdown = buildString {
             append("${base}base")
-            if (accuracyBonus > 0) append("+${accuracyBonus}accuracy")
-            if (streakBonus > 0) append("+${streakBonus}streak")
-            if (checkinBonus > 0) append("+${checkinBonus}checkin")
-            if (safe.yogaMultiplier != 1f) append("×${safe.yogaMultiplier}multiplier")
-            append("=${total}")
+            append(" + ${accuracyBonus}acc")
+            if (streakBonus > 0) append(" + ${streakBonus}streak")
+            if (checkinBonus > 0) append(" + ${checkinBonus}checkin")
+            append(" = ${total}")
         }
 
         return Result(base, accuracyBonus, streakBonus, checkinBonus, total, segCoins, breakdown)

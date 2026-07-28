@@ -394,7 +394,7 @@ class QuizViewModel @Inject constructor(
                 _quizState.value = _quizState.value.copy(
                     isQuizComplete = true,
                     coinsEarned = result.coinsEarned,
-                    coinBreakdown = "",
+                    coinBreakdown = result.breakdown,
                     totalTimeSeconds = timeSpentSeconds
                 )
 
