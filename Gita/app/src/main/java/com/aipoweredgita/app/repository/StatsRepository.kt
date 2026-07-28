@@ -155,6 +155,11 @@ class StatsRepository(
         attemptId: String? = null,
         language: String = "en"
     ): Pair<Int, String> {
+        // Read local stats BEFORE server sync so the coin multiplier is
+        // based on what the user actually sees in the UI (not inflated server data).
+        val preStats = userStatsDao.getUserStatsOnce()
+        val multiplier = YogaLevelManager.getCoinMultiplier(preStats)
+
         ensureUserSynced()
         userStatsDao.incrementQuizzesTaken()
         userStatsDao.addQuestionsAnswered(totalQuestions)
@@ -173,7 +178,7 @@ class StatsRepository(
         // Update streak BEFORE coin calculation so reward reflects current streak
         updateStreak()
 
-        // Re-read stats to get the updated streak
+        // Re-read stats to get the updated streak (but keep pre-sync multiplier)
         val stats = userStatsDao.getUserStatsOnce()
         stats?.let {
             val currentBestPercentage = if (it.bestScoreOutOf > 0)
@@ -192,8 +197,7 @@ class StatsRepository(
             1
         }
 
-        val multiplier = YogaLevelManager.getCoinMultiplier(stats)
-        // Use CoinRewardEngine for calculation
+        // Use CoinRewardEngine for calculation with pre-sync multiplier
         val result = CoinRewardEngine.calculate(
             CoinRewardEngine.Input(
                 score = score,
