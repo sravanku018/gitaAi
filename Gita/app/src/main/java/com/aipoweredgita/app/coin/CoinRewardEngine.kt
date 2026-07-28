@@ -63,16 +63,8 @@ object CoinRewardEngine {
             accuracy >= 0.5f -> 2
             else             -> 1
         }
-        val streakBonus = (safe.currentStreakDays / 5).coerceAtMost(3)
-        val checkinBonus = when (safe.dailyCheckinDay) {
-            7 -> 3
-            5, 6 -> 2
-            in 2..4 -> 1
-            else -> 0
-        }
 
-        val preMultiplier = (base + accuracyBonus + streakBonus + checkinBonus).coerceAtMost(15) // server caps at 15
-        val total = (preMultiplier * safe.yogaMultiplier).toInt().coerceAtLeast(0)
+        val total = (base + accuracyBonus).coerceAtMost(15)
 
         val segCoins = if (safe.segmentCorrectMap.isNotEmpty()) {
             val canonicalCorrectMap = safe.segmentCorrectMap
@@ -90,22 +82,14 @@ object CoinRewardEngine {
             val totalCorrect = canonicalCorrectMap.values.sum().coerceAtLeast(1)
 
             canonicalCorrectMap.mapValues { (_, correct) ->
-                ((accuracyBonus + streakBonus + checkinBonus) *
-                    safe.yogaMultiplier *
-                    (correct.toFloat() / totalCorrect))
+                (accuracyBonus * (correct.toFloat() / totalCorrect))
                     .toInt()
                     .coerceAtLeast(0)
             }.filterValues { it > 0 }
         } else emptyMap()
 
-        val breakdown = buildString {
-            append("${base}base")
-            append(" + ${accuracyBonus}acc")
-            if (streakBonus > 0) append(" + ${streakBonus}streak")
-            if (checkinBonus > 0) append(" + ${checkinBonus}checkin")
-            append(" = ${total}")
-        }
+        val breakdown = "${base}base + ${accuracyBonus}acc = ${total}"
 
-        return Result(base, accuracyBonus, streakBonus, checkinBonus, total, segCoins, breakdown)
+        return Result(base, accuracyBonus, 0, 0, total, segCoins, breakdown)
     }
 }
