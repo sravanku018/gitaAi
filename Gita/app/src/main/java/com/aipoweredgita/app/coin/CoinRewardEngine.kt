@@ -53,7 +53,7 @@ object CoinRewardEngine {
             (safe.score.toFloat() / safe.totalQuestions).coerceIn(0f, 1f)
         } else 0f
 
-        val base = 6
+        val base = 5
         val accuracyBonus = (accuracy * accuracy * 6f).toInt().coerceIn(0, 6)
         val streakBonus = (safe.currentStreakDays / 5).coerceAtMost(3)
         val checkinBonus = when (safe.dailyCheckinDay) {
@@ -63,7 +63,7 @@ object CoinRewardEngine {
             else -> 0
         }
 
-        val preMultiplier = base + accuracyBonus + streakBonus + checkinBonus
+        val preMultiplier = (base + accuracyBonus + streakBonus + checkinBonus).coerceAtMost(15) // server caps at 15
         val total = (preMultiplier * safe.yogaMultiplier).toInt().coerceAtLeast(0)
 
         val segCoins = if (safe.segmentCorrectMap.isNotEmpty()) {
