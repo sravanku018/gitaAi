@@ -53,7 +53,7 @@ object CoinRewardEngine {
             (safe.score.toFloat() / safe.totalQuestions).coerceIn(0f, 1f)
         } else 0f
 
-        val base = 6
+        val base = 5
         // Tiered accuracy bonus: <50%→1, 50%→2, 60%→3, 70%→4, 80%→5, 90%/100%→6
         val accuracyBonus = when {
             accuracy >= 0.9f -> 6
