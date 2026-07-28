@@ -306,6 +306,7 @@ class QuizViewModel @Inject constructor(
      * Confirm answer with known correctness (used by MCQ flow)
      */
     fun confirmAnswerResult(isCorrect: Boolean) {
+        if (_uiState.value.isAnswerRevealed) return
         stopTimer()
         _uiState.update {
             it.copy(

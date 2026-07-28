@@ -47,6 +47,7 @@ fun QuizContent(
 ) {
     var showResultDialog by remember { mutableStateOf(false) }
     var userAnswer by remember { mutableStateOf("") }
+    var hasProceeded by remember(options) { mutableStateOf(false) }
     val dialogScroll = rememberScrollState()
     val contentScroll = rememberScrollState()
 
@@ -195,6 +196,13 @@ fun QuizContent(
             selectedIndex == correctIndex
         }
 
+        val safeProceed = {
+            if (!hasProceeded) {
+                hasProceeded = true
+                onProceed(isCorrect)
+            }
+        }
+
         if (showResultDialog && isCorrect) {
             com.aipoweredgita.app.ui.ConfettiBurst(playId = 1)
         }
@@ -202,7 +210,7 @@ fun QuizContent(
         if (showResultDialog) {
             Dialog(onDismissRequest = {
                 showResultDialog = false
-                onProceed(isCorrect)
+                safeProceed()
             }) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -261,7 +269,7 @@ fun QuizContent(
                         Button(
                             onClick = {
                                 showResultDialog = false
-                                onProceed(isCorrect)
+                                safeProceed()
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
