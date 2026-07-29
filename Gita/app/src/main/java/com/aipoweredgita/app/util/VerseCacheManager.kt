@@ -81,11 +81,21 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
     }
 
     /**
-     * Clear all cached verses
+     * Clear all cached verses and cancel any in-flight fetches
      * Called on ViewModel cleanup to guarantee memory release
      */
     fun clear() {
+        inFlightFetches.values.forEach { try { it.cancel() } catch (_: Exception) {} }
+        inFlightFetches.clear()
         cache.evictAll()
+    }
+
+    /**
+     * Close manager: cancels manager scope and purges all state
+     */
+    fun close() {
+        clear()
+        managerScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
     /**

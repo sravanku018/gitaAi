@@ -56,7 +56,7 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
                 .use { it.readText() }
 
             val jsonArray = JSONArray(content)
-            var count = 0
+            val tempMap = HashMap<Pair<Int, Int>, EnglishGitaEntry>()
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
                 val chapter = obj.optInt("chapter_no")
@@ -77,12 +77,15 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
                         wordByWordMeaningEnglish = meaning,
                         audioLink = audio
                     )
-                    entries[Pair(chapter, verse)] = entry
-                    count++
+                    tempMap[Pair(chapter, verse)] = entry
                 }
             }
-            Log.d(TAG, "Successfully loaded $count English Gita entries from gita_english_only.json")
-            return count > 0
+            if (tempMap.isNotEmpty()) {
+                entries.putAll(tempMap)
+                Log.d(TAG, "Successfully loaded ${tempMap.size} English Gita entries from gita_english_only.json")
+                return true
+            }
+            return false
         } catch (e: Exception) {
             Log.e(TAG, "Error loading gita_english_only.json asset: ${e.message}", e)
             return false

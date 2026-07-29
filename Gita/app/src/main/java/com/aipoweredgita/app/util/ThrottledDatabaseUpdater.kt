@@ -129,27 +129,32 @@ class ThrottledDatabaseUpdater(
         Log.d(TAG, "Flush scheduled in ${flushIntervalMs}ms")
     }
 
-    private suspend fun writeBatchWithRetry(toWrite: List<VerseRead>) {
+    private suspend fun writeBatchWithRetry(toWrite: List<VerseRead>): Boolean {
         var attempts = 0
         while (attempts < maxRetries) {
             try {
                 onBatchWrite(toWrite)
-                return
+                return true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 attempts++
                 Log.e(TAG, "Error writing batch during cleanup (attempt $attempts/$maxRetries): ${e.message}")
                 if (attempts < maxRetries) delay(100L * attempts)
             }
         }
+        return false
     }
 
     /**
      * Cleanup - flush all pending writes and await completion off the main thread.
      * Prevents new work and drains the queue after in-flight writer jobs finish.
+     * Returns true if all pending batch writes succeeded, false if any write failed after retries.
      */
-    suspend fun cleanup() = kotlinx.coroutines.withContext(Dispatchers.IO) {
+    suspend fun cleanup(): Boolean = kotlinx.coroutines.withContext(Dispatchers.IO) {
         Log.d(TAG, "Cleaning up - flushing pending writes")
         isCleaningUp = true
+        var allSucceeded = true
 
         val initialBatch = synchronized(batch) {
             val copied = batch.toList()
@@ -159,7 +164,9 @@ class ThrottledDatabaseUpdater(
             copied
         }
         if (initialBatch.isNotEmpty()) {
-            writeBatchWithRetry(initialBatch)
+            if (!writeBatchWithRetry(initialBatch)) {
+                allSucceeded = false
+            }
         }
 
         // Await active in-flight writer jobs
@@ -175,10 +182,13 @@ class ThrottledDatabaseUpdater(
             copied
         }
         if (leftoverBatch.isNotEmpty()) {
-            writeBatchWithRetry(leftoverBatch)
+            if (!writeBatchWithRetry(leftoverBatch)) {
+                allSucceeded = false
+            }
         }
 
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        allSucceeded
     }
 
     /**
