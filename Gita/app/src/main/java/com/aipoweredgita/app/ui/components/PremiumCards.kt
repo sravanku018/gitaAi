@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 import com.aipoweredgita.app.ui.theme.UiDefaults
 import com.aipoweredgita.app.ui.theme.UiMotion
 
@@ -66,19 +67,22 @@ fun PremiumDashboardCard(
                     onClick = onClick
                 )
         ) {
-            // Glassmorphism shine
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.1f),
-                                Color.Transparent
+            // Glassmorphism shine (Dark mode only to prevent two-tone look in light mode)
+            val isDark = rememberThemeIsDark()
+            if (isDark) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
                             )
                         )
-                    )
-            )
+                )
+            }
 
             Row(
                 modifier = Modifier

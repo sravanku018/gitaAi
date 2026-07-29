@@ -199,13 +199,15 @@ fun IlluminatedVerseCard(text: String) {
             .background(cardBg)
             .shadow(6.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.02f), Color.Transparent),
-                        startY = 0f,
-                        endY = size.height * 0.45f
+                if (isDark) {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        )
                     )
-                )
+                }
             }
     ) {
         Box(

@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.text.font.FontWeight
@@ -250,6 +251,7 @@ private fun DiamondStatCard(
     diamondShape: DiamondShape,
     card: StatCardData
 ) {
+    val isDark = rememberThemeIsDark()
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -258,21 +260,23 @@ private fun DiamondStatCard(
             .background(Color.White.copy(alpha = 0.04f))
             .border(1.dp, Color.White.copy(alpha = 0.13f), diamondShape)
             .drawBehind {
-                val dp = Path().apply {
-                    moveTo(size.width / 2f, 0f)
-                    lineTo(size.width, size.height / 2f)
-                    lineTo(size.width / 2f, size.height)
-                    lineTo(0f, size.height / 2f)
-                    close()
-                }
-                clipPath(dp) {
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
-                            startY = 0f,
-                            endY = size.height * 0.45f
+                if (isDark) {
+                    val dp = Path().apply {
+                        moveTo(size.width / 2f, 0f)
+                        lineTo(size.width, size.height / 2f)
+                        lineTo(size.width / 2f, size.height)
+                        lineTo(0f, size.height / 2f)
+                        close()
+                    }
+                    clipPath(dp) {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                                startY = 0f,
+                                endY = size.height * 0.45f
+                            )
                         )
-                    )
+                    }
                 }
             }
     ) {
