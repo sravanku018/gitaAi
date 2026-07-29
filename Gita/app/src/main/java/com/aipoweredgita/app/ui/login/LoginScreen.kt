@@ -194,7 +194,7 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(4.dp)
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(GoldDark, GoldPrimary, GoldLight, GoldPrimary, GoldDark)
@@ -205,15 +205,15 @@ fun LoginScreen(
             // Mandala background (subtle)
             MandalaDecorative(
                 modifier = Modifier
-                    .size(340.dp)
-                    .offset(y = (-60).dp)
+                    .size(180.dp)
+                    .offset(y = (-20).dp)
                     .alpha(0.07f)
             )
 
             // Lamp row
             Row(
-                modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 LampIcon()
@@ -223,12 +223,12 @@ fun LoginScreen(
 
             // App title
             Text(
-                text = "AI Powered Gita",
+                text = "Śrīmad Bhagavad Gītā",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = GoldLight,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = 6.dp)
             )
 
             // Sanskrit subtitle
@@ -236,36 +236,14 @@ fun LoginScreen(
                 text = "॥ ज्ञान · भक्ति · मोक्ष ॥",
                 fontSize = 10.sp,
                 color = GoldMuted,
-                letterSpacing = 3.sp,
+                letterSpacing = 2.5.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            // Divider
-            Box(
-                modifier = Modifier
-                    .width(180.dp)
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, GoldPrimary, Color.Transparent)
-                        )
-                    )
-                    .padding(vertical = 14.dp)
-            )
-
-            // Ornament
-            Text(
-                text = "✦ ✦ ✦",
-                fontSize = 18.sp,
-                color = GoldPrimary,
-                letterSpacing = 8.sp,
-                textAlign = TextAlign.Center
+                modifier = Modifier.padding(top = 2.dp)
             )
 
             // Shloka
             Column(
-                modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -274,14 +252,14 @@ fun LoginScreen(
                     color = GoldAccent,
                     textAlign = TextAlign.Center,
                     fontStyle = FontStyle.Italic,
-                    lineHeight = 18.sp
+                    lineHeight = 16.sp
                 )
                 Text(
                     text = "Perform your actions, established in yoga",
                     fontSize = 9.sp,
                     color = GoldAccent,
                     textAlign = TextAlign.Center,
-                    letterSpacing = 1.sp
+                    letterSpacing = 0.5.sp
                 )
             }
 
@@ -289,7 +267,7 @@ fun LoginScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White.copy(alpha = 0.04f)
@@ -301,7 +279,7 @@ fun LoginScreen(
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp, 20.dp),
+                    modifier = Modifier.padding(18.dp, 14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Card title
@@ -311,7 +289,7 @@ fun LoginScreen(
                         color = GoldMuted,
                         letterSpacing = 2.sp,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 18.dp)
+                        modifier = Modifier.padding(bottom = 10.dp)
                     )
 
                     // Mode toggle (Login / Register)

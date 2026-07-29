@@ -46,20 +46,20 @@ fun WelcomeDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState)
-                    .padding(24.dp),
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Header Icon
                 Text(
                     text = "🎉",
-                    style = MaterialTheme.typography.displayMedium
+                    style = MaterialTheme.typography.headlineLarge
                 )
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.1.1",
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = "✨ What's New in v2.2.0",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
                     textAlign = TextAlign.Center
@@ -67,57 +67,51 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Added Śrīmad Bhagavad Gītā header branding, offline English translation CSV asset integration, pill quiz tabs, and UI contrast fixes!",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "Added Śrīmad Bhagavad Gītā header branding, live English/Telugu translation toggle, single-tone card themes, and robust concurrency & network fixes!",
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 // Features
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     FeatureItem(
+                        icon = "🌐",
+                        title = "Live Telugu & English Toggle",
+                        description = "Instant dynamic switching between English and Telugu translations, word-by-word meanings, and purports in Read Mode!"
+                    )
+
+                    FeatureItem(
+                        icon = "🌸",
+                        title = "Single-Tone Sacred Aesthetics",
+                        description = "Pure white Light Mode cards with zero cement shadows, and warm soft Amber highlights in Dark Mode."
+                    )
+
+                    FeatureItem(
                         icon = "⚡",
-                        title = "Groq AI — Now Default",
-                        description = "No model downloads needed! Groq & NVIDIA power all AI features instantly from the cloud."
+                        title = "Groq AI & Cloud Acceleration",
+                        description = "Instant cloud AI responses with zero local model downloads required."
                     )
                     
                     FeatureItem(
                         icon = "⚔️",
                         title = "Mahabharata Battle Quiz",
-                        description = "10,091 Mahabharata sequence MCQs (5,000 medium + 5,091 hard) in English & Telugu with live language toggle!"
-                    )
-                    
-                    FeatureItem(
-                        icon = "📚",
-                        title = "Bundled Offline Datasets",
-                        description = "3,501 pre-translated English & Telugu Q&A pairs embedded offline — zero network downloads needed."
+                        description = "10,091 sequence MCQs in English & Telugu with live language toggle!"
                     )
                     
                     FeatureItem(
                         icon = "🪙",
-                        title = "Robust Sync & Duplicate Purging",
-                        description = "Unique client-side UUID matching with strict INSERT OR IGNORE logic on the server to prevent duplicates, with quiz language tracking."
-                    )
-                    
-                    FeatureItem(
-                        icon = "🧘",
-                        title = "Yoga Levels & Multipliers",
-                        description = "Progress through Seeker, Yogi, and Sage levels to unlock high coin reward multipliers!"
-                    )
-                    
-                    FeatureItem(
-                        icon = "⚡",
-                        title = "Instant Offline Ingestion",
-                        description = "Rapid response time with local database loading across all study and battle quiz modes."
+                        title = "Robust Sync & Concurrency",
+                        description = "Thread-safe verse caching, atomic asset loading, and atomic database write queueing."
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 // Buttons
                 Column(
@@ -160,20 +154,20 @@ private fun FeatureItem(
     ) {
         Text(
             text = icon,
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(end = 12.dp)
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(end = 10.dp)
         )
         
         Column {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.secondary
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
