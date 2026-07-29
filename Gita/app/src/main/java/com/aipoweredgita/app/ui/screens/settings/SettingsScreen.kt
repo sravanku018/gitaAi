@@ -111,9 +111,10 @@ fun SettingsScreen(
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
-    val gold = if (isDark) GoldSpark else Saffron
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val gold = if (isDark) GoldSpark else MaterialTheme.colorScheme.primary
+    val headerColor = if (isDark) GoldSpark else textPrimary
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
 
     Box(
         modifier = Modifier
@@ -134,7 +135,7 @@ fun SettingsScreen(
             Text(
                 "Appearance",
                 style = MaterialTheme.typography.titleLarge,
-                color = gold
+                color = headerColor
             )
             // ... (rest of Appearance section remains)
 
@@ -244,7 +245,7 @@ fun SettingsScreen(
             Text(
                 "Home Widget",
                 style = MaterialTheme.typography.titleLarge,
-                color = gold,
+                color = headerColor,
                 modifier = Modifier.padding(top = 12.dp)
             )
             WidgetSettingsSection(context)
@@ -339,7 +340,7 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Manage AI Models", style = MaterialTheme.typography.titleLarge, color = gold)
+            Text("Manage AI Models", style = MaterialTheme.typography.titleLarge, color = headerColor)
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 32.dp,

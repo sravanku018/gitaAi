@@ -68,8 +68,9 @@ fun QuizSectionScreen(
     val isDark = isSystemInDarkTheme()
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
-    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
-    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
+    val headerTitleColor = if (isDark) GoldSpark else textPrimary
+    val activePillColor = if (isDark) GoldSpark else MaterialTheme.colorScheme.primary
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
     Box(
@@ -112,7 +113,7 @@ fun QuizSectionScreen(
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontSize = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = gold
+                        color = headerTitleColor
                     )
                 )
 
@@ -127,7 +128,7 @@ fun QuizSectionScreen(
                 shape = RoundedCornerShape(24.dp),
                 color = cardBg,
                 border = BorderStroke(1.dp, cardBorder),
-                shadowElevation = if (isDark) 4.dp else 2.dp
+                shadowElevation = if (isDark) 4.dp else 1.dp
             ) {
                 Row(
                     modifier = Modifier
@@ -139,16 +140,20 @@ fun QuizSectionScreen(
                     tabs.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         val pillBg = if (isSelected) {
-                            if (isDark) gold.copy(alpha = 0.2f) else gold.copy(alpha = 0.12f)
+                            if (isDark) activePillColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primaryContainer
                         } else {
                             Color.Transparent
                         }
                         val pillBorder = if (isSelected) {
-                            gold.copy(alpha = 0.4f)
+                            if (isDark) activePillColor.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                         } else {
                             Color.Transparent
                         }
-                        val contentColor = if (isSelected) gold else textPrimary.copy(alpha = 0.6f)
+                        val contentColor = if (isSelected) {
+                            if (isDark) activePillColor else MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            textPrimary.copy(alpha = 0.7f)
+                        }
 
                         Box(
                             modifier = Modifier
