@@ -33,8 +33,15 @@ object DeviceTierDetector {
     fun invalidate() { cached = null; cachedArmVersion = null }
 
     /**
-     * Synchronous detection. Safe to call on any thread — no blocking I/O or
-     * micro-benchmarks. Returns a cached result on subsequent calls.
+     * Coroutine-friendly async detection. Offloads file I/O off the main thread.
+     */
+    suspend fun detectAsync(context: Context): DeviceTier =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            detect(context)
+        }
+
+    /**
+     * Synchronous detection. Returns cached result if available.
      */
     fun detect(context: Context): DeviceTier {
         cached?.let { return it }
@@ -129,8 +136,7 @@ object DeviceTierDetector {
             info.contains("Cortex-X4", ignoreCase = true) ||
             info.contains("Cortex-X3", ignoreCase = true) ||
             info.contains("Cortex-A720", ignoreCase = true) ||
-            info.contains("Cortex-A520", ignoreCase = true) ||
-            Build.VERSION.SDK_INT >= 34) 9 else 8
+            info.contains("Cortex-A520", ignoreCase = true)) 9 else 8
     }.getOrDefault(8).also { cachedArmVersion = it }
 
     // ─── GPU axis ───────────────────────────────────────────────────

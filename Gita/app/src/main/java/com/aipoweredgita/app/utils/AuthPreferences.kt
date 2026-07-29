@@ -136,26 +136,25 @@ class AuthPreferences(context: Context) {
         phone: String? = null,
         email: String? = null
     ) {
-        // Use commit() (synchronous) so that isLoggedIn, userId, and token are immediately
-        // readable after login — async apply() can cause stale reads in the UI right after login
+        // Clear old user metadata completely
         prefs.edit().apply {
             putString(KEY_USER_ID, userId)
             putBoolean(KEY_IS_LOGGED_IN, true)
             putBoolean(KEY_IS_GUEST, false)
             putString(KEY_LOGIN_METHOD, loginMethod)
             putString(KEY_NAME, name)
-            phone?.let { putString(KEY_PHONE, it) }
-            email?.let { putString(KEY_EMAIL, it) }
+            if (phone != null) putString(KEY_PHONE, phone) else remove(KEY_PHONE)
+            if (email != null) putString(KEY_EMAIL, email) else remove(KEY_EMAIL)
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             remove("guest_welcome_awarded") // Reset guest flag
-            // Use timestamp to avoid read-then-write race condition
             putLong("auth_version", System.currentTimeMillis())
-            commit() // synchronous — ensures values are written before onLoginSuccess navigates
+            commit()
         }
-        // Store token in encrypted prefs — also synchronous
+        // Always remove old token first to prevent token leak across accounts
         securePrefs.edit().apply {
+            remove(KEY_TOKEN)
             token?.let { putString(KEY_TOKEN, it) }
-            commit() // synchronous — token must be readable immediately after login
+            commit()
         }
     }
 
@@ -170,8 +169,10 @@ class AuthPreferences(context: Context) {
             putString(KEY_USER_ID, guestId)
             putString(KEY_LOGIN_METHOD, "guest")
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
-            apply()
+            commit()
         }
+        // Remove any old auth token so guest requests are not authenticated as previous user
+        securePrefs.edit().remove(KEY_TOKEN).commit()
     }
 
     /**

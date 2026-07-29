@@ -31,28 +31,26 @@ object NetworkUtils {
 
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                Log.d(TAG, "Network available: $network")
-                trySend(true)
+                Log.d(TAG, "Network available event: $network")
+                trySend(isNetworkAvailable(context))
             }
 
             override fun onLost(network: Network) {
-                Log.d(TAG, "Network lost: $network")
-                trySend(false)
+                Log.d(TAG, "Network lost event: $network")
+                trySend(isNetworkAvailable(context))
             }
 
             override fun onCapabilitiesChanged(
                 network: Network,
                 networkCapabilities: NetworkCapabilities
             ) {
-                val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                val hasValidated = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                Log.d(TAG, "Capabilities changed - Internet: $hasInternet, Validated: $hasValidated")
-                trySend(hasInternet && hasValidated)
+                Log.d(TAG, "Capabilities changed event")
+                trySend(isNetworkAvailable(context))
             }
 
             override fun onUnavailable() {
-                Log.d(TAG, "Network unavailable")
-                trySend(false)
+                Log.d(TAG, "Network unavailable event")
+                trySend(isNetworkAvailable(context))
             }
         }
 
@@ -179,11 +177,16 @@ object NetworkUtils {
 
             @Suppress("DEPRECATION")
             return when (networkInfo.subtype) {
-                android.telephony.TelephonyManager.NETWORK_TYPE_LTE,
+                android.telephony.TelephonyManager.NETWORK_TYPE_LTE -> CellularGeneration.FOUR_G
                 android.telephony.TelephonyManager.NETWORK_TYPE_HSPAP,
+                android.telephony.TelephonyManager.NETWORK_TYPE_HSPA,
+                android.telephony.TelephonyManager.NETWORK_TYPE_UMTS,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_0,
-                android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_A -> CellularGeneration.FOUR_G
-                else -> null
+                android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_A -> CellularGeneration.THREE_G
+                android.telephony.TelephonyManager.NETWORK_TYPE_GPRS,
+                android.telephony.TelephonyManager.NETWORK_TYPE_EDGE,
+                android.telephony.TelephonyManager.NETWORK_TYPE_CDMA -> CellularGeneration.TWO_G
+                else -> CellularGeneration.UNKNOWN
             }
         }
 
@@ -194,16 +197,12 @@ object NetworkUtils {
             return null
         }
 
-
-
-        // Use telephony manager for precise generation detection
         try {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager
-                ?: return CellularGeneration.FOUR_G // Default to 4G if we can't determine
+                ?: return CellularGeneration.FOUR_G
 
             @SuppressLint("MissingPermission")
             val dataNetworkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                // READ_PHONE_STATE is required for dataNetworkType on ALL API >= 24, not just API 31+
                 if (androidx.core.content.ContextCompat.checkSelfPermission(
                         context,
                         android.Manifest.permission.READ_PHONE_STATE
@@ -217,17 +216,18 @@ object NetworkUtils {
             }
 
             return when (dataNetworkType) {
-                android.telephony.TelephonyManager.NETWORK_TYPE_NR,
-                20, // NETWORK_TYPE_NR (API 29+)
-                21 -> CellularGeneration.FIVE_G // NETWORK_TYPE_NR_NEW
-
-                android.telephony.TelephonyManager.NETWORK_TYPE_LTE,
+                android.telephony.TelephonyManager.NETWORK_TYPE_NR -> CellularGeneration.FIVE_G
+                android.telephony.TelephonyManager.NETWORK_TYPE_LTE -> CellularGeneration.FOUR_G
                 android.telephony.TelephonyManager.NETWORK_TYPE_HSPAP,
+                android.telephony.TelephonyManager.NETWORK_TYPE_HSPA,
+                android.telephony.TelephonyManager.NETWORK_TYPE_UMTS,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_0,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_A,
-                android.telephony.TelephonyManager.NETWORK_TYPE_EHRPD -> CellularGeneration.FOUR_G
-
-                else -> CellularGeneration.FOUR_G // Default to 4G for unknown types
+                android.telephony.TelephonyManager.NETWORK_TYPE_EHRPD -> CellularGeneration.THREE_G
+                android.telephony.TelephonyManager.NETWORK_TYPE_GPRS,
+                android.telephony.TelephonyManager.NETWORK_TYPE_EDGE,
+                android.telephony.TelephonyManager.NETWORK_TYPE_CDMA -> CellularGeneration.TWO_G
+                else -> CellularGeneration.UNKNOWN
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to detect cellular generation: ${e.message}")
@@ -236,8 +236,11 @@ object NetworkUtils {
     }
 
     enum class CellularGeneration {
+        TWO_G,
+        THREE_G,
         FOUR_G,
-        FIVE_G
+        FIVE_G,
+        UNKNOWN
     }
 
     enum class NetworkType {

@@ -21,8 +21,8 @@ enum class LanguageMode(
             "Speak in clear, human-like sentences with proper spacing and punctuation. " +
             "If the user writes in Telugu, respond in Telugu. Otherwise respond in English. " +
             "Never repeat or hallucinate verse text. Only explain what is given to you.",
-        ttsLocale = "te-IN",
-        sttLocale = "te-IN"
+        ttsLocale = "en-IN",
+        sttLocale = "en-IN"
     ),
     ENGLISH(
         displayName   = "English",

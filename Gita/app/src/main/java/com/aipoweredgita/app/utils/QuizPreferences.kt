@@ -32,7 +32,11 @@ class QuizPreferences(private val context: Context) {
                     totalQuestions = totalQuestions,
                     maxQuestions = preferences[QUIZ_MAX_QUESTIONS_KEY] ?: 10,
                     startTime = preferences[QUIZ_START_TIME_KEY] ?: 0L,
-                    usedQuestions = preferences[USED_QUESTIONS_KEY]?.split(",")?.toSet() ?: emptySet()
+                    usedQuestions = preferences[USED_QUESTIONS_KEY]
+                        ?.takeIf { it.isNotBlank() }
+                        ?.split(",")
+                        ?.toSet()
+                        ?: emptySet()
                 )
             } else {
                 null

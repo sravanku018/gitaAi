@@ -129,6 +129,14 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         })
     }
 
+    private fun flushCallbacks() {
+        val callbacks = ArrayList(utteranceCallbacks.values)
+        utteranceCallbacks.clear()
+        callbacks.forEach { cb ->
+            try { cb.invoke() } catch (e: Exception) { Log.e(TAG, "Error flushing callback", e) }
+        }
+    }
+
     fun speak(text: String, flush: Boolean = true, onComplete: (() -> Unit)? = null) {
         mainHandler.post {
             if (isDestroyed) return@post
@@ -136,7 +144,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 if (isTtsReady) {
                     if (flush) {
                         tts?.stop()
-                        utteranceCallbacks.clear()
+                        flushCallbacks()
                     }
                     val utteranceId = "gita_${utteranceCounter.incrementAndGet()}"
                     if (onComplete != null) utteranceCallbacks[utteranceId] = onComplete
@@ -161,7 +169,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         mainHandler.post {
             if (isDestroyed) return@post
             tts?.stop()
-            utteranceCallbacks.clear()
+            flushCallbacks()
         }
     }
 
@@ -190,7 +198,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() { isListeningActive = false }
+                override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
                     isListeningActive = false
                     consecutiveSttErrors++
@@ -264,6 +272,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         isDestroyed = true
         mainHandler.removeCallbacksAndMessages(null)
         mainHandler.post {
+            flushCallbacks()
             tts?.shutdown()
             speechRecognizer?.destroy()
         }
