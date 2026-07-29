@@ -34,11 +34,15 @@ class ThrottledDatabaseUpdater(
     private val maxRetries = 3
     private val writerJobs = java.util.concurrent.ConcurrentHashMap.newKeySet<Job>()
 
+    @Volatile private var isCleaningUp = false
+
     /**
      * Track a verse read - batched and throttled
      */
     fun trackVerseRead(chapter: Int, verse: Int) {
+        if (isCleaningUp) return
         synchronized(batch) {
+            if (isCleaningUp) return
             batch.add(VerseRead(chapter, verse))
             Log.d(TAG, "Queued: Ch$chapter:V$verse (batch size: ${batch.size}/$batchSize)")
 
@@ -59,8 +63,9 @@ class ThrottledDatabaseUpdater(
      * Force immediate flush of pending writes
      */
     fun flush() {
+        if (isCleaningUp) return
         synchronized(batch) {
-            if (batch.isEmpty()) {
+            if (isCleaningUp || batch.isEmpty()) {
                 Log.d(TAG, "No pending writes to flush")
                 return
             }
@@ -92,7 +97,7 @@ class ThrottledDatabaseUpdater(
                             false
                         }
                     }
-                    if (eligible.isNotEmpty()) {
+                    if (eligible.isNotEmpty() && !isCleaningUp) {
                         synchronized(batch) {
                             batch.addAll(0, eligible)
                             scheduleFlush() // Schedule retry flush!
@@ -109,8 +114,8 @@ class ThrottledDatabaseUpdater(
      * Schedule a delayed flush if one isn't already scheduled
      */
     private fun scheduleFlush() {
-        if (flushJob != null && !flushJob!!.isCompleted) {
-            return  // Already scheduled
+        if (isCleaningUp || (flushJob != null && !flushJob!!.isCompleted)) {
+            return  // Already scheduled or cleaning up
         }
 
         flushJob = scope.launch {
@@ -121,33 +126,56 @@ class ThrottledDatabaseUpdater(
     }
 
     /**
-     * Cleanup - flush all pending writes and await completion before cancelling scope.
+     * Cleanup - flush all pending writes and await completion off the main thread.
+     * Prevents new work and drains the queue after in-flight writer jobs finish.
      */
-    fun cleanup() {
+    suspend fun cleanup() = kotlinx.coroutines.withContext(Dispatchers.IO) {
         Log.d(TAG, "Cleaning up - flushing pending writes")
-        kotlinx.coroutines.runBlocking(Dispatchers.IO) {
-            val toBatch = synchronized(batch) {
-                if (batch.isEmpty()) return@runBlocking emptyList<VerseRead>()
-                val copied = batch.toList()
-                batch.clear()
-                flushJob?.cancel()
-                flushJob = null
-                copied
-            }
-            if (toBatch.isNotEmpty()) {
-                try {
-                    onBatchWrite(toBatch)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error during cleanup flush: ${e.message}")
-                }
-            }
-            // Await active in-flight writer jobs before cancelling scope
-            val inFlight = writerJobs.toList()
-            inFlight.forEach { job ->
-                try { job.join() } catch (_: Exception) {}
+        isCleaningUp = true
+
+        val initialBatch = synchronized(batch) {
+            val copied = batch.toList()
+            batch.clear()
+            flushJob?.cancel()
+            flushJob = null
+            copied
+        }
+        if (initialBatch.isNotEmpty()) {
+            try {
+                onBatchWrite(initialBatch)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during cleanup flush: ${e.message}")
             }
         }
+
+        // Await active in-flight writer jobs
+        val inFlight = writerJobs.toList()
+        inFlight.forEach { job ->
+            try { job.join() } catch (_: Exception) {}
+        }
+
+        // Final drain of any items re-queued by failed writer jobs
+        val leftoverBatch = synchronized(batch) {
+            val copied = batch.toList()
+            batch.clear()
+            copied
+        }
+        if (leftoverBatch.isNotEmpty()) {
+            try {
+                onBatchWrite(leftoverBatch)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during final cleanup drain: ${e.message}")
+            }
+        }
+
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+    }
+
+    /**
+     * Non-blocking cleanup launcher for callers without a coroutine scope.
+     */
+    fun cleanupAsync() {
+        scope.launch { cleanup() }
     }
 
     data class VerseRead(

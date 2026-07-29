@@ -3,6 +3,7 @@ package com.aipoweredgita.app.util
 import android.content.Context
 import android.util.Log
 import com.aipoweredgita.app.data.GitaVerse
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,9 +23,12 @@ data class EnglishGitaEntry(
 class EnglishTranslationAssetManager private constructor(context: Context) {
 
     private val entries = ConcurrentHashMap<Pair<Int, Int>, EnglishGitaEntry>()
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
 
     init {
-        loadEntries(context)
+        scope.launch {
+            loadEntries(context)
+        }
     }
 
     private fun loadEntries(context: Context) {

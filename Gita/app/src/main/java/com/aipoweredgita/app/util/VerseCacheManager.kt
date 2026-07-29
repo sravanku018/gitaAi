@@ -58,15 +58,19 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         val key = makeKey(chapter, verse)
         val mutex = inFlightMutexes.getOrPut(key) { kotlinx.coroutines.sync.Mutex() }
         
-        return mutex.withLock {
-            val doubleCheck = get(chapter, verse)
-            if (doubleCheck != null) {
-                doubleCheck
-            } else {
-                val fetched = fetch()
-                if (fetched != null) put(chapter, verse, fetched)
-                fetched
+        return try {
+            mutex.withLock {
+                val doubleCheck = get(chapter, verse)
+                if (doubleCheck != null) {
+                    doubleCheck
+                } else {
+                    val fetched = fetch()
+                    if (fetched != null) put(chapter, verse, fetched)
+                    fetched
+                }
             }
+        } finally {
+            inFlightMutexes.remove(key, mutex)
         }
     }
 
