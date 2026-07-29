@@ -160,16 +160,19 @@ class NormalModeViewModel @Inject constructor(
                 if (verseData != null) {
                     Log.d(TAG, "Loaded from cache: ${verseData.verse.take(50)}")
                     
+                    val engManager = com.aipoweredgita.app.util.EnglishTranslationAssetManager.getInstance(application)
+                    val finalVerse = engManager.enrichVerse(verseData)
+                    
                     // Check if this verse was separated from a combined group
-                    val note = if (verseData.wasSeparated && verseData.originalCombinedGroup.isNotEmpty()) {
-                        val verseRange = "${verseData.originalCombinedGroup.first()}-${verseData.originalCombinedGroup.last()}"
+                    val note = if (finalVerse.wasSeparated && finalVerse.originalCombinedGroup.isNotEmpty()) {
+                        val verseRange = "${finalVerse.originalCombinedGroup.first()}-${finalVerse.originalCombinedGroup.last()}"
                         "ℹ️ Note: Verses $verseRange were originally combined. We separated them for convenience, but the sloka summary is the same for all verses in this group."
                     } else null
                     
                     // All verses are treated as separate - no combined verse detection
                     _uiState.update {
                         it.copy(
-                            verse = verseData,
+                            verse = finalVerse,
                             isLoading = false,
                             error = null,
                             combinedVerseNos = emptyList(),  // Always empty - all verses are separate
@@ -185,7 +188,30 @@ class NormalModeViewModel @Inject constructor(
                 } else {
                     // Fallback to API if not cached
                     val online = com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(application)
+                    val engManager = com.aipoweredgita.app.util.EnglishTranslationAssetManager.getInstance(application)
+                    
                     if (!online) {
+                        val fallbackEngText = engManager.getTranslation(chapter, verse)
+                        if (!fallbackEngText.isNullOrBlank()) {
+                            val offlineVerse = GitaVerse(
+                                chapterNo = chapter,
+                                verseNo = verse,
+                                chapterName = "Chapter $chapter",
+                                verse = "Chapter $chapter, Verse $verse",
+                                translation = fallbackEngText,
+                                purport = listOf(fallbackEngText)
+                            )
+                            _uiState.update {
+                                it.copy(
+                                    verse = offlineVerse,
+                                    isLoading = false,
+                                    error = null,
+                                    combinedVerseNos = emptyList()
+                                )
+                            }
+                            return@launch
+                        }
+                        
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -195,7 +221,8 @@ class NormalModeViewModel @Inject constructor(
                         return@launch
                     }
                     Log.d(TAG, "Cache miss, fetching from API...")
-                    val apiVerse = gitaRepository.getVerse(language, chapter, verse)
+                    val fetchedVerse = gitaRepository.getVerse(language, chapter, verse)
+                    val apiVerse = engManager.enrichVerse(fetchedVerse)
                     Log.d(TAG, "Successfully loaded from API: ${apiVerse.verse.take(50)}")
                     
                     // Check if this verse was separated from a combined group
