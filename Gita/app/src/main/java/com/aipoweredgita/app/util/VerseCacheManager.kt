@@ -28,6 +28,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         }
     }
 
+    private val cacheLock = Any()
     private val managerScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     private val inFlightFetches = ConcurrentHashMap<String, Deferred<GitaVerse?>>()
     private val cacheGeneration = java.util.concurrent.atomic.AtomicLong(0L)
@@ -68,8 +69,12 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
                 val doubleCheck = get(chapter, verse)
                 if (doubleCheck != null) return@async doubleCheck
                 val fetched = fetch()
-                if (fetched != null && startGen == cacheGeneration.get()) {
-                    put(chapter, verse, fetched)
+                if (fetched != null) {
+                    synchronized(cacheLock) {
+                        if (startGen == cacheGeneration.get()) {
+                            put(chapter, verse, fetched)
+                        }
+                    }
                 }
                 fetched
             }
@@ -89,10 +94,13 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
      * Called on ViewModel cleanup to guarantee memory release
      */
     fun clear() {
-        cacheGeneration.incrementAndGet()
+        synchronized(cacheLock) {
+            cacheGeneration.incrementAndGet()
+            cache.evictAll()
+        }
+
         inFlightFetches.values.forEach { try { it.cancel() } catch (_: Exception) {} }
         inFlightFetches.clear()
-        cache.evictAll()
     }
 
     /**
