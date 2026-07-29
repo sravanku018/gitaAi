@@ -68,8 +68,7 @@ fun QuizSectionScreen(
     val isDark = isSystemInDarkTheme()
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
-    val headerTitleColor = if (isDark) GoldSpark else textPrimary
-    val activePillColor = if (isDark) GoldSpark else MaterialTheme.colorScheme.primary
+    val headerTitleColor = if (isDark) Color(0xFFFFB74D) else textPrimary
     val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
@@ -140,17 +139,17 @@ fun QuizSectionScreen(
                     tabs.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         val pillBg = if (isSelected) {
-                            if (isDark) activePillColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.primaryContainer
+                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.18f) else MaterialTheme.colorScheme.primaryContainer
                         } else {
                             Color.Transparent
                         }
                         val pillBorder = if (isSelected) {
-                            if (isDark) activePillColor.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            if (isDark) Color(0xFFFFB74D).copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                         } else {
                             Color.Transparent
                         }
                         val contentColor = if (isSelected) {
-                            if (isDark) activePillColor else MaterialTheme.colorScheme.onPrimaryContainer
+                            if (isDark) Color(0xFFFFD54F) else MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             textPrimary.copy(alpha = 0.7f)
                         }
