@@ -205,11 +205,13 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Bhagavad Gita",
-                                fontSize = 24.sp,
+                                text = "Śrīmad Bhagavad Gītā",
+                                fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = textPrimary,
-                                letterSpacing = (-0.6).sp
+                                letterSpacing = (-0.5).sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {

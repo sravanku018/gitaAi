@@ -24,7 +24,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.1.0) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.2.0) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
@@ -58,7 +58,7 @@ fun WelcomeDialog(
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.1.0",
+                    text = "✨ What's New in v2.2.0",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -67,7 +67,7 @@ fun WelcomeDialog(
                 
                 // Introduction
                 Text(
-                    text = "Tiered quiz accuracy rewards, light mode contrast & layout enhancements, bottom drawer logout button, and Jetpack Compose screen previews!",
+                    text = "Added Śrīmad Bhagavad Gītā header branding, offline English translation CSV asset integration, pill quiz tabs, and UI contrast fixes!",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
