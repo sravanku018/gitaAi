@@ -120,11 +120,13 @@ fun NormalModeScreen(
                         Spacer(Modifier.height(16.dp))
 
                         ChapterVerseHeroCard(
-                            chapter      = verse.chapterNo,
-                            verse        = verse.verseNo,
-                            combinedNos  = state.combinedVerseNos,
-                            onChapterTap = { showChapterDialog = true },
-                            onVerseTap   = { showVerseDialog = true }
+                            chapter          = verse.chapterNo,
+                            verse            = verse.verseNo,
+                            combinedNos      = state.combinedVerseNos,
+                            selectedLanguage = state.selectedLanguage,
+                            onLanguageToggle = { lang -> viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang)) },
+                            onChapterTap     = { showChapterDialog = true },
+                            onVerseTap       = { showVerseDialog = true }
                         )
 
                         Spacer(Modifier.height(20.dp))

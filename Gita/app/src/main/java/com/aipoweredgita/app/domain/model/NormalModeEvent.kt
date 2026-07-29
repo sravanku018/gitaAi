@@ -7,4 +7,5 @@ sealed class NormalModeEvent {
     data class GoToChapter(val chapter: Int) : NormalModeEvent()
     object ToggleFavorite : NormalModeEvent()
     object TrackShare : NormalModeEvent()
+    data class ToggleLanguage(val language: String) : NormalModeEvent()
 }

@@ -133,6 +133,11 @@ class NormalModeViewModel @Inject constructor(
             is NormalModeEvent.GoToChapter -> goToChapter(event.chapter)
             is NormalModeEvent.ToggleFavorite -> toggleFavorite()
             is NormalModeEvent.TrackShare -> trackShare()
+            is NormalModeEvent.ToggleLanguage -> {
+                val newLang = event.language
+                _uiState.update { it.copy(selectedLanguage = newLang) }
+                loadVerse(lastRequestedChapter, lastRequestedVerse)
+            }
         }
     }
 
@@ -161,7 +166,13 @@ class NormalModeViewModel @Inject constructor(
                     Log.d(TAG, "Loaded from cache: ${verseData.verse.take(50)}")
                     
                     val engManager = com.aipoweredgita.app.util.EnglishTranslationAssetManager.getInstance(application)
-                    val finalVerse = engManager.enrichVerse(verseData)
+                    val currentLang = _uiState.value.selectedLanguage
+
+                    val finalVerse = if (currentLang == "EN") {
+                        engManager.enrichVerseWithEnglish(verseData)
+                    } else {
+                        verseData
+                    }
                     
                     // Check if this verse was separated from a combined group
                     val note = if (finalVerse.wasSeparated && finalVerse.originalCombinedGroup.isNotEmpty()) {

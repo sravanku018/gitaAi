@@ -12,5 +12,6 @@ data class NormalModeUiState(
     val favoriteMessage: String? = null,
     val combinedVerseNos: List<Int> = emptyList(),
     val combinedGroups: List<List<Int>> = emptyList(),
-    val separatedVerseNote: String? = null
+    val separatedVerseNote: String? = null,
+    val selectedLanguage: String = "TE"
 )

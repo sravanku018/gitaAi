@@ -32,6 +32,8 @@ fun ChapterVerseHeroCard(
     chapter: Int,
     verse: Int,
     combinedNos: List<Int>,
+    selectedLanguage: String = "TE",
+    onLanguageToggle: (String) -> Unit = {},
     onChapterTap: () -> Unit,
     onVerseTap: () -> Unit
 ) {
@@ -72,13 +74,63 @@ fun ChapterVerseHeroCard(
             }
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            Text(
-                text     = "Chapter $chapter · $chapterName",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                color    = if (isDark) GoldSpark.copy(alpha = 0.8f) else Color(0xFFD84315)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text     = "Chapter $chapter · $chapterName",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color    = if (isDark) GoldSpark.copy(alpha = 0.8f) else Color(0xFFD84315),
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Language Toggle Pill: [ TEL | ENG ]
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFFFF3E0))
+                        .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFFFB74D), CircleShape)
+                        .padding(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isTe = selectedLanguage == "TE"
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
+                            .clickable { onLanguageToggle("TE") }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "TEL",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (!isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
+                            .clickable { onLanguageToggle("EN") }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ENG",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (!isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(14.dp))
 
