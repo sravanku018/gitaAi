@@ -3,9 +3,11 @@ package com.aipoweredgita.app.util
 import android.content.Context
 import android.util.Log
 import com.aipoweredgita.app.data.GitaVerse
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
-import java.util.concurrent.ConcurrentHashMap
 
 data class EnglishGitaEntry(
     val chapterNo: Int,
@@ -25,7 +27,8 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
     @Volatile private var entries: Map<Pair<Int, Int>, EnglishGitaEntry> = emptyMap()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
     private val initDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
-    val isLoadedState = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private val _isLoadedState = MutableStateFlow(false)
+    val isLoadedState: StateFlow<Boolean> = _isLoadedState.asStateFlow()
 
     init {
         scope.launch {
@@ -33,15 +36,15 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
                 val success = loadEntries(context)
                 if (success) {
                     initDeferred.complete(Unit)
-                    isLoadedState.value = true
+                    _isLoadedState.value = true
                 } else {
                     initDeferred.completeExceptionally(IllegalStateException("gita_english_only.json asset is empty or invalid"))
-                    isLoadedState.value = false
+                    _isLoadedState.value = false
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading gita_english_only.json asset: ${e.message}", e)
                 initDeferred.completeExceptionally(e)
-                isLoadedState.value = false
+                _isLoadedState.value = false
             }
         }
     }
