@@ -129,7 +129,7 @@ fun QuizSectionScreen(
                 shape = RoundedCornerShape(28.dp),
                 color = if (isDark) Color(0xFF1E1E1E) else Color.White,
                 border = BorderStroke(1.dp, if (isDark) Color(0xFF333333) else Color(0xFFE0E0E0)),
-                shadowElevation = if (isDark) 4.dp else 2.dp
+                shadowElevation = if (isDark) 4.dp else 0.dp
             ) {
                 Row(
                     modifier = Modifier

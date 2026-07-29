@@ -56,7 +56,7 @@ fun ChapterVerseHeroCard(
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 0.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
                 if (isDark) {
                     drawCircle(
@@ -194,7 +194,7 @@ fun IlluminatedVerseCard(text: String) {
                 shape = MaterialTheme.shapes.extraLarge
             )
             .background(cardBg)
-            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 0.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
                 if (isDark) {
                     drawRect(
@@ -277,7 +277,7 @@ fun MeaningCard(text: String) {
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 0.dp, MaterialTheme.shapes.extraLarge)
     ) {
         Box(
             modifier = Modifier
@@ -329,7 +329,7 @@ fun ExplanationCard(text: String) {
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 0.dp, MaterialTheme.shapes.extraLarge)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
