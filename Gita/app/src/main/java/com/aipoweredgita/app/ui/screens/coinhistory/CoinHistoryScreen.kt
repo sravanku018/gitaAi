@@ -21,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.aipoweredgita.app.ui.screens.coinhistory.components.*
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 import com.aipoweredgita.app.viewmodel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -136,8 +137,6 @@ fun CoinHistoryScreen(
             }
         }
     }
-
-import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 
     val isDark = rememberThemeIsDark()
     val appBg = MaterialTheme.colorScheme.background
