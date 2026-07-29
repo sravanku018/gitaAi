@@ -98,28 +98,30 @@ fun QuizStartLanding(
 
         Spacer(Modifier.height(48.dp))
 
+        val buttonGradient = Brush.horizontalGradient(
+            colors = listOf(Color(0xFFFF9800), GoldSpark)
+        )
+
         Button(
             onClick = onStart,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
+                .shadow(6.dp, androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
                 .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Saffron, gold)
-                    ),
-                    shape = MaterialTheme.shapes.large
+                    brush = buttonGradient,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
                 ),
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
             contentPadding = PaddingValues(),
-            shape = MaterialTheme.shapes.large,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black)
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     translateLandingText("Start Quiz", language),
