@@ -35,8 +35,8 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
             try {
                 val success = loadEntries(context)
                 if (success) {
-                    initDeferred.complete(Unit)
                     _isLoadedState.value = true
+                    initDeferred.complete(Unit)
                 } else {
                     initDeferred.completeExceptionally(IllegalStateException("gita_english_only.json asset is empty or invalid"))
                     _isLoadedState.value = false
