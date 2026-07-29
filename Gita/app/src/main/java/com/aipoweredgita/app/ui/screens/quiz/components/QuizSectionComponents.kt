@@ -119,13 +119,13 @@ fun QuizStartLanding(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     translateLandingText("Start Quiz", language),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = Color.Black
                 )
             }
         }
