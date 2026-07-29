@@ -22,7 +22,7 @@ data class EnglishGitaEntry(
  */
 class EnglishTranslationAssetManager private constructor(context: Context) {
 
-    private val entries = ConcurrentHashMap<Pair<Int, Int>, EnglishGitaEntry>()
+    @Volatile private var entries: Map<Pair<Int, Int>, EnglishGitaEntry> = emptyMap()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
     private val initDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
     val isLoadedState = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -35,10 +35,11 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
                     initDeferred.complete(Unit)
                     isLoadedState.value = true
                 } else {
-                    initDeferred.completeExceptionally(IllegalStateException("Failed to parse gita_english_only.json asset"))
+                    initDeferred.completeExceptionally(IllegalStateException("gita_english_only.json asset is empty or invalid"))
                     isLoadedState.value = false
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error loading gita_english_only.json asset: ${e.message}", e)
                 initDeferred.completeExceptionally(e)
                 isLoadedState.value = false
             }
@@ -50,46 +51,41 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
     }
 
     private fun loadEntries(context: Context): Boolean {
-        try {
-            val content = context.assets.open("gita_english_only.json")
-                .bufferedReader(Charsets.UTF_8)
-                .use { it.readText() }
+        val content = context.assets.open("gita_english_only.json")
+            .bufferedReader(Charsets.UTF_8)
+            .use { it.readText() }
 
-            val jsonArray = JSONArray(content)
-            val tempMap = HashMap<Pair<Int, Int>, EnglishGitaEntry>()
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                val chapter = obj.optInt("chapter_no")
-                val verse = obj.optInt("verse_no")
-                val chapterName = obj.optString("chapter_name_english", "")
-                val translation = obj.optString("translation_english", "")
-                val explanation = obj.optString("explanation_english", "")
-                val meaning = obj.optString("word_by_word_meaning_english", "")
-                val audio = obj.optString("audio_link", "")
+        val jsonArray = JSONArray(content)
+        val tempMap = HashMap<Pair<Int, Int>, EnglishGitaEntry>()
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            val chapter = obj.optInt("chapter_no")
+            val verse = obj.optInt("verse_no")
+            val chapterName = obj.optString("chapter_name_english", "")
+            val translation = obj.optString("translation_english", "")
+            val explanation = obj.optString("explanation_english", "")
+            val meaning = obj.optString("word_by_word_meaning_english", "")
+            val audio = obj.optString("audio_link", "")
 
-                if (chapter > 0 && verse > 0) {
-                    val entry = EnglishGitaEntry(
-                        chapterNo = chapter,
-                        verseNo = verse,
-                        chapterNameEnglish = chapterName,
-                        translationEnglish = translation,
-                        explanationEnglish = explanation,
-                        wordByWordMeaningEnglish = meaning,
-                        audioLink = audio
-                    )
-                    tempMap[Pair(chapter, verse)] = entry
-                }
+            if (chapter > 0 && verse > 0) {
+                val entry = EnglishGitaEntry(
+                    chapterNo = chapter,
+                    verseNo = verse,
+                    chapterNameEnglish = chapterName,
+                    translationEnglish = translation,
+                    explanationEnglish = explanation,
+                    wordByWordMeaningEnglish = meaning,
+                    audioLink = audio
+                )
+                tempMap[Pair(chapter, verse)] = entry
             }
-            if (tempMap.isNotEmpty()) {
-                entries.putAll(tempMap)
-                Log.d(TAG, "Successfully loaded ${tempMap.size} English Gita entries from gita_english_only.json")
-                return true
-            }
-            return false
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading gita_english_only.json asset: ${e.message}", e)
-            return false
         }
+        if (tempMap.isNotEmpty()) {
+            entries = tempMap
+            Log.d(TAG, "Successfully loaded ${tempMap.size} English Gita entries from gita_english_only.json")
+            return true
+        }
+        return false
     }
 
     fun getEntry(chapter: Int, verse: Int): EnglishGitaEntry? {
