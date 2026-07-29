@@ -15,6 +15,8 @@ object SafeCall {
     ): SafeResult<T> {
         return try {
             SafeResult.Success(block())
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(tag, "Failed${if (operation.isNotEmpty()) " [$operation]" else ""}: ${e.message}", e)
             SafeResult.Error(e.message ?: "Unknown error", e)

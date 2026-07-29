@@ -15,6 +15,7 @@ class TimeTracker(
     private var totalSeconds: Long = 0
     private var trackingJob: Job? = null
 
+    @Synchronized
     fun start() {
         if (trackingJob?.isActive == true) return
 
@@ -23,16 +24,24 @@ class TimeTracker(
         trackingJob = scope.launch {
             while (isActive) {
                 delay(10000) // Update every 10 seconds
-                val elapsed = (System.currentTimeMillis() - startTime) / 1000
-                if (elapsed >= 10) {
-                    totalSeconds += elapsed
-                    onTimeUpdate(elapsed)
-                    startTime = System.currentTimeMillis()
+                val elapsedToReport = synchronized(this@TimeTracker) {
+                    if (startTime == 0L) return@synchronized 0L
+                    val now = System.currentTimeMillis()
+                    val diff = (now - startTime) / 1000
+                    if (diff >= 10) {
+                        totalSeconds += diff
+                        startTime = now
+                        diff
+                    } else 0L
+                }
+                if (elapsedToReport >= 10) {
+                    onTimeUpdate(elapsedToReport)
                 }
             }
         }
     }
 
+    @Synchronized
     fun stop() {
         trackingJob?.cancel()
         trackingJob = null
@@ -51,5 +60,6 @@ class TimeTracker(
         }
     }
 
+    @Synchronized
     fun getTotalSeconds(): Long = totalSeconds
 }

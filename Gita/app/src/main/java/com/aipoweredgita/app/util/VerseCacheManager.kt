@@ -16,10 +16,10 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
     // sizeOf() returns bytes, so maxSize must also be in bytes
     private val cache = object : LruCache<String, GitaVerse>(maxSizeKb * 1024) {
         override fun sizeOf(key: String, value: GitaVerse): Int {
-            // Estimate verse size: verse text + translation + purport + metadata
-            val verseSize = value.verse.length
-            val translationSize = value.translation.length
-            val purportSize = value.purport.sumOf { it.length }
+            // Estimate verse size: verse text + translation + purport + metadata in bytes
+            val verseSize = value.verse.length * 2
+            val translationSize = value.translation.length * 2
+            val purportSize = value.purport.sumOf { it.length * 2 }
             return verseSize + translationSize + purportSize + 200  // 200 bytes for metadata
         }
     }
@@ -82,7 +82,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
      * Get cache statistics for debugging
      */
     fun getStats(): String {
-        return "VerseCacheManager: size=${cache.size()}KB, max=${cache.maxSize()}KB"
+        return "VerseCacheManager: size=${cache.size() / 1024}KB, max=${cache.maxSize() / 1024}KB"
     }
 
     private fun makeKey(chapter: Int, verse: Int) = "$chapter:$verse"

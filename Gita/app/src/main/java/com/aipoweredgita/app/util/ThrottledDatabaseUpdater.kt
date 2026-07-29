@@ -32,6 +32,7 @@ class ThrottledDatabaseUpdater(
     private var flushJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private val maxRetries = 3
+    private val writerJobs = java.util.concurrent.ConcurrentHashMap.newKeySet<Job>()
 
     /**
      * Track a verse read - batched and throttled
@@ -70,7 +71,7 @@ class ThrottledDatabaseUpdater(
             flushJob = null
 
             Log.d(TAG, "Flushing ${toBatch.size} verse reads to database")
-            scope.launch {
+            val job = scope.launch {
                 try {
                     onBatchWrite(toBatch)
                     // Clear retry counts on success
@@ -94,10 +95,13 @@ class ThrottledDatabaseUpdater(
                     if (eligible.isNotEmpty()) {
                         synchronized(batch) {
                             batch.addAll(0, eligible)
+                            scheduleFlush() // Schedule retry flush!
                         }
                     }
                 }
             }
+            writerJobs.add(job)
+            job.invokeOnCompletion { writerJobs.remove(job) }
         }
     }
 
@@ -137,6 +141,11 @@ class ThrottledDatabaseUpdater(
                     Log.e(TAG, "Error during cleanup flush: ${e.message}")
                 }
             }
+            // Await active in-flight writer jobs before cancelling scope
+            val inFlight = writerJobs.toList()
+            inFlight.forEach { job ->
+                try { job.join() } catch (_: Exception) {}
+            }
         }
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
@@ -159,9 +168,15 @@ class DatabaseQueryCache(private val maxSize: Int = 1000) {
 
     fun get(key: String): Any? {
         val record = cache.get(key)
-        return if (record != null && !record.isExpired()) {
-            Log.d(TAG, "Cache hit: $key")
-            record.value
+        return if (record != null) {
+            if (!record.isExpired()) {
+                Log.d(TAG, "Cache hit: $key")
+                record.value
+            } else {
+                Log.d(TAG, "Cache expired: $key, evicting")
+                cache.remove(key)
+                null
+            }
         } else {
             Log.d(TAG, "Cache miss: $key")
             null
