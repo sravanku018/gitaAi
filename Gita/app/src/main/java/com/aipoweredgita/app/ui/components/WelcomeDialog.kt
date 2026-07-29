@@ -24,7 +24,7 @@ fun WelcomeDialog(
 ) {
     // Debug logging
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.1.1) ===")
+        android.util.Log.d("WelcomeDialog", "=== WELCOME DIALOG COMPOSING (v2.2.0) ===")
         android.util.Log.d("WelcomeDialog", "Dialog is being rendered on screen")
     }
     
