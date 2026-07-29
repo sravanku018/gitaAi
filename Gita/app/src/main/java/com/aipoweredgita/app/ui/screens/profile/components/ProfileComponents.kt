@@ -32,6 +32,8 @@ import com.aipoweredgita.app.ml.UserBadge
 import com.aipoweredgita.app.network.YogaSubStage
 import com.aipoweredgita.app.ui.components.GlassCard
 import com.aipoweredgita.app.ui.components.YogaLevelManager
+import androidx.compose.ui.tooling.preview.Preview
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
 import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
@@ -593,6 +595,44 @@ fun MandalaBadge(intensity: Float, modifier: Modifier = Modifier) {
         Text(
             text = "🕉️",
             fontSize = 28.sp
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Profile Header - Light Mode")
+@Composable
+fun ProfileHeaderPreviewLight() {
+    GitaLearningTheme(darkTheme = false) {
+        ProfileHeader(
+            profile = ProfileInfo("Arjuna Kumar", 28),
+            yogaInfo = YogaLevelManager.YogaLevelInfo(
+                level = 1,
+                step = 2,
+                yogaName = "Karma Yoga",
+                yogaDescription = "Path of Unselfish Action",
+                emoji = "🌱"
+            ),
+            levelProgress = 0.4f,
+            totalCoins = 150
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Profile Header - Dark Mode", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun ProfileHeaderPreviewDark() {
+    GitaLearningTheme(darkTheme = true) {
+        ProfileHeader(
+            profile = ProfileInfo("Arjuna Kumar", 28),
+            yogaInfo = YogaLevelManager.YogaLevelInfo(
+                level = 1,
+                step = 2,
+                yogaName = "Karma Yoga",
+                yogaDescription = "Path of Unselfish Action",
+                emoji = "🌱"
+            ),
+            levelProgress = 0.4f,
+            totalCoins = 150
         )
     }
 }

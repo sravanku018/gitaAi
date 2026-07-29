@@ -35,8 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.aipoweredgita.app.R
@@ -436,6 +436,66 @@ fun TwitterMenuItem(
         if (trailing != null) {
             trailing()
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Drawer Content - Light Mode")
+@Composable
+fun DrawerContentPreviewLight() {
+    GitaLearningTheme(darkTheme = false) {
+        DrawerContent(
+            isDarkTheme = false,
+            onThemeToggle = {},
+            onNavigateToHome = {},
+            onNavigateToRead = {},
+            onNavigateToQuiz = {},
+            onNavigateToFavorites = {},
+            onNavigateToQuizStats = {},
+            onNavigateToOfflineDownload = {},
+            onNavigateToProfile = {},
+            onNavigateToYogaLevels = {},
+            onNavigateToCoinHistory = {},
+            onNavigateToSettings = {},
+            stats = com.aipoweredgita.app.database.UserStats(
+                userId = "123",
+                userName = "Arjuna Kumar",
+                totalQuizzesTaken = 14,
+                currentStreak = 5,
+                krishnaCoins = 120
+            ),
+            coinBalance = 120,
+            isGuest = false
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Drawer Content - Dark Mode", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun DrawerContentPreviewDark() {
+    GitaLearningTheme(darkTheme = true) {
+        DrawerContent(
+            isDarkTheme = true,
+            onThemeToggle = {},
+            onNavigateToHome = {},
+            onNavigateToRead = {},
+            onNavigateToQuiz = {},
+            onNavigateToFavorites = {},
+            onNavigateToQuizStats = {},
+            onNavigateToOfflineDownload = {},
+            onNavigateToProfile = {},
+            onNavigateToYogaLevels = {},
+            onNavigateToCoinHistory = {},
+            onNavigateToSettings = {},
+            stats = com.aipoweredgita.app.database.UserStats(
+                userId = "123",
+                userName = "Arjuna Kumar",
+                totalQuizzesTaken = 14,
+                currentStreak = 5,
+                krishnaCoins = 120
+            ),
+            coinBalance = 120,
+            isGuest = false
+        )
     }
 }
 

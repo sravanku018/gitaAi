@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.aipoweredgita.app.R
+import androidx.compose.ui.tooling.preview.Preview
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
 import com.aipoweredgita.app.ui.theme.GoldSpark
 
 @Composable
@@ -154,5 +156,37 @@ fun CompletionDialog(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Completion Dialog - Light Mode")
+@Composable
+fun CompletionDialogPreviewLight() {
+    GitaLearningTheme(darkTheme = false) {
+        CompletionDialog(
+            score = 6,
+            total = 15,
+            totalTimeSeconds = 120,
+            coins = 6,
+            breakdown = "",
+            onRestart = {},
+            onExit = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Completion Dialog - Dark Mode", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun CompletionDialogPreviewDark() {
+    GitaLearningTheme(darkTheme = true) {
+        CompletionDialog(
+            score = 6,
+            total = 15,
+            totalTimeSeconds = 120,
+            coins = 6,
+            breakdown = "",
+            onRestart = {},
+            onExit = {}
+        )
     }
 }
