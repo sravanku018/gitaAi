@@ -24,11 +24,19 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
 
     private val entries = ConcurrentHashMap<Pair<Int, Int>, EnglishGitaEntry>()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+    private val initDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+    val isLoadedState = kotlinx.coroutines.flow.MutableStateFlow(false)
 
     init {
         scope.launch {
             loadEntries(context)
+            initDeferred.complete(Unit)
+            isLoadedState.value = true
         }
+    }
+
+    suspend fun awaitLoaded() {
+        initDeferred.await()
     }
 
     private fun loadEntries(context: Context) {

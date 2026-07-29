@@ -97,10 +97,12 @@ class ThrottledDatabaseUpdater(
                             false
                         }
                     }
-                    if (eligible.isNotEmpty() && !isCleaningUp) {
+                    if (eligible.isNotEmpty()) {
                         synchronized(batch) {
                             batch.addAll(0, eligible)
-                            scheduleFlush() // Schedule retry flush!
+                            if (!isCleaningUp) {
+                                scheduleFlush() // Schedule retry flush if not cleaning up!
+                            }
                         }
                     }
                 }
@@ -125,6 +127,20 @@ class ThrottledDatabaseUpdater(
         Log.d(TAG, "Flush scheduled in ${flushIntervalMs}ms")
     }
 
+    private suspend fun writeBatchWithRetry(toWrite: List<VerseRead>) {
+        var attempts = 0
+        while (attempts < maxRetries) {
+            try {
+                onBatchWrite(toWrite)
+                return
+            } catch (e: Exception) {
+                attempts++
+                Log.e(TAG, "Error writing batch during cleanup (attempt $attempts/$maxRetries): ${e.message}")
+                if (attempts < maxRetries) delay(100L * attempts)
+            }
+        }
+    }
+
     /**
      * Cleanup - flush all pending writes and await completion off the main thread.
      * Prevents new work and drains the queue after in-flight writer jobs finish.
@@ -141,11 +157,7 @@ class ThrottledDatabaseUpdater(
             copied
         }
         if (initialBatch.isNotEmpty()) {
-            try {
-                onBatchWrite(initialBatch)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during cleanup flush: ${e.message}")
-            }
+            writeBatchWithRetry(initialBatch)
         }
 
         // Await active in-flight writer jobs
@@ -161,11 +173,7 @@ class ThrottledDatabaseUpdater(
             copied
         }
         if (leftoverBatch.isNotEmpty()) {
-            try {
-                onBatchWrite(leftoverBatch)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during final cleanup drain: ${e.message}")
-            }
+            writeBatchWithRetry(leftoverBatch)
         }
 
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()

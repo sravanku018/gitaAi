@@ -1,8 +1,12 @@
 package com.aipoweredgita.app.util
 
 import android.util.LruCache
-import kotlinx.coroutines.sync.withLock
 import com.aipoweredgita.app.data.GitaVerse
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Bounded memory cache for verses using LRU eviction.
@@ -25,7 +29,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
     }
 
     // In-flight deduplication: prevents thundering-herd duplicate fetches for same key
-    private val inFlightMutexes = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.sync.Mutex>()
+    private val inFlightFetches = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<GitaVerse?>>()
 
     /**
      * Get verse from cache
@@ -51,26 +55,29 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         chapter: Int,
         verse: Int,
         fetch: suspend () -> GitaVerse?
-    ): GitaVerse? {
+    ): GitaVerse? = kotlinx.coroutines.coroutineScope {
         val cached = get(chapter, verse)
-        if (cached != null) return cached
+        if (cached != null) return@coroutineScope cached
 
         val key = makeKey(chapter, verse)
-        val mutex = inFlightMutexes.getOrPut(key) { kotlinx.coroutines.sync.Mutex() }
+        val outerScope = this
         
-        return try {
-            mutex.withLock {
+        val deferred = inFlightFetches.compute(key) { _, existing ->
+            existing ?: outerScope.async(kotlinx.coroutines.Dispatchers.IO) {
                 val doubleCheck = get(chapter, verse)
-                if (doubleCheck != null) {
-                    doubleCheck
-                } else {
-                    val fetched = fetch()
-                    if (fetched != null) put(chapter, verse, fetched)
-                    fetched
-                }
+                if (doubleCheck != null) return@async doubleCheck
+                val fetched = fetch()
+                if (fetched != null) put(chapter, verse, fetched)
+                fetched
             }
+        }!!
+
+        try {
+            deferred.await()
         } finally {
-            inFlightMutexes.remove(key, mutex)
+            if (deferred.isCompleted) {
+                inFlightFetches.remove(key, deferred)
+            }
         }
     }
 
