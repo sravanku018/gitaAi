@@ -82,6 +82,8 @@ class ThrottledDatabaseUpdater(
                     // Clear retry counts on success
                     toBatch.forEach { retryCount.remove("${it.chapter}:${it.verse}") }
                     Log.d(TAG, "Successfully flushed ${toBatch.size} reads")
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e(TAG, "Error flushing batch: ${e.message}")
                     // Re-queue on failure with retry limit

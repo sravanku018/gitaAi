@@ -28,8 +28,8 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         }
     }
 
-    // In-flight deduplication: prevents thundering-herd duplicate fetches for same key
-    private val inFlightFetches = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<GitaVerse?>>()
+    private val managerScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+    private val inFlightFetches = ConcurrentHashMap<String, Deferred<GitaVerse?>>()
 
     /**
      * Get verse from cache
@@ -55,15 +55,14 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         chapter: Int,
         verse: Int,
         fetch: suspend () -> GitaVerse?
-    ): GitaVerse? = kotlinx.coroutines.coroutineScope {
+    ): GitaVerse? {
         val cached = get(chapter, verse)
-        if (cached != null) return@coroutineScope cached
+        if (cached != null) return cached
 
         val key = makeKey(chapter, verse)
-        val outerScope = this
         
         val deferred = inFlightFetches.compute(key) { _, existing ->
-            existing ?: outerScope.async(kotlinx.coroutines.Dispatchers.IO) {
+            existing ?: managerScope.async {
                 val doubleCheck = get(chapter, verse)
                 if (doubleCheck != null) return@async doubleCheck
                 val fetched = fetch()
@@ -72,7 +71,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
             }
         }!!
 
-        try {
+        return try {
             deferred.await()
         } finally {
             if (deferred.isCompleted) {

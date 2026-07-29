@@ -6,8 +6,7 @@ object StringUtils {
         var t = s
         val map = mapOf(
             "â€¢" to "•", "â€“" to "–", "â€”" to "—", "â€˜" to "‘", "â€™" to "’",
-            "â€œ" to "“", "â€ " to "”", "â€¦" to "…", "Ã—" to "×", "Â" to "",
-            "ðŸ" to "", "dY" to "", "" to ""
+            "â€œ" to "“", "â€ " to "”", "â€¦" to "…", "Ã—" to "×", "Â" to ""
         )
         for ((k, v) in map) t = t?.replace(k, v)
         // Remove non-printable control characters except \t (0x09), \n (0x0A), and \r (0x0D)

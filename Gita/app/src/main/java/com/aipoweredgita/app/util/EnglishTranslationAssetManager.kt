@@ -29,9 +29,19 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
 
     init {
         scope.launch {
-            loadEntries(context)
-            initDeferred.complete(Unit)
-            isLoadedState.value = true
+            try {
+                val success = loadEntries(context)
+                if (success) {
+                    initDeferred.complete(Unit)
+                    isLoadedState.value = true
+                } else {
+                    initDeferred.completeExceptionally(IllegalStateException("Failed to parse gita_english_only.json asset"))
+                    isLoadedState.value = false
+                }
+            } catch (e: Exception) {
+                initDeferred.completeExceptionally(e)
+                isLoadedState.value = false
+            }
         }
     }
 
@@ -39,7 +49,7 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
         initDeferred.await()
     }
 
-    private fun loadEntries(context: Context) {
+    private fun loadEntries(context: Context): Boolean {
         try {
             val content = context.assets.open("gita_english_only.json")
                 .bufferedReader(Charsets.UTF_8)
@@ -72,8 +82,10 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
                 }
             }
             Log.d(TAG, "Successfully loaded $count English Gita entries from gita_english_only.json")
+            return count > 0
         } catch (e: Exception) {
             Log.e(TAG, "Error loading gita_english_only.json asset: ${e.message}", e)
+            return false
         }
     }
 
