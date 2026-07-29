@@ -1,9 +1,13 @@
 package com.aipoweredgita.app.ui.screens.coinhistory
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -133,21 +137,40 @@ fun CoinHistoryScreen(
         }
     }
 
+    val isDark = isSystemInDarkTheme()
+    val appBg = MaterialTheme.colorScheme.background
+    val textPrimary = MaterialTheme.colorScheme.onBackground
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF141000))
+            .background(appBg)
     ) {
         TopAppBar(
-            title = { Text("Coin History", fontWeight = FontWeight.Medium) },
+            title = {
+                Text(
+                    text = "Coin History",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+            },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Text("←", fontSize = 22.sp, color = Color(0xFFEDE1CF))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = textPrimary
+                    )
                 }
             },
             actions = {
                 IconButton(onClick = { refreshTrigger++ }) {
-                    Text("↻", fontSize = 20.sp, color = Color(0xFFEDE1CF))
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = textPrimary
+                    )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
