@@ -265,8 +265,8 @@ fun IlluminatedVerseCard(text: String) {
 fun MeaningCard(text: String) {
     val isDark = rememberThemeIsDark()
     val greenAccent = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
     val textPrimary = MaterialTheme.colorScheme.onSurface
 
     Row(
@@ -275,7 +275,7 @@ fun MeaningCard(text: String) {
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
     ) {
         Box(
             modifier = Modifier
@@ -316,9 +316,9 @@ fun MeaningCard(text: String) {
 @Composable
 fun ExplanationCard(text: String) {
     val isDark = rememberThemeIsDark()
-    val gold = if (isDark) GoldSpark else Saffron
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
+    val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
     val textPrimary = MaterialTheme.colorScheme.onSurface
 
     Column(
@@ -327,7 +327,7 @@ fun ExplanationCard(text: String) {
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
             .padding(20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -376,9 +376,9 @@ fun ExplanationCard(text: String) {
 @Composable
 fun VerseNoteCard(note: String) {
     val isDark = rememberThemeIsDark()
-    val gold = if (isDark) GoldSpark else Saffron
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
+    val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
     val textSecondary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
 
     Row(
