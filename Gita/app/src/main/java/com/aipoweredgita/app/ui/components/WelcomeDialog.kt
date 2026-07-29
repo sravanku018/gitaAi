@@ -79,12 +79,6 @@ fun WelcomeDialog(
                     )
 
                     FeatureItem(
-                        icon = "🌸",
-                        title = "Pure Sacred Aesthetics",
-                        description = "Clean single-tone cards in Light Mode & soft Amber warm highlights in Dark Mode."
-                    )
-
-                    FeatureItem(
                         icon = "⚡",
                         title = "Cloud Groq AI Guidance",
                         description = "Fast, intelligent AI Krishna guidance with zero local model downloads required."
