@@ -49,7 +49,7 @@ fun QuizStartLanding(
     val isDark = isSystemInDarkTheme()
     val textPrimary = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
-    val gold = if (isDark) GoldSpark else Saffron
+    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
 
     Column(
         modifier = Modifier
@@ -60,16 +60,16 @@ fun QuizStartLanding(
     ) {
         Box(
             modifier = Modifier
-                .size(120.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                .size(110.dp)
+                .background(if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else Color(0xFFFFF3E0), CircleShape)
                 .border(2.dp, Brush.linearGradient(listOf(gold, Saffron)), CircleShape)
-                .shadow(8.dp, CircleShape),
+                .shadow(6.dp, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Default.School,
                 contentDescription = null,
-                modifier = Modifier.size(60.dp),
+                modifier = Modifier.size(54.dp),
                 tint = gold
             )
         }

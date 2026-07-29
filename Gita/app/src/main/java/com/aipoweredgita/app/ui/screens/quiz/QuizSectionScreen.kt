@@ -2,11 +2,15 @@ package com.aipoweredgita.app.ui.screens.quiz
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.School
@@ -64,9 +68,9 @@ fun QuizSectionScreen(
     val isDark = isSystemInDarkTheme()
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
-    val gold = if (isDark) GoldSpark else Saffron
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
     Box(
         modifier = modifier
@@ -116,54 +120,67 @@ fun QuizSectionScreen(
             }
 
             // Tab Row
-            GlassCard(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                cornerRadius = 24.dp,
-                elevation = 4.dp,
-                tint = cardBg,
-                border = cardBorder
+                shape = RoundedCornerShape(24.dp),
+                color = cardBg,
+                border = BorderStroke(1.dp, cardBorder),
+                shadowElevation = if (isDark) 4.dp else 2.dp
             ) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = textPrimary,
-                    indicator = { tabPositions ->
-                        if (selectedTab < tabPositions.size) {
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                height = 3.dp,
-                                color = gold
-                            )
-                        }
-                    },
-                    divider = {}
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (index == 2) Icons.Filled.SportsMma else Icons.Filled.School,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                        tint = if (selectedTab == index) gold else textPrimary.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = translateLandingText(title, language),
-                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (selectedTab == index) textPrimary else textPrimary.copy(alpha = 0.5f)
-                                    )
-                                }
+                        val isSelected = selectedTab == index
+                        val pillBg = if (isSelected) {
+                            if (isDark) gold.copy(alpha = 0.2f) else gold.copy(alpha = 0.12f)
+                        } else {
+                            Color.Transparent
+                        }
+                        val pillBorder = if (isSelected) {
+                            gold.copy(alpha = 0.4f)
+                        } else {
+                            Color.Transparent
+                        }
+                        val contentColor = if (isSelected) gold else textPrimary.copy(alpha = 0.6f)
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(pillBg)
+                                .border(1.dp, pillBorder, RoundedCornerShape(20.dp))
+                                .clickable { selectedTab = index },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (index == 2) Icons.Filled.SportsMma else Icons.Filled.School,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = contentColor
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = translateLandingText(title, language),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                    color = contentColor,
+                                    maxLines = 1
+                                )
                             }
-                        )
+                        }
                     }
                 }
             }
