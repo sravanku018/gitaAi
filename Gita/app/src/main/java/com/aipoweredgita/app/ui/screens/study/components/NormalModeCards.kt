@@ -36,17 +36,17 @@ fun ChapterVerseHeroCard(
     onVerseTap: () -> Unit
 ) {
     val isDark = rememberThemeIsDark()
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-    val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-    val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
+    val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
 
     val verseDisplay = if (combinedNos.size > 1) {
         "${combinedNos.minOrNull()}–${combinedNos.maxOrNull()}"
     } else verse.toString()
 
     val chapterName = normalModeChapterNames[chapter] ?: ""
-    val numberColor = if (isDark) GoldSpark else Saffron
+    val numberColor = if (isDark) GoldSpark else Color(0xFFE65100)
     val accentColor = Saffron
     
     Box(
@@ -55,26 +55,28 @@ fun ChapterVerseHeroCard(
             .clip(MaterialTheme.shapes.extraLarge)
             .background(cardBg)
             .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-            .shadow(4.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(accentColor.copy(alpha = 0.18f), Color.Transparent),
-                        center = Offset(0f, size.height),
-                        radius = size.width * 0.7f
-                    ),
-                    radius = size.width * 0.7f,
-                    center = Offset(0f, size.height)
-                )
+                if (isDark) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(accentColor.copy(alpha = 0.18f), Color.Transparent),
+                            center = Offset(0f, size.height),
+                            radius = size.width * 0.7f
+                        ),
+                        radius = size.width * 0.7f,
+                        center = Offset(0f, size.height)
+                    )
+                }
             }
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
             Text(
                 text     = "Chapter $chapter · $chapterName",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.5.sp,
-                color    = if (isDark) GoldSpark.copy(alpha = 0.7f) else Saffron
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+                color    = if (isDark) GoldSpark.copy(alpha = 0.8f) else Color(0xFFD84315)
             )
 
             Spacer(Modifier.height(14.dp))
@@ -182,9 +184,9 @@ fun ChapterVerseHeroCard(
 @Composable
 fun IlluminatedVerseCard(text: String) {
     val isDark = rememberThemeIsDark()
-    val gold = if (isDark) GoldSpark else Saffron
-    val primary = Saffron
-    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val gold = if (isDark) GoldSpark else Color(0xFFD84315)
+    val primary = if (isDark) Saffron else Color(0xFFE65100)
+    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
     val textPrimary = MaterialTheme.colorScheme.onSurface
 
     Box(
@@ -197,7 +199,7 @@ fun IlluminatedVerseCard(text: String) {
                 shape = MaterialTheme.shapes.extraLarge
             )
             .background(cardBg)
-            .shadow(6.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 6.dp else 2.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
                 if (isDark) {
                     drawRect(

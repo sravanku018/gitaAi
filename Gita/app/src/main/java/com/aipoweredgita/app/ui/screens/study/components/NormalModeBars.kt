@@ -102,18 +102,19 @@ fun BottomActionBar(
                         .clickable(onClick = onFavoriteToggle),
                     contentAlignment = Alignment.Center
                 ) {
+                    val buttonContentColor = if (isFavorite) Color.White else Color.Black
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(
                             imageVector        = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = null,
-                            tint               = Color.White,
+                            tint               = buttonContentColor,
                             modifier           = Modifier.size(18.dp)
                         )
                         Text(
                             text       = if (isFavorite) "Saved" else "Save",
-                            color      = Color.White,
+                            color      = buttonContentColor,
                             fontSize   = 14.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

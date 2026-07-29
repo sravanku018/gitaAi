@@ -278,8 +278,11 @@ fun CoinTransactionItem(
         else -> ""
     }
 
-    val iconBg = if (isEarn) Color(0x334CAF50) else Color(0x33FF5252)
-    val amountColor = if (isEarn) Color(0xFF81C784) else Color(0xFFFF8A80)
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val textColor = if (isDark) Color(0xFFEDE1CF) else MaterialTheme.colorScheme.onSurface
+    val subTextColor = if (isDark) Color(0xFFD0C3A4) else MaterialTheme.colorScheme.onSurfaceVariant
+    val iconBg = if (isEarn) (if (isDark) Color(0x334CAF50) else Color(0xFFE8F5E9)) else (if (isDark) Color(0x33FF5252) else Color(0xFFFFEBEE))
+    val amountColor = if (isEarn) (if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)) else (if (isDark) Color(0xFFFF8A80) else Color(0xFFC62828))
 
     Card(
         modifier = Modifier
@@ -309,9 +312,9 @@ fun CoinTransactionItem(
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, fontSize = 15.sp, color = Color(0xFFEDE1CF), fontWeight = FontWeight.Medium)
+                Text(label, fontSize = 15.sp, color = textColor, fontWeight = FontWeight.Bold)
                 if (supporting.isNotEmpty()) {
-                    Text(supporting, fontSize = 13.sp, color = Color(0xFFD0C3A4))
+                    Text(supporting, fontSize = 13.sp, color = subTextColor)
                 }
             }
 
@@ -322,7 +325,7 @@ fun CoinTransactionItem(
                     fontWeight = FontWeight.Bold,
                     color = amountColor
                 )
-                Text(dateStr, fontSize = 11.sp, color = Color(0xFFD0C3A4))
+                Text(dateStr, fontSize = 11.sp, color = subTextColor)
             }
         }
     }

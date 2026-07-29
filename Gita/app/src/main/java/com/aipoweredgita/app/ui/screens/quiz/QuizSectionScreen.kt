@@ -124,50 +124,49 @@ fun QuizSectionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = cardBg,
-                border = BorderStroke(1.dp, cardBorder),
-                shadowElevation = if (isDark) 4.dp else 1.dp
+                shape = RoundedCornerShape(28.dp),
+                color = if (isDark) Color(0xFF1E1E1E) else Color(0xFFF5F0E6),
+                border = BorderStroke(1.dp, if (isDark) Color(0xFF333333) else Color(0xFFE0D8C8))
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(4.dp),
+                        .padding(6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     tabs.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         val pillBg = if (isSelected) {
-                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.18f) else MaterialTheme.colorScheme.primaryContainer
+                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.25f) else Color(0xFFFFE0B2)
                         } else {
                             Color.Transparent
                         }
                         val pillBorder = if (isSelected) {
-                            if (isDark) Color(0xFFFFB74D).copy(alpha = 0.35f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            if (isDark) Color(0xFFFFB74D) else Color(0xFFFF9800)
                         } else {
                             Color.Transparent
                         }
                         val contentColor = if (isSelected) {
-                            if (isDark) Color(0xFFFFD54F) else MaterialTheme.colorScheme.onPrimaryContainer
+                            if (isDark) Color(0xFFFFD54F) else Color(0xFFD84315)
                         } else {
-                            textPrimary.copy(alpha = 0.7f)
+                            if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF4A4A4A)
                         }
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(44.dp)
+                                .height(42.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(pillBg)
-                                .border(1.dp, pillBorder, RoundedCornerShape(20.dp))
+                                .border(if (isSelected) 1.5.dp else 0.dp, pillBorder, RoundedCornerShape(20.dp))
                                 .clickable { selectedTab = index },
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(horizontal = 4.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp)
                             ) {
                                 Icon(
                                     imageVector = if (index == 2) Icons.Filled.SportsMma else Icons.Filled.School,
@@ -175,11 +174,11 @@ fun QuizSectionScreen(
                                     modifier = Modifier.size(16.dp),
                                     tint = contentColor
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = translateLandingText(title, language),
                                     fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     color = contentColor,
                                     maxLines = 1
                                 )
