@@ -141,7 +141,7 @@ fun OnboardingScreen(
                             onFinished()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldSpark)
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldSpark, contentColor = Color.Black)
                 ) {
                     Text(if (pagerState.currentPage == pages.size - 1) "Get Started" else "Next")
                 }

@@ -116,6 +116,8 @@ fun GlassCard(
         )
     } else Modifier
 
+    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
+
     Box(
         modifier = modifier
             .then(shadowModifier)
@@ -123,16 +125,18 @@ fun GlassCard(
             .background(tint)
             .border(1.dp, border, RoundedCornerShape(cornerRadius))
             .drawBehind {
-                val r = cornerRadius.toPx()
-                // Top glossy reflection shine
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
-                        startY = 0f,
-                        endY = size.height * 0.45f
-                    ),
-                    cornerRadius = CornerRadius(r, r)
-                )
+                if (isDark) {
+                    val r = cornerRadius.toPx()
+                    // Top glossy reflection shine (dark mode only to avoid two-tone look in light mode)
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+                            startY = 0f,
+                            endY = size.height * 0.45f
+                        ),
+                        cornerRadius = CornerRadius(r, r)
+                    )
+                }
             }
     ) {
         content()

@@ -110,24 +110,28 @@ fun DrawerContent(
             // Name + Guest badge row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = if (isGuest) "Guest User" else (stats?.userName?.takeIf { it.isNotEmpty() } ?: "Gita Student"),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (isGuest) {
                     Surface(
-                        color = GoldSpark.copy(alpha = 0.15f),
+                        color = (if (isDarkTheme) GoldSpark else Saffron).copy(alpha = 0.15f),
                         shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldSpark.copy(alpha = 0.4f))
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, (if (isDarkTheme) GoldSpark else Saffron).copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = "Guest",
                             style = MaterialTheme.typography.labelSmall,
-                            color = GoldSpark,
+                            color = if (isDarkTheme) GoldSpark else Saffron,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
@@ -135,64 +139,7 @@ fun DrawerContent(
                 }
             }
 
-            // Sign In / Logout button dynamically based on auth status
-            if (isGuest) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    onClick = onNavigateToLogin,
-                    color = GoldSpark,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Login,
-                            contentDescription = "Sign In",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Sign In",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    onClick = onLogout,
-                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Logout,
-                            contentDescription = "Logout",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Logout",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
+
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -352,7 +299,7 @@ fun DrawerContent(
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Filled.DarkMode else Icons.Filled.LightMode,
                     contentDescription = null,
-                    tint = GoldSpark,
+                    tint = if (isDarkTheme) GoldSpark else Saffron,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(20.dp))
@@ -372,6 +319,72 @@ fun DrawerContent(
                     )
                 )
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f))
+
+            // Logout / Sign In Button at Bottom
+            if (isGuest) {
+                Surface(
+                    onClick = onNavigateToLogin,
+                    color = if (isDarkTheme) GoldSpark else Saffron,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .height(48.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Login,
+                            contentDescription = "Sign In",
+                            tint = if (isDarkTheme) Color.Black else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Sign In",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDarkTheme) Color.Black else Color.White
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    onClick = onLogout,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .height(48.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Logout,
+                            contentDescription = "Logout",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Logout",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
