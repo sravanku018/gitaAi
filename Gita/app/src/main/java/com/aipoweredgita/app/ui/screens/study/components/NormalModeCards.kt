@@ -36,9 +36,10 @@ fun ChapterVerseHeroCard(
     onVerseTap: () -> Unit
 ) {
     val isDark = rememberThemeIsDark()
-    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
-    val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
+    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
     val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val innerBoxBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFFFAF7F2)
     val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
 
     val verseDisplay = if (combinedNos.size > 1) {
@@ -89,7 +90,7 @@ fun ChapterVerseHeroCard(
                 Column(
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.large)
-                        .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+                        .background(innerBoxBg)
                         .clickable(onClick = onChapterTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -125,7 +126,7 @@ fun ChapterVerseHeroCard(
                 Column(
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.large)
-                        .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+                        .background(innerBoxBg)
                         .clickable(onClick = onVerseTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -152,30 +153,22 @@ fun ChapterVerseHeroCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color.Transparent, numberColor.copy(0.6f), Color.Transparent)
-                        )
+                    .clip(CircleShape)
+                    .background(innerBoxBg)
+                    .clickable(onClick = onChapterTap)
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🕉", fontSize = 12.sp, color = numberColor)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text      = "Tap chapter or verse to navigate",
+                        fontSize  = 11.sp,
+                        color     = textTertiary,
+                        fontStyle = FontStyle.Italic
                     )
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text      = "ॐ",
-                    fontSize  = 16.sp,
-                    color     = numberColor,
-                    fontStyle = FontStyle.Normal
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text      = "Tap chapter or verse to navigate",
-                    fontSize  = 11.sp,
-                    color     = textItalicHint,
-                    fontStyle = FontStyle.Italic
-                )
+                }
             }
         }
     }
@@ -186,7 +179,7 @@ fun IlluminatedVerseCard(text: String) {
     val isDark = rememberThemeIsDark()
     val gold = if (isDark) GoldSpark else Color(0xFFD84315)
     val primary = if (isDark) Saffron else Color(0xFFE65100)
-    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
+    val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textPrimary = MaterialTheme.colorScheme.onSurface
 
     Box(
@@ -194,12 +187,12 @@ fun IlluminatedVerseCard(text: String) {
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.extraLarge)
             .border(
-                width = 1.5.dp,
-                brush = Brush.linearGradient(listOf(gold.copy(0.6f), primary.copy(0.4f), gold.copy(0.6f))),
+                width = 1.dp,
+                color = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8),
                 shape = MaterialTheme.shapes.extraLarge
             )
             .background(cardBg)
-            .shadow(if (isDark) 6.dp else 2.dp, MaterialTheme.shapes.extraLarge)
+            .shadow(if (isDark) 4.dp else 2.dp, MaterialTheme.shapes.extraLarge)
             .drawBehind {
                 if (isDark) {
                     drawRect(

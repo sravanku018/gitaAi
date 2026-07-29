@@ -125,32 +125,33 @@ fun QuizSectionScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(28.dp),
-                color = if (isDark) Color(0xFF1E1E1E) else Color(0xFFF5F0E6),
-                border = BorderStroke(1.dp, if (isDark) Color(0xFF333333) else Color(0xFFE0D8C8))
+                color = if (isDark) Color(0xFF1E1E1E) else Color.White,
+                border = BorderStroke(1.dp, if (isDark) Color(0xFF333333) else Color(0xFFE0E0E0)),
+                shadowElevation = if (isDark) 4.dp else 2.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(6.dp),
+                        .padding(5.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     tabs.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
                         val pillBg = if (isSelected) {
-                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.25f) else Color(0xFFFFE0B2)
+                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.25f) else Color(0xFFFFE082)
                         } else {
                             Color.Transparent
                         }
                         val pillBorder = if (isSelected) {
-                            if (isDark) Color(0xFFFFB74D) else Color(0xFFFF9800)
+                            if (isDark) Color(0xFFFFB74D) else Color(0xFFFFB300)
                         } else {
                             Color.Transparent
                         }
                         val contentColor = if (isSelected) {
-                            if (isDark) Color(0xFFFFD54F) else Color(0xFFD84315)
+                            if (isDark) Color(0xFFFFD54F) else Color(0xFFC62828)
                         } else {
-                            if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF4A4A4A)
+                            if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF424242)
                         }
 
                         Box(
