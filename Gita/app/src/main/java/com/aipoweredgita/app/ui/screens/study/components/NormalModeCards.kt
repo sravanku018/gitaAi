@@ -37,10 +37,10 @@ fun ChapterVerseHeroCard(
 ) {
     val isDark = rememberThemeIsDark()
     val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
-    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
+    val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFFFE0B2)
     val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-    val innerBoxBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color.Transparent
-    val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val innerBoxBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFFFFF8F2)
+    val innerBoxBorder = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFFFE0B2).copy(alpha = 0.6f)
 
     val verseDisplay = if (combinedNos.size > 1) {
         "${combinedNos.minOrNull()}–${combinedNos.maxOrNull()}"
@@ -91,6 +91,7 @@ fun ChapterVerseHeroCard(
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.large)
                         .background(innerBoxBg)
+                        .border(1.dp, innerBoxBorder, MaterialTheme.shapes.large)
                         .clickable(onClick = onChapterTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -127,6 +128,7 @@ fun ChapterVerseHeroCard(
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.large)
                         .background(innerBoxBg)
+                        .border(1.dp, innerBoxBorder, MaterialTheme.shapes.large)
                         .clickable(onClick = onVerseTap)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
