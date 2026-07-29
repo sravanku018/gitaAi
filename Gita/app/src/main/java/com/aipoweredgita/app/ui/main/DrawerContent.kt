@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.EditNote
@@ -339,7 +341,7 @@ fun DrawerContent(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Login,
+                            imageVector = Icons.AutoMirrored.Filled.Login,
                             contentDescription = "Sign In",
                             tint = if (isDarkTheme) Color.Black else Color.White,
                             modifier = Modifier.size(20.dp)
@@ -369,7 +371,7 @@ fun DrawerContent(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Logout,
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
                             contentDescription = "Logout",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
