@@ -137,7 +137,9 @@ fun CoinHistoryScreen(
         }
     }
 
-    val isDark = isSystemInDarkTheme()
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
+
+    val isDark = rememberThemeIsDark()
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
 

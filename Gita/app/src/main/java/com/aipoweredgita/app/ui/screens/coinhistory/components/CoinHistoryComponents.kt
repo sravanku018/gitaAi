@@ -278,7 +278,7 @@ fun CoinTransactionItem(
         else -> ""
     }
 
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
     val textColor = if (isDark) Color(0xFFEDE1CF) else MaterialTheme.colorScheme.onSurface
     val subTextColor = if (isDark) Color(0xFFD0C3A4) else MaterialTheme.colorScheme.onSurfaceVariant
     val iconBg = if (isEarn) (if (isDark) Color(0x334CAF50) else Color(0xFFE8F5E9)) else (if (isDark) Color(0x33FF5252) else Color(0xFFFFEBEE))

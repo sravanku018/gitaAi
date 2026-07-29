@@ -34,6 +34,8 @@ import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
 import com.aipoweredgita.app.viewmodel.QuizViewModel
 
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
+
 @Composable
 fun QuizSectionScreen(
     onExit: () -> Unit,
@@ -65,7 +67,7 @@ fun QuizSectionScreen(
         }
     }
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = rememberThemeIsDark()
     val appBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
     val headerTitleColor = if (isDark) Color(0xFFFFB74D) else textPrimary
