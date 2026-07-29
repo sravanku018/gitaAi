@@ -30,6 +30,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
 
     private val managerScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     private val inFlightFetches = ConcurrentHashMap<String, Deferred<GitaVerse?>>()
+    private val cacheGeneration = java.util.concurrent.atomic.AtomicLong(0L)
 
     /**
      * Get verse from cache
@@ -60,13 +61,16 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
         if (cached != null) return cached
 
         val key = makeKey(chapter, verse)
+        val startGen = cacheGeneration.get()
         
         val deferred = inFlightFetches.compute(key) { _, existing ->
             existing ?: managerScope.async {
                 val doubleCheck = get(chapter, verse)
                 if (doubleCheck != null) return@async doubleCheck
                 val fetched = fetch()
-                if (fetched != null) put(chapter, verse, fetched)
+                if (fetched != null && startGen == cacheGeneration.get()) {
+                    put(chapter, verse, fetched)
+                }
                 fetched
             }
         }!!
@@ -85,6 +89,7 @@ class VerseCacheManager(maxSizeKb: Int = 5000) {
      * Called on ViewModel cleanup to guarantee memory release
      */
     fun clear() {
+        cacheGeneration.incrementAndGet()
         inFlightFetches.values.forEach { try { it.cancel() } catch (_: Exception) {} }
         inFlightFetches.clear()
         cache.evictAll()
