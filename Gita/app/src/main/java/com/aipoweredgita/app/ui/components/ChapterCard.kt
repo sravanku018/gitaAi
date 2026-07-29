@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
  * 18 chapters of the Gita, each with a unique typographic treatment
@@ -183,5 +184,29 @@ fun ChapterCard(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Chapter Card - Light Mode")
+@Composable
+fun ChapterCardPreviewLight() {
+    com.aipoweredgita.app.ui.theme.GitaLearningTheme(darkTheme = false) {
+        ChapterCard(
+            chapter = createChapterInfo(1, "Arjuna Vishada Yoga", "अर्जुनविषादयोग", "Observing the Armies on the Battlefield of Kurukshetra", 47),
+            readCount = 12,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Chapter Card - Dark Mode", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun ChapterCardPreviewDark() {
+    com.aipoweredgita.app.ui.theme.GitaLearningTheme(darkTheme = true) {
+        ChapterCard(
+            chapter = createChapterInfo(1, "Arjuna Vishada Yoga", "अर्जुनविषादयोग", "Observing the Armies on the Battlefield of Kurukshetra", 47),
+            readCount = 12,
+            onClick = {}
+        )
     }
 }

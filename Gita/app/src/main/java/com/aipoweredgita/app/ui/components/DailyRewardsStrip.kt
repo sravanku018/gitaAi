@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -163,5 +164,39 @@ fun DailyRewardsStrip(
             animateEntry = true
         )
         Text("Share a sloka from Random Sloka", fontSize = 10.sp, color = dim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Preview(showBackground = true, name = "Daily Rewards - Light Mode")
+@Composable
+fun DailyRewardsStripPreviewLight() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val tracker = remember { com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(ctx) }
+    com.aipoweredgita.app.ui.theme.GitaLearningTheme(darkTheme = false) {
+        DailyRewardsStrip(
+            tracker = tracker,
+            context = ctx,
+            isDark = false,
+            coinBalance = 50,
+            onEarnCoins = { _, _ -> },
+            onNavigateToShare = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Daily Rewards - Dark Mode", backgroundColor = 0xFF0F0F0F)
+@Composable
+fun DailyRewardsStripPreviewDark() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val tracker = remember { com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(ctx) }
+    com.aipoweredgita.app.ui.theme.GitaLearningTheme(darkTheme = true) {
+        DailyRewardsStrip(
+            tracker = tracker,
+            context = ctx,
+            isDark = true,
+            coinBalance = 50,
+            onEarnCoins = { _, _ -> },
+            onNavigateToShare = {}
+        )
     }
 }
