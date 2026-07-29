@@ -119,13 +119,16 @@ fun BottomActionBar(
                     }
                 }
 
+                val secondaryBtnBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color.White
+                val secondaryBtnBorder = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFE0E0E0)
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
                         .clip(MaterialTheme.shapes.medium)
-                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .border(1.dp, secondaryBtnBorder, MaterialTheme.shapes.medium)
+                        .background(secondaryBtnBg)
                         .clickable(onClick = onShare),
                     contentAlignment = Alignment.Center
                 ) {
@@ -140,7 +143,7 @@ fun BottomActionBar(
                             text       = "Share",
                             color      = MaterialTheme.colorScheme.onSurface,
                             fontSize   = 14.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -150,8 +153,8 @@ fun BottomActionBar(
                         .weight(1f)
                         .height(48.dp)
                         .clip(MaterialTheme.shapes.medium)
-                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .border(1.dp, secondaryBtnBorder, MaterialTheme.shapes.medium)
+                        .background(secondaryBtnBg)
                         .clickable(onClick = onBattleQuiz),
                     contentAlignment = Alignment.Center
                 ) {
@@ -166,7 +169,7 @@ fun BottomActionBar(
                             text       = "Battle",
                             color      = MaterialTheme.colorScheme.onSurface,
                             fontSize   = 14.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

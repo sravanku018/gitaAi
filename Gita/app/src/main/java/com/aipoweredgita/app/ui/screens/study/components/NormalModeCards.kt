@@ -39,7 +39,7 @@ fun ChapterVerseHeroCard(
     val cardBg = if (isDark) Color(0xFF1E1E1E) else Color.White
     val cardBorder = if (isDark) Color(0xFF333333) else Color(0xFFE5E0D8)
     val textTertiary = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-    val innerBoxBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFFFAF7F2)
+    val innerBoxBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color.Transparent
     val textItalicHint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
 
     val verseDisplay = if (combinedNos.size > 1) {
