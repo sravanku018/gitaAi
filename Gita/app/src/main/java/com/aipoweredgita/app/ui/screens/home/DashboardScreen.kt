@@ -271,10 +271,10 @@ fun DashboardScreen(
                 AnimatedItem(index = 1) {
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        tint = if (isDark) Color(0xFFC85000).copy(alpha = 0.22f) else Saffron.copy(alpha = 0.08f),
-                        border = if (isDark) Color(0xFFFF8C28).copy(alpha = 0.28f) else Saffron.copy(alpha = 0.2f),
+                        tint = if (isDark) Color(0xFFC85000).copy(alpha = 0.22f) else MaterialTheme.colorScheme.surface,
+                        border = if (isDark) Color(0xFFFF8C28).copy(alpha = 0.28f) else Color(0xFFFFB74D).copy(alpha = 0.35f),
                         cornerRadius = 32.dp,
-                        elevation = 8.dp
+                        elevation = if (isDark) 8.dp else 4.dp
                     ) {
                         Box(
                             modifier = Modifier
@@ -286,8 +286,8 @@ fun DashboardScreen(
                                             Color(0xFF962800).copy(alpha = 0.12f),
                                             Color.Transparent
                                         ) else listOf(
-                                            Saffron.copy(alpha = 0.06f),
-                                            Color.Transparent
+                                            Color(0xFFFFF3E0),
+                                            Color(0xFFFFF8F0)
                                         ),
                                         start = Offset(0f, 0f),
                                         end = Offset(size.width, size.height)
@@ -300,7 +300,7 @@ fun DashboardScreen(
                                     .align(Alignment.CenterEnd)
                                     .size(140.dp)
                                     .offset(x = 10.dp, y = (-10).dp),
-                                color = if (isDark) Color.White.copy(alpha = 0.07f) else Saffron.copy(alpha = 0.06f)
+                                color = if (isDark) Color.White.copy(alpha = 0.07f) else Color(0xFFE65100).copy(alpha = 0.07f)
                             )
 
                             Column {
@@ -318,7 +318,7 @@ fun DashboardScreen(
                                             text = "Namaste",
                                             fontSize = 22.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color.White.copy(alpha = 0.97f) else textPrimary,
+                                            color = if (isDark) Color.White.copy(alpha = 0.97f) else Color(0xFFD84315),
                                             letterSpacing = (-0.5).sp
                                         )
                                         Text(
@@ -335,12 +335,12 @@ fun DashboardScreen(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(MaterialTheme.shapes.small)
-                                            .background(if (isDark) Color.White.copy(alpha = 0.1f) else Saffron.copy(alpha = 0.1f))
-                                            .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Saffron.copy(alpha = 0.25f), MaterialTheme.shapes.small)
+                                            .background(if (isDark) Color.White.copy(alpha = 0.1f) else Color(0xFFFFF3E0))
+                                            .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFFFB74D).copy(alpha = 0.4f), MaterialTheme.shapes.small)
                                             .graphicsLayer { rotationZ = rotationChevron },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(text = "⌄", fontSize = 13.sp, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.8f) else Saffron)
+                                        Text(text = "⌄", fontSize = 13.sp, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.8f) else Color(0xFFD84315))
                                     }
                                 }
 
@@ -358,10 +358,14 @@ fun DashboardScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(1.dp)
-                                                .background(if (isDark) Color.White.copy(alpha = 0.1f) else Saffron.copy(alpha = 0.15f))
+                                                .background(if (isDark) Color.White.copy(alpha = 0.1f) else Color(0xFFFFB74D).copy(alpha = 0.25f))
                                         )
                                         Spacer(modifier = Modifier.height(13.dp))
-                                        Pill(text = "NEXT BEST ACTION", textColor = if (isDark) Color(0xFFFFB450).copy(alpha = 0.9f) else Saffron)
+                                        Pill(
+                                            text = "NEXT BEST ACTION",
+                                            color = if (isDark) Color(0xFFFF6E00).copy(alpha = 0.25f) else Color(0xFFFFE0B2),
+                                            textColor = if (isDark) Color(0xFFFFB450).copy(alpha = 0.9f) else Color(0xFFD84315)
+                                        )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                             text = if (nextAction.nextStep != null && nextAction.nextLevel > 0) {
@@ -391,21 +395,21 @@ fun DashboardScreen(
                                             Button(
                                                 onClick = actionClick,
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (isDark) Color.White.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary
+                                                    containerColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFE65100)
                                                 ),
                                                 shape = RoundedCornerShape(50.dp),
                                                 border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.18f) else Color.Transparent)
                                             ) {
-                                                Text(text = actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDark) Color.White.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onPrimary)
+                                                Text(text = actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             }
                                             
                                             Button(
                                                 onClick = { onNavigateToRecommendations(1) },
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                                                 shape = RoundedCornerShape(50.dp),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color(0xFFFFC864).copy(alpha = 0.2f) else Saffron.copy(alpha = 0.4f))
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDark) Color(0xFFFFC864).copy(alpha = 0.2f) else Color(0xFFD84315).copy(alpha = 0.5f))
                                             ) {
-                                                Text(text = "View Plan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.7f) else Saffron)
+                                                Text(text = "View Plan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDark) Color(0xFFFFC864).copy(alpha = 0.7f) else Color(0xFFD84315))
                                             }
                                         }
                                     }
