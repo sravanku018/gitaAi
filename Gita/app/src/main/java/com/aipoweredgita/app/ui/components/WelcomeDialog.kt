@@ -52,28 +52,20 @@ fun WelcomeDialog(
             ) {
                 // Header Icon
                 Text(
-                    text = "🎉",
+                    text = "🌸",
                     style = MaterialTheme.typography.headlineLarge
                 )
                 
                 // Title
                 Text(
-                    text = "✨ What's New in v2.2.0",
+                    text = "Welcome to Śrīmad Bhagavad Gītā",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
                     textAlign = TextAlign.Center
                 )
                 
-                // Introduction
-                Text(
-                    text = "Added Śrīmad Bhagavad Gītā header branding, live English/Telugu translation toggle, single-tone card themes, and robust concurrency & network fixes!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 
                 // Features
                 Column(
@@ -88,14 +80,14 @@ fun WelcomeDialog(
 
                     FeatureItem(
                         icon = "🌸",
-                        title = "Single-Tone Sacred Aesthetics",
-                        description = "Pure white Light Mode cards with zero cement shadows, and warm soft Amber highlights in Dark Mode."
+                        title = "Pure Sacred Aesthetics",
+                        description = "Clean single-tone cards in Light Mode & soft Amber warm highlights in Dark Mode."
                     )
 
                     FeatureItem(
                         icon = "⚡",
-                        title = "Groq AI & Cloud Acceleration",
-                        description = "Instant cloud AI responses with zero local model downloads required."
+                        title = "Cloud Groq AI Guidance",
+                        description = "Fast, intelligent AI Krishna guidance with zero local model downloads required."
                     )
                     
                     FeatureItem(
@@ -105,9 +97,9 @@ fun WelcomeDialog(
                     )
                     
                     FeatureItem(
-                        icon = "🪙",
-                        title = "Robust Sync & Concurrency",
-                        description = "Thread-safe verse caching, atomic asset loading, and atomic database write queueing."
+                        icon = "📚",
+                        title = "Bundled Offline Datasets",
+                        description = "3,501 pre-translated English & Telugu Q&A pairs embedded offline — zero network downloads needed."
                     )
                 }
                 
