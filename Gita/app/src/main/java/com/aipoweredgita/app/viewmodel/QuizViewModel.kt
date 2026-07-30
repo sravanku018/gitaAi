@@ -206,17 +206,14 @@ class QuizViewModel @Inject constructor(
                 var candidates = quizQuestionRepository.getNextQuestionsForLanguage(
                     minDiff, maxDiff, fetchLimit, currentLanguage
                 )
-                android.util.Log.d("QuizViewModel", "Initial candidates for '$currentLanguage': count=${candidates.size}")
                 
                 // Filter out questions already asked in this quiz session
                 var available = candidates.filter { it.id !in sessionAskedIds }
-                android.util.Log.d("QuizViewModel", "Available candidates after session filter: count=${available.size}")
 
                 if (available.isEmpty()) {
-                    android.util.Log.d("QuizViewModel", "Fallback 1: Loading getFallbackQuestions for '$currentLanguage'...")
+                    // Fallback 1: Ignore difficulty range and cooldown cutoff for current language
                     candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, currentLanguage)
                     available = candidates.filter { it.id !in sessionAskedIds }
-                    android.util.Log.d("QuizViewModel", "Fallback 1 candidates for '$currentLanguage': count=${candidates.size}, available=${available.size}")
                     if (available.isEmpty() && candidates.isNotEmpty()) {
                         sessionAskedIds.clear()
                         available = candidates
@@ -224,26 +221,13 @@ class QuizViewModel @Inject constructor(
                 }
 
                 if (available.isEmpty()) {
-                    android.util.Log.d("QuizViewModel", "Fallback 2: Synchronous dataset import for '$currentLanguage'...")
-                    try {
-                        val db = GitaDatabase.getDatabase(application)
-                        val dao = db.quizQuestionBankDao()
-                        val importer = com.aipoweredgita.app.ml.BhagavadGitaQAImporter(application, dao)
-                        val impTe = importer.importDataset(language = "telugu", batchSize = 500)
-                        val impEn = importer.importDataset(language = "english", batchSize = 500)
-                        android.util.Log.d("QuizViewModel", "Fallback 2 import results: telugu=$impTe, english=$impEn")
-                        candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, currentLanguage)
-                        available = candidates
-                    } catch (e: Exception) {
-                        android.util.Log.w("QuizViewModel", "Fallback 2 import failed: ${e.message}")
-                    }
-                }
-
-                if (available.isEmpty()) {
-                    android.util.Log.d("QuizViewModel", "Fallback 3: Getting ANY active question regardless of language...")
+                    // Fallback 2: Fall back to any available language if current language is empty
                     candidates = quizQuestionRepository.getFallbackQuestions(fetchLimit, "")
-                    available = candidates
-                    android.util.Log.d("QuizViewModel", "Fallback 3 candidates: count=${candidates.size}")
+                    available = candidates.filter { it.id !in sessionAskedIds }
+                    if (available.isEmpty() && candidates.isNotEmpty()) {
+                        sessionAskedIds.clear()
+                        available = candidates
+                    }
                 }
                 
                 if (available.isNotEmpty()) {
