@@ -14,8 +14,8 @@ enum class LanguageMode(
     AUTO(
         displayName   = "Auto",
         displayShort  = "AUTO",
-        inputLocale   = Locale.US,
-        outputLocale  = Locale.US,
+        inputLocale   = Locale("te", "IN"),
+        outputLocale  = Locale("te", "IN"),
         systemInstruction =
             "You are Krishna from the Bhagavad Gita. " +
             "Speak in clear, human-like sentences with proper spacing and punctuation. " +

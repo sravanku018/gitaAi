@@ -146,9 +146,17 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     }
 
     fun speak(text: String, flush: Boolean = true, onComplete: (() -> Unit)? = null) {
+        if (isDestroyed) {
+            onComplete?.invoke()
+            return
+        }
+        val utteranceId = "gita_${utteranceCounter.incrementAndGet()}"
+        if (onComplete != null) {
+            utteranceCallbacks[utteranceId] = onComplete
+        }
         mainHandler.post {
             if (isDestroyed) {
-                onComplete?.invoke()
+                utteranceCallbacks.remove(utteranceId)?.invoke()
                 return@post
             }
             try {
@@ -160,23 +168,25 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
                     if (flush) {
                         tts?.stop()
+                        // Ensure this utteranceCallback stays registered even after flush
+                        val currentCallback = utteranceCallbacks.remove(utteranceId)
                         flushCallbacks()
+                        if (currentCallback != null) {
+                            utteranceCallbacks[utteranceId] = currentCallback
+                        }
                     }
-                    val utteranceId = "gita_${utteranceCounter.incrementAndGet()}"
-                    if (onComplete != null) utteranceCallbacks[utteranceId] = onComplete
                     val params = Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
                     val result = tts?.speak(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, params, utteranceId)
                     if (result == TextToSpeech.ERROR) {
-                        utteranceCallbacks.remove(utteranceId)
-                        onComplete?.invoke()
+                        utteranceCallbacks.remove(utteranceId)?.invoke()
                     }
                 } else {
-                    onComplete?.invoke()
+                    utteranceCallbacks.remove(utteranceId)?.invoke()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "TTS speak failed", e)
                 onError?.invoke("Failed to speak")
-                onComplete?.invoke()
+                utteranceCallbacks.remove(utteranceId)?.invoke()
             }
         }
     }
