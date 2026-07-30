@@ -79,7 +79,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         } else {
             Log.e(TAG, "TTS init failed with status $status")
             isTtsReady = false
-            onError?.invoke("Text-to-Speech engine failed to start")
+            val msg = "Text-to-Speech engine failed to start"
+            onError?.invoke(msg) ?: run { pendingError = msg }
         }
     }
 
@@ -89,6 +90,10 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             if (isDestroyed) return@post
             setLanguage(locale)
         }
+    }
+
+    fun setSttLocale(sttLocale: String) {
+        this.sttLocale = sttLocale
     }
 
     fun setLanguage(locale: Locale): Boolean {
