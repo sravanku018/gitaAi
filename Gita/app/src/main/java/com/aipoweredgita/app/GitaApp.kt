@@ -24,10 +24,14 @@ class GitaApp : Application() {
         super.onCreate()
         instance = this
 
-        val tier = DeviceTierDetector.detect(this)
-        deviceProfile = DeviceProfile.from(tier)
+        // Initialize with default fallback profile and compute actual tier off main thread
+        deviceProfile = DeviceProfile.from(com.aipoweredgita.app.utils.DeviceTier.MID)
 
-        Log.d("GitaApp", "Device tier=$tier profile=$deviceProfile")
+        applicationScope.launch {
+            val tier = DeviceTierDetector.detectAsync(this@GitaApp)
+            deviceProfile = DeviceProfile.from(tier)
+            Log.d("GitaApp", "Device tier=$tier profile=$deviceProfile")
+        }
 
         // Run auto-reconciliation on app startup for logged-in users
         runAutoReconciliation()

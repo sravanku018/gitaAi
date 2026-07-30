@@ -141,6 +141,7 @@ class AuthPreferences(context: Context) {
             putString(KEY_USER_ID, userId)
             putBoolean(KEY_IS_LOGGED_IN, true)
             putBoolean(KEY_IS_GUEST, false)
+            remove(KEY_GUEST_ID) // Clear previous guest identity on authenticated login
             putString(KEY_LOGIN_METHOD, loginMethod)
             putString(KEY_NAME, name)
             if (phone != null) putString(KEY_PHONE, phone) else remove(KEY_PHONE)
@@ -180,7 +181,12 @@ class AuthPreferences(context: Context) {
      */
     fun getSavedCredentials(): Triple<String?, String?, String?> {
         if (!rememberMe) return Triple(null, null, null)
-        return when (loginMethod) {
+        val method = loginMethod ?: when {
+            !email.isNullOrBlank() -> "email"
+            !phone.isNullOrBlank() -> "phone"
+            else -> null
+        }
+        return when (method) {
             "phone" -> Triple(phone, null, null)
             "email" -> Triple(email, null, null)
             else -> Triple(null, null, null)

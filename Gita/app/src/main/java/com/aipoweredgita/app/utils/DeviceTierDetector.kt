@@ -74,7 +74,7 @@ object DeviceTierDetector {
 
     private fun collectSignals(context: Context): HardwareSignals {
         val ram = totalRamGb(context)
-        val cpu = collectCpuSignals()
+        val cpu = collectCpuSignals(ram)
         val gpu = collectGpuSignals(context)
         return HardwareSignals(
             ramGb = ram,
@@ -95,12 +95,23 @@ object DeviceTierDetector {
 
     // ─── CPU axis ───────────────────────────────────────────────────
 
-    private fun collectCpuSignals(): CpuSignals {
+    private fun collectCpuSignals(ramGb: Float): CpuSignals {
         val freqs = allCoreFreqsMhz()
         val cores = Runtime.getRuntime().availableProcessors()
+        val maxFreq = freqs.maxOrNull() ?: 0
+        val effectiveFreq = if (maxFreq > 0) maxFreq else {
+            // Fallback estimation when sysfs CPU frequency files are unreadable due to SELinux/OS restrictions
+            when {
+                cores >= 8 && ramGb >= 8f -> 2800
+                cores >= 8 && ramGb >= 5f -> 2400
+                cores >= 8 -> 2000
+                cores >= 4 -> 1800
+                else -> 1400
+            }
+        }
         return CpuSignals(
             coreCount    = cores,
-            bigCoreFreq  = freqs.maxOrNull() ?: 0,
+            bigCoreFreq  = effectiveFreq,
             armVersion   = armVersion(),
             clusterCount = detectClusterCount(freqs)
         )
@@ -111,8 +122,9 @@ object DeviceTierDetector {
             .listFiles { f -> f.name.matches(Regex("cpu\\d+")) }
             ?.mapNotNull { core ->
                 runCatching {
-                    java.io.File("${core.path}/cpufreq/cpuinfo_max_freq")
-                        .readText().trim().toLong() / 1000
+                    val maxFile = java.io.File("${core.path}/cpufreq/cpuinfo_max_freq")
+                    val fileToRead = if (maxFile.exists()) maxFile else java.io.File("${core.path}/cpufreq/scaling_max_freq")
+                    fileToRead.readText().trim().toLong() / 1000
                 }.getOrNull()?.toInt()
             }
             ?.sorted()

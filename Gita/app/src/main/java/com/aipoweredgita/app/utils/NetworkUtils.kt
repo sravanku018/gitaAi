@@ -199,7 +199,7 @@ object NetworkUtils {
 
         try {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager
-                ?: return CellularGeneration.FOUR_G
+                ?: return CellularGeneration.UNKNOWN
 
             @SuppressLint("MissingPermission")
             val dataNetworkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -207,7 +207,7 @@ object NetworkUtils {
                         context,
                         android.Manifest.permission.READ_PHONE_STATE
                     ) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    return CellularGeneration.FOUR_G
+                    return CellularGeneration.UNKNOWN
                 }
                 telephonyManager.dataNetworkType
             } else {
@@ -220,18 +220,22 @@ object NetworkUtils {
                 android.telephony.TelephonyManager.NETWORK_TYPE_LTE -> CellularGeneration.FOUR_G
                 android.telephony.TelephonyManager.NETWORK_TYPE_HSPAP,
                 android.telephony.TelephonyManager.NETWORK_TYPE_HSPA,
+                android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA,
+                android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA,
                 android.telephony.TelephonyManager.NETWORK_TYPE_UMTS,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_0,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_A,
+                android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_B,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EHRPD -> CellularGeneration.THREE_G
                 android.telephony.TelephonyManager.NETWORK_TYPE_GPRS,
                 android.telephony.TelephonyManager.NETWORK_TYPE_EDGE,
+                android.telephony.TelephonyManager.NETWORK_TYPE_1xRTT,
                 android.telephony.TelephonyManager.NETWORK_TYPE_CDMA -> CellularGeneration.TWO_G
                 else -> CellularGeneration.UNKNOWN
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to detect cellular generation: ${e.message}")
-            return null
+            return CellularGeneration.UNKNOWN
         }
     }
 

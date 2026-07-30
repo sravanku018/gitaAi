@@ -29,6 +29,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     private val utteranceCallbacks = ConcurrentHashMap<String, () -> Unit>()
     private val utteranceCounter = java.util.concurrent.atomic.AtomicLong(0)
+    private val activeSessionId = java.util.concurrent.atomic.AtomicLong(0)
     @Volatile private var isDestroyed = false
     private var preferredLocale: Locale = Locale.forLanguageTag("te-IN")
 
@@ -121,6 +122,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                     utteranceCallbacks.remove(id)?.let { cb -> mainHandler.post { cb.invoke() } }
                 }
             }
+            @Suppress("DEPRECATION")
             override fun onError(utteranceId: String?) {
                 utteranceId?.let { id ->
                     utteranceCallbacks.remove(id)?.let { cb -> mainHandler.post { cb.invoke() } }
@@ -142,6 +144,11 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             if (isDestroyed) return@post
             try {
                 if (isTtsReady) {
+                    // Auto-detect Telugu text and switch TTS locale dynamically
+                    val isTeluguText = text.any { it in '\u0C00'..'\u0C7F' }
+                    val targetLocale = if (isTeluguText) Locale.forLanguageTag("te-IN") else preferredLocale
+                    setLanguage(targetLocale)
+
                     if (flush) {
                         tts?.stop()
                         flushCallbacks()
@@ -184,6 +191,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 return@post
             }
             isListeningActive = true
+            val sessionId = activeSessionId.incrementAndGet()
 
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -200,6 +208,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
+                    if (sessionId != activeSessionId.get()) return // Ignore stale callbacks
                     isListeningActive = false
                     consecutiveSttErrors++
                     val userMessage = when (error) {
@@ -221,6 +230,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                     onError(userMessage)
                 }
                 override fun onResults(results: Bundle?) {
+                    if (sessionId != activeSessionId.get()) return // Ignore stale callbacks
                     isListeningActive = false
                     consecutiveSttErrors = 0
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -228,6 +238,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                     else onError("No speech recognized")
                 }
                 override fun onPartialResults(partialResults: Bundle?) {
+                    if (sessionId != activeSessionId.get()) return
                     val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) onPartialResult(matches[0])
                 }
@@ -263,18 +274,29 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     fun stopListening() {
         mainHandler.post {
             if (isDestroyed || speechRecognizer == null) return@post
-            isListeningActive = false
             speechRecognizer?.stopListening()
+        }
+    }
+
+    fun cancelListening() {
+        mainHandler.post {
+            activeSessionId.incrementAndGet() // Invalidate current session
+            isListeningActive = false
+            try { speechRecognizer?.cancel() } catch (_: Exception) {}
         }
     }
 
     fun destroy() {
         isDestroyed = true
+        activeSessionId.incrementAndGet() // Invalidate active session
+        isListeningActive = false
         mainHandler.removeCallbacksAndMessages(null)
         mainHandler.post {
             flushCallbacks()
-            tts?.shutdown()
-            speechRecognizer?.destroy()
+            try { tts?.stop(); tts?.shutdown() } catch (_: Exception) {}
+            try { speechRecognizer?.cancel(); speechRecognizer?.destroy() } catch (_: Exception) {}
+            speechRecognizer = null
+            tts = null
         }
     }
 }
