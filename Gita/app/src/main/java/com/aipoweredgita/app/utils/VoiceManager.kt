@@ -27,7 +27,16 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     private var isTtsReady = false
     @Volatile private var isListeningActive = false
 
-    private val utteranceCallbacks = ConcurrentHashMap<String, () -> Unit>()
+    private class OnceCallback(private val block: () -> Unit) {
+        private val executed = java.util.concurrent.atomic.AtomicBoolean(false)
+        fun invoke() {
+            if (executed.compareAndSet(false, true)) {
+                try { block() } catch (e: Exception) { Log.e("VoiceManager", "Error executing callback", e) }
+            }
+        }
+    }
+
+    private val utteranceCallbacks = ConcurrentHashMap<String, OnceCallback>()
     private val utteranceCounter = java.util.concurrent.atomic.AtomicLong(0)
     private val activeSessionId = java.util.concurrent.atomic.AtomicLong(0)
     @Volatile private var isDestroyed = false
@@ -111,11 +120,12 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
      */
     fun setLocale(sttLocale: String, ttsLocale: String) {
         preferredLocale = Locale.forLanguageTag(ttsLocale)
-        if (isTtsReady) {
-            setLanguage(preferredLocale)
-        }
-        // Store STT locale for use in startListening
         this.sttLocale = sttLocale
+        mainHandler.post {
+            if (!isDestroyed && isTtsReady) {
+                setLanguage(preferredLocale)
+            }
+        }
     }
 
     private var sttLocale: String = "te-IN"
@@ -125,13 +135,21 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) {
                 utteranceId?.let { id ->
-                    utteranceCallbacks.remove(id)?.let { cb -> mainHandler.post { cb.invoke() } }
+                    val cb = utteranceCallbacks[id]
+                    mainHandler.post {
+                        utteranceCallbacks.remove(id)
+                        cb?.invoke()
+                    }
                 }
             }
             @Suppress("DEPRECATION")
             override fun onError(utteranceId: String?) {
                 utteranceId?.let { id ->
-                    utteranceCallbacks.remove(id)?.let { cb -> mainHandler.post { cb.invoke() } }
+                    val cb = utteranceCallbacks[id]
+                    mainHandler.post {
+                        utteranceCallbacks.remove(id)
+                        cb?.invoke()
+                    }
                 }
             }
         })
@@ -140,9 +158,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     private fun flushCallbacks() {
         val callbacks = ArrayList(utteranceCallbacks.values)
         utteranceCallbacks.clear()
-        callbacks.forEach { cb ->
-            try { cb.invoke() } catch (e: Exception) { Log.e(TAG, "Error flushing callback", e) }
-        }
+        callbacks.forEach { cb -> cb.invoke() }
     }
 
     fun speak(text: String, flush: Boolean = true, onComplete: (() -> Unit)? = null) {
@@ -152,7 +168,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         }
         val utteranceId = "gita_${utteranceCounter.incrementAndGet()}"
         if (onComplete != null) {
-            utteranceCallbacks[utteranceId] = onComplete
+            utteranceCallbacks[utteranceId] = OnceCallback(onComplete)
         }
         mainHandler.post {
             if (isDestroyed) {
