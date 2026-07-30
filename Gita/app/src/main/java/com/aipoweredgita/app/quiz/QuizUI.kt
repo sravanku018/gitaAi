@@ -160,19 +160,15 @@ fun QuizContent(
                     Text(translateUiText("Submit Answer", language), fontWeight = FontWeight.Bold)
                 }
             } else {
-                options.forEachIndexed { index, option ->
-                    val state = when {
-                        selectedIndex == null -> OptionVisualState.Idle
-                        selectedIndex == index && !showResultDialog -> OptionVisualState.Selected
-                        showResultDialog && index == correctIndex -> OptionVisualState.Correct
-                        showResultDialog && selectedIndex == index && index != correctIndex -> OptionVisualState.Wrong
-                        else -> OptionVisualState.Idle
-                    }
-                    AnimatedVisibility(
-                        visible = appeared.getOrNull(index)?.value == true,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
-                        exit = fadeOut()
-                    ) {
+                key(question, options) {
+                    options.forEachIndexed { index, option ->
+                        val state = when {
+                            selectedIndex == null -> OptionVisualState.Idle
+                            selectedIndex == index && !showResultDialog -> OptionVisualState.Selected
+                            showResultDialog && index == correctIndex -> OptionVisualState.Correct
+                            showResultDialog && selectedIndex == index && index != correctIndex -> OptionVisualState.Wrong
+                            else -> OptionVisualState.Idle
+                        }
                         AnimatedOptionCard(
                             text = option,
                             state = state,

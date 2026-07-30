@@ -249,19 +249,67 @@ class QuizViewModel @Inject constructor(
                     val q = available.first()
                     sessionAskedIds.add(q.id)
                     android.util.Log.d("QuizViewModel", "SELECTED QUESTION: id=${q.id}, lang=${q.language}, text=${q.question.take(50)}")
-                    val options = listOf(q.optionA, q.optionB, q.optionC, q.optionD).filter { it.isNotBlank() }
-                    val correctAnswerIndex = when (q.correctAnswer.trim().uppercase()) {
-                        "A" -> 0
-                        "B" -> 1
-                        "C" -> 2
-                        "D" -> 3
-                        else -> options.indexOf(q.correctAnswer).takeIf { it >= 0 } ?: 0
+
+                    val rawOptions = listOf(q.optionA, q.optionB, q.optionC, q.optionD)
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+
+                    val rawCorrectText = when (q.correctAnswer.trim().uppercase()) {
+                        "A" -> q.optionA.trim()
+                        "B" -> q.optionB.trim()
+                        "C" -> q.optionC.trim()
+                        "D" -> q.optionD.trim()
+                        else -> q.correctAnswer.trim()
                     }
+
+                    // Deduplicate options while preserving order
+                    val distinctOptions = rawOptions.distinct().toMutableList()
+
+                    // Ensure at least 4 distinct options if possible
+                    if (distinctOptions.size < 4 && currentLanguage.contains("tel")) {
+                        val fallbackDistractors = listOf(
+                            "కర్మలు మరియు ఆచారాలను పాటించడం ద్వారా",
+                            "సంపద మరియు అధికారాన్ని కూడబెట్టడం ద్వారా",
+                            "లౌకిక ధర్మాలన్నింటినీ వదిలివేయడం ద్వారా",
+                            "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా"
+                        )
+                        for (d in fallbackDistractors) {
+                            if (distinctOptions.size >= 4) break
+                            if (!distinctOptions.contains(d) && d != rawCorrectText) {
+                                distinctOptions.add(d)
+                            }
+                        }
+                    } else if (distinctOptions.size < 4) {
+                        val fallbackDistractors = listOf(
+                            "By performing rituals and ceremonies",
+                            "By accumulating wealth and power",
+                            "By avoiding all worldly duties",
+                            "By seeking personal glory and fame"
+                        )
+                        for (d in fallbackDistractors) {
+                            if (distinctOptions.size >= 4) break
+                            if (!distinctOptions.contains(d) && d != rawCorrectText) {
+                                distinctOptions.add(d)
+                            }
+                        }
+                    }
+
+                    // Re-verify correct answer is present in distinct options
+                    if (!distinctOptions.contains(rawCorrectText) && rawCorrectText.isNotBlank()) {
+                        if (distinctOptions.isEmpty()) {
+                            distinctOptions.add(rawCorrectText)
+                        } else {
+                            distinctOptions[0] = rawCorrectText
+                        }
+                    }
+
+                    val correctAnswerIndex = distinctOptions.indexOf(rawCorrectText).coerceAtLeast(0)
+
                     val verseObj = GitaVerse(chapterNo = q.chapter, verseNo = q.verse)
                     val currentQuizQuestion = com.aipoweredgita.app.data.QuizQuestion(
                         verse = verseObj,
                         question = q.question,
-                        options = options,
+                        options = distinctOptions,
                         correctAnswerIndex = correctAnswerIndex,
                         explanation = q.explanation
                     )
