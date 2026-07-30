@@ -200,9 +200,21 @@ class DatasetIngestionPipeline(
                 raw.answer, topics, topicAnswers, allDatasetAnswers, count = 3, isTelugu = isTelugu
             )
             
-            val options = listOf(raw.answer) + distractors
-            val shuffledOptions = options.shuffled()
-            val correctIndex = shuffledOptions.indexOf(raw.answer)
+            val distinctDistractors = distractors.filter { it.trim() != raw.answer.trim() }.distinct()
+            var options = (listOf(raw.answer.trim()) + distinctDistractors).distinct().toMutableList()
+            
+            if (options.size < 4) {
+                val fallbacks = if (isTelugu) teluguGeneralDistractors else englishGeneralDistractors
+                for (f in fallbacks) {
+                    if (options.size >= 4) break
+                    if (!options.contains(f.trim())) {
+                        options.add(f.trim())
+                    }
+                }
+            }
+
+            val shuffledOptions = options.take(4).shuffled()
+            val correctIndex = shuffledOptions.indexOf(raw.answer.trim()).coerceAtLeast(0)
 
             val difficulty = estimateDifficulty(raw.chapterNo, raw.verseNo)
 
@@ -235,6 +247,26 @@ class DatasetIngestionPipeline(
         }
     }
 
+    private val teluguGeneralDistractors = listOf(
+        "కర్మలు మరియు ఆచారాలను పాటించడం ద్వారా",
+        "సంపద మరియు అధికారాన్ని కూడబెట్టడం ద్వారా",
+        "లౌకిక ధర్మాలన్నింటినీ వదిలివేయడం ద్వారా",
+        "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా",
+        "అర్థం చేసుకోకుండా సంప్రదాయాన్ని అనుసరించడం ద్వారా",
+        "కేవలం మేధోపరమైన జ్ఞానంపై మాత్రమే ఆధారపడటం ద్వారా",
+        "సమాజం నుండి తన్ను తాను వేరు చేసుకోవడం ద్వారా"
+    )
+
+    private val englishGeneralDistractors = listOf(
+        "By performing rituals and ceremonies",
+        "By accumulating wealth and power",
+        "By avoiding all worldly duties",
+        "By seeking personal glory and fame",
+        "By following blind tradition without understanding",
+        "By relying solely on intellectual knowledge",
+        "By isolating oneself from society"
+    )
+
     private fun getTopicBasedDistractors(
         correctAnswer: String,
         topics: List<String>,
@@ -261,26 +293,6 @@ class DatasetIngestionPipeline(
                 }
             }
         }
-        
-        val teluguGeneralDistractors = listOf(
-            "కర్మలు మరియు ఆచారాలను పాటించడం ద్వారా",
-            "సంపద మరియు అధికారాన్ని కూడబెట్టడం ద్వారా",
-            "లౌకిక ధర్మాలన్నింటినీ వదిలివేయడం ద్వారా",
-            "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా",
-            "అర్థం చేసుకోకుండా సంప్రదాయాన్ని అనుసరించడం ద్వారా",
-            "కేవలం మేధోపరమైన జ్ఞానంపై మాత్రమే ఆధారపడటం ద్వారా",
-            "సమాజం నుండి తన్ను తాను వేరు చేసుకోవడం ద్వారా"
-        )
-
-        val englishGeneralDistractors = listOf(
-            "By performing rituals and ceremonies",
-            "By accumulating wealth and power",
-            "By avoiding all worldly duties",
-            "By seeking personal glory and fame",
-            "By following blind tradition without understanding",
-            "By relying solely on intellectual knowledge",
-            "By isolating oneself from society"
-        )
         
         val generalDistractors = if (isTelugu) teluguGeneralDistractors else englishGeneralDistractors
         

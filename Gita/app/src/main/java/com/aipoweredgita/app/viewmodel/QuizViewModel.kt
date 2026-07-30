@@ -77,8 +77,9 @@ class QuizViewModel @Inject constructor(
     private var studentAbility = StudentAbility(studentId = "student")
     private var quizStartTime: Long = 0
     private var timerJob: kotlinx.coroutines.Job? = null
-    // Track question IDs asked in the current quiz session to prevent repeats
+    // Track question IDs and distractors asked in the current quiz session to prevent repeats
     private val sessionAskedIds = mutableSetOf<Int>()
+    private val sessionUsedDistractors = mutableSetOf<String>()
 
     init {
         viewModelScope.launch {
@@ -271,12 +272,15 @@ class QuizViewModel @Inject constructor(
                             "కర్మలు మరియు ఆచారాలను పాటించడం ద్వారా",
                             "సంపద మరియు అధికారాన్ని కూడబెట్టడం ద్వారా",
                             "లౌకిక ధర్మాలన్నింటినీ వదిలివేయడం ద్వారా",
-                            "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా"
+                            "వ్యక్తిగత కీర్తి మరియు ప్రసిద్ధిని కోరడం ద్వారా",
+                            "అర్థం చేసుకోకుండా సంప్రదాయాన్ని అనుసరించడం ద్వారా",
+                            "కేవలం మేధోపరమైన జ్ఞానంపై మాత్రమే ఆధారపడటం ద్వారా"
                         )
                         for (d in fallbackDistractors) {
                             if (distinctOptions.size >= 4) break
-                            if (!distinctOptions.contains(d) && d != rawCorrectText) {
+                            if (!distinctOptions.contains(d) && d != rawCorrectText && d !in sessionUsedDistractors) {
                                 distinctOptions.add(d)
+                                sessionUsedDistractors.add(d)
                             }
                         }
                     } else if (distinctOptions.size < 4) {
@@ -284,15 +288,21 @@ class QuizViewModel @Inject constructor(
                             "By performing rituals and ceremonies",
                             "By accumulating wealth and power",
                             "By avoiding all worldly duties",
-                            "By seeking personal glory and fame"
+                            "By seeking personal glory and fame",
+                            "By following blind tradition without understanding",
+                            "By relying solely on intellectual knowledge"
                         )
                         for (d in fallbackDistractors) {
                             if (distinctOptions.size >= 4) break
-                            if (!distinctOptions.contains(d) && d != rawCorrectText) {
+                            if (!distinctOptions.contains(d) && d != rawCorrectText && d !in sessionUsedDistractors) {
                                 distinctOptions.add(d)
+                                sessionUsedDistractors.add(d)
                             }
                         }
                     }
+
+                    // Track used distractors from this question
+                    distinctOptions.filter { it != rawCorrectText }.forEach { sessionUsedDistractors.add(it) }
 
                     // Re-verify correct answer is present in distinct options
                     if (!distinctOptions.contains(rawCorrectText) && rawCorrectText.isNotBlank()) {
