@@ -71,6 +71,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     }
 
     override fun onInit(status: Int) {
+        if (isDestroyed) return
         if (status == TextToSpeech.SUCCESS) {
             setLanguage(preferredLocale)
             isTtsReady = true
@@ -141,7 +142,10 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     fun speak(text: String, flush: Boolean = true, onComplete: (() -> Unit)? = null) {
         mainHandler.post {
-            if (isDestroyed) return@post
+            if (isDestroyed) {
+                onComplete?.invoke()
+                return@post
+            }
             try {
                 if (isTtsReady) {
                     // Auto-detect Telugu text and switch TTS locale dynamically
@@ -186,9 +190,14 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         onPartialResult: (String) -> Unit = {}
     ) {
         mainHandler.post {
-            if (isDestroyed || isListeningActive || speechRecognizer == null) {
+            if (isDestroyed || speechRecognizer == null) {
                 if (speechRecognizer == null) onError("Speech recognition not available")
                 return@post
+            }
+            if (isListeningActive) {
+                activeSessionId.incrementAndGet() // Invalidate previous session before starting new one
+                try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                isListeningActive = false
             }
             isListeningActive = true
             val sessionId = activeSessionId.incrementAndGet()
@@ -197,6 +206,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, sttLocale)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, sttLocale)
+                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
@@ -209,6 +219,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
                     if (sessionId != activeSessionId.get()) return // Ignore stale callbacks
+                    activeSessionId.incrementAndGet() // Invalidate session on terminal error
                     isListeningActive = false
                     consecutiveSttErrors++
                     val userMessage = when (error) {
@@ -231,6 +242,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 }
                 override fun onResults(results: Bundle?) {
                     if (sessionId != activeSessionId.get()) return // Ignore stale callbacks
+                    activeSessionId.incrementAndGet() // Invalidate session on terminal result
                     isListeningActive = false
                     consecutiveSttErrors = 0
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -257,6 +269,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     private fun recreateRecognizer() {
         mainHandler.post {
+            activeSessionId.incrementAndGet()
             try {
                 speechRecognizer?.destroy()
             } catch (_: Exception) {}
