@@ -65,17 +65,6 @@ fun QuizContent(
     val isOpenEnded = questionType == com.aipoweredgita.app.data.QuestionType.ESSAY || questionType == com.aipoweredgita.app.data.QuestionType.APPLICATION
     val maxTime = if (isOpenEnded) 60 else 30
 
-    // Staggered enter animation state for options
-    val appeared = remember(options) { List(options.size) { mutableStateOf(false) } }
-    LaunchedEffect(options) {
-        if (!isOpenEnded) {
-            appeared.forEachIndexed { i, state ->
-                delay(60L)
-                state.value = true
-            }
-        }
-    }
-
     // Removed LaunchedEffect for delay to prevent double layout
 
     Box(modifier = Modifier
