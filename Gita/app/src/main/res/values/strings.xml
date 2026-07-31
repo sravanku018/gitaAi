@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App and widget strings -->
-    <string name="app_name">AI Powered Gita</string>
+    <string name="app_name">Bhagavad Gita AI</string>
     <string name="widget_description">Daily AI-Powered Gita Verse</string>
 
     <!-- Quiz UI strings -->
