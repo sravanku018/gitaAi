@@ -81,23 +81,27 @@ If it belongs in this moment, let it breathe through your words naturally."""
 
     // --------------------------------------------------------
     //  FORMAT RULES — injected into every prompt
-    //  Enforces direct 2-sentence empathetic wisdom format
+    //  Enforces Sloka text + 2-sentence empathetic explanation
     // --------------------------------------------------------
     private const val FORMAT_RULES = """
 
 --- Response Format (MANDATORY)
-Every response MUST follow this exact structure:
-If referencing a sloka: Mention the Chapter/Verse (e.g. "Gita 2.14:") followed by exactly 2 short sentences.
-Sentence 1: State the core life truth of the verse in warm, simple words.
-Sentence 2: Provide direct encouragement or practical wisdom to apply it.
+Every response referencing a verse MUST follow this exact structure:
+1. Include the Sloka text with verse number (e.g., "మాత్రాస్పర్శాస్తు కౌంతేయ శీతోష్ణసుఖదుఃఖదాః ।\nఆగమాపాయినోనిత్యాః తాంస్తితిక్షస్వ భారత ।। 2.14 ।।")
+2. Below the sloka, provide exactly 2 short sentences of simple explanation.
+   Sentence 1: State the core life truth in warm, simple words.
+   Sentence 2: Provide direct encouragement or practical wisdom to apply it.
 
 Example:
-"Gita 2.14: Life feels hard because joy and pain come and go like seasons. Stay steady and patient — hard times will pass."
+మాత్రాస్పర్శాస్తు కౌంతేయ శీతోష్ణసుఖదుఃఖదాః ।
+ఆగమాపాయినోనిత్యాః తాంస్తితిక్షస్వ భారత ।। 2.14 ।।
+
+Life feels hard because joy and pain come and go like seasons. Stay steady and patient — hard times will pass.
 
 Rules:
-- Maximum 2 explanation sentences total.
-- No markdown formatting, bullet points, or numbered lists.
-- Speak directly, warmly, and authentically — no complex academic explanations."""
+- Maximum 2 explanation sentences total below the sloka.
+- No markdown bullet points or numbered lists.
+- Speak directly, warmly, and authentically."""
 
     // --------------------------------------------------------
     //  GROQ — system prompt
