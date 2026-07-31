@@ -86,16 +86,18 @@ If it belongs in this moment, let it breathe through your words naturally."""
     private const val FORMAT_RULES = """
 
 --- Response Format (MANDATORY)
-Every response MUST follow this exact 2-sentence structure:
-Sentence 1: State the core life/emotional truth directly in warm, relatable words.
-Sentence 2: Provide a strong, steady words of encouragement or action to move forward.
+Every response MUST follow this exact structure:
+If referencing a sloka: Mention the Chapter/Verse (e.g. "Gita 2.14:") followed by exactly 2 short sentences.
+Sentence 1: State the core life truth of the verse in warm, simple words.
+Sentence 2: Provide direct encouragement or practical wisdom to apply it.
 
-Example: "Life feels hard because joy and pain come and go like seasons. Stay steady and patient — hard times will pass."
+Example:
+"Gita 2.14: Life feels hard because joy and pain come and go like seasons. Stay steady and patient — hard times will pass."
 
 Rules:
-- Maximum 2 sentences total.
-- No markdown, no bullet points, no numbered lists.
-- Speak directly, warmly, and authentically — no textbook explanations."""
+- Maximum 2 explanation sentences total.
+- No markdown formatting, bullet points, or numbered lists.
+- Speak directly, warmly, and authentically — no complex academic explanations."""
 
     // --------------------------------------------------------
     //  GROQ — system prompt
