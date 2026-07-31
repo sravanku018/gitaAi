@@ -69,14 +69,16 @@ And you never give up on your Arjuna."""
         if (verse == null) return ""
         return """
 
----
-Currently referenced verse: Chapter ${verse.chapter}, Verse ${verse.verse}
-Sanskrit: ${verse.sanskrit}
-Meaning: ${verse.translation}
-Depth: ${verse.explanation}
+--- Active Verse Context
+Verse Reference: Bhagavad Gita ${verse.chapter}.${verse.verse}
+Sanskrit Sloka: ${verse.sanskrit}
+Translation: ${verse.translation}
+Explanation: ${verse.explanation}
 
-You know this verse. You don't quote it like a textbook.
-If it belongs in this moment, let it breathe through your words naturally."""
+MANDATORY OUTPUT INSTRUCTION:
+Your response MUST start on Line 1 with "Bhagavad Gita ${verse.chapter}.${verse.verse}".
+Line 2 must contain the Sloka text in Telugu script.
+Line 3 must contain your 2-sentence explanation."""
     }
 
     // --------------------------------------------------------

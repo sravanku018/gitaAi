@@ -673,7 +673,12 @@ class VoiceChatViewModel @Inject constructor(
                                 history = _uiState.value.messages,
                                 verseReference = verseRef
                             )
-                            val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
+                            val cleaned = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
+                            val finalAnswer = if (activeVerse != null && !cleaned.trim().startsWith("Bhagavad Gita", ignoreCase = true)) {
+                                "Bhagavad Gita ${activeVerse?.chapter}.${activeVerse?.verse}\n\n$cleaned"
+                            } else {
+                                cleaned
+                            }
 
                             // ✅ Spend coins ONLY after successful AI response
                             val spent = withContext(Dispatchers.IO) {
