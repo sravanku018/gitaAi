@@ -88,19 +88,20 @@ fun BottomNavigationBar(
                 else -> false
             }
 
-            val activeColor = if (isDarkTheme) GoldSpark else Color(0xFFD84315)
+            val activeColor = if (route == "more") Color(0xFFE53935) else if (isDarkTheme) GoldSpark else Color(0xFFD84315)
+            val defaultColor = if (route == "more") Color(0xFFE53935).copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             val iconScale by animateFloatAsState(
                 targetValue = if (isSelected) 1f else 0.9f,
                 animationSpec = springSpec,
                 label = "nav_scale_$label"
             )
             val iconColor by animateColorAsState(
-                targetValue = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                targetValue = if (isSelected) activeColor else defaultColor,
                 animationSpec = springColor,
                 label = "nav_color_$label"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                targetValue = if (isSelected) activeColor else defaultColor,
                 animationSpec = springColor,
                 label = "nav_text_$label"
             )

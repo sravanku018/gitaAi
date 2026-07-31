@@ -257,10 +257,11 @@ fun MainScreen(
             }
         ) { innerPadding ->
             if (showMoreSheet) {
+                val redThemeColor = Color(0xFFE53935)
                 ModalBottomSheet(
                     onDismissRequest = { showMoreSheet = false },
                     containerColor = MaterialTheme.colorScheme.surface,
-                    dragHandle = { BottomSheetDefaults.DragHandle(color = GoldSpark.copy(alpha = 0.5f)) }
+                    dragHandle = { BottomSheetDefaults.DragHandle(color = redThemeColor.copy(alpha = 0.6f)) }
                 ) {
                     Column(
                         modifier = Modifier
@@ -286,7 +287,7 @@ fun MainScreen(
                         moreItems.forEach { (icon, title, route) ->
                             ListItem(
                                 headlineContent = { Text(title) },
-                                leadingContent = { Icon(icon, contentDescription = null, tint = GoldSpark) },
+                                leadingContent = { Icon(icon, contentDescription = null, tint = redThemeColor) },
                                 modifier = Modifier.clickable {
                                     showMoreSheet = false
                                     navController.navigate(route)

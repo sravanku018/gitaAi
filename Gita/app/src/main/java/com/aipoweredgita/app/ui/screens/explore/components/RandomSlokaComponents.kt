@@ -46,6 +46,7 @@ fun RandomSlokaCard(
         val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
         val textPrimary = MaterialTheme.colorScheme.onBackground
+        val shadowColor = if (isDark) Color.Black else Color(0x35546E7A)
 
         Box(
             modifier = Modifier
@@ -53,7 +54,12 @@ fun RandomSlokaCard(
                 .clip(MaterialTheme.shapes.extraLarge)
                 .background(cardBg)
                 .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-                .shadow(6.dp, MaterialTheme.shapes.extraLarge)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    ambientColor = shadowColor,
+                    spotColor = shadowColor
+                )
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),

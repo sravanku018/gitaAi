@@ -106,17 +106,18 @@ fun GlassCard(
     elevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
+    val shadowColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color(0x35546E7A)
+
     val shadowModifier = if (elevation > 0.dp) {
         Modifier.shadow(
             elevation = elevation,
             shape = RoundedCornerShape(cornerRadius),
             clip = false,
-            ambientColor = Color.Black.copy(alpha = 0.5f),
-            spotColor = Color.Black.copy(alpha = 0.5f)
+            ambientColor = shadowColor,
+            spotColor = shadowColor
         )
     } else Modifier
-
-    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
 
     Box(
         modifier = modifier
