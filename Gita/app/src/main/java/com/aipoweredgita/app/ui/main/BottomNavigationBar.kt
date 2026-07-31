@@ -73,7 +73,7 @@ fun BottomNavigationBar(
             Screen.ChapterSelection.route to Icons.AutoMirrored.Filled.MenuBook to "Read",
             Screen.QuizSection.route to Icons.Filled.School to "Quiz",
             Screen.VoiceStudio.route to Icons.Filled.Mic to "Voice",
-            "more" to Icons.Filled.AddCircle to "More"
+            "more" to Icons.Default.Add to "More"
         )
         
         navItems.forEach { (routeAndIcon, label) ->
@@ -88,8 +88,8 @@ fun BottomNavigationBar(
                 else -> false
             }
 
-            val activeColor = if (route == "more") Color(0xFFE53935) else if (isDarkTheme) GoldSpark else Color(0xFFD84315)
-            val defaultColor = if (route == "more") Color(0xFFE53935).copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            val activeColor = if (isDarkTheme) GoldSpark else Color(0xFFD84315)
+            val defaultColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             val iconScale by animateFloatAsState(
                 targetValue = if (isSelected) 1f else 0.9f,
                 animationSpec = springSpec,
