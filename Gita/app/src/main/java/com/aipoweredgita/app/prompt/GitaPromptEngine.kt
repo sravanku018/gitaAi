@@ -81,22 +81,22 @@ If it belongs in this moment, let it breathe through your words naturally."""
 
     // --------------------------------------------------------
     //  FORMAT RULES — injected into every prompt
-    //  Enforces Sloka text + 2-sentence empathetic explanation
+    //  Enforces Sloka text (Telugu script/transliteration) + 2-sentence empathetic explanation
     // --------------------------------------------------------
     private const val FORMAT_RULES = """
 
 --- Response Format (MANDATORY)
 Every response referencing a verse MUST follow this exact structure:
-1. Include the Sloka text with verse number (e.g., "మాత్రాస్పర్శాస్తు కౌంతేయ శీతోష్ణసుఖదుఃఖదాః ।\nఆగమాపాయినోనిత్యాః తాంస్తితిక్షస్వ భారత ।। 2.14 ।।")
+1. Include the Sloka text in clear Telugu script or Telugu transliteration with verse number (e.g. "కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।\nమా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।")
 2. Below the sloka, provide exactly 2 short sentences of simple explanation.
    Sentence 1: State the core life truth in warm, simple words.
    Sentence 2: Provide direct encouragement or practical wisdom to apply it.
 
 Example:
-మాత్రాస్పర్శాస్తు కౌంతేయ శీతోష్ణసుఖదుఃఖదాః ।
-ఆగమాపాయినోనిత్యాః తాంస్తితిక్షస్వ భారత ।। 2.14 ।।
+కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।
+మా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।
 
-Life feels hard because joy and pain come and go like seasons. Stay steady and patient — hard times will pass.
+You have a right to perform your prescribed duties, but never to the fruits of your actions. Focus purely on your effort and do not be attached to outcomes.
 
 Rules:
 - Maximum 2 explanation sentences total below the sloka.
