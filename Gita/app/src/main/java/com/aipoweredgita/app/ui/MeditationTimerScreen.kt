@@ -6,7 +6,9 @@ import android.media.AudioTrack
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
@@ -39,16 +41,31 @@ import com.aipoweredgita.app.viewmodel.MeditationDuration
 import com.aipoweredgita.app.viewmodel.MeditationViewModel
 import kotlinx.coroutines.delay
 
+enum class AmbientSoundMode(val label: String) {
+    DRONE("432Hz Drone"),
+    WATER_DROP("Water Drops 💧"),
+    FLUTE("Bansuri Flute 🪈"),
+    OFF("Music Off")
+}
+
 /**
- * Ambient background music drone generator for meditation sessions (432Hz warm harmonic tone).
+ * Procedural background music drone & sound generator for meditation sessions.
+ * 100% Royalty-Free & Copyright-Free synthesized code.
  */
 class AmbientMusicPlayer {
     private var audioTrack: AudioTrack? = null
     @Volatile
     private var isPlaying = false
+    @Volatile
+    var mode: AmbientSoundMode = AmbientSoundMode.DRONE
     private var workerThread: Thread? = null
 
-    fun start() {
+    fun start(soundMode: AmbientSoundMode = mode) {
+        mode = soundMode
+        if (mode == AmbientSoundMode.OFF) {
+            stop()
+            return
+        }
         if (isPlaying) return
         isPlaying = true
         workerThread = Thread {
@@ -73,22 +90,78 @@ class AmbientMusicPlayer {
                 val samples = ShortArray(bufferSize)
                 var angle1 = 0.0
                 var angle2 = 0.0
+                var sampleIndex = 0L
+
+                // Indian Bansuri Flute Scale notes in Hz (E4, G4, A4, B4, D5, E5)
+                val fluteScale = doubleArrayOf(329.63, 392.00, 440.00, 493.88, 587.33, 659.25)
+                var currentFluteNoteIndex = 0
+                var nextNoteChangeSample = 0L
 
                 while (isPlaying) {
-                    for (i in samples.indices) {
-                        val val1 = Math.sin(angle1) * 0.10
-                        val val2 = Math.sin(angle2) * 0.05
-                        samples[i] = ((val1 + val2) * Short.MAX_VALUE).toInt().toShort()
+                    val currentMode = mode
+                    if (currentMode == AmbientSoundMode.OFF) break
 
-                        angle1 += 2.0 * Math.PI * 432.0 / sampleRate
-                        angle2 += 2.0 * Math.PI * 108.0 / sampleRate
-                        if (angle1 > 2.0 * Math.PI) angle1 -= 2.0 * Math.PI
-                        if (angle2 > 2.0 * Math.PI) angle2 -= 2.0 * Math.PI
+                    for (i in samples.indices) {
+                        sampleIndex++
+                        val t = sampleIndex.toDouble() / sampleRate
+
+                        val sampleValue: Double = when (currentMode) {
+                            AmbientSoundMode.DRONE -> {
+                                val val1 = Math.sin(angle1) * 0.10
+                                val val2 = Math.sin(angle2) * 0.05
+                                angle1 += 2.0 * Math.PI * 432.0 / sampleRate
+                                angle2 += 2.0 * Math.PI * 108.0 / sampleRate
+                                if (angle1 > 2.0 * Math.PI) angle1 -= 2.0 * Math.PI
+                                if (angle2 > 2.0 * Math.PI) angle2 -= 2.0 * Math.PI
+                                val1 + val2
+                            }
+                            AmbientSoundMode.WATER_DROP -> {
+                                // Rhythmic water droplets every ~1.2s + background stream
+                                val dropPeriodSamples = (1.2 * sampleRate).toLong()
+                                val dropPhase = sampleIndex % dropPeriodSamples
+                                val dropDurationSamples = (0.15 * sampleRate).toLong()
+
+                                var dropVal = 0.0
+                                if (dropPhase < dropDurationSamples) {
+                                    val dropProgress = dropPhase.toDouble() / dropDurationSamples
+                                    val freq = 900.0 - (550.0 * dropProgress)
+                                    val envelope = Math.exp(-dropProgress * 6.0)
+                                    dropVal = Math.sin(angle1) * 0.22 * envelope
+                                    angle1 += 2.0 * Math.PI * freq / sampleRate
+                                    if (angle1 > 2.0 * Math.PI) angle1 -= 2.0 * Math.PI
+                                }
+                                val trickle = (Math.random() - 0.5) * 0.015
+                                dropVal + trickle
+                            }
+                            AmbientSoundMode.FLUTE -> {
+                                // Change note every ~1.8 seconds with smooth glide
+                                if (sampleIndex >= nextNoteChangeSample) {
+                                    currentFluteNoteIndex = (currentFluteNoteIndex + 1) % fluteScale.size
+                                    nextNoteChangeSample = sampleIndex + (1.8 * sampleRate).toLong()
+                                }
+                                val baseFreq = fluteScale[currentFluteNoteIndex]
+                                val vibrato = Math.sin(2.0 * Math.PI * 5.0 * t) * 3.5
+                                val freq = baseFreq + vibrato
+
+                                angle1 += 2.0 * Math.PI * freq / sampleRate
+                                if (angle1 > 2.0 * Math.PI) angle1 -= 2.0 * Math.PI
+
+                                val val1 = Math.sin(angle1) * 0.12
+                                val val2 = Math.sin(angle1 * 2.0) * 0.03
+                                val1 + val2
+                            }
+                            AmbientSoundMode.OFF -> 0.0
+                        }
+
+                        samples[i] = (sampleValue * Short.MAX_VALUE)
+                            .toInt()
+                            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                            .toShort()
                     }
                     audioTrack?.write(samples, 0, samples.size)
                 }
             } catch (e: Exception) {
-                // Ignore audio generation interruption
+                // Audio synthesis stopped
             }
         }
         workerThread?.start()
@@ -119,7 +192,7 @@ fun MeditationTimerScreen(
     val musicPlayer = remember { AmbientMusicPlayer() }
 
     var isVoiceEnabled by remember { mutableStateOf(true) }
-    var isMusicEnabled by remember { mutableStateOf(true) }
+    var selectedSoundMode by remember { mutableStateOf(AmbientSoundMode.DRONE) }
 
     DisposableEffect(Unit) {
         MeditationNotificationController.onActionReceived = { action ->
@@ -137,7 +210,7 @@ fun MeditationTimerScreen(
         }
     }
 
-    LaunchedEffect(uiState.isRunning, uiState.isPaused, uiState.breathingPhase, uiState.breathingTimer, uiState.timeLeftSeconds) {
+    LaunchedEffect(uiState.isRunning, uiState.isPaused, uiState.breathingPhase, uiState.breathingTimer, uiState.timeLeftSeconds, selectedSoundMode) {
         if (uiState.isRunning) {
             MeditationNotificationController.showOrUpdateNotification(
                 context = context,
@@ -148,8 +221,8 @@ fun MeditationTimerScreen(
             )
 
             if (!uiState.isPaused) {
-                if (isMusicEnabled) {
-                    musicPlayer.start()
+                if (selectedSoundMode != AmbientSoundMode.OFF) {
+                    musicPlayer.start(selectedSoundMode)
                 } else {
                     musicPlayer.stop()
                 }
@@ -203,8 +276,9 @@ fun MeditationTimerScreen(
         ) {
             // Audio & Voice Controls
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
             ) {
                 FilterChip(
                     selected = isVoiceEnabled,
@@ -220,20 +294,35 @@ fun MeditationTimerScreen(
                     },
                     label = { Text(if (isVoiceEnabled) "Voice: ON" else "Voice: OFF") }
                 )
-                FilterChip(
-                    selected = isMusicEnabled,
-                    onClick = {
-                        isMusicEnabled = !isMusicEnabled
-                        if (!isMusicEnabled) musicPlayer.stop()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            if (isMusicEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
-                            contentDescription = null
-                        )
-                    },
-                    label = { Text(if (isMusicEnabled) "Music: ON" else "Music: OFF") }
-                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Sound Mode Options (Drone, Water Drops, Flute, Off)
+            Text("Ambient Sound", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+            ) {
+                AmbientSoundMode.entries.forEach { modeOption ->
+                    FilterChip(
+                        selected = selectedSoundMode == modeOption,
+                        onClick = {
+                            selectedSoundMode = modeOption
+                            if (modeOption == AmbientSoundMode.OFF) {
+                                musicPlayer.stop()
+                            } else if (uiState.isRunning && !uiState.isPaused) {
+                                musicPlayer.stop()
+                                musicPlayer.start(modeOption)
+                            }
+                        },
+                        label = { Text(modeOption.label) }
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
