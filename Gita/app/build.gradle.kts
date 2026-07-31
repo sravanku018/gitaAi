@@ -19,7 +19,7 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 23
+        versionCode = 24
         versionName = "2.4.0"
 
 

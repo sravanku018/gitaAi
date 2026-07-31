@@ -191,7 +191,7 @@ fun AboutSectionCard(context: android.content.Context) {
             }
             "Version: v$name - Build $code"
         } catch (e: Exception) {
-            "Version: v2.4.0 - Build 23"
+            "Version: v2.4.0 - Build 24"
         }
     }
 
