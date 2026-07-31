@@ -131,6 +131,7 @@ fun VoiceStudioScreen(
 
     DisposableEffect(Unit) {
         voiceChatViewModel.onStartSession()
+        voiceChatViewModel.checkAndRestoreCooldown()
         onDispose { voiceChatViewModel.onStopSession() }
     }
 

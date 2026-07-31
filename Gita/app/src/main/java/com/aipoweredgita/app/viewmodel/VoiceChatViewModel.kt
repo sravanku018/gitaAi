@@ -113,6 +113,9 @@ class VoiceChatViewModel @Inject constructor(
     private var lastCrashTime = 0L
     private val MAX_CRASHES   = 3
 
+    private val COOLDOWN_DURATION_SECONDS = 300
+    private var cooldownJob: Job? = null
+
     private var currentLanguageMode : LanguageMode = LanguageMode.AUTO
     private var currentUserId = "guest"
 
@@ -155,37 +158,41 @@ class VoiceChatViewModel @Inject constructor(
         checkAndRestoreCooldown()
     }
 
-    private val COOLDOWN_DURATION_SECONDS = 300 // 5 minutes rate limit cooldown
-    private var cooldownJob: Job? = null
-
-    private fun checkAndRestoreCooldown() {
+    fun checkAndRestoreCooldown() {
         val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
         val lastTime = prefs.getLong("last_question_timestamp", 0L)
         if (lastTime > 0) {
             val elapsedSeconds = ((System.currentTimeMillis() - lastTime) / 1000).toInt()
             val remaining = COOLDOWN_DURATION_SECONDS - elapsedSeconds
             if (remaining > 0) {
-                startCooldownTimer(remaining)
+                startCooldownTimer()
+            } else {
+                cooldownJob?.cancel()
+                _uiState.update { it.copy(cooldownSeconds = 0) }
             }
+        } else {
+            _uiState.update { it.copy(cooldownSeconds = 0) }
         }
     }
 
     private fun recordQuestionSentAndStartCooldown() {
         val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
         prefs.edit().putLong("last_question_timestamp", System.currentTimeMillis()).apply()
-        startCooldownTimer(COOLDOWN_DURATION_SECONDS)
+        startCooldownTimer()
     }
 
-    private fun startCooldownTimer(seconds: Int) {
+    private fun startCooldownTimer() {
         cooldownJob?.cancel()
         cooldownJob = viewModelScope.launch {
-            var remaining = seconds
-            while (remaining > 0) {
+            while (true) {
+                val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+                val lastTime = prefs.getLong("last_question_timestamp", 0L)
+                val elapsedSeconds = ((System.currentTimeMillis() - lastTime) / 1000).toInt()
+                val remaining = maxOf(0, COOLDOWN_DURATION_SECONDS - elapsedSeconds)
                 _uiState.update { it.copy(cooldownSeconds = remaining) }
+                if (remaining <= 0) break
                 kotlinx.coroutines.delay(1000L)
-                remaining--
             }
-            _uiState.update { it.copy(cooldownSeconds = 0) }
         }
     }
 
