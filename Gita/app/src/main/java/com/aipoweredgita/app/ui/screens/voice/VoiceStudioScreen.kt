@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -582,6 +583,35 @@ private fun VoiceChatContent(
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                if (state.cooldownSeconds > 0) {
+                    val mins = state.cooldownSeconds / 60
+                    val secs = state.cooldownSeconds % 60
+                    Row(
+                        modifier = Modifier
+                            .padding(bottom = 12.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(colors.RevolvingYellow.copy(alpha = 0.15f))
+                            .border(1.dp, colors.RevolvingYellow.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Cooldown Timer",
+                            tint = colors.RevolvingYellow,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Cooldown: ${mins}m ${secs}s (API Rate Limit)",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = colors.RevolvingYellow,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -592,13 +622,14 @@ private fun VoiceChatContent(
                     OutlinedTextField(
                         value = state.userInput,
                         onValueChange = { onUpdateUserInput(it) },
-                        enabled = canInteract,
+                        enabled = canInteract && state.cooldownSeconds == 0,
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 42.dp),
                         placeholder = {
                             Text(
-                                if (state.isBalanceLoaded) "Ask Krishna (Costs 1 coin)..." else "Loading spiritual balance...",
+                                if (state.cooldownSeconds > 0) "Cooldown active (${state.cooldownSeconds / 60}m ${state.cooldownSeconds % 60}s)..."
+                                else if (state.isBalanceLoaded) "Ask Krishna..." else "Loading spiritual balance...",
                                 style = MaterialTheme.typography.bodyMedium.copy(color = colors.TextSecondary.copy(alpha = 0.7f))
                             )
                         },
@@ -643,7 +674,7 @@ private fun VoiceChatContent(
                                 if (hasAudioPermission) onStartListening()
                                 else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             },
-                            enabled = !isBusy,
+                            enabled = !isBusy && state.cooldownSeconds == 0,
                             modifier = Modifier
                                 .size(42.dp)
                                 .background(
@@ -654,13 +685,13 @@ private fun VoiceChatContent(
                                 .border(1.dp, if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), CircleShape)
                         ) {
                             Icon(Icons.Default.Mic, contentDescription = "Voice Input",
-                                tint = if (state.isListening) colors.ListenRed else colors.RevolvingYellow,
+                                tint = if (state.isListening) colors.ListenRed else if (state.cooldownSeconds > 0) colors.TextMuted else colors.RevolvingYellow,
                                 modifier = Modifier.size(18.dp))
                         }
                     }
 
                     // Send button
-                    val canSend = !isBusy && state.userInput.isNotBlank()
+                    val canSend = !isBusy && state.userInput.isNotBlank() && state.cooldownSeconds == 0
                     IconButton(
                         onClick = { if (canSend) onSendCurrentMessage() },
                         enabled = canSend,

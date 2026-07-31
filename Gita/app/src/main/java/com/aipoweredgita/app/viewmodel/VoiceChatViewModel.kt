@@ -152,6 +152,41 @@ class VoiceChatViewModel @Inject constructor(
                 _uiState.update { it.copy(suggestions = dynamicSuggestions) }
             }
         }
+        checkAndRestoreCooldown()
+    }
+
+    private val COOLDOWN_DURATION_SECONDS = 300 // 5 minutes rate limit cooldown
+    private var cooldownJob: Job? = null
+
+    private fun checkAndRestoreCooldown() {
+        val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+        val lastTime = prefs.getLong("last_question_timestamp", 0L)
+        if (lastTime > 0) {
+            val elapsedSeconds = ((System.currentTimeMillis() - lastTime) / 1000).toInt()
+            val remaining = COOLDOWN_DURATION_SECONDS - elapsedSeconds
+            if (remaining > 0) {
+                startCooldownTimer(remaining)
+            }
+        }
+    }
+
+    private fun recordQuestionSentAndStartCooldown() {
+        val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putLong("last_question_timestamp", System.currentTimeMillis()).apply()
+        startCooldownTimer(COOLDOWN_DURATION_SECONDS)
+    }
+
+    private fun startCooldownTimer(seconds: Int) {
+        cooldownJob?.cancel()
+        cooldownJob = viewModelScope.launch {
+            var remaining = seconds
+            while (remaining > 0) {
+                _uiState.update { it.copy(cooldownSeconds = remaining) }
+                kotlinx.coroutines.delay(1000L)
+                remaining--
+            }
+            _uiState.update { it.copy(cooldownSeconds = 0) }
+        }
     }
 
     private fun mapRecommendationToSuggestion(title: String): String {
@@ -546,6 +581,19 @@ class VoiceChatViewModel @Inject constructor(
         val messageText = text ?: _uiState.value.userInput
         if (messageText.isBlank()) return
 
+        // 5-Minute Rate Limit Cooldown Check
+        if (_uiState.value.cooldownSeconds > 0) {
+            val mins = _uiState.value.cooldownSeconds / 60
+            val secs = _uiState.value.cooldownSeconds % 60
+            _uiState.update {
+                it.copy(
+                    error = "5-minute rate limit cooldown active. Please wait ${mins}m ${secs}s.",
+                    errorType = VoiceChatErrorType.LLM_INFERENCE
+                )
+            }
+            return
+        }
+
         // Crash loop protection
         val now = System.currentTimeMillis()
         if (now - lastCrashTime > 60_000) crashCount = 0
@@ -561,6 +609,7 @@ class VoiceChatViewModel @Inject constructor(
         }
 
         if (text == null) _uiState.update { it.copy(userInput = "", error = null, errorType = null) }
+        recordQuestionSentAndStartCooldown()
 
         // Check balance BEFORE adding user message or launching AI — prevents
         // the race where aiScope starts processing while balance check runs concurrently.
