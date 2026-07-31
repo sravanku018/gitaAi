@@ -50,5 +50,15 @@
                 <action android:name="com.aipoweredgita.app.action.RETRY_MISSING" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".notifications.MeditationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aipoweredgita.app.MEDITATION_PAUSE" />
+                <action android:name="com.aipoweredgita.app.MEDITATION_RESUME" />
+                <action android:name="com.aipoweredgita.app.MEDITATION_STOP" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
