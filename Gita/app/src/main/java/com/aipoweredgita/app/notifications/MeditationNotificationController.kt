@@ -29,7 +29,7 @@ object MeditationNotificationController {
                 "Meditation Timer",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows active meditation timer and breathing controls"
+                description = "Shows active meditation timer controls"
                 setSound(null, null)
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -45,10 +45,6 @@ object MeditationNotificationController {
         isPaused: Boolean
     ) {
         createChannel(context)
-
-        val minutes = timeLeftSeconds / 60
-        val seconds = timeLeftSeconds % 60
-        val timeFormatted = "%02d:%02d".format(minutes, seconds)
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -84,17 +80,10 @@ object MeditationNotificationController {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val title = if (isPaused) "Meditation Paused 🧘" else "Meditation in Progress 🧘"
-        val content = if (isPaused) {
-            "Paused • $timeFormatted remaining"
-        } else {
-            "${phase.label} (${timerVal + 1}/${phase.seconds}s) • $timeFormatted remaining"
-        }
-
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(content)
+            .setContentTitle("Meditation 🧘")
+            .setContentText("")
             .setOngoing(!isPaused)
             .setContentIntent(contentPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
