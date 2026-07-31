@@ -842,11 +842,11 @@ class StatsRepository(
         val idempotencyKey = "spend_${userId() ?: "guest"}_${question.hashCode()}"
 
         if (isGuest) {
-            // Dynamic pricing based on question length (matches backend voice_chat_rules)
+            // Dynamic pricing based on question length (min 4, max 10 coins)
             val cost = when {
-                question.length <= 50 -> 2   // Short
-                question.length <= 150 -> 3  // Medium
-                else -> 5                    // Long
+                question.length <= 50 -> 4   // Short (min 4)
+                question.length <= 150 -> 6  // Medium
+                else -> 10                   // Long (max 10)
             }
             
             if (coinBalance.value < cost) {
@@ -863,9 +863,9 @@ class StatsRepository(
         val uid = userId() ?: return false
         
         val offlineCost = when {
-            question.length <= 50  -> 2
-            question.length <= 150 -> 3
-            else                   -> 5
+            question.length <= 50  -> 4   // Short (min 4)
+            question.length <= 150 -> 6   // Medium
+            else                   -> 10  // Long (max 10)
         }
 
         if (coinBalance.value < offlineCost) {
