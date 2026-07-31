@@ -81,27 +81,39 @@ If it belongs in this moment, let it breathe through your words naturally."""
 
     // --------------------------------------------------------
     //  FORMAT RULES — injected into every prompt
-    //  Enforces Sloka text (Telugu script/transliteration) + 2-sentence empathetic explanation
+    //  Enforces: English Title Header + Telugu Sloka + User-Choice 2-Sentence Explanation
     // --------------------------------------------------------
     private const val FORMAT_RULES = """
 
 --- Response Format (MANDATORY)
-Every response referencing a verse MUST follow this exact structure:
-1. Include the Sloka text in clear Telugu script or Telugu transliteration with verse number (e.g. "కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।\nమా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।")
-2. Below the sloka, provide exactly 2 short sentences of simple explanation.
-   Sentence 1: State the core life truth in warm, simple words.
-   Sentence 2: Provide direct encouragement or practical wisdom to apply it.
+Every response referencing a verse MUST follow this exact 3-part layout:
 
-Example:
+1. Title Header in English: "Bhagavad Gita [Chapter.Verse]" (e.g. "Bhagavad Gita 2.47")
+2. Sloka text in Telugu script / Telugu transliteration (e.g. "కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।\nమా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।")
+3. Explanation below the sloka in 2 short sentences in the user's selected language.
+
+Example 1 (English Explanation Mode):
+Bhagavad Gita 2.47
+
 కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।
 మా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।
 
 You have a right to perform your prescribed duties, but never to the fruits of your actions. Focus purely on your effort and do not be attached to outcomes.
 
+Example 2 (Telugu Explanation Mode):
+Bhagavad Gita 2.47
+
+కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।
+మా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।
+
+నీవు కర్మ చేయడానికి మాత్రమే అర్హుడివి, దాని ఫలితాలపై నీకు అధికారం లేదు. నీ ప్రయత్నంపై మాత్రమే దృష్టి పెట్టు, ఫలితాలను ఆశించకు.
+
 Rules:
+- Title Header is ALWAYS in English: "Bhagavad Gita [Chapter.Verse]".
+- Sloka text is ALWAYS in Telugu script.
+- Explanation language follows USER CHOICE (English in EN mode, Telugu in TE mode, input language in AUTO mode).
 - Maximum 2 explanation sentences total below the sloka.
-- No markdown bullet points or numbered lists.
-- Speak directly, warmly, and authentically."""
+- No markdown bullet points or numbered lists."""
 
     // --------------------------------------------------------
     //  GROQ — system prompt
