@@ -386,6 +386,7 @@ class VoiceChatViewModel @Inject constructor(
             .put("messages", messagesArray)
             .put("app", "gita")
             .put("provider", getAiProvider())
+            .put("max_tokens", 300)
             .toString()
             .toRequestBody("application/json; charset=utf-8".toMediaType())
 

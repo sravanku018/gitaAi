@@ -106,6 +106,7 @@ Rules:
 - Part 1: Explanation MUST be placed FIRST at the top (maximum 2 sentences).
 - Part 2: Telugu Sloka text with verse number MUST be placed SECOND directly under the explanation.
 - Explanation language follows USER CHOICE (English in EN mode, Telugu in TE mode, input language in AUTO mode).
+- Maximum 300 output tokens total per response.
 - No markdown bullet points or numbered lists."""
 
     // --------------------------------------------------------
