@@ -584,29 +584,54 @@ private fun VoiceChatContent(
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (state.cooldownSeconds > 0) {
-                    val mins = state.cooldownSeconds / 60
-                    val secs = state.cooldownSeconds % 60
+                Row(
+                    modifier = Modifier.padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (state.cooldownSeconds > 0) {
+                        val mins = state.cooldownSeconds / 60
+                        val secs = state.cooldownSeconds % 60
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(colors.RevolvingYellow.copy(alpha = 0.15f))
+                                .border(1.dp, colors.RevolvingYellow.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 12.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Cooldown Timer",
+                                tint = colors.RevolvingYellow,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Cooldown: ${mins}m ${secs}s",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = colors.RevolvingYellow,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    // Daily Questions Counter Pill (5 per day limit)
+                    val pillColor = if (state.dailyQuestionsAsked >= 5) colors.ListenRed else colors.RevolvingYellow
                     Row(
                         modifier = Modifier
-                            .padding(bottom = 12.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(colors.RevolvingYellow.copy(alpha = 0.15f))
-                            .border(1.dp, colors.RevolvingYellow.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                            .background(pillColor.copy(alpha = 0.15f))
+                            .border(1.dp, pillColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = "Cooldown Timer",
-                            tint = colors.RevolvingYellow,
-                            modifier = Modifier.size(16.dp)
-                        )
                         Text(
-                            text = "Cooldown: ${mins}m ${secs}s (API Rate Limit)",
+                            text = "Daily Limit: ${state.dailyQuestionsAsked}/${state.maxDailyQuestions}",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = colors.RevolvingYellow,
+                                color = pillColor,
                                 fontWeight = FontWeight.Bold
                             )
                         )

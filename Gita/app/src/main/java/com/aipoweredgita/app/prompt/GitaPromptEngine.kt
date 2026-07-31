@@ -70,51 +70,42 @@ And you never give up on your Arjuna."""
         return """
 
 --- Active Verse Context
-Verse Reference: Bhagavad Gita ${verse.chapter}.${verse.verse}
+Verse Reference: Chapter ${verse.chapter}, Verse ${verse.verse}
 Sanskrit Sloka: ${verse.sanskrit}
 Translation: ${verse.translation}
 Explanation: ${verse.explanation}
 
 MANDATORY OUTPUT INSTRUCTION:
-Your response MUST start on Line 1 with "Bhagavad Gita ${verse.chapter}.${verse.verse}".
-Line 2 must contain the Sloka text in Telugu script.
-Line 3 must contain your 2-sentence explanation."""
+Your response MUST place your 2-sentence explanation FIRST at the top.
+Directly below your explanation, output the Sloka text in Telugu script ending with verse number (e.g. "।। ${verse.chapter}.${verse.verse} ।।")."""
     }
 
     // --------------------------------------------------------
     //  FORMAT RULES — injected into every prompt
-    //  Enforces: English Title Header + Telugu Sloka + User-Choice 2-Sentence Explanation
+    //  Enforces: Top 2-Sentence Explanation + Bottom Telugu Sloka Layout
     // --------------------------------------------------------
     private const val FORMAT_RULES = """
 
 --- Response Format (MANDATORY)
-Every response referencing a verse MUST follow this exact 3-part layout:
+Every response referencing a verse MUST follow this exact 2-part layout:
 
-1. Title Header in English: "Bhagavad Gita [Chapter.Verse]" (e.g. "Bhagavad Gita 2.47")
-2. Sloka text in Telugu script / Telugu transliteration (e.g. "కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।\nమా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।")
-3. Explanation below the sloka in 2 short sentences in the user's selected language.
+Part 1 (Top): Explanation / Guidance in 2 short sentences in the user's selected language.
+Part 2 (Bottom): Directly below the explanation, output the Sloka text in Telugu script with verse number at the end (e.g. "।। 16.13-14-15 ।।" or "।। 2.47 ।।").
 
-Example 1 (English Explanation Mode):
-Bhagavad Gita 2.47
+Example:
+Like-minded people share similar views, which can strengthen their convictions and make them more confident. However, this shared perspective can also make them more susceptible to groupthink.
 
-కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।
-మా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।
-
-You have a right to perform your prescribed duties, but never to the fruits of your actions. Focus purely on your effort and do not be attached to outcomes.
-
-Example 2 (Telugu Explanation Mode):
-Bhagavad Gita 2.47
-
-కర్మణ్యేవాధికారస్తే మా ఫలేషు కదాచన ।
-మా కర్మఫలహేతుర్భూర్మా తే సంగోऽస్త్వకర్మణి ।। 2.47 ।।
-
-నీవు కర్మ చేయడానికి మాత్రమే అర్హుడివి, దాని ఫలితాలపై నీకు అధికారం లేదు. నీ ప్రయత్నంపై మాత్రమే దృష్టి పెట్టు, ఫలితాలను ఆశించకు.
+ఇదమద్య మయా లబ్దమ్ ఇమం ప్రాప్స్యే మనోరథమ్ ।
+ఇదమస్తీదమపి మే భవిష్యతి పునర్ధనమ్ ।। 13 ।।
+అసౌ మయా హతః శత్రుః హానిష్యే చాపరానపి ।
+ఈశ్వరోఽహమహం భోగీ సిద్ధోఽహం బలవాన్ సుఖీ ।। 14 ।।
+ఆడ్యోఽభిజనవానస్మి కోఽన్యోఽస్తి సదృశో మయా ।
+యక్ష్యే దాస్యామి మోదిష్య ఇత్యజ్ఞానవిమోహితాః ।। 16.13-14-15 ।।
 
 Rules:
-- Title Header is ALWAYS in English: "Bhagavad Gita [Chapter.Verse]".
-- Sloka text is ALWAYS in Telugu script.
+- Part 1: Explanation MUST be placed FIRST at the top (maximum 2 sentences).
+- Part 2: Telugu Sloka text with verse number MUST be placed SECOND directly under the explanation.
 - Explanation language follows USER CHOICE (English in EN mode, Telugu in TE mode, input language in AUTO mode).
-- Maximum 2 explanation sentences total below the sloka.
 - No markdown bullet points or numbered lists."""
 
     // --------------------------------------------------------

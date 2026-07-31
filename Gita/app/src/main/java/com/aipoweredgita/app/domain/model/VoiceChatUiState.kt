@@ -38,5 +38,7 @@ data class VoiceChatUiState(
     val isBalanceLoaded: Boolean = false,
     val currentLanguageMode: com.aipoweredgita.app.utils.LanguageMode = com.aipoweredgita.app.utils.LanguageMode.AUTO,
     val suggestions: List<String> = listOf("What is karma?", "Explain dharma", "How to find peace?", "What is Atman?"),
-    val cooldownSeconds: Int = 0
+    val cooldownSeconds: Int = 0,
+    val dailyQuestionsAsked: Int = 0,
+    val maxDailyQuestions: Int = 5
 )

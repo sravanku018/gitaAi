@@ -156,9 +156,52 @@ class VoiceChatViewModel @Inject constructor(
             }
         }
         checkAndRestoreCooldown()
+        checkAndRestoreDailyLimit()
+    }
+
+    private fun getTodayDateString(): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        return sdf.format(java.util.Date())
+    }
+
+    fun checkAndRestoreDailyLimit() {
+        val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+        val today = getTodayDateString()
+        val lastDate = prefs.getString("last_question_date", "") ?: ""
+        val count = if (lastDate == today) {
+            prefs.getInt("questions_asked_today_count", 0)
+        } else {
+            0
+        }
+        _uiState.update { it.copy(dailyQuestionsAsked = count) }
+    }
+
+    private fun incrementDailyQuestionCount(): Boolean {
+        val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+        val today = getTodayDateString()
+        val lastDate = prefs.getString("last_question_date", "") ?: ""
+        var count = if (lastDate == today) {
+            prefs.getInt("questions_asked_today_count", 0)
+        } else {
+            0
+        }
+
+        if (count >= 5) {
+            return false
+        }
+
+        count++
+        prefs.edit()
+            .putString("last_question_date", today)
+            .putInt("questions_asked_today_count", count)
+            .apply()
+
+        _uiState.update { it.copy(dailyQuestionsAsked = count) }
+        return true
     }
 
     fun checkAndRestoreCooldown() {
+        checkAndRestoreDailyLimit()
         val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
         val lastTime = prefs.getLong("last_question_timestamp", 0L)
         if (lastTime > 0) {
@@ -588,6 +631,19 @@ class VoiceChatViewModel @Inject constructor(
         val messageText = text ?: _uiState.value.userInput
         if (messageText.isBlank()) return
 
+        // 5 Questions Per Day Limit Check
+        checkAndRestoreDailyLimit()
+        if (_uiState.value.dailyQuestionsAsked >= 5) {
+            _uiState.update {
+                it.copy(
+                    error = "Daily limit reached (5/5 questions asked today). Please come back tomorrow!",
+                    errorType = VoiceChatErrorType.LLM_INFERENCE,
+                    isThinking = false
+                )
+            }
+            return
+        }
+
         // 5-Minute Rate Limit Cooldown Check
         if (_uiState.value.cooldownSeconds > 0) {
             val mins = _uiState.value.cooldownSeconds / 60
@@ -609,6 +665,17 @@ class VoiceChatViewModel @Inject constructor(
                 it.copy(
                     error      = "Voice chat crashed too many times. Please restart the app.",
                     errorType  = VoiceChatErrorType.CRASH_RECOVERY,
+                    isThinking = false
+                )
+            }
+            return
+        }
+
+        if (!incrementDailyQuestionCount()) {
+            _uiState.update {
+                it.copy(
+                    error = "Daily limit reached (5/5 questions asked today). Please come back tomorrow!",
+                    errorType = VoiceChatErrorType.LLM_INFERENCE,
                     isThinking = false
                 )
             }
@@ -673,12 +740,7 @@ class VoiceChatViewModel @Inject constructor(
                                 history = _uiState.value.messages,
                                 verseReference = verseRef
                             )
-                            val cleaned = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
-                            val finalAnswer = if (activeVerse != null && !cleaned.trim().startsWith("Bhagavad Gita", ignoreCase = true)) {
-                                "Bhagavad Gita ${activeVerse?.chapter}.${activeVerse?.verse}\n\n$cleaned"
-                            } else {
-                                cleaned
-                            }
+                            val finalAnswer = com.aipoweredgita.app.util.TextUtils.deepClean(reply)
 
                             // ✅ Spend coins ONLY after successful AI response
                             val spent = withContext(Dispatchers.IO) {
