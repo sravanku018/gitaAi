@@ -22,7 +22,7 @@ enum class LanguageMode(
             "If the user writes in Telugu, respond in Telugu. Otherwise respond in English. " +
             "Never repeat or hallucinate verse text. Only explain what is given to you.",
         ttsLocale = "en-IN",
-        sttLocale = "te-IN"
+        sttLocale = "en-IN"
     ),
     ENGLISH(
         displayName   = "English",

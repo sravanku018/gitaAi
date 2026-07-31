@@ -259,14 +259,13 @@ class VoiceChatViewModel @Inject constructor(
 
         val messagesArray = JSONArray()
 
-        // 1. Verse reference context — separate system message
-        if (!verseReference.isNullOrBlank()) {
-            messagesArray.put(
-                JSONObject()
-                    .put("role", "system")
-                    .put("content", verseReference)
-            )
-        }
+        // 1. Core System Instruction for Krishna respecting selected language mode
+        val systemPrompt = GitaPromptEngine.groqSystemPrompt(activeVerse, currentLanguageMode)
+        messagesArray.put(
+            JSONObject()
+                .put("role", "system")
+                .put("content", systemPrompt)
+        )
 
         // 2. Session summary from compressed older messages
         val chatSummary = summaryDao.getSummary(getSessionKey())
@@ -278,20 +277,20 @@ class VoiceChatViewModel @Inject constructor(
             )
         }
 
-        // 3. Conversation history (skip last — that's groundedPrompt)
+        // 3. Conversation history (keep recent 5 messages capped at 300 chars to prevent token throttling)
         history
             .filter { it.text.isNotEmpty() }
             .dropLast(1)
-            .takeLast(15)
+            .takeLast(5)
             .forEach { msg ->
                 messagesArray.put(
                     JSONObject()
                         .put("role", if (msg.isUser) "user" else "assistant")
-                        .put("content", msg.text)
+                        .put("content", msg.text.take(300))
                 )
             }
 
-        // 4. Current user question — plain, server handles the rest
+        // 4. Current user question
         messagesArray.put(
             JSONObject()
                 .put("role", "user")

@@ -97,18 +97,40 @@ One or two sentences is often enough, but let the moment guide you."""
     //  Groq needs an explicit language bite — KRISHNA_SOUL's
     //  "Telugu, English, or both together" is too soft for it.
     // --------------------------------------------------------
-    fun groqSystemPrompt(verse: VerseContext? = null): String =
-        KRISHNA_SOUL +
-        buildVerseContext(verse) +
-        FORMAT_RULES +
-        """
+    fun groqSystemPrompt(
+        verse: VerseContext? = null,
+        languageMode: LanguageMode = LanguageMode.AUTO
+    ): String {
+        val languageRule = when (languageMode) {
+            LanguageMode.TELUGU -> """
 
 --- Language Rule (MANDATORY)
 Every response MUST be in Telugu (తెలుగు).
 Use refined, natural Telugu — the way an elder would speak.
-Never mix in Japanese, anime style, manga dialog, or otaku slang.
 If you use an English word, keep it rare and only when Telugu has no natural equivalent.
-No anime catchphrases. No manga speech patterns. Pure Telugu."""
+Keep your response concise: 2-3 sentences max."""
+
+            LanguageMode.ENGLISH -> """
+
+--- Language Rule (MANDATORY)
+Every response MUST be in English.
+Speak warmly, clearly, and naturally as Krishna.
+Keep your response concise: 2-3 sentences max."""
+
+            LanguageMode.AUTO -> """
+
+--- Language Rule (MANDATORY)
+Match the user's input language.
+If the user speaks or asks in English, respond ONLY in English.
+If the user speaks or asks in Telugu, respond ONLY in Telugu.
+Keep your response concise: 2-3 sentences max."""
+        }
+
+        return KRISHNA_SOUL +
+            buildVerseContext(verse) +
+            FORMAT_RULES +
+            languageRule
+    }
 
     // --------------------------------------------------------
     //  GROQ — request messages list
