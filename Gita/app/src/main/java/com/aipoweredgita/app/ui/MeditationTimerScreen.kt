@@ -5,10 +5,10 @@ import android.media.AudioManager
 import android.media.AudioTrack
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
@@ -50,6 +50,7 @@ enum class AmbientSoundMode(val label: String) {
 
 /**
  * Procedural background music drone & sound generator for meditation sessions.
+ * Highly safe lifecycle management with try-finally resource cleanup.
  * 100% Royalty-Free & Copyright-Free synthesized code.
  */
 class AmbientMusicPlayer {
@@ -69,6 +70,7 @@ class AmbientMusicPlayer {
         if (isPlaying) return
         isPlaying = true
         workerThread = Thread {
+            var localTrack: AudioTrack? = null
             try {
                 val sampleRate = 44100
                 val minSize = AudioTrack.getMinBufferSize(
@@ -77,7 +79,7 @@ class AmbientMusicPlayer {
                     AudioFormat.ENCODING_PCM_16BIT
                 )
                 val bufferSize = Math.max(minSize, 2048)
-                audioTrack = AudioTrack(
+                localTrack = AudioTrack(
                     AudioManager.STREAM_MUSIC,
                     sampleRate,
                     AudioFormat.CHANNEL_OUT_MONO,
@@ -85,19 +87,24 @@ class AmbientMusicPlayer {
                     bufferSize,
                     AudioTrack.MODE_STREAM
                 )
-                audioTrack?.play()
+                audioTrack = localTrack
+                if (localTrack.state == AudioTrack.STATE_INITIALIZED) {
+                    localTrack.play()
+                } else {
+                    isPlaying = false
+                    return@Thread
+                }
 
                 val samples = ShortArray(bufferSize)
                 var angle1 = 0.0
                 var angle2 = 0.0
                 var sampleIndex = 0L
 
-                // Indian Bansuri Flute Scale notes in Hz (E4, G4, A4, B4, D5, E5)
                 val fluteScale = doubleArrayOf(329.63, 392.00, 440.00, 493.88, 587.33, 659.25)
                 var currentFluteNoteIndex = 0
                 var nextNoteChangeSample = 0L
 
-                while (isPlaying) {
+                while (isPlaying && audioTrack != null) {
                     val currentMode = mode
                     if (currentMode == AmbientSoundMode.OFF) break
 
@@ -116,7 +123,6 @@ class AmbientMusicPlayer {
                                 val1 + val2
                             }
                             AmbientSoundMode.WATER_DROP -> {
-                                // Rhythmic water droplets every ~1.2s + background stream
                                 val dropPeriodSamples = (1.2 * sampleRate).toLong()
                                 val dropPhase = sampleIndex % dropPeriodSamples
                                 val dropDurationSamples = (0.15 * sampleRate).toLong()
@@ -134,7 +140,6 @@ class AmbientMusicPlayer {
                                 dropVal + trickle
                             }
                             AmbientSoundMode.FLUTE -> {
-                                // Change note every ~1.8 seconds with smooth glide
                                 if (sampleIndex >= nextNoteChangeSample) {
                                     currentFluteNoteIndex = (currentFluteNoteIndex + 1) % fluteScale.size
                                     nextNoteChangeSample = sampleIndex + (1.8 * sampleRate).toLong()
@@ -158,10 +163,15 @@ class AmbientMusicPlayer {
                             .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                             .toShort()
                     }
-                    audioTrack?.write(samples, 0, samples.size)
+                    localTrack.write(samples, 0, samples.size)
                 }
-            } catch (e: Exception) {
-                // Audio synthesis stopped
+            } catch (_: Exception) {
+            } finally {
+                isPlaying = false
+                try {
+                    localTrack?.stop()
+                    localTrack?.release()
+                } catch (_: Exception) {}
             }
         }
         workerThread?.start()
@@ -169,11 +179,14 @@ class AmbientMusicPlayer {
 
     fun stop() {
         isPlaying = false
-        try {
-            audioTrack?.stop()
-            audioTrack?.release()
-        } catch (e: Exception) { }
+        val trackToRelease = audioTrack
         audioTrack = null
+        try {
+            if (trackToRelease?.state == AudioTrack.STATE_INITIALIZED) {
+                trackToRelease.stop()
+            }
+            trackToRelease?.release()
+        } catch (_: Exception) { }
         workerThread = null
     }
 }
@@ -205,8 +218,8 @@ fun MeditationTimerScreen(
         onDispose {
             MeditationNotificationController.onActionReceived = null
             MeditationNotificationController.dismissNotification(context)
-            voiceManager.destroy()
             musicPlayer.stop()
+            voiceManager.destroy()
         }
     }
 
