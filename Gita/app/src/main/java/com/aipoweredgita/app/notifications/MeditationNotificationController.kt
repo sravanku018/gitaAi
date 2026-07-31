@@ -60,9 +60,10 @@ object MeditationNotificationController {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Pause/Resume PendingIntent
+        // Pause/Resume PendingIntent (Broadcast)
         val pauseResumeActionIntent = Intent(context, MeditationActionReceiver::class.java).apply {
             action = if (isPaused) ACTION_RESUME else ACTION_PAUSE
+            setPackage(context.packageName)
         }
         val pauseResumePendingIntent = PendingIntent.getBroadcast(
             context,
@@ -71,9 +72,10 @@ object MeditationNotificationController {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Stop PendingIntent
+        // Stop PendingIntent (Broadcast)
         val stopActionIntent = Intent(context, MeditationActionReceiver::class.java).apply {
             action = ACTION_STOP
+            setPackage(context.packageName)
         }
         val stopPendingIntent = PendingIntent.getBroadcast(
             context,
@@ -117,6 +119,9 @@ object MeditationNotificationController {
 class MeditationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action ?: return
+        if (context != null && action == MeditationNotificationController.ACTION_STOP) {
+            MeditationNotificationController.dismissNotification(context)
+        }
         MeditationNotificationController.onActionReceived?.invoke(action)
     }
 }
