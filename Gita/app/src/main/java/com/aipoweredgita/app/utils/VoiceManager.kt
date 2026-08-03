@@ -218,7 +218,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     fun startListening(
         onResult: (String) -> Unit,
         onError: (String) -> Unit,
-        onPartialResult: (String) -> Unit = {}
+        onPartialResult: (String) -> Unit = {},
+        onRmsChanged: (Float) -> Unit = {}
     ) {
         mainHandler.post {
             if (isDestroyed || speechRecognizer == null) {
@@ -245,7 +246,11 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
                 override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onRmsChanged(rmsdB: Float) {
+                    if (sessionId != activeSessionId.get()) return
+                    val level = ((rmsdB + 2f) / 12f).coerceIn(0.1f, 1f)
+                    mainHandler.post { onRmsChanged(level) }
+                }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {

@@ -636,6 +636,17 @@ private fun VoiceChatContent(
                             )
                         )
                     }
+                // Google Voice Assistant Animated Waveform Banner
+                AnimatedVisibility(
+                    visible = state.isListening,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    GoogleVoiceWaveform(
+                        audioLevel = state.audioLevel,
+                        liveText = state.liveTranscript,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                 }
 
                 Row(
@@ -905,6 +916,82 @@ fun PreviewVoiceStudioThinking() {
                 onSetLanguageMode = {}, onUpdateSelectedModel = {},
                 onConfirmSend = {}, onDismissConfirmation = {}, onNavigateToSettings = {}, onExit = {}
             )
+        }
+    }
+}
+
+@Composable
+fun GoogleVoiceWaveform(
+    audioLevel: Float,
+    liveText: String,
+    modifier: Modifier = Modifier
+) {
+    val googleBlue = Color(0xFF4285F4)
+    val googleRed = Color(0xFFEA4335)
+    val googleYellow = Color(0xFFFBBC05)
+    val googleGreen = Color(0xFF34A853)
+    val colorsList = listOf(googleBlue, googleRed, googleYellow, googleGreen)
+
+    val transition = rememberInfiniteTransition(label = "googleWave")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing)),
+        label = "phase"
+    )
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+        border = BorderStroke(1.dp, Brush.horizontalGradient(colorsList).copy(alpha = 0.5f)),
+        shadowElevation = 6.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // 4 Google Brand Color Bars
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(36.dp)
+            ) {
+                colorsList.forEachIndexed { index, color ->
+                    val offset = index * 0.7f
+                    val waveFactor = kotlin.math.sin((phase + offset).toDouble()).toFloat()
+                    val rawTarget = 12.dp + (24.dp * (audioLevel * 0.8f + 0.2f * waveFactor).coerceIn(0.15f, 1f))
+                    val animatedHeight by animateDpAsState(
+                        targetValue = rawTarget,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "barHeight"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .width(5.dp)
+                            .height(animatedHeight)
+                            .clip(CircleShape)
+                            .background(color)
+                    )
+                }
+            }
+
+            // Real-time streaming transcript text
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (liveText.isNotBlank()) liveText else "Listening...",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = if (liveText.isNotBlank()) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (liveText.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

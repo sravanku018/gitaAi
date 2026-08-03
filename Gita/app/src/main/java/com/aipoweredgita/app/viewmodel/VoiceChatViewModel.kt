@@ -946,11 +946,11 @@ class VoiceChatViewModel @Inject constructor(
 
     fun startListening() {
         stopAll()
-        _uiState.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", error = null, errorType = null) }
+        _uiState.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", audioLevel = 0.1f, error = null, errorType = null) }
         try {
             voiceManager.startListening(
                 onResult        = { result ->
-                    _uiState.update { it.copy(isListening = false, liveTranscript = "") }
+                    _uiState.update { it.copy(isListening = false, audioLevel = 0f, liveTranscript = "") }
                     if (result.isNotBlank()) sendMessage(
                         text        = result,
                         cachedVerse = currentCachedVerse,
@@ -961,18 +961,21 @@ class VoiceChatViewModel @Inject constructor(
                     _uiState.update { it.copy(liveTranscript = partial) }
                 },
                 onError         = { err ->
-                    _uiState.update { it.copy(isListening = false, error = err, errorType = VoiceChatErrorType.STT) }
+                    _uiState.update { it.copy(isListening = false, audioLevel = 0f, error = err, errorType = VoiceChatErrorType.STT) }
+                },
+                onRmsChanged    = { level ->
+                    _uiState.update { it.copy(audioLevel = level) }
                 }
             )
         } catch (e: Exception) {
             Log.e(tag, "Failed to start listening", e)
-            _uiState.update { it.copy(isListening = false, error = "Failed to start voice input", errorType = VoiceChatErrorType.STT) }
+            _uiState.update { it.copy(isListening = false, audioLevel = 0f, error = "Failed to start voice input", errorType = VoiceChatErrorType.STT) }
         }
     }
 
     fun stopListening() {
         voiceManager.stopListening()
-        _uiState.update { it.copy(isListening = false) }
+        _uiState.update { it.copy(isListening = false, audioLevel = 0f) }
     }
 
     private fun speakResponse(text: String) {

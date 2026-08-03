@@ -22,6 +22,7 @@ enum class CoinError { NETWORK_ERROR, UNKNOWN_ERROR }
 data class VoiceChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val isListening: Boolean = false,
+    val audioLevel: Float = 0f,
     val isSpeaking: Boolean = false,
     val isThinking: Boolean = false,
     val liveTranscript: String = "",
