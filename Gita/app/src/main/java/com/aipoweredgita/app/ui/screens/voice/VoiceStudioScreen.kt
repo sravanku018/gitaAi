@@ -135,7 +135,10 @@ fun VoiceStudioScreen(
     DisposableEffect(Unit) {
         voiceChatViewModel.onStartSession()
         voiceChatViewModel.checkAndRestoreCooldown()
-        onDispose { voiceChatViewModel.onStopSession() }
+        onDispose {
+            voiceChatViewModel.stopAll()
+            voiceChatViewModel.onStopSession()
+        }
     }
 
     val colors = getVoiceStudioColors()
@@ -149,7 +152,7 @@ fun VoiceStudioScreen(
         // FIX 3: Guard order — balance must be loaded first, then check amount
         if (!state.isBalanceLoaded) {
             BalanceLoadingOverlay(colors = colors)
-        } else if (state.coinBalance < 2) {
+        } else if (state.coinBalance < 1) {
             InsufficientCoinsOverlay(
                 coinBalance = state.coinBalance,
                 onExit = onExit,
@@ -564,7 +567,7 @@ private fun VoiceChatContent(
                         style = MaterialTheme.typography.bodySmall.copy(color = if (colors.IsDark) Color(0xFFFFCDD2) else Color(0xFFC62828)))
                     Text(
                         text = "Retry",
-                        modifier = Modifier.clickable { onClearError(); onRefreshModelStatus() },
+                        modifier = Modifier.clickable { voiceChatViewModel.retryLastFailedMessage() },
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = colors.RevolvingYellow, fontWeight = FontWeight.Medium
                         )

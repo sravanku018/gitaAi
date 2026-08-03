@@ -672,46 +672,81 @@ class VoiceChatViewModel @Inject constructor(
             return
         }
 
-        if (!incrementDailyQuestionCount()) {
-            _uiState.update {
-                it.copy(
-                    error = "Daily limit reached (5/5 questions asked today). Please come back tomorrow!",
-                    errorType = VoiceChatErrorType.LLM_INFERENCE,
-                    isThinking = false
-                )
-            }
-            return
+    companion object {
+        const val QUESTION_COST = 1
+    }
+
+    private var lastFailedMessage: String? = null
+
+    fun sendMessage(
+        text: String? = null,
+        cachedVerse: CachedVerse? = null,
+        gitaVerse: GitaVerse? = null,
+        confirmed: Boolean = false
+    ) {
+        val rawMessage = text ?: _uiState.value.userInput
+        val messageText = com.aipoweredgita.app.util.TextUtils.deepClean(rawMessage)
+
+        if (messageText.isBlank()) return
+
+        // If verse parameters passed directly, set current verse context
+        if (cachedVerse != null || gitaVerse != null) {
+            setCurrentVerse(cachedVerse, gitaVerse)
         }
 
         if (text == null) _uiState.update { it.copy(userInput = "", error = null, errorType = null) }
-        recordQuestionSentAndStartCooldown()
 
-        // Check balance BEFORE adding user message or launching AI — prevents
-        // the race where aiScope starts processing while balance check runs concurrently.
+        // Check balance BEFORE adding user message or launching AI
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val balance = statsRepository.getBalance()
+            val balance = try {
+                val b = statsRepository.getBalance()
                 withContext(Dispatchers.Main) {
-                    _uiState.update { it.copy(coinBalance = balance, coinError = null, isBalanceLoaded = true) }
+                    _uiState.update { it.copy(coinBalance = b, coinError = null, isBalanceLoaded = true) }
                 }
-                if (balance < 2) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.update {
-                            it.copy(
-                                isThinking = false,
-                                coinError = CoinError.NETWORK_ERROR,
-                                error = "Insufficient coins to ask a question",
-                                errorType = VoiceChatErrorType.LLM_INFERENCE
-                            )
-                        }
-                    }
-                    return@launch
-                }
+                b
             } catch (e: Exception) {
                 Log.e(tag, "Failed to check balance", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isThinking = false,
+                            error = "Unable to verify coin balance. Please check your connection.",
+                            errorType = VoiceChatErrorType.NETWORK
+                        )
+                    }
+                }
+                return@launch
             }
 
-            // Balance OK — now add user message and start AI
+            if (balance < QUESTION_COST) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isThinking = false,
+                            coinError = CoinError.NETWORK_ERROR,
+                            error = "Insufficient coins to ask a question (Requires $QUESTION_COST coin)",
+                            errorType = VoiceChatErrorType.LLM_INFERENCE
+                        )
+                    }
+                }
+                return@launch
+            }
+
+            // Check daily question limit BEFORE committing quota
+            if (_uiState.value.dailyQuestionsAsked >= 5) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            error = "Daily limit reached (5/5 questions asked today). Please come back tomorrow!",
+                            errorType = VoiceChatErrorType.LLM_INFERENCE,
+                            isThinking = false
+                        )
+                    }
+                }
+                return@launch
+            }
+
+            // Balance & limit OK — add user message and start AI
             withContext(Dispatchers.Main) {
                 val userMessage = ChatMessage(text = messageText, isUser = true)
                 _uiState.update { it.copy(messages = it.messages + userMessage, error = null, errorType = null, isThinking = true) }
@@ -769,6 +804,11 @@ class VoiceChatViewModel @Inject constructor(
                             } catch (e: Exception) {
                                 Log.e(tag, "Failed to fetch balance after spend", e)
                             }
+
+                            // Commit daily question limit & cooldown ONLY on successful response
+                            incrementDailyQuestionCount()
+                            recordQuestionSentAndStartCooldown()
+                            lastFailedMessage = null
 
                             withContext(Dispatchers.Main) {
                                 _uiState.update { s ->
@@ -848,6 +888,11 @@ class VoiceChatViewModel @Inject constructor(
                                             Log.e(tag, "Failed to fetch balance after spend", e)
                                         }
 
+                                        // Commit daily question limit & cooldown ONLY on successful response
+                                        incrementDailyQuestionCount()
+                                        recordQuestionSentAndStartCooldown()
+                                        lastFailedMessage = null
+
                                         withContext(Dispatchers.Main) {
                                             _uiState.update { s ->
                                                 s.copy(
@@ -881,6 +926,7 @@ class VoiceChatViewModel @Inject constructor(
                 } catch (e: Exception) {
                     crashCount++
                     lastCrashTime = System.currentTimeMillis()
+                    lastFailedMessage = messageText
                     Log.e(tag, "Voice chat crash #$crashCount", e)
                     withContext(Dispatchers.Main) {
                         _uiState.update {
@@ -993,7 +1039,19 @@ class VoiceChatViewModel @Inject constructor(
         _uiState.update { it.copy(isSpeaking = false, isListening = false, isThinking = false) }
     }
 
-    fun clearError()    { _uiState.update { it.copy(error = null, errorType = null) } }
+    fun clearError() { _uiState.update { it.copy(error = null, errorType = null) } }
+
+    fun retryLastFailedMessage() {
+        val failedMsg = lastFailedMessage
+        clearError()
+        if (failedMsg != null) {
+            lastFailedMessage = null
+            sendMessage(text = failedMsg, confirmed = true)
+        } else {
+            refreshModelStatus()
+        }
+    }
+
     fun stopSpeaking()  { stopAll() }
 
     // ─── Verse Context ────────────────────────────────────────────────────────
