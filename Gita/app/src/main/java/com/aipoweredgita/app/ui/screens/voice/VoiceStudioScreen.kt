@@ -45,6 +45,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
@@ -957,7 +961,7 @@ fun GoogleVoiceWaveform(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-        border = BorderStroke(1.dp, Brush.horizontalGradient(colorsList).copy(alpha = 0.5f)),
+        border = BorderStroke(1.dp, Brush.horizontalGradient(colorsList.map { it.copy(alpha = 0.5f) })),
         shadowElevation = 6.dp
     ) {
         Row(
