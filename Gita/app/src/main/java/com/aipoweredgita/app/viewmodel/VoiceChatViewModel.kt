@@ -101,6 +101,8 @@ class VoiceChatViewModel @Inject constructor(
     private var useProxy = false
     private val okHttpClient = GitaApi.sharedOkHttpClient
 
+    private val SUMMARY_THRESHOLD = 20
+
     private val aiDispatcher = Dispatchers.Default.limitedParallelism(1)
     private lateinit var aiScope: CoroutineScope
     private val initMutex    = Mutex()
