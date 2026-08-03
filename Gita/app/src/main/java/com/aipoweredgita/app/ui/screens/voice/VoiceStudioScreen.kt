@@ -579,13 +579,11 @@ private fun VoiceChatContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp)
-                    .padding(top = 16.dp, bottom = 32.dp)
-                    .navigationBarsPadding(),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    modifier = Modifier.padding(bottom = 12.dp),
+                    modifier = Modifier.padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -652,7 +650,7 @@ private fun VoiceChatContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 18.dp),
+                        .padding(bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
