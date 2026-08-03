@@ -280,7 +280,7 @@ fun SplashScreen(
             }
             "v$name · Build $code"
         } catch (e: java.lang.Exception) {
-            "v2.5.0 · Build 25"
+            "v2.6.0 · Build 26"
         }
     }
 
