@@ -98,6 +98,12 @@ class VoiceChatViewModel @Inject constructor(
     private val voiceManager    = VoiceManager(application)
     private val voiceChatEngine = LiteRtLmVoiceChatEngine.getInstance(application)
 
+    companion object {
+        const val QUESTION_COST = 1
+    }
+
+    private var lastFailedMessage: String? = null
+
     private var useProxy = false
     private val okHttpClient = GitaApi.sharedOkHttpClient
 
@@ -622,61 +628,6 @@ class VoiceChatViewModel @Inject constructor(
     fun updateUserInput(input: String) {
         _uiState.update { it.copy(userInput = input) }
     }
-
-    fun sendMessage(
-        text        : String?      = null,
-        cachedVerse : CachedVerse? = null,
-        gitaVerse   : GitaVerse?   = null,
-        confirmed   : Boolean      = true
-    ) {
-        val messageText = text ?: _uiState.value.userInput
-        if (messageText.isBlank()) return
-
-        // 5 Questions Per Day Limit Check
-        checkAndRestoreDailyLimit()
-        if (_uiState.value.dailyQuestionsAsked >= 5) {
-            _uiState.update {
-                it.copy(
-                    error = "Daily limit reached (5/5 questions asked today). Please come back tomorrow!",
-                    errorType = VoiceChatErrorType.LLM_INFERENCE,
-                    isThinking = false
-                )
-            }
-            return
-        }
-
-        // 5-Minute Rate Limit Cooldown Check
-        if (_uiState.value.cooldownSeconds > 0) {
-            val mins = _uiState.value.cooldownSeconds / 60
-            val secs = _uiState.value.cooldownSeconds % 60
-            _uiState.update {
-                it.copy(
-                    error = "5-minute rate limit cooldown active. Please wait ${mins}m ${secs}s.",
-                    errorType = VoiceChatErrorType.LLM_INFERENCE
-                )
-            }
-            return
-        }
-
-        // Crash loop protection
-        val now = System.currentTimeMillis()
-        if (now - lastCrashTime > 60_000) crashCount = 0
-        if (crashCount >= MAX_CRASHES) {
-            _uiState.update {
-                it.copy(
-                    error      = "Voice chat crashed too many times. Please restart the app.",
-                    errorType  = VoiceChatErrorType.CRASH_RECOVERY,
-                    isThinking = false
-                )
-            }
-            return
-        }
-
-    companion object {
-        const val QUESTION_COST = 1
-    }
-
-    private var lastFailedMessage: String? = null
 
     fun sendMessage(
         text: String? = null,
