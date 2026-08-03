@@ -228,7 +228,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
             }
             if (isListeningActive) {
                 activeSessionId.incrementAndGet() // Invalidate previous session before starting new one
-                try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                try { speechRecognizer?.stopListening() } catch (_: Exception) {}
                 isListeningActive = false
             }
             isListeningActive = true
@@ -257,10 +257,18 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                     if (sessionId != activeSessionId.get()) return // Ignore stale callbacks
                     activeSessionId.incrementAndGet() // Invalidate session on terminal error
                     isListeningActive = false
-                    consecutiveSttErrors++
+
+                    // ERROR_CLIENT indicates intentional cancellation or client stop — do NOT surface error or count as crash
+                    if (error == SpeechRecognizer.ERROR_CLIENT) {
+                        return
+                    }
+
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        consecutiveSttErrors++
+                    }
+
                     val userMessage = when (error) {
                         SpeechRecognizer.ERROR_AUDIO -> "Microphone error — check permissions"
-                        SpeechRecognizer.ERROR_CLIENT -> "Listening cancelled"
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
                         SpeechRecognizer.ERROR_NETWORK -> "No network — voice needs internet"
                         SpeechRecognizer.ERROR_NO_MATCH -> "Could not understand — try again"
