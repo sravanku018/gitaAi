@@ -16,8 +16,8 @@ import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -301,7 +301,7 @@ fun MeditationTimerScreen(
                     },
                     leadingIcon = {
                         Icon(
-                            if (isVoiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            if (isVoiceEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                             contentDescription = null
                         )
                     },
