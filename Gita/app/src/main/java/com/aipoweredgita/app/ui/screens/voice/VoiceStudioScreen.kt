@@ -708,44 +708,46 @@ private fun VoiceChatContent(
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Stop Speaking", tint = colors.ListenRed)
                         }
-                        val isBusyForMic = state.isThinking || state.isSpeaking || !canInteract
-                        val googleColors = listOf(Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC05), Color(0xFF34A853), Color(0xFF4285F4))
-                        val micScale by animateFloatAsState(
-                            targetValue = if (state.isListening) 1f + (state.audioLevel * 0.3f) else 1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                            label = "micScale"
-                        )
-                        IconButton(
-                            onClick = {
-                                if (hasAudioPermission) {
-                                    if (state.isListening) onStopListening() else onStartListening()
-                                } else {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            },
-                            enabled = !isBusyForMic && state.cooldownSeconds == 0,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .scale(micScale)
-                                .background(
-                                    brush = if (state.isListening) Brush.sweepGradient(googleColors)
-                                            else Brush.linearGradient(listOf(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f))),
-                                    shape = CircleShape
-                                )
-                                .border(
-                                    width = if (state.isListening) 2.dp else 1.dp,
-                                    brush = if (state.isListening) Brush.sweepGradient(googleColors)
-                                            else SolidColor(if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f)),
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                Icons.Default.Mic,
-                                contentDescription = "Voice Input",
-                                tint = if (state.isListening) Color.White else if (state.cooldownSeconds > 0) colors.TextMuted else colors.RevolvingYellow,
-                                modifier = Modifier.size(20.dp)
+                    }
+
+                    // Mic button (ALWAYS accessible)
+                    val isBusyForMic = state.isThinking || state.isSpeaking || !canInteract
+                    val googleColors = listOf(Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC05), Color(0xFF34A853), Color(0xFF4285F4))
+                    val micScale by animateFloatAsState(
+                        targetValue = if (state.isListening) 1f + (state.audioLevel * 0.3f) else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "micScale"
+                    )
+                    IconButton(
+                        onClick = {
+                            if (hasAudioPermission) {
+                                if (state.isListening) onStopListening() else onStartListening()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        enabled = !isBusyForMic && state.cooldownSeconds == 0,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .scale(micScale)
+                            .background(
+                                brush = if (state.isListening) Brush.sweepGradient(googleColors)
+                                        else Brush.linearGradient(listOf(if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f), if (colors.IsDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f))),
+                                shape = CircleShape
                             )
-                        }
+                            .border(
+                                width = if (state.isListening) 2.dp else 1.dp,
+                                brush = if (state.isListening) Brush.sweepGradient(googleColors)
+                                        else SolidColor(if (colors.IsDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f)),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = "Voice Input",
+                            tint = if (state.isListening) Color.White else if (state.cooldownSeconds > 0) colors.TextMuted else colors.RevolvingYellow,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     // Send button
