@@ -296,11 +296,6 @@ fun AHQuizAttemptCard(attempt: QuizAttempt, isBattle: Boolean = false) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (isBattle) "⚔️" else attempt.performanceEmoji,
-                        fontSize = 28.sp
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = "${attempt.score}/${attempt.totalQuestions}",

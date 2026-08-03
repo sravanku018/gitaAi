@@ -694,13 +694,16 @@ private fun VoiceChatContent(
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Stop Speaking", tint = colors.ListenRed)
                         }
-                    } else {
+                        val isBusyForMic = state.isThinking || state.isSpeaking || !canInteract
                         IconButton(
                             onClick = {
-                                if (hasAudioPermission) onStartListening()
-                                else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                if (hasAudioPermission) {
+                                    if (state.isListening) onStopListening() else onStartListening()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             },
-                            enabled = !isBusy && state.cooldownSeconds == 0,
+                            enabled = !isBusyForMic && state.cooldownSeconds == 0,
                             modifier = Modifier
                                 .size(42.dp)
                                 .background(

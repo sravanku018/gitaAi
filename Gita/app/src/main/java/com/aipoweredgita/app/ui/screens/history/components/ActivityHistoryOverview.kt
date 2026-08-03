@@ -198,8 +198,6 @@ fun OverviewTab(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = displayEmoji, fontSize = 32.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = displayYogaName,
