@@ -72,7 +72,6 @@ import com.aipoweredgita.app.ui.theme.*
 import com.aipoweredgita.app.ui.components.AmbientOrbs
 import com.aipoweredgita.app.ui.components.GlassCard
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.luminance
 
 class VoiceStudioColors(
@@ -638,6 +637,8 @@ private fun VoiceChatContent(
                             )
                         )
                     }
+                }
+
                 // Google Voice Assistant Animated Waveform Banner
                 AnimatedVisibility(
                     visible = state.isListening,
