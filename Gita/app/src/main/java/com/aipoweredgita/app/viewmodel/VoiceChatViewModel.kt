@@ -942,9 +942,9 @@ class VoiceChatViewModel @Inject constructor(
     }
 
     fun startListening() {
-        stopAll()
-        _uiState.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", audioLevel = 0.1f, error = null, errorType = null) }
         try {
+            voiceManager.stopSpeaking()
+            _uiState.update { it.copy(isSpeaking = false, isListening = true, liveTranscript = "", audioLevel = 0.1f, error = null, errorType = null) }
             voiceManager.startListening(
                 onResult        = { result ->
                     _uiState.update { it.copy(isListening = false, audioLevel = 0f, liveTranscript = "") }
@@ -958,7 +958,11 @@ class VoiceChatViewModel @Inject constructor(
                     _uiState.update { it.copy(liveTranscript = partial) }
                 },
                 onError         = { err ->
-                    _uiState.update { it.copy(isListening = false, audioLevel = 0f, error = err, errorType = VoiceChatErrorType.STT) }
+                    if (err.contains("cancel", ignoreCase = true)) {
+                        _uiState.update { it.copy(isListening = false, audioLevel = 0f) }
+                    } else {
+                        _uiState.update { it.copy(isListening = false, audioLevel = 0f, error = err, errorType = VoiceChatErrorType.STT) }
+                    }
                 },
                 onRmsChanged    = { level ->
                     _uiState.update { it.copy(audioLevel = level) }
