@@ -30,15 +30,15 @@ data class GitaVerseRaw(
     fun toIndividualVerses(): List<GitaVerse> {
         // Extract verse texts
         val verseTexts: List<String> = when (verse) {
-            is List<*> -> (verse as List<*>).mapNotNull { it as? String }
-            is String -> listOf(verse as String)
+            is List<*> -> verse.filterIsInstance<String>()
+            is String -> listOf(verse)
             else -> emptyList()
         }
 
         // Extract purport texts
         val purportTexts: List<String> = when (purport) {
-            is List<*> -> (purport as List<*>).mapNotNull { it as? String }
-            is String -> listOf(purport as String)
+            is List<*> -> purport.filterIsInstance<String>()
+            is String -> listOf(purport)
             else -> emptyList()
         }
 

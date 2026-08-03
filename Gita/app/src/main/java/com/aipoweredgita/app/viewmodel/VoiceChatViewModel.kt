@@ -103,8 +103,7 @@ class VoiceChatViewModel @Inject constructor(
 
     private val SUMMARY_THRESHOLD = 20
 
-    private val aiDispatcher = Dispatchers.Default.limitedParallelism(1)
-    private lateinit var aiScope: CoroutineScope
+    private val aiScope = CoroutineScope(viewModelScope.coroutineContext + aiDispatcher + SupervisorJob())
     private val initMutex    = Mutex()
 
     private var startTime     = 0L

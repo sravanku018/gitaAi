@@ -44,7 +44,7 @@ fun CalendarTab() {
         val map = rows.associateBy { it.date }
         activityByDate = dates.associateWith { d -> map[d] }
         allZero = rows.all { row ->
-            ((row.normalSeconds ?: 0L) + (row.quizSeconds ?: 0L) + (row.voiceStudioTimeSeconds ?: 0L)) == 0L
+            (row.normalSeconds + row.quizSeconds + row.voiceStudioTimeSeconds) == 0L
         }
     }
 

@@ -118,7 +118,7 @@ object CoinTransactionLogger {
                 val txType = if (isSpendEntry) CoinTxType.SPEND.name else CoinTxType.EARN.name
 
                 JSONObject().apply {
-                    put("id", entry.id?.toString() ?: java.util.UUID.randomUUID().toString())
+                    put("id", entry.id.toString())
                     put("amount", signedAmt)
                     put("description", entry.description.take(120))
                     val ts = try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: System.currentTimeMillis() }
