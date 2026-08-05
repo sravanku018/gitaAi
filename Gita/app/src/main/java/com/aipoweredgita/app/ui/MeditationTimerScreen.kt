@@ -273,11 +273,72 @@ fun MeditationTimerScreen(
 
     Scaffold(
         topBar = {
+            var showMusicDropdown by remember { mutableStateOf(false) }
+            val goldColor = Color(0xFFF59E0B)
+
             TopAppBar(
-                title = { Text("Meditation") },
+                title = { Text("Meditation", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                        // Left Corner: Ambient Music Dropdown Menu
+                        Box {
+                            TextButton(onClick = { showMusicDropdown = true }) {
+                                Icon(Icons.Default.MusicNote, null, tint = goldColor, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = selectedSoundMode.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMusicDropdown,
+                                onDismissRequest = { showMusicDropdown = false }
+                            ) {
+                                AmbientSoundMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = mode.label,
+                                                fontWeight = if (selectedSoundMode == mode) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (selectedSoundMode == mode) goldColor else Color.Unspecified
+                                            )
+                                        },
+                                        onClick = {
+                                            selectedSoundMode = mode
+                                            showMusicDropdown = false
+                                            if (mode == AmbientSoundMode.OFF) {
+                                                musicPlayer.stop()
+                                            } else if (uiState.isRunning && !uiState.isPaused) {
+                                                musicPlayer.stop()
+                                                musicPlayer.start(mode)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    // Right Corner: Update Coins Chip
+                    val coinsToEarn = uiState.selectedDuration.minutes * 2
+                    Surface(
+                        color = goldColor.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(end = 12.dp)
+                    ) {
+                        Text(
+                            text = "🪙 +${coinsToEarn} Coins",
+                            color = goldColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                     }
                 }
             )
