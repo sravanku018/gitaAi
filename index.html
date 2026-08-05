@@ -616,6 +616,11 @@
     let activeDossierUser = null;
     let currentCoinLogs = [];
     let currentDossierCoins = [];
+    let isUsersLoaded = false;
+    let isCoinHistoryLoaded = false;
+    let isMeditationLoaded = false;
+    let isFeedbackLoaded = false;
+    let isNotesLoaded = false;
 
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
@@ -816,13 +821,24 @@
       fetchCurrentViewData();
     }
 
-    function fetchCurrentViewData() {
-      if (currentView === "roster") fetchAllUsers();
+    function fetchCurrentViewData(force = false) {
+      if (currentView === "roster") {
+        if (!isUsersLoaded || force) fetchAllUsers();
+        else renderRoster(allUsersCache);
+      }
       else if (currentView === "studyplans") fetchStudyPlansList();
-      else if (currentView === "history") fetchCoinHistoryLog();
-      else if (currentView === "meditation") fetchMeditationLogs();
-      else if (currentView === "feedback") fetchFeedbackList();
-      else if (currentView === "notes") fetchVerseNotes();
+      else if (currentView === "history") {
+        if (!isCoinHistoryLoaded || force) fetchCoinHistoryLog();
+      }
+      else if (currentView === "meditation") {
+        if (!isMeditationLoaded || force) fetchMeditationLogs();
+      }
+      else if (currentView === "feedback") {
+        if (!isFeedbackLoaded || force) fetchFeedbackList();
+      }
+      else if (currentView === "notes") {
+        if (!isNotesLoaded || force) fetchVerseNotes();
+      }
     }
 
     async function fetchAllUsers() {
@@ -835,10 +851,12 @@
         LEFT JOIN user_stats us ON us.user_id = u.user_id
         LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
         ORDER BY us.days_active DESC, us.current_streak DESC, us.krishna_coins DESC
+        LIMIT 100
       `);
 
       if (users) {
         allUsersCache = users;
+        isUsersLoaded = true;
         // Flag first-login users (days_active === 1) as new
         newSet.clear();
         users.forEach(u => { if (Number(u.days_active || 0) === 1) newSet.add(u.user_id); });
@@ -885,6 +903,7 @@
 
     async function fetchFeedbackList() {
       const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
+      isFeedbackLoaded = true;
       const body = document.getElementById("feedback-body");
       document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
 
@@ -929,7 +948,11 @@
       document.getElementById("edit-days-active").value = user.days_active || 1;
       document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
 
-      loadUserIsolatedData(userId);
+      // Reset tabs to profile
+      document.querySelectorAll(".dossier-tab").forEach(t => t.classList.remove("active"));
+      document.querySelector(".dossier-tab").classList.add("active");
+      document.querySelectorAll(".dossier-view").forEach(v => v.style.display = "none");
+      document.getElementById("dossier-view-profile").style.display = "block";
 
       document.getElementById("dossier-modal").style.display = "flex";
     }
@@ -944,61 +967,65 @@
 
       document.querySelectorAll(".dossier-view").forEach(v => v.style.display = "none");
       document.getElementById(`dossier-view-${tabName}`).style.display = "block";
+
+      if (activeDossierUser && tabName !== 'profile') {
+        loadUserIsolatedTab(activeDossierUser.user_id, tabName);
+      }
     }
 
-    async function loadUserIsolatedData(userId) {
-      // 1. User Study Plans
-      const plans = await queryTurso(`SELECT * FROM study_plans WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-studyplans-body").innerHTML = (plans && plans.length > 0) ? plans.map(p => {
-        const curDay = Number(p.current_day || 1);
-        const totalDays = Number(p.duration_days || 14);
-        const percent = Math.min(100, Math.round((curDay / totalDays) * 100));
-        return `
-          <tr><td>#${p.id}</td><td><strong>${p.title}</strong></td><td>Day ${curDay}</td><td>${totalDays} Days</td><td><div class="progress-bar-bg" style="width:100px;"><div class="progress-bar-fill" style="width:${percent}%;"></div></div> ${percent}%</td></tr>
-        `;
-      }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
-
-      // 2. User Coins History
-      const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      currentDossierCoins = coins || [];
-      document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
-        <tr>
-          <td>#${c.id}</td>
-          <td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td>
-          <td><strong>${c.amount} 🪙</strong></td>
-          <td><code>${c.source}</code></td>
-          <td>${c.description || ''}</td>
-          <td>${c.created_at || ''}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${c.id})" style="padding: 3px 8px; font-size: 11px;">
-              <i class="fa-solid fa-pen"></i> Edit
-            </button>
-          </td>
-        </tr>
-      `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
-
-      // 3. User Meditation Sessions
-      const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-meditation-body").innerHTML = (meditations && meditations.length > 0) ? meditations.map(m => `
-        <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
-      `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
-
-      // 4. User Feedback & Complaints
-      const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
-        <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
-      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
-
-      // 5. User Verse Notes
-      const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
-      document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
-        <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
-      `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
+    async function loadUserIsolatedTab(userId, tabName) {
+      if (tabName === 'studyplans') {
+        const plans = await queryTurso(`SELECT * FROM study_plans WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-studyplans-body").innerHTML = (plans && plans.length > 0) ? plans.map(p => {
+          const curDay = Number(p.current_day || 1);
+          const totalDays = Number(p.duration_days || 14);
+          const percent = Math.min(100, Math.round((curDay / totalDays) * 100));
+          return `<tr><td>#${p.id}</td><td><strong>${p.title}</strong></td><td>Day ${curDay}</td><td>${totalDays} Days</td><td><div class="progress-bar-bg" style="width:100px;"><div class="progress-bar-fill" style="width:${percent}%;"></div></div> ${percent}%</td></tr>`;
+        }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
+      }
+      else if (tabName === 'coins') {
+        const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        currentDossierCoins = coins || [];
+        document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
+          <tr>
+            <td>#${c.id}</td>
+            <td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td>
+            <td><strong>${c.amount} 🪙</strong></td>
+            <td><code>${c.source}</code></td>
+            <td>${c.description || ''}</td>
+            <td>${c.created_at || ''}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${c.id})" style="padding: 3px 8px; font-size: 11px;">
+                <i class="fa-solid fa-pen"></i> Edit
+              </button>
+            </td>
+          </tr>
+        `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+      }
+      else if (tabName === 'meditation') {
+        const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-meditation-body").innerHTML = (meditations && meditations.length > 0) ? meditations.map(m => `
+          <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
+        `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
+      }
+      else if (tabName === 'feedback') {
+        const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
+          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+        `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
+      }
+      else if (tabName === 'notes') {
+        const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
+        document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
+          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+        `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
+      }
     }
 
     async function fetchCoinHistoryLog() {
       const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
       currentCoinLogs = logs || [];
+      isCoinHistoryLoaded = true;
       const body = document.getElementById("coin-history-body");
       if (logs && logs.length > 0) {
         body.innerHTML = logs.map(l => `
@@ -1024,6 +1051,7 @@
 
     async function fetchMeditationLogs() {
       const logs = await queryTurso(`SELECT * FROM meditation_sessions ORDER BY id DESC LIMIT 50`);
+      isMeditationLoaded = true;
       const body = document.getElementById("meditation-body");
       let totalMins = 0;
       if (logs && logs.length > 0) {
@@ -1037,6 +1065,7 @@
 
     async function fetchVerseNotes() {
       const notes = await queryTurso(`SELECT * FROM verse_notes ORDER BY id DESC LIMIT 50`);
+      isNotesLoaded = true;
       const body = document.getElementById("notes-body");
       if (notes && notes.length > 0) {
         body.innerHTML = notes.map(n => `
