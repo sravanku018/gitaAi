@@ -27,236 +27,43 @@
       --font: 'Inter', sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: var(--font);
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-    }
-
-    .glass {
-      background: var(--card-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+    .glass { background: var(--card-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
 
     /* LOCK SCREEN */
-    .lock-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(11, 13, 20, 0.96);
-      backdrop-filter: blur(20px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      padding: 20px;
-    }
-
-    .lock-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 36px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      text-align: center;
-    }
-
-    .lock-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      color: var(--primary);
-    }
-
-    .pin-input {
-      width: 100%;
-      padding: 14px;
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      color: #fff;
-      font-size: 18px;
-      text-align: center;
-      letter-spacing: 4px;
-      outline: none;
-    }
-
+    .lock-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(11, 13, 20, 0.96); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+    .lock-card { width: 100%; max-width: 400px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+    .lock-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--primary); }
+    .pin-input { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); border-radius: 10px; color: #fff; font-size: 18px; text-align: center; letter-spacing: 4px; outline: none; }
     .pin-input:focus { border-color: var(--primary); }
 
-    /* LAYOUT: SIDEBAR + CONTENT */
-    #app-layout {
-      display: none;
-      width: 100%;
-      min-height: 100vh;
-    }
+    #app-layout { display: none; width: 100%; min-height: 100vh; }
 
-    /* SIDEBAR */
-    sidebar {
-      width: var(--sidebar-width);
-      background: rgba(15, 19, 32, 0.95);
-      border-right: 1px solid var(--card-border);
-      padding: 24px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-      position: fixed;
-      height: 100vh;
-      top: 0;
-      left: 0;
-      z-index: 100;
-    }
+    sidebar { width: var(--sidebar-width); background: rgba(15, 19, 32, 0.95); border-right: 1px solid var(--card-border); padding: 24px 16px; display: flex; flex-direction: column; gap: 28px; position: fixed; height: 100vh; top: 0; left: 0; z-index: 100; }
+    .sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; }
+    .sidebar-brand i { font-size: 24px; color: var(--primary); }
+    .sidebar-brand h2 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    .sidebar-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 0 8px;
-    }
-
-    .sidebar-brand i {
-      font-size: 24px;
-      color: var(--primary);
-    }
-
-    .sidebar-brand h2 {
-      font-size: 18px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #fff 0%, #f59e0b 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .sidebar-menu {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      list-style: none;
-    }
-
-    .nav-item {
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: all 0.2s ease;
-    }
-
+    .sidebar-menu { display: flex; flex-direction: column; gap: 6px; list-style: none; }
+    .nav-item { padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; }
     .nav-item i { font-size: 16px; width: 20px; }
-
-    .nav-item:hover, .nav-item.active {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fff;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-
+    .nav-item:hover, .nav-item.active { background: rgba(245, 158, 11, 0.15); color: #fff; border: 1px solid rgba(245, 158, 11, 0.3); }
     .nav-item.active i { color: var(--primary); }
 
-    /* MAIN CONTENT */
-    main {
-      margin-left: var(--sidebar-width);
-      flex: 1;
-      padding: 30px 40px;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
+    main { margin-left: var(--sidebar-width); flex: 1; padding: 30px 40px; display: flex; flex-direction: column; gap: 28px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--card-border); }
+    .header-title h1 { font-size: 24px; font-weight: 800; }
+    .header-title p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--card-border);
-    }
-
-    .header-title h1 {
-      font-size: 24px;
-      font-weight: 800;
-    }
-
-    .header-title p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .btn {
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: #fff;
-      box-shadow: 0 4px 14px var(--primary-glow);
-    }
-
+    .btn { padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; box-shadow: 0 4px 14px var(--primary-glow); }
     .btn-primary:hover { transform: translateY(-2px); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.08); color: var(--text); border: 1px solid var(--card-border); }
 
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      border: 1px solid var(--card-border);
-    }
-
-    /* KPI GRID */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 20px;
-    }
-
-    .kpi-card {
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; width: 4px; height: 100%;
-      background: var(--primary);
-    }
-
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+    .kpi-card { padding: 22px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
     .kpi-card.danger::before { background: var(--danger); }
     .kpi-card.success::before { background: var(--success); }
     .kpi-card.accent::before { background: var(--accent); }
@@ -265,7 +72,6 @@
     .kpi-value { font-size: 26px; font-weight: 800; }
     .kpi-subtext { font-size: 12px; color: var(--text-muted); }
 
-    /* TABLES & SECTIONS */
     .view-section { display: none; flex-direction: column; gap: 24px; }
     .view-section.active { display: flex; }
 
@@ -285,7 +91,9 @@
     td { padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
     tr:hover { background: rgba(255, 255, 255, 0.02); }
 
-    /* EDIT MODAL */
+    .user-pill { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
     .modal { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; }
@@ -306,9 +114,7 @@
   <!-- ADMIN PASSCODE LOCK SCREEN -->
   <div class="lock-screen" id="lock-screen">
     <div class="lock-card glass">
-      <div class="lock-icon">
-        <i class="fa-solid fa-lock"></i>
-      </div>
+      <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
       <div>
         <h2 style="font-size: 20px; font-weight: 800;">Protected Admin Portal</h2>
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Private Access — Enter Admin Security PIN</p>
@@ -324,7 +130,6 @@
   <!-- MAIN APP LAYOUT (SIDEBAR + CONTENT) -->
   <div id="app-layout">
     
-    <!-- SIDEBAR NAVIGATION -->
     <sidebar>
       <div class="sidebar-brand">
         <i class="fa-solid fa-shield-halved"></i>
@@ -335,6 +140,10 @@
         <li class="nav-item active" onclick="switchView('roster', this)">
           <i class="fa-solid fa-users"></i>
           <span>Master User Directory</span>
+        </li>
+        <li class="nav-item" onclick="switchView('history', this)">
+          <i class="fa-solid fa-coins"></i>
+          <span>Coin History Audit Log</span>
         </li>
         <li class="nav-item" onclick="switchView('meditation', this)">
           <i class="fa-solid fa-spa"></i>
@@ -357,9 +166,7 @@
       </div>
     </sidebar>
 
-    <!-- MAIN CONTENT AREA -->
     <main>
-      
       <header>
         <div class="header-title">
           <h1 id="page-title">Master User Directory</h1>
@@ -431,7 +238,39 @@
         </div>
       </div>
 
-      <!-- VIEW 2: MEDITATION TRACKER -->
+      <!-- VIEW 2: COIN HISTORY AUDIT LOG -->
+      <div class="view-section" id="view-history">
+        <div class="section-card glass">
+          <div class="section-header">
+            <div class="section-title">
+              <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
+              <span>Live Coin History & Transaction Audit Log</span>
+            </div>
+            <span class="badge badge-success">Auto-Logged to Turso DB</span>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User ID</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Source</th>
+                  <th>Description</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody id="coin-history-body">
+                <tr><td colspan="7" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: MEDITATION TRACKER -->
       <div class="view-section" id="view-meditation">
         <div class="section-card glass">
           <div class="section-header">
@@ -462,7 +301,7 @@
         </div>
       </div>
 
-      <!-- VIEW 3: FEEDBACK & COMPLAINTS -->
+      <!-- VIEW 4: FEEDBACK & COMPLAINTS -->
       <div class="view-section" id="view-feedback">
         <div class="section-card glass">
           <div class="section-header">
@@ -494,7 +333,7 @@
         </div>
       </div>
 
-      <!-- VIEW 4: SAVED VERSE NOTES -->
+      <!-- VIEW 5: SAVED VERSE NOTES -->
       <div class="view-section" id="view-notes">
         <div class="section-card glass">
           <div class="section-header">
@@ -502,7 +341,7 @@
               <i class="fa-solid fa-book-bookmark" style="color: var(--primary);"></i>
               <span>Saved Seeker Verse Notes</span>
             </div>
-            <span class="badge badge-success">Saved in Turso DB</span>
+            <span class="badge badge-success">Limit: 200 Chars Max</span>
           </div>
 
           <div class="table-responsive">
@@ -513,7 +352,7 @@
                   <th>User ID</th>
                   <th>Chapter</th>
                   <th>Verse</th>
-                  <th>Note Content</th>
+                  <th>Note Content (200 Chars Max)</th>
                   <th>Saved Date</th>
                 </tr>
               </thead>
@@ -558,7 +397,7 @@
 
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
         <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveUserProfile()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <button class="btn btn-primary" onclick="saveUserProfile()"><i class="fa-solid fa-floppy-disk"></i> Save & Log Coins</button>
       </div>
     </div>
   </div>
@@ -627,9 +466,10 @@
 
       const titles = {
         roster: ["Master User Directory", "Inspect & Edit Every User Profile Live in Turso DB"],
+        history: ["Coin History Audit Log", "Live Stream of All Earned & Spent Krishna Coins"],
         meditation: ["Meditation Time Tracker", "Track 5-20 Min Daily/Monthly Meditation Rewards"],
         feedback: ["Feedback & Complaints Box", "Review & Action Seeker Feedback & Support Tickets"],
-        notes: ["Saved Verse Notes", "Review All Verse Notes Saved by Seekers"]
+        notes: ["Saved Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"]
       };
 
       document.getElementById("page-title").innerText = titles[viewName][0];
@@ -640,6 +480,7 @@
 
     function fetchCurrentViewData() {
       if (currentView === "roster") fetchAllUsers();
+      else if (currentView === "history") fetchCoinHistoryLog();
       else if (currentView === "meditation") fetchMeditationLogs();
       else if (currentView === "feedback") fetchFeedbackList();
       else if (currentView === "notes") fetchVerseNotes();
@@ -688,6 +529,27 @@
             </tr>
           `;
         }).join("");
+      }
+    }
+
+    async function fetchCoinHistoryLog() {
+      const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+      const body = document.getElementById("coin-history-body");
+
+      if (logs && logs.length > 0) {
+        body.innerHTML = logs.map(l => `
+          <tr>
+            <td>#${l.id}</td>
+            <td><strong>${l.user_id}</strong></td>
+            <td><span class="badge ${l.type === 'EARN' ? 'badge-success' : 'badge-danger'}">${l.type}</span></td>
+            <td><strong style="color: ${Number(l.amount) >= 0 ? 'var(--success)' : 'var(--danger)'}">${Number(l.amount) >= 0 ? '+' : ''}${l.amount} 🪙</strong></td>
+            <td><code>${l.source}</code></td>
+            <td>${l.description}</td>
+            <td>${l.created_at}</td>
+          </tr>
+        `).join("");
+      } else {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No coin transactions recorded yet.</td></tr>`;
       }
     }
 
@@ -791,13 +653,20 @@
       const daysActive = Number(document.getElementById("edit-days-active").value);
       const yogaLevel = Number(document.getElementById("edit-yoga-level").value);
 
+      const targetUser = allUsersList.find(u => u.user_id === uid) || {};
+      const oldCoins = Number(targetUser.krishna_coins || 0);
+      const coinDiff = coins - oldCoins;
       const today = new Date().toISOString().split("T")[0];
 
       await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
       await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
       await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
 
-      alert(`User profile updated for ${uid}!`);
+      if (coinDiff !== 0) {
+        await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
+      }
+
+      alert(`User profile updated for ${uid}! Coin transaction logged: ${coinDiff >= 0 ? '+' : ''}${coinDiff} coins.`);
       closeEditModal();
       fetchCurrentViewData();
     }
