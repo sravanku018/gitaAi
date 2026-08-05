@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gita AI — Analytics & Streak Disturbances Dashboard</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0d0f17;
+      --card-bg: rgba(22, 27, 46, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #f59e0b;
+      --primary-glow: rgba(245, 158, 11, 0.25);
+      --accent: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font);
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+      padding-bottom: 50px;
+    }
+
+    /* Glassmorphism Containers */
+    .glass {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    header {
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand i {
+      font-size: 28px;
+      color: var(--primary);
+      filter: drop-shadow(0 0 10px var(--primary-glow));
+    }
+
+    .brand h1 {
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #fff;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--primary-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .main-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .kpi-card {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .kpi-card.danger::before { background: var(--danger); }
+    .kpi-card.success::before { background: var(--success); }
+    .kpi-card.accent::before { background: var(--accent); }
+
+    .kpi-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .kpi-subtext {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Search & Filter Bar */
+    .search-box {
+      padding: 16px 24px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-input-group {
+      flex: 1;
+      min-width: 280px;
+      position: relative;
+    }
+
+    .search-input-group i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 44px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Section Cards */
+    .section-card {
+      padding: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      width: 90%;
+      max-width: 480px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    /* Loader */
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="glass">
+    <div class="brand">
+      <i class="fa-solid fa-fire-flame-curved"></i>
+      <div>
+        <h1>Gita AI Dashboard</h1>
+        <p style="font-size: 12px; color: var(--text-muted);">Real-Time Streak Disturbance & Analytics Monitor</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="fetchData()">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
+      <button class="btn btn-primary" onclick="openRestoreModal()">
+        <i class="fa-solid fa-wrench"></i> Restore User Streak
+      </button>
+    </div>
+  </header>
+
+  <div class="main-container">
+
+    <!-- KPI Summary Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card glass success">
+        <span class="kpi-title">Monitored User</span>
+        <span class="kpi-value" id="kpi-user">raja21</span>
+        <span class="kpi-subtext">Active Seeker</span>
+      </div>
+      <div class="kpi-card glass accent">
+        <span class="kpi-title">Study Streak</span>
+        <span class="kpi-value" id="kpi-streak">22 Days 🔥</span>
+        <span class="kpi-subtext">Longest: <span id="kpi-longest">22</span> days</span>
+      </div>
+      <div class="kpi-card glass warning">
+        <span class="kpi-title">Check-in & Share</span>
+        <span class="kpi-value" id="kpi-checkin">Day 3 / Week 1</span>
+        <span class="kpi-subtext">Daily Login & Sloka Share</span>
+      </div>
+      <div class="kpi-card glass danger" id="kpi-status-card">
+        <span class="kpi-title">Disturbance Alert</span>
+        <span class="kpi-value" id="kpi-disturbance" style="color: #34d399;">Clean ✅</span>
+        <span class="kpi-subtext" id="kpi-disturbance-desc">No streak resets detected</span>
+      </div>
+    </div>
+
+    <!-- Live Search -->
+    <div class="search-box glass">
+      <div class="search-input-group">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="user-search-input" class="search-input" placeholder="Search User ID (e.g. raja21)..." value="raja21">
+      </div>
+      <button class="btn btn-primary" onclick="searchUser()">Inspect User</button>
+    </div>
+
+    <!-- Active User Detailed Card -->
+    <div class="section-card glass">
+      <div class="section-header">
+        <div class="section-title">
+          <i class="fa-solid fa-user-shield" style="color: var(--primary);"></i>
+          <span>Live User Profile Inspection</span>
+        </div>
+        <span class="badge badge-success" id="user-status-badge">ONLINE</span>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Current Streak</th>
+              <th>Longest Streak</th>
+              <th>Check-in Progress</th>
+              <th>Share Progress</th>
+              <th>Krishna Coins</th>
+              <th>Last Activity</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="user-inspect-body">
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                <div class="spinner"></div> Loading User Data...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Disturbance Log -->
+    <div class="section-card glass">
+      <div class="section-header">
+        <div class="section-title">
+          <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i>
+          <span>Streak Disturbances & Anomaly Logs</span>
+        </div>
+        <span class="badge badge-warning" id="disturb-count-badge">0 Alerts</span>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User ID</th>
+              <th>Issue Type</th>
+              <th>Details</th>
+              <th>Severity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="disturbance-log-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                No active disturbances or streak resets detected. Server is running cleanly ✅
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Coin History -->
+    <div class="section-card glass">
+      <div class="section-header">
+        <div class="section-title">
+          <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
+          <span>Recent Coin History & Reward Audits</span>
+        </div>
+        <span class="badge badge-success">Live API Feed</span>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Source</th>
+              <th>Description</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="coin-history-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                Loading Coin History...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Restore Streak Modal -->
+  <div class="modal-overlay" id="restore-modal">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 style="font-size: 18px; font-weight: 700;">
+          <i class="fa-solid fa-fire-flame-curved" style="color: var(--primary);"></i> Restore User Streak
+        </h3>
+        <button class="modal-close" onclick="closeRestoreModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="form-group">
+        <label>User ID</label>
+        <input type="text" id="modal-user-id" class="form-input" value="raja21">
+      </div>
+      <div class="form-group">
+        <label>Target Streak Days</label>
+        <input type="number" id="modal-target-streak" class="form-input" value="22">
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
+        <button class="btn btn-secondary" onclick="closeRestoreModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitRestoreStreak()">Restore Streak</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://prime-gorilla-49.sravanku018.deno.net";
+    const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
+    const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
+
+    async function queryTurso(sql) {
+      try {
+        const res = await fetch(TURSO_URL, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${TURSO_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            requests: [{ type: "execute", stmt: { sql } }, { type: "close" }]
+          })
+        });
+        const data = await res.json();
+        const result = data.results[0]?.response?.result;
+        if (!result) return [];
+        const cols = result.cols.map(c => c.name);
+        return result.rows.map(row => {
+          const obj = {};
+          cols.forEach((col, idx) => {
+            obj[col] = row[idx]?.value;
+          });
+          return obj;
+        });
+      } catch (e) {
+        console.error("Turso Query Error:", e);
+        return null;
+      }
+    }
+
+    async function fetchData() {
+      const searchUser = document.getElementById("user-search-input").value.trim() || "raja21";
+      
+      // Fetch User Stats & Checkin Streaks
+      const stats = await queryTurso(`SELECT us.user_id, us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, cs.current_day as checkin_day, cs.current_week as checkin_week, cs.share_day, cs.share_week, cs.last_checkin, cs.last_share FROM user_stats us LEFT JOIN checkin_streaks cs ON cs.user_id = us.user_id WHERE us.user_id = '${searchUser}'`);
+      
+      if (stats && stats.length > 0) {
+        const user = stats[0];
+        document.getElementById("kpi-user").innerText = user.user_id;
+        document.getElementById("kpi-streak").innerText = `${user.current_streak} Days 🔥`;
+        document.getElementById("kpi-longest").innerText = user.longest_streak;
+        document.getElementById("kpi-checkin").innerText = `Day ${user.checkin_day || 1} / Week ${user.checkin_week || 1}`;
+
+        // Render User Inspection Row
+        const inspectBody = document.getElementById("user-inspect-body");
+        inspectBody.innerHTML = `
+          <tr>
+            <td>
+              <div class="user-pill">
+                <div class="avatar">${user.user_id.substring(0, 2).toUpperCase()}</div>
+                <span>${user.user_id}</span>
+              </div>
+            </td>
+            <td><strong style="color: var(--primary);">${user.current_streak} Days</strong></td>
+            <td>${user.longest_streak} Days</td>
+            <td>Day ${user.checkin_day || 1} (W${user.checkin_week || 1})</td>
+            <td>Day ${user.share_day || 1} (W${user.share_week || 1})</td>
+            <td><strong style="color: var(--success);">${user.krishna_coins} 🪙</strong></td>
+            <td>${user.last_activity_date || 'N/A'}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openRestoreModalFor('${user.user_id}', ${user.longest_streak})">
+                <i class="fa-solid fa-wrench"></i> Fix Streak
+              </button>
+            </td>
+          </tr>
+        `;
+
+        // Check Anomaly / Disturbance
+        const disturbBody = document.getElementById("disturbance-log-body");
+        const isDisturbed = user.longest_streak > user.current_streak && user.last_activity_date === new Date().toISOString().split("T")[0];
+        
+        if (isDisturbed) {
+          document.getElementById("kpi-disturbance").innerText = "ALERT 🚨";
+          document.getElementById("kpi-disturbance").style.color = "#ef4444";
+          document.getElementById("kpi-disturbance-desc").innerText = `Streak reset from ${user.longest_streak} to ${user.current_streak}`;
+          document.getElementById("disturb-count-badge").innerText = "1 Alert";
+          document.getElementById("disturb-count-badge").className = "badge badge-danger";
+
+          disturbBody.innerHTML = `
+            <tr>
+              <td>${new Date().toLocaleTimeString()}</td>
+              <td><strong>${user.user_id}</strong></td>
+              <td><span class="badge badge-danger">Trapped Streak</span></td>
+              <td>Longest streak is ${user.longest_streak} days, but current streak is trapped at ${user.current_streak}</td>
+              <td><span class="badge badge-danger">HIGH</span></td>
+              <td>
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="quickFix('${user.user_id}', ${user.longest_streak})">
+                  Auto Fix to ${user.longest_streak} Days
+                </button>
+              </td>
+            </tr>
+          `;
+        } else {
+          document.getElementById("kpi-disturbance").innerText = "Clean ✅";
+          document.getElementById("kpi-disturbance").style.color = "#34d399";
+          document.getElementById("kpi-disturbance-desc").innerText = "No streak resets detected";
+          document.getElementById("disturb-count-badge").innerText = "0 Alerts";
+          document.getElementById("disturb-count-badge").className = "badge badge-success";
+
+          disturbBody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                No active disturbances or streak resets detected. System is running cleanly ✅
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // Fetch Coin Transactions History
+      const history = await queryTurso(`SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${searchUser}' ORDER BY id DESC LIMIT 10`);
+      const historyBody = document.getElementById("coin-history-body");
+
+      if (history && history.length > 0) {
+        historyBody.innerHTML = history.map(item => `
+          <tr>
+            <td>#${item.id}</td>
+            <td><span class="badge ${item.type === 'EARN' ? 'badge-success' : 'badge-danger'}">${item.type}</span></td>
+            <td><strong style="color: ${item.amount >= 0 ? 'var(--success)' : 'var(--danger)'}">${item.amount >= 0 ? '+' : ''}${item.amount}</strong></td>
+            <td><code>${item.source}</code></td>
+            <td>${item.description}</td>
+            <td>${item.created_at}</td>
+          </tr>
+        `).join("");
+      } else {
+        historyBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No coin history found.</td></tr>`;
+      }
+    }
+
+    function searchUser() {
+      fetchData();
+    }
+
+    function openRestoreModal() {
+      document.getElementById("restore-modal").style.display = "flex";
+    }
+
+    function openRestoreModalFor(userId, longest) {
+      document.getElementById("modal-user-id").value = userId;
+      document.getElementById("modal-target-streak").value = longest;
+      document.getElementById("restore-modal").style.display = "flex";
+    }
+
+    function closeRestoreModal() {
+      document.getElementById("restore-modal").style.display = "none";
+    }
+
+    async function submitRestoreStreak() {
+      const uid = document.getElementById("modal-user-id").value.trim();
+      const streak = Number(document.getElementById("modal-target-streak").value);
+
+      if (!uid) return alert("Please enter User ID");
+
+      const res = await queryTurso(`UPDATE user_stats SET current_streak = ${streak}, longest_streak = MAX(longest_streak, ${streak}), last_activity_date = '${new Date().toISOString().split("T")[0]}' WHERE user_id = '${uid}'`);
+      await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', 7, 1, 7, 1, '2026-08-04', '2026-08-04') ON CONFLICT(user_id) DO UPDATE SET current_day = 7, current_week = 1, share_day = 7, share_week = 1, last_checkin = '2026-08-04', last_share = '2026-08-04'`);
+
+      alert(`Streak restored to ${streak} days for ${uid}!`);
+      closeRestoreModal();
+      fetchData();
+    }
+
+    async function quickFix(uid, longest) {
+      await queryTurso(`UPDATE user_stats SET current_streak = ${longest}, longest_streak = ${longest}, last_activity_date = '${new Date().toISOString().split("T")[0]}' WHERE user_id = '${uid}'`);
+      alert(`Auto-fixed ${uid}'s streak to ${longest} days!`);
+      fetchData();
+    }
+
+    // Auto load on start
+    fetchData();
+    setInterval(fetchData, 30000); // Polling refresh every 30s
+  </script>
+</body>
+</html>
