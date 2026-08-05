@@ -64,49 +64,17 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         if (serverDay !in 1..7) return
         synchronized(this) {
             val state = getState()
-            val currentDay = state.checkinDay
-            val currentWeek = state.checkinWeek
-
             var newDate = state.lastCheckinDate
             val cleanDate = lastCheckin?.take(10)
             if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
 
-            var targetDay = currentDay
-            var targetWeek = currentWeek
-            val effectiveDay = if (serverDay == 7) 0 else serverDay
-            val effectiveWeek = if (serverDay == 7) {
-                if (serverWeek == 1) 4 else serverWeek - 1
-            } else serverWeek
-
-            val updateDayWeek = when {
-                effectiveWeek > currentWeek -> true
-                effectiveWeek == currentWeek -> {
-                    val localComplete = currentDay == 0
-                    val serverComplete = effectiveDay == 0
-                    when {
-                        localComplete && !serverComplete -> false
-                        !localComplete && serverComplete -> true
-                        localComplete && serverComplete -> false
-                        else -> effectiveDay > currentDay
-                    }
-                }
-                else -> false
-            }
-
-            if (updateDayWeek) {
-                targetDay = effectiveDay
-                targetWeek = effectiveWeek
-            }
-
-            if (targetDay != state.checkinDay || targetWeek != state.checkinWeek || newDate != state.lastCheckinDate) {
-                saveState(state.copy(
-                    checkinDay = targetDay,
-                    checkinWeek = targetWeek,
-                    lastCheckinDate = newDate
-                ))
-            }
+            saveState(state.copy(
+                checkinDay = serverDay,
+                checkinWeek = serverWeek,
+                lastCheckinDate = newDate
+            ))
         }
     }
 
@@ -114,49 +82,17 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         if (serverDay !in 1..7) return
         synchronized(this) {
             val state = getState()
-            val currentDay = state.shareDay
-            val currentWeek = state.shareWeek
-
             var newDate = state.lastShareDate
             val cleanDate = lastShare?.take(10)
             if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
 
-            var targetDay = currentDay
-            var targetWeek = currentWeek
-            val effectiveDay = if (serverDay == 7) 0 else serverDay
-            val effectiveWeek = if (serverDay == 7) {
-                if (serverWeek == 1) 4 else serverWeek - 1
-            } else serverWeek
-
-            val updateDayWeek = when {
-                effectiveWeek > currentWeek -> true
-                effectiveWeek == currentWeek -> {
-                    val localComplete = currentDay == 0
-                    val serverComplete = effectiveDay == 0
-                    when {
-                        localComplete && !serverComplete -> false
-                        !localComplete && serverComplete -> true
-                        localComplete && serverComplete -> false
-                        else -> effectiveDay > currentDay
-                    }
-                }
-                else -> false
-            }
-
-            if (updateDayWeek) {
-                targetDay = effectiveDay
-                targetWeek = effectiveWeek
-            }
-
-            if (targetDay != state.shareDay || targetWeek != state.shareWeek || newDate != state.lastShareDate) {
-                saveState(state.copy(
-                    shareDay = targetDay,
-                    shareWeek = targetWeek,
-                    lastShareDate = newDate
-                ))
-            }
+            saveState(state.copy(
+                shareDay = serverDay,
+                shareWeek = serverWeek,
+                lastShareDate = newDate
+            ))
         }
     }
 

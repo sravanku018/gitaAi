@@ -120,15 +120,13 @@ class StatsRepository(
             val updatedStats = balance.updateEntity(currentStats, uid)
             userStatsDao.insertStats(updatedStats) // Upsert
 
-            // Sync daily UI trackers — skip on fresh install so streak resets
+            // Sync daily UI trackers from server balance
             val tracker = DailyRewardsTracker.getInstance(appContext)
-            if (!tracker.isFreshInstall()) {
-                if (balance.checkin_day > 0) {
-                    tracker.syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
-                }
-                if (balance.share_day > 0) {
-                    tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
-                }
+            if (balance.checkin_day > 0) {
+                tracker.syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
+            }
+            if (balance.share_day > 0) {
+                tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
             }
             
             _networkState.value = NetworkState.Success
