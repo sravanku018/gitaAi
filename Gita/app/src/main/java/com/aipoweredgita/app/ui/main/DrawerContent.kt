@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -158,7 +159,7 @@ fun DrawerContent(
 
         HorizontalDivider(color = dividerColor, thickness = 0.8.dp)
 
-        // Scrollable Menu List (Twitter/X Style)
+        // Scrollable Menu List (Feedback & Complaints kept down at bottom)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -169,6 +170,27 @@ fun DrawerContent(
                 title = "Profile",
                 textColor = textColor,
                 onClick = onNavigateToProfile
+            )
+
+            TwitterMenuItem(
+                icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Read Verses") },
+                title = "Read Verses",
+                textColor = textColor,
+                onClick = onNavigateToRead
+            )
+
+            TwitterMenuItem(
+                icon = { Icon(Icons.Default.School, contentDescription = "Quiz") },
+                title = "Quiz",
+                textColor = textColor,
+                onClick = onNavigateToQuiz
+            )
+
+            TwitterMenuItem(
+                icon = { Icon(Icons.Default.Mic, contentDescription = "AI Voice Chat") },
+                title = "AI Voice Chat",
+                textColor = textColor,
+                onClick = onNavigateToHome
             )
 
             TwitterMenuItem(
@@ -200,20 +222,6 @@ fun DrawerContent(
             )
 
             TwitterMenuItem(
-                icon = { Icon(Icons.Default.Lightbulb, contentDescription = "Feedback") },
-                title = "Feedback",
-                textColor = textColor,
-                onClick = onNavigateToFeedback
-            )
-
-            TwitterMenuItem(
-                icon = { Icon(Icons.Default.ReportProblem, contentDescription = "Complaints") },
-                title = "Complaints",
-                textColor = textColor,
-                onClick = onNavigateToFeedback
-            )
-
-            TwitterMenuItem(
                 icon = { Icon(Icons.Default.Leaderboard, contentDescription = "Activity History") },
                 title = "Activity History",
                 textColor = textColor,
@@ -234,9 +242,17 @@ fun DrawerContent(
                 onClick = onNavigateToCoinHistory
             )
 
+            // Feedback & Complaints kept down at bottom of menu list!
+            TwitterMenuItem(
+                icon = { Icon(Icons.Default.Lightbulb, contentDescription = "Feedback & Complaints") },
+                title = "Feedback & Complaints",
+                textColor = textColor,
+                onClick = onNavigateToFeedback
+            )
+
             HorizontalDivider(color = dividerColor, thickness = 0.8.dp, modifier = Modifier.padding(vertical = 8.dp))
 
-            // Bottom Settings & Help Section (Twitter/X style)
+            // Bottom Settings & Help Section
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.Settings, contentDescription = "Settings and privacy") },
                 title = "Settings and privacy",
