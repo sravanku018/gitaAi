@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gita AI — Admin User Profile & Disturbance Management Dashboard</title>
+  <title>Gita AI — Master Admin User Directory & Disturbance Monitor</title>
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -123,7 +123,7 @@
     }
 
     .main-container {
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 0 20px;
       display: flex;
@@ -178,17 +178,45 @@
       color: var(--text-muted);
     }
 
-    .search-box {
-      padding: 16px 24px;
+    /* Filter & Search Controls */
+    .controls-bar {
+      padding: 18px 24px;
       display: flex;
       gap: 16px;
       align-items: center;
+      justify-content: space-between;
       flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
     }
 
     .search-input-group {
       flex: 1;
-      min-width: 280px;
+      max-width: 380px;
       position: relative;
     }
 
@@ -202,14 +230,13 @@
 
     .search-input {
       width: 100%;
-      padding: 12px 16px 12px 44px;
+      padding: 10px 16px 10px 44px;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid var(--card-border);
       border-radius: 10px;
       color: var(--text);
       font-size: 14px;
       outline: none;
-      transition: border-color 0.2s ease;
     }
 
     .search-input:focus {
@@ -246,6 +273,7 @@
     .badge-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
     .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-guest { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
 
     .table-responsive {
       width: 100%;
@@ -300,7 +328,7 @@
       color: #fff;
     }
 
-    /* Modal Overlay & Card */
+    /* Modal Overlay & Form */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -400,153 +428,89 @@
 
   <header class="glass">
     <div class="brand">
-      <i class="fa-solid fa-user-gear"></i>
+      <i class="fa-solid fa-users-gear"></i>
       <div>
-        <h1>Gita AI Admin Dashboard</h1>
-        <p style="font-size: 12px; color: var(--text-muted);">Live Profile Editor & Disturbance Management</p>
+        <h1>Gita AI Admin — Master User Directory</h1>
+        <p style="font-size: 12px; color: var(--text-muted);">Manage & Edit Every User Profile Live in Turso DB</p>
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary" onclick="fetchData()">
-        <i class="fa-solid fa-rotate-right"></i> Refresh
-      </button>
-      <button class="btn btn-primary" onclick="openEditModal()">
-        <i class="fa-solid fa-user-pen"></i> Edit User Profile
+      <button class="btn btn-secondary" onclick="fetchAllUsers()">
+        <i class="fa-solid fa-rotate-right"></i> Refresh Roster
       </button>
     </div>
   </header>
 
   <div class="main-container">
 
-    <!-- KPI Summary Grid -->
+    <!-- Global System KPIs -->
     <div class="kpi-grid">
       <div class="kpi-card glass success">
-        <span class="kpi-title">Monitored User</span>
-        <span class="kpi-value" id="kpi-user">raja21</span>
-        <span class="kpi-subtext" id="kpi-name">Seeker Profile</span>
+        <span class="kpi-title">Total Seeker Profiles</span>
+        <span class="kpi-value" id="kpi-total-users">0</span>
+        <span class="kpi-subtext">All Registered & Guest Accounts</span>
       </div>
       <div class="kpi-card glass accent">
-        <span class="kpi-title">Study Streak</span>
-        <span class="kpi-value" id="kpi-streak">22 Days 🔥</span>
-        <span class="kpi-subtext">Longest: <span id="kpi-longest">22</span> days</span>
+        <span class="kpi-title">Active Seekers</span>
+        <span class="kpi-value" id="kpi-active-users">0</span>
+        <span class="kpi-subtext">Registered Seeker Accounts</span>
       </div>
       <div class="kpi-card glass warning">
-        <span class="kpi-title">Check-in & Share</span>
-        <span class="kpi-value" id="kpi-checkin">Day 3 / Week 1</span>
-        <span class="kpi-subtext">Daily Login & Sloka Share</span>
+        <span class="kpi-title">Top Ecosystem Streak</span>
+        <span class="kpi-value" id="kpi-top-streak">22 Days 🔥</span>
+        <span class="kpi-subtext">User: <strong id="kpi-top-user">raja21</strong></span>
       </div>
       <div class="kpi-card glass danger" id="kpi-status-card">
-        <span class="kpi-title">Disturbance Alert</span>
-        <span class="kpi-value" id="kpi-disturbance" style="color: #34d399;">Clean ✅</span>
-        <span class="kpi-subtext" id="kpi-disturbance-desc">No streak resets detected</span>
+        <span class="kpi-title">Disturbance Alerts</span>
+        <span class="kpi-value" id="kpi-alerts" style="color: #34d399;">0 Alerts ✅</span>
+        <span class="kpi-subtext">Master Roster Health Check</span>
       </div>
     </div>
 
-    <!-- Live Search & Profile Inspector -->
-    <div class="search-box glass">
+    <!-- Master Roster Controls -->
+    <div class="controls-bar glass">
+      <div class="filter-tabs">
+        <button class="tab-btn active" onclick="setFilter('all', this)">All Profiles</button>
+        <button class="tab-btn" onclick="setFilter('registered', this)">Registered Seekers</button>
+        <button class="tab-btn" onclick="setFilter('guests', this)">Guests</button>
+      </div>
+
       <div class="search-input-group">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="user-search-input" class="search-input" placeholder="Search User ID (e.g. raja21)..." value="raja21">
+        <input type="text" id="roster-search" class="search-input" placeholder="Filter by User ID, Name, Email..." oninput="filterRoster()">
       </div>
-      <button class="btn btn-primary" onclick="searchUser()">Inspect User</button>
     </div>
 
-    <!-- Active User Profile Inspection Card -->
+    <!-- Master User Roster Table -->
     <div class="section-card glass">
       <div class="section-header">
         <div class="section-title">
-          <i class="fa-solid fa-user-check" style="color: var(--primary);"></i>
-          <span>Live User Profile Inspection</span>
+          <i class="fa-solid fa-users" style="color: var(--primary);"></i>
+          <span>Master Seeker Roster (Every User Profile)</span>
         </div>
-        <span class="badge badge-success" id="user-status-badge">ONLINE</span>
+        <span class="badge badge-success" id="user-count-badge">Loading...</span>
       </div>
 
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>User ID</th>
-              <th>Name & Email</th>
+              <th>User ID & Account</th>
+              <th>Account Type</th>
               <th>Current Streak</th>
               <th>Longest Streak</th>
-              <th>Check-in Progress</th>
-              <th>Share Progress</th>
+              <th>Check-in Streak</th>
+              <th>Share Streak</th>
               <th>Krishna Coins</th>
               <th>Yoga Level</th>
-              <th>Last Activity</th>
+              <th>Last Active</th>
               <th>Admin Action</th>
             </tr>
           </thead>
-          <tbody id="user-inspect-body">
+          <tbody id="master-roster-body">
             <tr>
-              <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                <div class="spinner"></div> Loading User Data...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Disturbance Log -->
-    <div class="section-card glass">
-      <div class="section-header">
-        <div class="section-title">
-          <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i>
-          <span>Streak Disturbances & Anomaly Logs</span>
-        </div>
-        <span class="badge badge-warning" id="disturb-count-badge">0 Alerts</span>
-      </div>
-
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>User ID</th>
-              <th>Issue Type</th>
-              <th>Details</th>
-              <th>Severity</th>
-              <th>Admin Fix</th>
-            </tr>
-          </thead>
-          <tbody id="disturbance-log-body">
-            <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                No active disturbances or streak resets detected. Database running cleanly ✅
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Recent Coin History -->
-    <div class="section-card glass">
-      <div class="section-header">
-        <div class="section-title">
-          <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
-          <span>Recent Coin History & Audit Logs</span>
-        </div>
-        <span class="badge badge-success">Live Turso DB Feed</span>
-      </div>
-
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Source</th>
-              <th>Description</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody id="coin-history-body">
-            <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                Loading Coin History...
+              <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                <div class="spinner"></div> Fetching Master User Roster from Turso DB...
               </td>
             </tr>
           </tbody>
@@ -556,7 +520,7 @@
 
   </div>
 
-  <!-- Admin Edit User Profile Modal -->
+  <!-- Admin Edit Profile Modal -->
   <div class="modal-overlay" id="edit-modal">
     <div class="modal glass">
       <div class="modal-header">
@@ -569,62 +533,62 @@
       <div class="form-grid">
         <div class="form-group full-width">
           <label>User ID (Target User)</label>
-          <input type="text" id="edit-user-id" class="form-input" value="raja21" readonly style="opacity: 0.7;">
+          <input type="text" id="edit-user-id" class="form-input" readonly style="opacity: 0.7;">
         </div>
 
         <div class="form-group">
           <label>Full Name</label>
-          <input type="text" id="edit-name" class="form-input" placeholder="Raja">
+          <input type="text" id="edit-name" class="form-input">
         </div>
 
         <div class="form-group">
           <label>Email Address</label>
-          <input type="email" id="edit-email" class="form-input" placeholder="raja@gita.com">
+          <input type="email" id="edit-email" class="form-input">
         </div>
 
         <div class="form-group">
           <label>Current Study Streak (Days)</label>
-          <input type="number" id="edit-current-streak" class="form-input" value="22">
+          <input type="number" id="edit-current-streak" class="form-input">
         </div>
 
         <div class="form-group">
           <label>Longest Study Streak (Days)</label>
-          <input type="number" id="edit-longest-streak" class="form-input" value="22">
+          <input type="number" id="edit-longest-streak" class="form-input">
         </div>
 
         <div class="form-group">
           <label>Check-in Day (1 - 7)</label>
-          <input type="number" id="edit-checkin-day" class="form-input" min="1" max="7" value="3">
+          <input type="number" id="edit-checkin-day" class="form-input" min="1" max="7">
         </div>
 
         <div class="form-group">
           <label>Check-in Week (1 - 4)</label>
-          <input type="number" id="edit-checkin-week" class="form-input" min="1" max="4" value="1">
+          <input type="number" id="edit-checkin-week" class="form-input" min="1" max="4">
         </div>
 
         <div class="form-group">
           <label>Sloka Share Day (1 - 7)</label>
-          <input type="number" id="edit-share-day" class="form-input" min="1" max="7" value="3">
+          <input type="number" id="edit-share-day" class="form-input" min="1" max="7">
         </div>
 
         <div class="form-group">
           <label>Sloka Share Week (1 - 4)</label>
-          <input type="number" id="edit-share-week" class="form-input" min="1" max="4" value="1">
+          <input type="number" id="edit-share-week" class="form-input" min="1" max="4">
         </div>
 
         <div class="form-group">
           <label>Krishna Coins Balance</label>
-          <input type="number" id="edit-coins" class="form-input" value="1054">
+          <input type="number" id="edit-coins" class="form-input">
         </div>
 
         <div class="form-group">
           <label>Days Active</label>
-          <input type="number" id="edit-days-active" class="form-input" value="52">
+          <input type="number" id="edit-days-active" class="form-input">
         </div>
 
         <div class="form-group full-width">
           <label>Yoga Level (1 = Karma, 2 = Bhakti, 3 = Jnana, 4 = Dhyana, 5 = Raja)</label>
-          <input type="number" id="edit-yoga-level" class="form-input" min="1" max="5" value="2">
+          <input type="number" id="edit-yoga-level" class="form-input" min="1" max="5">
         </div>
       </div>
 
@@ -639,7 +603,8 @@
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
 
-    let currentUserData = null;
+    let allUsersList = [];
+    let currentFilter = "all";
 
     async function queryTurso(sql) {
       try {
@@ -670,128 +635,143 @@
       }
     }
 
-    async function fetchData() {
-      const searchUser = document.getElementById("user-search-input").value.trim() || "raja21";
+    async function fetchAllUsers() {
+      const users = await queryTurso(`
+        SELECT u.user_id, u.name, u.email, u.is_guest,
+               us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
+               cs.current_day as checkin_day, cs.current_week as checkin_week,
+               cs.share_day, cs.share_week
+        FROM users u
+        LEFT JOIN user_stats us ON us.user_id = u.user_id
+        LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
+        ORDER BY us.current_streak DESC, us.krishna_coins DESC
+      `);
+
+      if (users) {
+        allUsersList = users;
+        updateKPIs();
+        renderRosterTable();
+      }
+    }
+
+    function updateKPIs() {
+      const total = allUsersList.length;
+      const registered = allUsersList.filter(u => u.is_guest === 0).length;
+      const topUser = allUsersList[0] || {};
       
-      const stats = await queryTurso(`SELECT u.name, u.email, us.user_id, us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level, cs.current_day as checkin_day, cs.current_week as checkin_week, cs.share_day, cs.share_week, cs.last_checkin, cs.last_share FROM user_stats us LEFT JOIN users u ON u.user_id = us.user_id LEFT JOIN checkin_streaks cs ON cs.user_id = us.user_id WHERE us.user_id = '${searchUser}'`);
-      
-      if (stats && stats.length > 0) {
-        currentUserData = stats[0];
-        const user = currentUserData;
+      let alertCount = 0;
+      const today = new Date().toISOString().split("T")[0];
+      allUsersList.forEach(u => {
+        if (u.longest_streak > u.current_streak && u.last_activity_date === today) {
+          alertCount++;
+        }
+      });
 
-        document.getElementById("kpi-user").innerText = user.user_id;
-        document.getElementById("kpi-name").innerText = user.name ? `${user.name} (${user.email || ''})` : "Seeker Profile";
-        document.getElementById("kpi-streak").innerText = `${user.current_streak} Days 🔥`;
-        document.getElementById("kpi-longest").innerText = user.longest_streak;
-        document.getElementById("kpi-checkin").innerText = `Day ${user.checkin_day || 1} / Week ${user.checkin_week || 1}`;
+      document.getElementById("kpi-total-users").innerText = total;
+      document.getElementById("kpi-active-users").innerText = registered;
+      document.getElementById("kpi-top-streak").innerText = `${topUser.current_streak || 0} Days 🔥`;
+      document.getElementById("kpi-top-user").innerText = topUser.user_id || "N/A";
 
-        // Populate Modal Fields
-        document.getElementById("edit-user-id").value = user.user_id;
-        document.getElementById("edit-name").value = user.name || "";
-        document.getElementById("edit-email").value = user.email || "";
-        document.getElementById("edit-current-streak").value = user.current_streak;
-        document.getElementById("edit-longest-streak").value = user.longest_streak;
-        document.getElementById("edit-checkin-day").value = user.checkin_day || 1;
-        document.getElementById("edit-checkin-week").value = user.checkin_week || 1;
-        document.getElementById("edit-share-day").value = user.share_day || 1;
-        document.getElementById("edit-share-week").value = user.share_week || 1;
-        document.getElementById("edit-coins").value = user.krishna_coins;
-        document.getElementById("edit-days-active").value = user.days_active;
-        document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
+      const alertCard = document.getElementById("kpi-alerts");
+      if (alertCount > 0) {
+        alertCard.innerText = `${alertCount} Alert(s) 🚨`;
+        alertCard.style.color = "#ef4444";
+      } else {
+        alertCard.innerText = "0 Alerts ✅";
+        alertCard.style.color = "#34d399";
+      }
+    }
 
-        // Render User Inspection Row
-        const inspectBody = document.getElementById("user-inspect-body");
-        inspectBody.innerHTML = `
+    function setFilter(type, btnElem) {
+      currentFilter = type;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btnElem.classList.add("active");
+      renderRosterTable();
+    }
+
+    function filterRoster() {
+      renderRosterTable();
+    }
+
+    function renderRosterTable() {
+      const searchQuery = document.getElementById("roster-search").value.toLowerCase().trim();
+      const body = document.getElementById("master-roster-body");
+
+      let filtered = allUsersList.filter(user => {
+        if (currentFilter === "registered" && user.is_guest === 1) return false;
+        if (currentFilter === "guests" && user.is_guest === 0) return false;
+
+        if (searchQuery) {
+          const matchesUid = user.user_id.toLowerCase().includes(searchQuery);
+          const matchesName = (user.name || "").toLowerCase().includes(searchQuery);
+          const matchesEmail = (user.email || "").toLowerCase().includes(searchQuery);
+          return matchesUid || matchesName || matchesEmail;
+        }
+
+        return true;
+      });
+
+      document.getElementById("user-count-badge").innerText = `${filtered.length} Users Listed`;
+
+      if (filtered.length === 0) {
+        body.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No user profiles match your filter.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = filtered.map(u => {
+        const isGuest = u.is_guest === 1;
+        const isDisturbed = u.longest_streak > u.current_streak && u.last_activity_date === new Date().toISOString().split("T")[0];
+
+        return `
           <tr>
             <td>
               <div class="user-pill">
-                <div class="avatar">${user.user_id.substring(0, 2).toUpperCase()}</div>
-                <span>${user.user_id}</span>
+                <div class="avatar" style="${isGuest ? 'background: linear-gradient(135deg, #4b5563, #6b7280);' : ''}">${u.user_id.substring(0, 2).toUpperCase()}</div>
+                <div>
+                  <strong>${u.user_id}</strong><br>
+                  <span style="font-size: 11px; color: var(--text-muted);">${u.name || 'Seeker'} ${u.email ? '· ' + u.email : ''}</span>
+                </div>
               </div>
             </td>
-            <td>${user.name || 'Seeker'}<br><span style="font-size: 11px; color: var(--text-muted);">${user.email || ''}</span></td>
-            <td><strong style="color: var(--primary);">${user.current_streak} Days</strong></td>
-            <td>${user.longest_streak} Days</td>
-            <td>Day ${user.checkin_day || 1} (W${user.checkin_week || 1})</td>
-            <td>Day ${user.share_day || 1} (W${user.share_week || 1})</td>
-            <td><strong style="color: var(--success);">${user.krishna_coins} 🪙</strong></td>
-            <td>Level ${user.yoga_level || 1}</td>
-            <td>${user.last_activity_date || 'N/A'}</td>
             <td>
-              <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="openEditModal()">
+              <span class="badge ${isGuest ? 'badge-guest' : 'badge-success'}">${isGuest ? 'GUEST' : 'SEEKER'}</span>
+            </td>
+            <td>
+              <strong style="color: ${isDisturbed ? '#ef4444' : 'var(--primary)'}">${u.current_streak || 0} Days ${isDisturbed ? '🚨' : '🔥'}</strong>
+            </td>
+            <td>${u.longest_streak || 0} Days</td>
+            <td>Day ${u.checkin_day || 1} (W${u.checkin_week || 1})</td>
+            <td>Day ${u.share_day || 1} (W${u.share_week || 1})</td>
+            <td><strong style="color: var(--success);">${u.krishna_coins || 0} 🪙</strong></td>
+            <td>Level ${u.yoga_level || 1}</td>
+            <td>${u.last_activity_date || 'N/A'}</td>
+            <td>
+              <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="openEditModalFor('${u.user_id}')">
                 <i class="fa-solid fa-user-pen"></i> Edit Profile
               </button>
             </td>
           </tr>
         `;
-
-        // Check Disturbance Logs
-        const disturbBody = document.getElementById("disturbance-log-body");
-        const isDisturbed = user.longest_streak > user.current_streak && user.last_activity_date === new Date().toISOString().split("T")[0];
-        
-        if (isDisturbed) {
-          document.getElementById("kpi-disturbance").innerText = "ALERT 🚨";
-          document.getElementById("kpi-disturbance").style.color = "#ef4444";
-          document.getElementById("kpi-disturbance-desc").innerText = `Streak reset from ${user.longest_streak} to ${user.current_streak}`;
-          document.getElementById("disturb-count-badge").innerText = "1 Alert";
-          document.getElementById("disturb-count-badge").className = "badge badge-danger";
-
-          disturbBody.innerHTML = `
-            <tr>
-              <td>${new Date().toLocaleTimeString()}</td>
-              <td><strong>${user.user_id}</strong></td>
-              <td><span class="badge badge-danger">Trapped Streak</span></td>
-              <td>Longest streak is ${user.longest_streak} days, but current streak is trapped at ${user.current_streak}</td>
-              <td><span class="badge badge-danger">HIGH</span></td>
-              <td>
-                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="quickFix('${user.user_id}', ${user.longest_streak})">
-                  Auto Fix to ${user.longest_streak} Days
-                </button>
-              </td>
-            </tr>
-          `;
-        } else {
-          document.getElementById("kpi-disturbance").innerText = "Clean ✅";
-          document.getElementById("kpi-disturbance").style.color = "#34d399";
-          document.getElementById("kpi-disturbance-desc").innerText = "No streak resets detected";
-          document.getElementById("disturb-count-badge").innerText = "0 Alerts";
-          document.getElementById("disturb-count-badge").className = "badge badge-success";
-
-          disturbBody.innerHTML = `
-            <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                No active disturbances or streak resets detected. Database running cleanly ✅
-              </td>
-            </tr>
-          `;
-        }
-      }
-
-      // Fetch Coin Transactions History
-      const history = await queryTurso(`SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${searchUser}' ORDER BY id DESC LIMIT 10`);
-      const historyBody = document.getElementById("coin-history-body");
-
-      if (history && history.length > 0) {
-        historyBody.innerHTML = history.map(item => `
-          <tr>
-            <td>#${item.id}</td>
-            <td><span class="badge ${item.type === 'EARN' ? 'badge-success' : 'badge-danger'}">${item.type}</span></td>
-            <td><strong style="color: ${item.amount >= 0 ? 'var(--success)' : 'var(--danger)'}">${item.amount >= 0 ? '+' : ''}${item.amount}</strong></td>
-            <td><code>${item.source}</code></td>
-            <td>${item.description}</td>
-            <td>${item.created_at}</td>
-          </tr>
-        `).join("");
-      } else {
-        historyBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No coin history found.</td></tr>`;
-      }
+      }).join("");
     }
 
-    function searchUser() {
-      fetchData();
-    }
+    function openEditModalFor(userId) {
+      const user = allUsersList.find(u => u.user_id === userId);
+      if (!user) return;
 
-    function openEditModal() {
+      document.getElementById("edit-user-id").value = user.user_id;
+      document.getElementById("edit-name").value = user.name || "";
+      document.getElementById("edit-email").value = user.email || "";
+      document.getElementById("edit-current-streak").value = user.current_streak || 0;
+      document.getElementById("edit-longest-streak").value = user.longest_streak || 0;
+      document.getElementById("edit-checkin-day").value = user.checkin_day || 1;
+      document.getElementById("edit-checkin-week").value = user.checkin_week || 1;
+      document.getElementById("edit-share-day").value = user.share_day || 1;
+      document.getElementById("edit-share-week").value = user.share_week || 1;
+      document.getElementById("edit-coins").value = user.krishna_coins || 0;
+      document.getElementById("edit-days-active").value = user.days_active || 1;
+      document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
+
       document.getElementById("edit-modal").style.display = "flex";
     }
 
@@ -828,19 +808,12 @@
 
       alert(`User profile & stats updated successfully for ${uid}!`);
       closeEditModal();
-      fetchData();
-    }
-
-    async function quickFix(uid, longest) {
-      const today = new Date().toISOString().split("T")[0];
-      await queryTurso(`UPDATE user_stats SET current_streak = ${longest}, longest_streak = ${longest}, last_activity_date = '${today}' WHERE user_id = '${uid}'`);
-      alert(`Auto-fixed ${uid}'s streak to ${longest} days!`);
-      fetchData();
+      fetchAllUsers();
     }
 
     // Auto load on start
-    fetchData();
-    setInterval(fetchData, 30000); // Polling refresh every 30s
+    fetchAllUsers();
+    setInterval(fetchAllUsers, 30000); // Polling refresh every 30s
   </script>
 </body>
 </html>
