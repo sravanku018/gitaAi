@@ -71,6 +71,29 @@ class NotesViewModel @Inject constructor(
         }
     }
 
+    fun updateNote(noteId: Int, chapter: Int, verse: Int, text: String, colorHex: String) {
+        viewModelScope.launch {
+            noteDao.insertNote(VerseNote(id = noteId, chapterNo = chapter, verseNo = verse, note = text, colorHex = colorHex, updatedAt = System.currentTimeMillis()))
+            val uid = authPrefs.userId
+            if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
+                try {
+                    val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
+                    val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapter, "verse" to verse, "note" to text))
+                    pendingDao.insert(
+                        com.aipoweredgita.app.database.PendingSyncEvent(
+                            userId = uid,
+                            eventType = "ADD_NOTE",
+                            payload = payloadStr,
+                            coinsToAdjust = 0,
+                            idempotencyKey = "note_${chapter}_${verse}_${uid}_${System.currentTimeMillis()}"
+                        )
+                    )
+                    com.aipoweredgita.app.services.SyncWorker.schedule(context)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     fun deleteNote(noteId: Int, chapterNo: Int, verseNo: Int) {
         viewModelScope.launch {
             noteDao.deleteNote(noteId)
@@ -91,6 +114,21 @@ class NotesViewModel @Inject constructor(
                     com.aipoweredgita.app.services.SyncWorker.schedule(context)
                 } catch (_: Exception) {}
             }
+        }
+    }
+
+    fun restoreStreak() {
+        viewModelScope.launch {
+            try {
+                val statsDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).userStatsDao()
+                val currentStats = statsDao.getUserStatsOnce()
+                if (currentStats != null) {
+                    val targetStreak = if (currentStats.longestStreak > 0) currentStats.longestStreak else 1
+                    statsDao.updateCurrentStreak(targetStreak)
+                    val todayStr = java.time.LocalDate.now(java.time.ZoneId.systemDefault()).toString()
+                    statsDao.updateLastActive(System.currentTimeMillis(), todayStr)
+                }
+            } catch (_: Exception) {}
         }
     }
 }

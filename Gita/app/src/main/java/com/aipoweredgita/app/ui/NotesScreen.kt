@@ -12,10 +12,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -31,7 +34,9 @@ fun NotesScreen(
     viewModel: NotesViewModel = hiltViewModel()
 ) {
     val notes by viewModel.notes.collectAsState()
+    val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
+    var noteToEdit by remember { mutableStateOf<VerseNote?>(null) }
 
     Scaffold(
         topBar = {
@@ -40,6 +45,16 @@ fun NotesScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            viewModel.restoreStreak()
+                            android.widget.Toast.makeText(context, "Streak Restored! 🔥", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(Icons.Default.Refresh, "Restore Streak", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -56,7 +71,7 @@ fun NotesScreen(
         if (notes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("\uD83D\uDCDD", style = MaterialTheme.typography.displayLarge)
+                    Text("📝", style = MaterialTheme.typography.displayLarge)
                     Spacer(Modifier.height(16.dp))
                     Text("No notes yet", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
@@ -70,9 +85,13 @@ fun NotesScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(notes) { note ->
-                    NoteCard(note, onDelete = {
-                        viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
-                    })
+                    NoteCard(
+                        note = note,
+                        onEdit = { noteToEdit = note },
+                        onDelete = {
+                            viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
+                        }
+                    )
                 }
             }
         }
@@ -84,6 +103,18 @@ fun NotesScreen(
             onSave = { chapter, verse, text, colorHex ->
                 viewModel.addNote(chapter, verse, text, colorHex)
                 showAddDialog = false
+            }
+        )
+    }
+
+    if (noteToEdit != null) {
+        EditNoteDialog(
+            note = noteToEdit!!,
+            onDismiss = { noteToEdit = null },
+            onSave = { text, colorHex ->
+                val current = noteToEdit!!
+                viewModel.updateNote(current.id, current.chapterNo, current.verseNo, text, colorHex)
+                noteToEdit = null
             }
         )
     }
@@ -114,14 +145,19 @@ fun parseColorHex(hex: String, defaultIndex: Int = 0): androidx.compose.ui.graph
 }
 
 @Composable
-private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
+private fun NoteCard(
+    note: VerseNote,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     val accentColor = parseColorHex(note.colorHex, note.id + note.chapterNo * 31 + note.verseNo)
     val cardBg = accentColor.copy(alpha = 0.12f)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onEdit() },
         colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
@@ -138,7 +174,7 @@ private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
                     Box(
                         modifier = Modifier
                             .size(10.dp)
-                            .background(accentColor, shape = androidx.compose.foundation.shape.CircleShape)
+                            .background(accentColor, shape = CircleShape)
                     )
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -155,8 +191,12 @@ private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     }
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, "Edit Note", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Delete, "Delete Note", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -290,31 +330,78 @@ fun AddNoteDialog(
 }
 
 @Composable
-fun NoteEditorDialog(
-    chapterNo: Int,
-    verseNo: Int,
-    existingNote: String = "",
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit
+fun EditNoteDialog(
+    note: VerseNote,
+    onDismiss: () -> Unit,
+    onSave: (text: String, colorHex: String) -> Unit
 ) {
-    var text by remember { mutableStateOf(existingNote) }
+    var noteText by remember { mutableStateOf(note.note) }
+    var selectedColorHex by remember { mutableStateOf(if (note.colorHex.isNotBlank()) note.colorHex else NOTE_COLORS.random()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var textError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Note for $chapterNo:$verseNo") },
+        title = { Text("Edit Note (Chapter ${note.chapterNo}, Sloka ${note.verseNo})") },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                placeholder = { Text("Write your reflection...") },
-                maxLines = 8
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { 
+                        noteText = it 
+                        textError = false
+                        errorMessage = null
+                    },
+                    label = { Text("Your note") },
+                    isError = textError,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                    maxLines = 8
+                )
+                
+                Spacer(Modifier.height(4.dp))
+                Text("Note Color", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    NOTE_COLORS.forEach { hex ->
+                        val color = parseColorHex(hex)
+                        val isSelected = hex.equals(selectedColorHex, ignoreCase = true)
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(color, shape = CircleShape)
+                                .border(
+                                    width = if (isSelected) 3.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else androidx.compose.ui.graphics.Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable { selectedColorHex = hex }
+                        )
+                    }
+                }
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = { if (text.isNotBlank()) onSave(text) }) {
-                Text("Save")
-            }
+            TextButton(
+                onClick = {
+                    if (noteText.isBlank()) {
+                        textError = true
+                        errorMessage = "Note content cannot be empty."
+                    } else {
+                        onSave(noteText.trim(), selectedColorHex)
+                    }
+                }
+            ) { Text("Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
