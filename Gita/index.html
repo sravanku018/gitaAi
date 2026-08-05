@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gita AI — Admin Control Center & Analytics Dashboard</title>
+  <title>Gita AI — Admin Control Center & Seeker Dossiers</title>
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,8 +94,9 @@
     .user-pill { display: flex; align-items: center; gap: 10px; font-weight: 600; }
     .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
 
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
-    .modal { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+    /* MODALS */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+    .modal { width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; }
     .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -104,6 +105,11 @@
     .form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
     .form-input { padding: 12px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
     .form-input:focus { border-color: var(--primary); }
+
+    /* DOSSIER TABS */
+    .dossier-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 10px; }
+    .dossier-tab { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; background: none; border: none; }
+    .dossier-tab.active { background: var(--primary); color: #fff; }
 
     .spinner { border: 3px solid rgba(255, 255, 255, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: var(--primary); animation: spin 1s linear infinite; display: inline-block; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -227,7 +233,7 @@
                   <th>Coins</th>
                   <th>Yoga Level</th>
                   <th>Last Active</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="master-roster-body">
@@ -367,38 +373,95 @@
     </main>
   </div>
 
-  <!-- EDIT USER PROFILE MODAL -->
-  <div class="modal-overlay" id="edit-modal">
+  <!-- INDIVIDUAL USER PROFILE & HISTORY DOSSIER MODAL -->
+  <div class="modal-overlay" id="dossier-modal">
     <div class="modal glass">
       <div class="modal-header">
-        <h3 style="font-size: 18px; font-weight: 700;">
-          <i class="fa-solid fa-user-pen" style="color: var(--primary);"></i> Admin Edit User Profile
-        </h3>
-        <button class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-
-      <div class="form-grid">
-        <div class="form-group full-width">
-          <label>User ID</label>
-          <input type="text" id="edit-user-id" class="form-input" readonly style="opacity:0.7;">
+        <div>
+          <h3 style="font-size: 18px; font-weight: 700;" id="dossier-user-title">User Profile Dossier</h3>
+          <p style="font-size: 12px; color: var(--text-muted);" id="dossier-user-sub">Isolated User History & Profile Management</p>
         </div>
-        <div class="form-group"><label>Name</label><input type="text" id="edit-name" class="form-input"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="edit-email" class="form-input"></div>
-        <div class="form-group"><label>Current Streak (Days)</label><input type="number" id="edit-current-streak" class="form-input"></div>
-        <div class="form-group"><label>Longest Streak (Days)</label><input type="number" id="edit-longest-streak" class="form-input"></div>
-        <div class="form-group"><label>Check-in Day (1-7)</label><input type="number" id="edit-checkin-day" class="form-input" min="1" max="7"></div>
-        <div class="form-group"><label>Check-in Week (1-4)</label><input type="number" id="edit-checkin-week" class="form-input" min="1" max="4"></div>
-        <div class="form-group"><label>Share Day (1-7)</label><input type="number" id="edit-share-day" class="form-input" min="1" max="7"></div>
-        <div class="form-group"><label>Share Week (1-4)</label><input type="number" id="edit-share-week" class="form-input" min="1" max="4"></div>
-        <div class="form-group"><label>Krishna Coins</label><input type="number" id="edit-coins" class="form-input"></div>
-        <div class="form-group"><label>Days Active</label><input type="number" id="edit-days-active" class="form-input"></div>
-        <div class="form-group full-width"><label>Yoga Level (1 to 5)</label><input type="number" id="edit-yoga-level" class="form-input" min="1" max="5"></div>
+        <button class="modal-close" onclick="closeDossierModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
-        <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveUserProfile()"><i class="fa-solid fa-floppy-disk"></i> Save & Log Coins</button>
+      <div class="dossier-tabs">
+        <button class="dossier-tab active" onclick="switchDossierTab('profile', this)">👤 Profile & Edit</button>
+        <button class="dossier-tab" onclick="switchDossierTab('coins', this)">🪙 Coin History</button>
+        <button class="dossier-tab" onclick="switchDossierTab('meditation', this)">🧘 Meditation Logs</button>
+        <button class="dossier-tab" onclick="switchDossierTab('feedback', this)">💬 Complaints</button>
+        <button class="dossier-tab" onclick="switchDossierTab('notes', this)">📖 Verse Notes</button>
       </div>
+
+      <!-- DOSSIER TAB 1: EDIT PROFILE -->
+      <div class="dossier-view" id="dossier-view-profile" style="display: block;">
+        <div class="form-grid">
+          <div class="form-group full-width"><label>User ID</label><input type="text" id="edit-user-id" class="form-input" readonly style="opacity:0.7;"></div>
+          <div class="form-group"><label>Name</label><input type="text" id="edit-name" class="form-input"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="edit-email" class="form-input"></div>
+          <div class="form-group"><label>Current Streak (Days)</label><input type="number" id="edit-current-streak" class="form-input"></div>
+          <div class="form-group"><label>Longest Streak (Days)</label><input type="number" id="edit-longest-streak" class="form-input"></div>
+          <div class="form-group"><label>Check-in Day (1-7)</label><input type="number" id="edit-checkin-day" class="form-input" min="1" max="7"></div>
+          <div class="form-group"><label>Check-in Week (1-4)</label><input type="number" id="edit-checkin-week" class="form-input" min="1" max="4"></div>
+          <div class="form-group"><label>Share Day (1-7)</label><input type="number" id="edit-share-day" class="form-input" min="1" max="7"></div>
+          <div class="form-group"><label>Share Week (1-4)</label><input type="number" id="edit-share-week" class="form-input" min="1" max="4"></div>
+          <div class="form-group"><label>Krishna Coins</label><input type="number" id="edit-coins" class="form-input"></div>
+          <div class="form-group"><label>Days Active</label><input type="number" id="edit-days-active" class="form-input"></div>
+          <div class="form-group full-width"><label>Yoga Level (1 to 5)</label><input type="number" id="edit-yoga-level" class="form-input" min="1" max="5"></div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
+          <button class="btn btn-secondary" onclick="closeDossierModal()">Close</button>
+          <button class="btn btn-primary" onclick="saveUserProfile()"><i class="fa-solid fa-floppy-disk"></i> Save Profile Changes</button>
+        </div>
+      </div>
+
+      <!-- DOSSIER TAB 2: USER COIN HISTORY -->
+      <div class="dossier-view" id="dossier-view-coins" style="display: none;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Type</th><th>Amount</th><th>Source</th><th>Description</th><th>Date</th></tr>
+            </thead>
+            <tbody id="user-coins-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOSSIER TAB 3: USER MEDITATION LOGS -->
+      <div class="dossier-view" id="dossier-view-meditation" style="display: none;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Duration</th><th>Coins Earned</th><th>Session Date</th></tr>
+            </thead>
+            <tbody id="user-meditation-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOSSIER TAB 4: USER COMPLAINTS -->
+      <div class="dossier-view" id="dossier-view-feedback" style="display: none;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Category</th><th>Subject</th><th>Message</th><th>Status</th><th>Date</th></tr>
+            </thead>
+            <tbody id="user-feedback-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOSSIER TAB 5: USER VERSE NOTES -->
+      <div class="dossier-view" id="dossier-view-notes" style="display: none;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Chapter</th><th>Verse</th><th>Note (200 Chars Max)</th><th>Date</th></tr>
+            </thead>
+            <tbody id="user-notes-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -409,6 +472,7 @@
 
     let currentView = "roster";
     let allUsersList = [];
+    let activeDossierUser = null;
 
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
@@ -525,103 +589,25 @@
               <td><strong style="color:var(--success);">${u.krishna_coins || 0} 🪙</strong></td>
               <td>Level ${u.yoga_level || 1}</td>
               <td>${u.last_activity_date || 'N/A'}</td>
-              <td><button class="btn btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openEditModalFor('${u.user_id}')"><i class="fa-solid fa-user-pen"></i> Edit Profile</button></td>
+              <td>
+                <button class="btn btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openDossierFor('${u.user_id}')">
+                  <i class="fa-solid fa-address-card"></i> View Dossier
+                </button>
+              </td>
             </tr>
           `;
         }).join("");
       }
     }
 
-    async function fetchCoinHistoryLog() {
-      const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
-      const body = document.getElementById("coin-history-body");
-
-      if (logs && logs.length > 0) {
-        body.innerHTML = logs.map(l => `
-          <tr>
-            <td>#${l.id}</td>
-            <td><strong>${l.user_id}</strong></td>
-            <td><span class="badge ${l.type === 'EARN' ? 'badge-success' : 'badge-danger'}">${l.type}</span></td>
-            <td><strong style="color: ${Number(l.amount) >= 0 ? 'var(--success)' : 'var(--danger)'}">${Number(l.amount) >= 0 ? '+' : ''}${l.amount} 🪙</strong></td>
-            <td><code>${l.source}</code></td>
-            <td>${l.description}</td>
-            <td>${l.created_at}</td>
-          </tr>
-        `).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No coin transactions recorded yet.</td></tr>`;
-      }
-    }
-
-    async function fetchMeditationLogs() {
-      const logs = await queryTurso(`SELECT * FROM meditation_sessions ORDER BY id DESC LIMIT 50`);
-      const body = document.getElementById("meditation-body");
-
-      let totalMins = 0;
-      if (logs && logs.length > 0) {
-        logs.forEach(l => totalMins += Number(l.minutes || 0));
-        document.getElementById("kpi-meditation-mins").innerText = `${totalMins} Mins`;
-
-        body.innerHTML = logs.map(l => `
-          <tr>
-            <td>#${l.id}</td>
-            <td><strong>${l.user_id}</strong></td>
-            <td><span class="badge badge-success">${l.minutes} Mins</span></td>
-            <td><strong style="color:var(--success);">+${l.coins_earned} 🪙</strong></td>
-            <td>${l.session_date}</td>
-            <td>${l.created_at}</td>
-          </tr>
-        `).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No meditation sessions logged yet.</td></tr>`;
-      }
-    }
-
-    async function fetchFeedbackList() {
-      const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
-      const body = document.getElementById("feedback-body");
-      document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
-
-      if (list && list.length > 0) {
-        body.innerHTML = list.map(f => `
-          <tr>
-            <td>#${f.id}</td>
-            <td><strong>${f.user_id}</strong></td>
-            <td><span class="badge badge-warning">${f.type || 'Feedback'}</span></td>
-            <td><strong>${f.subject || 'General'}</strong></td>
-            <td>${f.message}</td>
-            <td><span class="badge badge-success">${f.status || 'Open'}</span></td>
-            <td>${f.created_at}</td>
-          </tr>
-        `).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No feedback or complaints submitted yet.</td></tr>`;
-      }
-    }
-
-    async function fetchVerseNotes() {
-      const notes = await queryTurso(`SELECT * FROM verse_notes ORDER BY id DESC LIMIT 50`);
-      const body = document.getElementById("notes-body");
-
-      if (notes && notes.length > 0) {
-        body.innerHTML = notes.map(n => `
-          <tr>
-            <td>#${n.id}</td>
-            <td><strong>${n.user_id}</strong></td>
-            <td>Chapter ${n.chapter_no}</td>
-            <td>Verse ${n.verse_no}</td>
-            <td>${n.note}</td>
-            <td>${n.created_at || 'N/A'}</td>
-          </tr>
-        `).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No verse notes saved yet.</td></tr>`;
-      }
-    }
-
-    function openEditModalFor(userId) {
+    async function openDossierFor(userId) {
       const user = allUsersList.find(u => u.user_id === userId);
       if (!user) return;
+      activeDossierUser = user;
+
+      document.getElementById("dossier-user-title").innerText = `Dossier: ${user.user_id}`;
+      document.getElementById("dossier-user-sub").innerText = `${user.name || 'Seeker Profile'} · ${user.email || 'No email'}`;
+
       document.getElementById("edit-user-id").value = user.user_id;
       document.getElementById("edit-name").value = user.name || "";
       document.getElementById("edit-email").value = user.email || "";
@@ -634,10 +620,94 @@
       document.getElementById("edit-coins").value = user.krishna_coins || 0;
       document.getElementById("edit-days-active").value = user.days_active || 1;
       document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
-      document.getElementById("edit-modal").style.display = "flex";
+
+      // Load user isolated histories
+      loadUserIsolatedData(userId);
+
+      document.getElementById("dossier-modal").style.display = "flex";
     }
 
-    function closeEditModal() { document.getElementById("edit-modal").style.display = "none"; }
+    function closeDossierModal() {
+      document.getElementById("dossier-modal").style.display = "none";
+    }
+
+    function switchDossierTab(tabName, elem) {
+      document.querySelectorAll(".dossier-tab").forEach(t => t.classList.remove("active"));
+      elem.classList.add("active");
+
+      document.querySelectorAll(".dossier-view").forEach(v => v.style.display = "none");
+      document.getElementById(`dossier-view-${tabName}`).style.display = "block";
+    }
+
+    async function loadUserIsolatedData(userId) {
+      // 1. User Coins History
+      const coins = await queryTurso(`SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+      document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
+        <tr><td>#${c.id}</td><td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td><td><strong>${c.amount} 🪙</strong></td><td><code>${c.source}</code></td><td>${c.description}</td><td>${c.created_at}</td></tr>
+      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+
+      // 2. User Meditation Sessions
+      const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+      document.getElementById("user-meditation-body").innerHTML = (meditations && meditations.length > 0) ? meditations.map(m => `
+        <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
+      `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
+
+      // 3. User Feedback & Complaints
+      const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+      document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
+        <tr><td>#${f.id}</td><td><span class="badge badge-warning">${f.type}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status}</span></td><td>${f.created_at}</td></tr>
+      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
+
+      // 4. User Verse Notes
+      const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
+      document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
+        <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+      `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
+    }
+
+    async function fetchCoinHistoryLog() {
+      const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+      const body = document.getElementById("coin-history-body");
+      if (logs && logs.length > 0) {
+        body.innerHTML = logs.map(l => `
+          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge ${l.type==='EARN'?'badge-success':'badge-danger'}">${l.type}</span></td><td><strong>${l.amount} 🪙</strong></td><td><code>${l.source}</code></td><td>${l.description}</td><td>${l.created_at}</td></tr>
+        `).join("");
+      }
+    }
+
+    async function fetchMeditationLogs() {
+      const logs = await queryTurso(`SELECT * FROM meditation_sessions ORDER BY id DESC LIMIT 50`);
+      const body = document.getElementById("meditation-body");
+      let totalMins = 0;
+      if (logs && logs.length > 0) {
+        logs.forEach(l => totalMins += Number(l.minutes || 0));
+        document.getElementById("kpi-meditation-mins").innerText = `${totalMins} Mins`;
+        body.innerHTML = logs.map(l => `
+          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge badge-success">${l.minutes} Mins</span></td><td>+${l.coins_earned} 🪙</td><td>${l.session_date}</td><td>${l.created_at}</td></tr>
+        `).join("");
+      }
+    }
+
+    async function fetchFeedbackList() {
+      const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
+      const body = document.getElementById("feedback-body");
+      document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
+      if (list && list.length > 0) {
+        body.innerHTML = list.map(f => `
+          <tr><td>#${f.id}</td><td><strong>${f.user_id}</strong></td><td><span class="badge badge-warning">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+        `).join("");
+      }
+    }
+
+    async function fetchVerseNotes() {
+      const notes = await queryTurso(`SELECT * FROM verse_notes ORDER BY id DESC LIMIT 50`);
+      const body = document.getElementById("notes-body");
+      if (notes && notes.length > 0) {
+        body.innerHTML = notes.map(n => `
+          <tr><td>#${n.id}</td><td><strong>${n.user_id}</strong></td><td>Chapter ${n.chapter_no}</td><td>Verse ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+        `).join("");
+      }
+    }
 
     async function saveUserProfile() {
       const uid = document.getElementById("edit-user-id").value.trim();
@@ -666,8 +736,8 @@
         await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
       }
 
-      alert(`User profile updated for ${uid}! Coin transaction logged: ${coinDiff >= 0 ? '+' : ''}${coinDiff} coins.`);
-      closeEditModal();
+      alert(`User profile updated for ${uid}!`);
+      closeDossierModal();
       fetchCurrentViewData();
     }
   </script>
