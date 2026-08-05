@@ -263,13 +263,26 @@ fun NavGraph(
             LoginScreen(
                 onLoginSuccess = { userId ->
                     onAuthChanged()
-                    navController.popBackStack()
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 },
                 onGuestLogin = {
                     onAuthChanged()
-                    navController.popBackStack()
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 },
-                onBack = { navController.popBackStack() }
+                onBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
 
