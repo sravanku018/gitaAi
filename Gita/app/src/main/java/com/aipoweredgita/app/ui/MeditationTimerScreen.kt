@@ -273,55 +273,13 @@ fun MeditationTimerScreen(
 
     Scaffold(
         topBar = {
-            var showMusicDropdown by remember { mutableStateOf(false) }
             val goldColor = Color(0xFFF59E0B)
 
             TopAppBar(
                 title = { Text("Meditation", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                        }
-                        // Left Corner: Ambient Music Dropdown Menu
-                        Box {
-                            TextButton(onClick = { showMusicDropdown = true }) {
-                                Icon(Icons.Default.MusicNote, null, tint = goldColor, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = selectedSoundMode.label,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showMusicDropdown,
-                                onDismissRequest = { showMusicDropdown = false }
-                            ) {
-                                AmbientSoundMode.entries.forEach { mode ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = mode.label,
-                                                fontWeight = if (selectedSoundMode == mode) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (selectedSoundMode == mode) goldColor else Color.Unspecified
-                                            )
-                                        },
-                                        onClick = {
-                                            selectedSoundMode = mode
-                                            showMusicDropdown = false
-                                            if (mode == AmbientSoundMode.OFF) {
-                                                musicPlayer.stop()
-                                            } else if (uiState.isRunning && !uiState.isPaused) {
-                                                musicPlayer.stop()
-                                                musicPlayer.start(mode)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -345,11 +303,13 @@ fun MeditationTimerScreen(
         }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Audio & Voice Controls
+            // Voice Control Toggle
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -367,14 +327,14 @@ fun MeditationTimerScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text(if (isVoiceEnabled) "Voice: ON" else "Voice: OFF") }
+                    label = { Text(if (isVoiceEnabled) "Voice Guide: ON" else "Voice Guide: OFF") }
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
             // Sound Mode Options (Drone, Water Drops, Flute, Off)
-            Text("Ambient Sound", style = MaterialTheme.typography.titleSmall)
+            Text("Ambient Sound", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -384,8 +344,9 @@ fun MeditationTimerScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 AmbientSoundMode.entries.forEach { modeOption ->
+                    val isSel = selectedSoundMode == modeOption
                     FilterChip(
-                        selected = selectedSoundMode == modeOption,
+                        selected = isSel,
                         onClick = {
                             selectedSoundMode = modeOption
                             if (modeOption == AmbientSoundMode.OFF) {
@@ -395,7 +356,20 @@ fun MeditationTimerScreen(
                                 musicPlayer.start(modeOption)
                             }
                         },
-                        label = { Text(modeOption.label) }
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFF59E0B),
+                            selectedLabelColor = Color.Black,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        label = {
+                            Text(
+                                text = modeOption.label,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     )
                 }
             }
@@ -407,6 +381,7 @@ fun MeditationTimerScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF261D0C)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
@@ -419,27 +394,48 @@ fun MeditationTimerScreen(
                             color = Color(0xFFF59E0B),
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text = "5m = +10 🪙  |  10m = +20 🪙  |  15m = +30 🪙  |  20m = +40 🪙",
-                            fontSize = 12.sp,
-                            color = Color.LightGray
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
                         )
                     }
                 }
 
                 Spacer(Modifier.height(20.dp))
 
-                // Duration selection
-                Text("Choose Duration", style = MaterialTheme.typography.titleMedium)
+                // Duration selection (Horizontal Scrollable so 15 min & 20 min NEVER break into multiple lines)
+                Text("Choose Session Duration", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                ) {
                     MeditationDuration.entries.forEach { duration ->
+                        val isSel = uiState.selectedDuration == duration
                         val coins = duration.minutes * 2
                         FilterChip(
-                            selected = uiState.selectedDuration == duration,
+                            selected = isSel,
                             onClick = { viewModel.selectDuration(duration) },
-                            label = { Text("${duration.label} (+${coins}🪙)") }
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFF59E0B),
+                                selectedLabelColor = Color.Black,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            label = {
+                                Text(
+                                    text = "${duration.label} (+${coins}🪙)",
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    color = if (isSel) Color.Black else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         )
                     }
                 }
@@ -467,46 +463,48 @@ fun MeditationTimerScreen(
                 val minutes = uiState.timeLeftSeconds / 60
                 val seconds = uiState.timeLeftSeconds % 60
 
-                // Circular timer
+                // Circular timer with timer in exact middle
                 Box(modifier = Modifier.size(280.dp), contentAlignment = Alignment.Center) {
                     Canvas(modifier = Modifier.size(260.dp)) {
-                        // Background circle
+                        // Outer Glowing Track
                         drawCircle(
-                            color = Color.Gray.copy(alpha = 0.2f),
+                            color = Color(0xFFF59E0B).copy(alpha = 0.2f),
                             radius = size.minDimension / 2,
-                            style = Stroke(width = 8.dp.toPx())
+                            style = Stroke(width = 12.dp.toPx())
                         )
-                        // Progress arc
+                        // Dynamic Progress Arc
                         drawArc(
                             brush = Brush.sweepGradient(
-                                listOf(Color(0xFF6B48FF), Color(0xFF00D4FF), Color(0xFF6B48FF))
+                                listOf(Color(0xFFF59E0B), Color(0xFFFF6400), Color(0xFFF59E0B))
                             ),
                             startAngle = -90f,
                             sweepAngle = 360f * progress,
                             useCenter = false,
-                            style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round),
-                            topLeft = Offset(4.dp.toPx(), 4.dp.toPx()),
-                            size = Size(size.width - 8.dp.toPx(), size.height - 8.dp.toPx())
+                            style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
+                            topLeft = Offset(6.dp.toPx(), 6.dp.toPx()),
+                            size = Size(size.width - 12.dp.toPx(), size.height - 12.dp.toPx())
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "%02d:%02d".format(minutes, seconds),
+                            text = "%02d:%02d".format(minutes, seconds),
                             style = MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Light,
-                                fontSize = 64.sp
-                            )
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 56.sp
+                            ),
+                            color = Color.White
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            uiState.breathingPhase.label,
+                            text = uiState.breathingPhase.label,
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color(0xFFF59E0B),
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "${uiState.breathingTimer + 1} / ${uiState.breathingPhase.seconds}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            text = "${uiState.breathingTimer + 1} / ${uiState.breathingPhase.seconds}s",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.LightGray
                         )
                     }
                 }
