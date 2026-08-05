@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,10 +53,17 @@ fun DrawerContent(
     coinBalance: Int = 0,
     isGuest: Boolean = false
 ) {
+    // Dynamic Theme Colors
+    val bgColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
+    val textColor = if (isDarkTheme) Color.White else Color(0xFF0F172A)
+    val subtextColor = if (isDarkTheme) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val dividerColor = if (isDarkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0)
+    val avatarBg = if (isDarkTheme) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
+            .background(bgColor)
     ) {
         // Twitter/X Style Profile Header
         Column(
@@ -70,7 +76,7 @@ fun DrawerContent(
                 modifier = Modifier
                     .size(54.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1E293B))
+                    .background(avatarBg)
                     .border(1.5.dp, Color(0xFFF59E0B), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -87,7 +93,7 @@ fun DrawerContent(
                 text = if (isGuest) "Guest Seeker" else (stats?.userName?.takeIf { it.isNotEmpty() } ?: "Gita Seeker"),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = textColor,
                 fontSize = 20.sp
             )
 
@@ -95,7 +101,7 @@ fun DrawerContent(
             Text(
                 text = if (isGuest) "@guest_seeker" else "@${(stats?.userName ?: "seeker").lowercase().replace(" ", "")}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF94A3B8),
+                color = subtextColor,
                 fontSize = 14.sp
             )
 
@@ -110,12 +116,12 @@ fun DrawerContent(
                     Text(
                         text = "${stats?.totalQuizzesTaken ?: 0} ",
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = textColor,
                         fontSize = 14.sp
                     )
                     Text(
                         text = "Quizzes",
-                        color = Color(0xFF94A3B8),
+                        color = subtextColor,
                         fontSize = 14.sp
                     )
                 }
@@ -124,12 +130,12 @@ fun DrawerContent(
                     Text(
                         text = "${stats?.currentStreak ?: 0}🔥 ",
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = textColor,
                         fontSize = 14.sp
                     )
                     Text(
                         text = "Streak",
-                        color = Color(0xFF94A3B8),
+                        color = subtextColor,
                         fontSize = 14.sp
                     )
                 }
@@ -143,14 +149,14 @@ fun DrawerContent(
                     )
                     Text(
                         text = "Coins",
-                        color = Color(0xFF94A3B8),
+                        color = subtextColor,
                         fontSize = 14.sp
                     )
                 }
             }
         }
 
-        HorizontalDivider(color = Color(0xFF1E293B), thickness = 0.8.dp)
+        HorizontalDivider(color = dividerColor, thickness = 0.8.dp)
 
         // Scrollable Menu List (Twitter/X Style)
         Column(
@@ -158,84 +164,95 @@ fun DrawerContent(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Profile Item (as requested in screenshot)
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.PersonOutline, contentDescription = "Profile") },
                 title = "Profile",
+                textColor = textColor,
                 onClick = onNavigateToProfile
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.SelfImprovement, contentDescription = "Meditation") },
                 title = "Meditation",
+                textColor = textColor,
                 onClick = onNavigateToMeditation
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Study Plans") },
                 title = "Study Plans",
+                textColor = textColor,
                 onClick = onNavigateToStudyPlan
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.EditNote, contentDescription = "My Notes") },
                 title = "My Notes",
+                textColor = textColor,
                 onClick = onNavigateToNotes
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.FavoriteBorder, contentDescription = "Favorites") },
                 title = "Favorites",
+                textColor = textColor,
                 onClick = onNavigateToFavorites
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.Lightbulb, contentDescription = "Feedback") },
                 title = "Feedback",
+                textColor = textColor,
                 onClick = onNavigateToFeedback
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.ReportProblem, contentDescription = "Complaints") },
                 title = "Complaints",
+                textColor = textColor,
                 onClick = onNavigateToFeedback
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.Leaderboard, contentDescription = "Activity History") },
                 title = "Activity History",
+                textColor = textColor,
                 onClick = onNavigateToQuizStats
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Yoga Levels") },
                 title = "Yoga Levels",
+                textColor = textColor,
                 onClick = onNavigateToYogaLevels
             )
 
             TwitterMenuItem(
                 icon = { Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { Text("🪙", fontSize = 18.sp) } },
                 title = "Coin History",
+                textColor = textColor,
                 onClick = onNavigateToCoinHistory
             )
 
-            HorizontalDivider(color = Color(0xFF1E293B), thickness = 0.8.dp, modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = dividerColor, thickness = 0.8.dp, modifier = Modifier.padding(vertical = 8.dp))
 
             // Bottom Settings & Help Section (Twitter/X style)
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.Settings, contentDescription = "Settings and privacy") },
                 title = "Settings and privacy",
+                textColor = textColor,
                 onClick = onNavigateToSettings
             )
 
             TwitterMenuItem(
                 icon = { Icon(Icons.Default.HelpOutline, contentDescription = "Help Centre") },
                 title = "Help Centre",
+                textColor = textColor,
                 onClick = onNavigateToFeedback
             )
         }
 
-        HorizontalDivider(color = Color(0xFF1E293B), thickness = 0.8.dp)
+        HorizontalDivider(color = dividerColor, thickness = 0.8.dp)
 
         // Bottom Footer Bar (Dark mode moon button & Logout)
         Row(
@@ -253,7 +270,7 @@ fun DrawerContent(
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Default.NightsStay else Icons.Default.WbSunny,
                     contentDescription = "Theme Toggle",
-                    tint = Color.White
+                    tint = textColor
                 )
             }
 
@@ -275,6 +292,7 @@ fun DrawerContent(
 private fun TwitterMenuItem(
     icon: @Composable (() -> Unit),
     title: String,
+    textColor: Color,
     onClick: () -> Unit
 ) {
     Row(
@@ -285,7 +303,7 @@ private fun TwitterMenuItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(26.dp), contentAlignment = Alignment.Center) {
-            CompositionLocalProvider(LocalContentColor provides Color.White) {
+            CompositionLocalProvider(LocalContentColor provides textColor) {
                 icon()
             }
         }
@@ -296,7 +314,7 @@ private fun TwitterMenuItem(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White,
+            color = textColor,
             fontSize = 17.sp,
             modifier = Modifier.weight(1f)
         )
