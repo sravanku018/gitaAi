@@ -242,14 +242,6 @@ fun DrawerContent(
                 onClick = onNavigateToCoinHistory
             )
 
-            // Feedback & Complaints kept down at bottom of menu list!
-            TwitterMenuItem(
-                icon = { Icon(Icons.Default.Lightbulb, contentDescription = "Feedback & Complaints") },
-                title = "Feedback & Complaints",
-                textColor = textColor,
-                onClick = onNavigateToFeedback
-            )
-
             HorizontalDivider(color = dividerColor, thickness = 0.8.dp, modifier = Modifier.padding(vertical = 8.dp))
 
             // Bottom Settings & Help Section
