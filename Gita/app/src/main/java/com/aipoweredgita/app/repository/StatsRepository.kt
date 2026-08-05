@@ -625,15 +625,12 @@ class StatsRepository(
                 "user_id" to uid,
                 "client_date" to localDate
             ))
-            if (response.duplicate == true) {
-                Log.d("StatsRepository", "Checkin already synced (duplicate)")
-            } else {
-                Log.d("StatsRepository", "Checkin synced. Coins awarded: ${response.coins_awarded}")
+            if (response.day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncWithServer(response.day, response.week, localDate)
             }
             refreshUserState(uid)
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: retrofit2.HttpException) {
-            // 400 = "Already checked in today" - that's OK, mark as synced
             Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: Exception) {
@@ -671,18 +668,12 @@ class StatsRepository(
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
             val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync", client_date = localDate))
-            if (response.duplicate == true) {
-                Log.d("StatsRepository", "Share already synced (duplicate)")
-            } else {
-                Log.d("StatsRepository", "Share synced. Coins awarded: ${response.coins_awarded}")
-                if (response.share_day > 0) {
-                    DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
-                }
+            if (response.share_day > 0) {
+                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
             }
             refreshUserState(uid)
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: retrofit2.HttpException) {
-            // 400 = "Already shared today" - that's OK, mark as synced
             Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: Exception) {
