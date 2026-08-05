@@ -112,7 +112,7 @@
 
     /* Main Dashboard Layout */
     #dashboard-content {
-      display: none; /* Shown after unlock */
+      display: none;
     }
 
     header {
@@ -256,6 +256,7 @@
       padding: 4px;
       border-radius: 10px;
       border: 1px solid var(--card-border);
+      flex-wrap: wrap;
     }
 
     .tab-btn {
@@ -555,14 +556,15 @@
       <!-- Master Roster Controls -->
       <div class="controls-bar glass">
         <div class="filter-tabs">
-          <button class="tab-btn active" onclick="setFilter('all', this)">All Profiles</button>
-          <button class="tab-btn" onclick="setFilter('registered', this)">Registered Seekers</button>
-          <button class="tab-btn" onclick="setFilter('guests', this)">Guests</button>
+          <button class="tab-btn active" id="tab-all" onclick="setFilter('all', this)">All Profiles</button>
+          <button class="tab-btn" id="tab-registered" onclick="setFilter('registered', this)">Registered Seekers</button>
+          <button class="tab-btn" id="tab-guests" onclick="setFilter('guests', this)">Guests</button>
+          <button class="tab-btn" id="tab-disturbed" onclick="setFilter('disturbed', this)">⚠️ Trapped Streaks</button>
         </div>
 
         <div class="search-input-group">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="roster-search" class="search-input" placeholder="Filter by User ID, Name, Email..." oninput="filterRoster()">
+          <input type="text" id="roster-search" class="search-input" placeholder="Filter by User ID, Name, Email..." oninput="filterRoster()" onkeyup="filterRoster()">
         </div>
       </div>
 
@@ -717,7 +719,6 @@
       document.getElementById("admin-pin").value = "";
     }
 
-    // Auto unlock if session saved
     if (localStorage.getItem("gita_admin_unlocked") === "true") {
       document.getElementById("lock-screen").style.display = "none";
       document.getElementById("dashboard-content").style.display = "block";
@@ -774,13 +775,13 @@
 
     function updateKPIs() {
       const total = allUsersList.length;
-      const registered = allUsersList.filter(u => u.is_guest === 0).length;
+      const registered = allUsersList.filter(u => Number(u.is_guest) === 0).length;
       const topUser = allUsersList[0] || {};
       
       let alertCount = 0;
       const today = new Date().toISOString().split("T")[0];
       allUsersList.forEach(u => {
-        if (u.longest_streak > u.current_streak && u.last_activity_date === today) {
+        if (Number(u.longest_streak) > Number(u.current_streak) && u.last_activity_date === today) {
           alertCount++;
         }
       });
@@ -812,18 +813,23 @@
     }
 
     function renderRosterTable() {
-      const searchQuery = document.getElementById("roster-search").value.toLowerCase().trim();
+      const searchQuery = (document.getElementById("roster-search").value || "").toLowerCase().trim();
       const body = document.getElementById("master-roster-body");
+      const today = new Date().toISOString().split("T")[0];
 
       let filtered = allUsersList.filter(user => {
-        if (currentFilter === "registered" && user.is_guest === 1) return false;
-        if (currentFilter === "guests" && user.is_guest === 0) return false;
+        const isGuest = Number(user.is_guest) === 1;
+        const isDisturbed = Number(user.longest_streak) > Number(user.current_streak) && user.last_activity_date === today;
 
-        if (searchQuery) {
-          const matchesUid = user.user_id.toLowerCase().includes(searchQuery);
-          const matchesName = (user.name || "").toLowerCase().includes(searchQuery);
-          const matchesEmail = (user.email || "").toLowerCase().includes(searchQuery);
-          return matchesUid || matchesName || matchesEmail;
+        if (currentFilter === "registered" && isGuest) return false;
+        if (currentFilter === "guests" && !isGuest) return false;
+        if (currentFilter === "disturbed" && !isDisturbed) return false;
+
+        if (searchQuery !== "") {
+          const uid = (user.user_id || "").toLowerCase();
+          const name = (user.name || "").toLowerCase();
+          const email = (user.email || "").toLowerCase();
+          return uid.includes(searchQuery) || name.includes(searchQuery) || email.includes(searchQuery);
         }
 
         return true;
@@ -837,8 +843,8 @@
       }
 
       body.innerHTML = filtered.map(u => {
-        const isGuest = u.is_guest === 1;
-        const isDisturbed = u.longest_streak > u.current_streak && u.last_activity_date === new Date().toISOString().split("T")[0];
+        const isGuest = Number(u.is_guest) === 1;
+        const isDisturbed = Number(u.longest_streak) > Number(u.current_streak) && u.last_activity_date === today;
 
         return `
           <tr>
