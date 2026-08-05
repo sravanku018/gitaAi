@@ -623,7 +623,8 @@ class StatsRepository(
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
             val response = CoinApi.retrofitService.checkin(mapOf(
                 "user_id" to uid,
-                "client_date" to localDate
+                "client_date" to localDate,
+                "timezone" to java.util.TimeZone.getDefault().id
             ))
             if (response.day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncWithServer(response.day, response.week, localDate)

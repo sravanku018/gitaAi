@@ -111,7 +111,8 @@ data class ShareSlokaRequest(
     val verse: Int? = null,
     val idempotency_key: String? = null,
     val client_date: String? = null,
-    val country_code: String? = null
+    val country_code: String? = null,
+    val timezone: String? = java.util.TimeZone.getDefault().id
 )
 
 data class ClaimGuestRequest(
