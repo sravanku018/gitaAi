@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gita AI — Analytics & Streak Disturbances Dashboard</title>
+  <title>Gita AI — Admin User Profile & Disturbance Management Dashboard</title>
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,6 @@
       padding-bottom: 50px;
     }
 
-    /* Glassmorphism Containers */
     .glass {
       background: var(--card-bg);
       backdrop-filter: blur(16px);
@@ -132,7 +131,6 @@
       gap: 28px;
     }
 
-    /* KPI Summary Cards */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -180,7 +178,6 @@
       color: var(--text-muted);
     }
 
-    /* Search & Filter Bar */
     .search-box {
       padding: 16px 24px;
       display: flex;
@@ -219,7 +216,6 @@
       border-color: var(--primary);
     }
 
-    /* Section Cards */
     .section-card {
       padding: 24px;
     }
@@ -251,7 +247,6 @@
     .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 
-    /* Tables */
     .table-responsive {
       width: 100%;
       overflow-x: auto;
@@ -293,36 +288,39 @@
     }
 
     .avatar {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
       color: #fff;
     }
 
-    /* Modal */
+    /* Modal Overlay & Card */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(8px);
       display: none;
       justify-content: center;
       align-items: center;
       z-index: 1000;
+      padding: 20px;
     }
 
     .modal {
-      width: 90%;
-      max-width: 480px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
       padding: 28px;
       display: flex;
       flex-direction: column;
@@ -333,26 +331,39 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 14px;
     }
 
     .modal-close {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    .form-group.full-width {
+      grid-column: span 2;
     }
 
     .form-group label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-muted);
+      text-transform: uppercase;
     }
 
     .form-input {
@@ -362,9 +373,13 @@
       border-radius: 8px;
       color: #fff;
       font-size: 14px;
+      outline: none;
     }
 
-    /* Loader */
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
     .spinner {
       border: 3px solid rgba(255, 255, 255, 0.1);
       width: 24px;
@@ -385,18 +400,18 @@
 
   <header class="glass">
     <div class="brand">
-      <i class="fa-solid fa-fire-flame-curved"></i>
+      <i class="fa-solid fa-user-gear"></i>
       <div>
-        <h1>Gita AI Dashboard</h1>
-        <p style="font-size: 12px; color: var(--text-muted);">Real-Time Streak Disturbance & Analytics Monitor</p>
+        <h1>Gita AI Admin Dashboard</h1>
+        <p style="font-size: 12px; color: var(--text-muted);">Live Profile Editor & Disturbance Management</p>
       </div>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick="fetchData()">
         <i class="fa-solid fa-rotate-right"></i> Refresh
       </button>
-      <button class="btn btn-primary" onclick="openRestoreModal()">
-        <i class="fa-solid fa-wrench"></i> Restore User Streak
+      <button class="btn btn-primary" onclick="openEditModal()">
+        <i class="fa-solid fa-user-pen"></i> Edit User Profile
       </button>
     </div>
   </header>
@@ -408,7 +423,7 @@
       <div class="kpi-card glass success">
         <span class="kpi-title">Monitored User</span>
         <span class="kpi-value" id="kpi-user">raja21</span>
-        <span class="kpi-subtext">Active Seeker</span>
+        <span class="kpi-subtext" id="kpi-name">Seeker Profile</span>
       </div>
       <div class="kpi-card glass accent">
         <span class="kpi-title">Study Streak</span>
@@ -427,7 +442,7 @@
       </div>
     </div>
 
-    <!-- Live Search -->
+    <!-- Live Search & Profile Inspector -->
     <div class="search-box glass">
       <div class="search-input-group">
         <i class="fa-solid fa-magnifying-glass"></i>
@@ -436,11 +451,11 @@
       <button class="btn btn-primary" onclick="searchUser()">Inspect User</button>
     </div>
 
-    <!-- Active User Detailed Card -->
+    <!-- Active User Profile Inspection Card -->
     <div class="section-card glass">
       <div class="section-header">
         <div class="section-title">
-          <i class="fa-solid fa-user-shield" style="color: var(--primary);"></i>
+          <i class="fa-solid fa-user-check" style="color: var(--primary);"></i>
           <span>Live User Profile Inspection</span>
         </div>
         <span class="badge badge-success" id="user-status-badge">ONLINE</span>
@@ -451,18 +466,20 @@
           <thead>
             <tr>
               <th>User ID</th>
+              <th>Name & Email</th>
               <th>Current Streak</th>
               <th>Longest Streak</th>
               <th>Check-in Progress</th>
               <th>Share Progress</th>
               <th>Krishna Coins</th>
+              <th>Yoga Level</th>
               <th>Last Activity</th>
-              <th>Actions</th>
+              <th>Admin Action</th>
             </tr>
           </thead>
           <tbody id="user-inspect-body">
             <tr>
-              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">
                 <div class="spinner"></div> Loading User Data...
               </td>
             </tr>
@@ -490,13 +507,13 @@
               <th>Issue Type</th>
               <th>Details</th>
               <th>Severity</th>
-              <th>Action</th>
+              <th>Admin Fix</th>
             </tr>
           </thead>
           <tbody id="disturbance-log-body">
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                No active disturbances or streak resets detected. Server is running cleanly ✅
+                No active disturbances or streak resets detected. Database running cleanly ✅
               </td>
             </tr>
           </tbody>
@@ -509,9 +526,9 @@
       <div class="section-header">
         <div class="section-title">
           <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
-          <span>Recent Coin History & Reward Audits</span>
+          <span>Recent Coin History & Audit Logs</span>
         </div>
-        <span class="badge badge-success">Live API Feed</span>
+        <span class="badge badge-success">Live Turso DB Feed</span>
       </div>
 
       <div class="table-responsive">
@@ -539,34 +556,90 @@
 
   </div>
 
-  <!-- Restore Streak Modal -->
-  <div class="modal-overlay" id="restore-modal">
+  <!-- Admin Edit User Profile Modal -->
+  <div class="modal-overlay" id="edit-modal">
     <div class="modal glass">
       <div class="modal-header">
         <h3 style="font-size: 18px; font-weight: 700;">
-          <i class="fa-solid fa-fire-flame-curved" style="color: var(--primary);"></i> Restore User Streak
+          <i class="fa-solid fa-user-pen" style="color: var(--primary);"></i> Admin Edit User Profile
         </h3>
-        <button class="modal-close" onclick="closeRestoreModal()"><i class="fa-solid fa-xmark"></i></button>
+        <button class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="form-group">
-        <label>User ID</label>
-        <input type="text" id="modal-user-id" class="form-input" value="raja21">
+
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>User ID (Target User)</label>
+          <input type="text" id="edit-user-id" class="form-input" value="raja21" readonly style="opacity: 0.7;">
+        </div>
+
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="edit-name" class="form-input" placeholder="Raja">
+        </div>
+
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="edit-email" class="form-input" placeholder="raja@gita.com">
+        </div>
+
+        <div class="form-group">
+          <label>Current Study Streak (Days)</label>
+          <input type="number" id="edit-current-streak" class="form-input" value="22">
+        </div>
+
+        <div class="form-group">
+          <label>Longest Study Streak (Days)</label>
+          <input type="number" id="edit-longest-streak" class="form-input" value="22">
+        </div>
+
+        <div class="form-group">
+          <label>Check-in Day (1 - 7)</label>
+          <input type="number" id="edit-checkin-day" class="form-input" min="1" max="7" value="3">
+        </div>
+
+        <div class="form-group">
+          <label>Check-in Week (1 - 4)</label>
+          <input type="number" id="edit-checkin-week" class="form-input" min="1" max="4" value="1">
+        </div>
+
+        <div class="form-group">
+          <label>Sloka Share Day (1 - 7)</label>
+          <input type="number" id="edit-share-day" class="form-input" min="1" max="7" value="3">
+        </div>
+
+        <div class="form-group">
+          <label>Sloka Share Week (1 - 4)</label>
+          <input type="number" id="edit-share-week" class="form-input" min="1" max="4" value="1">
+        </div>
+
+        <div class="form-group">
+          <label>Krishna Coins Balance</label>
+          <input type="number" id="edit-coins" class="form-input" value="1054">
+        </div>
+
+        <div class="form-group">
+          <label>Days Active</label>
+          <input type="number" id="edit-days-active" class="form-input" value="52">
+        </div>
+
+        <div class="form-group full-width">
+          <label>Yoga Level (1 = Karma, 2 = Bhakti, 3 = Jnana, 4 = Dhyana, 5 = Raja)</label>
+          <input type="number" id="edit-yoga-level" class="form-input" min="1" max="5" value="2">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Target Streak Days</label>
-        <input type="number" id="modal-target-streak" class="form-input" value="22">
-      </div>
+
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
-        <button class="btn btn-secondary" onclick="closeRestoreModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="submitRestoreStreak()">Restore Streak</button>
+        <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveUserProfile()"><i class="fa-solid fa-floppy-disk"></i> Save Profile Changes</button>
       </div>
     </div>
   </div>
 
   <script>
-    const API_BASE = "https://prime-gorilla-49.sravanku018.deno.net";
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
+
+    let currentUserData = null;
 
     async function queryTurso(sql) {
       try {
@@ -600,15 +673,31 @@
     async function fetchData() {
       const searchUser = document.getElementById("user-search-input").value.trim() || "raja21";
       
-      // Fetch User Stats & Checkin Streaks
-      const stats = await queryTurso(`SELECT us.user_id, us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, cs.current_day as checkin_day, cs.current_week as checkin_week, cs.share_day, cs.share_week, cs.last_checkin, cs.last_share FROM user_stats us LEFT JOIN checkin_streaks cs ON cs.user_id = us.user_id WHERE us.user_id = '${searchUser}'`);
+      const stats = await queryTurso(`SELECT u.name, u.email, us.user_id, us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level, cs.current_day as checkin_day, cs.current_week as checkin_week, cs.share_day, cs.share_week, cs.last_checkin, cs.last_share FROM user_stats us LEFT JOIN users u ON u.user_id = us.user_id LEFT JOIN checkin_streaks cs ON cs.user_id = us.user_id WHERE us.user_id = '${searchUser}'`);
       
       if (stats && stats.length > 0) {
-        const user = stats[0];
+        currentUserData = stats[0];
+        const user = currentUserData;
+
         document.getElementById("kpi-user").innerText = user.user_id;
+        document.getElementById("kpi-name").innerText = user.name ? `${user.name} (${user.email || ''})` : "Seeker Profile";
         document.getElementById("kpi-streak").innerText = `${user.current_streak} Days 🔥`;
         document.getElementById("kpi-longest").innerText = user.longest_streak;
         document.getElementById("kpi-checkin").innerText = `Day ${user.checkin_day || 1} / Week ${user.checkin_week || 1}`;
+
+        // Populate Modal Fields
+        document.getElementById("edit-user-id").value = user.user_id;
+        document.getElementById("edit-name").value = user.name || "";
+        document.getElementById("edit-email").value = user.email || "";
+        document.getElementById("edit-current-streak").value = user.current_streak;
+        document.getElementById("edit-longest-streak").value = user.longest_streak;
+        document.getElementById("edit-checkin-day").value = user.checkin_day || 1;
+        document.getElementById("edit-checkin-week").value = user.checkin_week || 1;
+        document.getElementById("edit-share-day").value = user.share_day || 1;
+        document.getElementById("edit-share-week").value = user.share_week || 1;
+        document.getElementById("edit-coins").value = user.krishna_coins;
+        document.getElementById("edit-days-active").value = user.days_active;
+        document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
 
         // Render User Inspection Row
         const inspectBody = document.getElementById("user-inspect-body");
@@ -620,21 +709,23 @@
                 <span>${user.user_id}</span>
               </div>
             </td>
+            <td>${user.name || 'Seeker'}<br><span style="font-size: 11px; color: var(--text-muted);">${user.email || ''}</span></td>
             <td><strong style="color: var(--primary);">${user.current_streak} Days</strong></td>
             <td>${user.longest_streak} Days</td>
             <td>Day ${user.checkin_day || 1} (W${user.checkin_week || 1})</td>
             <td>Day ${user.share_day || 1} (W${user.share_week || 1})</td>
             <td><strong style="color: var(--success);">${user.krishna_coins} 🪙</strong></td>
+            <td>Level ${user.yoga_level || 1}</td>
             <td>${user.last_activity_date || 'N/A'}</td>
             <td>
-              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openRestoreModalFor('${user.user_id}', ${user.longest_streak})">
-                <i class="fa-solid fa-wrench"></i> Fix Streak
+              <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="openEditModal()">
+                <i class="fa-solid fa-user-pen"></i> Edit Profile
               </button>
             </td>
           </tr>
         `;
 
-        // Check Anomaly / Disturbance
+        // Check Disturbance Logs
         const disturbBody = document.getElementById("disturbance-log-body");
         const isDisturbed = user.longest_streak > user.current_streak && user.last_activity_date === new Date().toISOString().split("T")[0];
         
@@ -669,7 +760,7 @@
           disturbBody.innerHTML = `
             <tr>
               <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                No active disturbances or streak resets detected. System is running cleanly ✅
+                No active disturbances or streak resets detected. Database running cleanly ✅
               </td>
             </tr>
           `;
@@ -700,36 +791,49 @@
       fetchData();
     }
 
-    function openRestoreModal() {
-      document.getElementById("restore-modal").style.display = "flex";
+    function openEditModal() {
+      document.getElementById("edit-modal").style.display = "flex";
     }
 
-    function openRestoreModalFor(userId, longest) {
-      document.getElementById("modal-user-id").value = userId;
-      document.getElementById("modal-target-streak").value = longest;
-      document.getElementById("restore-modal").style.display = "flex";
+    function closeEditModal() {
+      document.getElementById("edit-modal").style.display = "none";
     }
 
-    function closeRestoreModal() {
-      document.getElementById("restore-modal").style.display = "none";
-    }
+    async function saveUserProfile() {
+      const uid = document.getElementById("edit-user-id").value.trim();
+      const name = document.getElementById("edit-name").value.trim();
+      const email = document.getElementById("edit-email").value.trim();
+      const curStreak = Number(document.getElementById("edit-current-streak").value);
+      const maxStreak = Number(document.getElementById("edit-longest-streak").value);
+      const checkinDay = Number(document.getElementById("edit-checkin-day").value);
+      const checkinWeek = Number(document.getElementById("edit-checkin-week").value);
+      const shareDay = Number(document.getElementById("edit-share-day").value);
+      const shareWeek = Number(document.getElementById("edit-share-week").value);
+      const coins = Number(document.getElementById("edit-coins").value);
+      const daysActive = Number(document.getElementById("edit-days-active").value);
+      const yogaLevel = Number(document.getElementById("edit-yoga-level").value);
 
-    async function submitRestoreStreak() {
-      const uid = document.getElementById("modal-user-id").value.trim();
-      const streak = Number(document.getElementById("modal-target-streak").value);
+      if (!uid) return alert("User ID required");
 
-      if (!uid) return alert("Please enter User ID");
+      const today = new Date().toISOString().split("T")[0];
 
-      const res = await queryTurso(`UPDATE user_stats SET current_streak = ${streak}, longest_streak = MAX(longest_streak, ${streak}), last_activity_date = '${new Date().toISOString().split("T")[0]}' WHERE user_id = '${uid}'`);
-      await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', 7, 1, 7, 1, '2026-08-04', '2026-08-04') ON CONFLICT(user_id) DO UPDATE SET current_day = 7, current_week = 1, share_day = 7, share_week = 1, last_checkin = '2026-08-04', last_share = '2026-08-04'`);
+      // Update Users table
+      await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
 
-      alert(`Streak restored to ${streak} days for ${uid}!`);
-      closeRestoreModal();
+      // Update User Stats
+      await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
+
+      // Update Checkin & Share Streaks
+      await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
+
+      alert(`User profile & stats updated successfully for ${uid}!`);
+      closeEditModal();
       fetchData();
     }
 
     async function quickFix(uid, longest) {
-      await queryTurso(`UPDATE user_stats SET current_streak = ${longest}, longest_streak = ${longest}, last_activity_date = '${new Date().toISOString().split("T")[0]}' WHERE user_id = '${uid}'`);
+      const today = new Date().toISOString().split("T")[0];
+      await queryTurso(`UPDATE user_stats SET current_streak = ${longest}, longest_streak = ${longest}, last_activity_date = '${today}' WHERE user_id = '${uid}'`);
       alert(`Auto-fixed ${uid}'s streak to ${longest} days!`);
       fetchData();
     }
