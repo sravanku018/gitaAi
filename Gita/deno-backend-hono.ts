@@ -1286,6 +1286,7 @@ app.get("/activity/history", async (c) => {
             COUNT(CASE WHEN source = 'checkin_day' THEN 1 END) as checkins,
             COUNT(CASE WHEN source IN ('quiz_completion', 'battle_quiz') THEN 1 END) as quizzes,
             COUNT(CASE WHEN source = 'share_sloka' THEN 1 END) as shares,
+            COUNT(CASE WHEN source = 'meditation' THEN 1 END) as meditations,
             COUNT(CASE WHEN source = 'voice_chat' THEN 1 END) as voice_chats,
             COUNT(CASE WHEN source = 'battle_quiz' THEN 1 END) as battle_quizzes,
             COUNT(*) as total_events
