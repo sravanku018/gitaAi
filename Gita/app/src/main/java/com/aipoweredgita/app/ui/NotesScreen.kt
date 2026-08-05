@@ -67,7 +67,7 @@ fun NotesScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(notes) { note ->
-                    NoteCard(note, onVerseClick, onDelete = {
+                    NoteCard(note, onDelete = {
                         viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
                     })
                 }
@@ -87,17 +87,16 @@ fun NotesScreen(
 }
 
 @Composable
-private fun NoteCard(note: VerseNote, onVerseClick: (Int, Int) -> Unit, onDelete: () -> Unit) {
+private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onVerseClick(note.chapterNo, note.verseNo) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Chapter ${note.chapterNo}, Verse ${note.verseNo}",
+                        "Chapter ${note.chapterNo}, Sloka ${note.verseNo}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
