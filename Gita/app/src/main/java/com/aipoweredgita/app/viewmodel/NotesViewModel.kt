@@ -48,9 +48,9 @@ class NotesViewModel @Inject constructor(
         }
     }
 
-    fun addNote(chapter: Int, verse: Int, text: String) {
+    fun addNote(chapter: Int, verse: Int, text: String, colorHex: String = "") {
         viewModelScope.launch {
-            noteDao.insertNote(VerseNote(chapterNo = chapter, verseNo = verse, note = text))
+            noteDao.insertNote(VerseNote(chapterNo = chapter, verseNo = verse, note = text, colorHex = colorHex))
             val uid = authPrefs.userId
             if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
                 try {

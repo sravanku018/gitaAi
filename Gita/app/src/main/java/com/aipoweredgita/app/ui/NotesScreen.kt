@@ -1,9 +1,12 @@
 package com.aipoweredgita.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -78,42 +81,87 @@ fun NotesScreen(
     if (showAddDialog) {
         AddNoteDialog(
             onDismiss = { showAddDialog = false },
-            onSave = { chapter, verse, text ->
-                viewModel.addNote(chapter, verse, text)
+            onSave = { chapter, verse, text, colorHex ->
+                viewModel.addNote(chapter, verse, text, colorHex)
                 showAddDialog = false
             }
         )
     }
 }
 
+val NOTE_COLORS = listOf(
+    "#FFB300", // Saffron Gold
+    "#4CAF50", // Emerald Green
+    "#2196F3", // Royal Blue
+    "#E91E63", // Rose Pink
+    "#9C27B0", // Deep Purple
+    "#FF5722", // Sunset Amber
+    "#00BCD4"  // Celestial Teal
+)
+
+fun parseColorHex(hex: String, defaultIndex: Int = 0): androidx.compose.ui.graphics.Color {
+    return try {
+        if (hex.isNotBlank() && hex.startsWith("#")) {
+            androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex))
+        } else {
+            val idx = kotlin.math.abs(defaultIndex) % NOTE_COLORS.size
+            androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(NOTE_COLORS[idx]))
+        }
+    } catch (_: Exception) {
+        val idx = kotlin.math.abs(defaultIndex) % NOTE_COLORS.size
+        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(NOTE_COLORS[idx]))
+    }
+}
+
 @Composable
 private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
+    val accentColor = parseColorHex(note.colorHex, note.id + note.chapterNo * 31 + note.verseNo)
+    val cardBg = accentColor.copy(alpha = 0.12f)
+
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBg)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Chapter ${note.chapterNo}, Sloka ${note.verseNo}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            // Left color accent bar
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(6.dp)
+                    .background(accentColor)
+            )
+            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Color indicator dot
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(accentColor, shape = androidx.compose.foundation.shape.CircleShape)
                     )
-                    Text(
-                        java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
-                            .format(java.util.Date(note.updatedAt)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Chapter ${note.chapterNo}, Sloka ${note.verseNo}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accentColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                                .format(java.util.Date(note.updatedAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                    }
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                }
+                Spacer(Modifier.height(8.dp))
+                Text(note.note, style = MaterialTheme.typography.bodyMedium, maxLines = 8)
             }
-            Spacer(Modifier.height(8.dp))
-            Text(note.note, style = MaterialTheme.typography.bodyMedium, maxLines = 5)
         }
     }
 }
@@ -121,11 +169,12 @@ private fun NoteCard(note: VerseNote, onDelete: () -> Unit) {
 @Composable
 fun AddNoteDialog(
     onDismiss: () -> Unit,
-    onSave: (chapter: Int, verse: Int, text: String) -> Unit
+    onSave: (chapter: Int, verse: Int, text: String, colorHex: String) -> Unit
 ) {
     var chapter by remember { mutableStateOf("") }
     var verse by remember { mutableStateOf("") }
     var noteText by remember { mutableStateOf("") }
+    var selectedColorHex by remember { mutableStateOf(NOTE_COLORS.random()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var chapterError by remember { mutableStateOf(false) }
     var verseError by remember { mutableStateOf(false) }
@@ -176,6 +225,31 @@ fun AddNoteDialog(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                     maxLines = 6
                 )
+                
+                Spacer(Modifier.height(4.dp))
+                Text("Note Color", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    NOTE_COLORS.forEach { hex ->
+                        val color = parseColorHex(hex)
+                        val isSelected = hex.equals(selectedColorHex, ignoreCase = true)
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(color, shape = CircleShape)
+                                .border(
+                                    width = if (isSelected) 3.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else androidx.compose.ui.graphics.Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable { selectedColorHex = hex }
+                        )
+                    }
+                }
+
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage!!,
@@ -203,7 +277,7 @@ fun AddNoteDialog(
                         verseError -> errorMessage = "Invalid Sloka. Chapter $ch only has $maxVerse slokas."
                         textError -> errorMessage = "Note content cannot be empty."
                         else -> {
-                            onSave(ch!!, vs!!, noteText.trim())
+                            onSave(ch!!, vs!!, noteText.trim(), selectedColorHex)
                         }
                     }
                 }
