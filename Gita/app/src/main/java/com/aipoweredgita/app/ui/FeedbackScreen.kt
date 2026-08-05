@@ -43,25 +43,41 @@ fun FeedbackScreen(
     var isSubmitting by remember { mutableStateOf(false) }
 
     val goldColor = Color(0xFFF59E0B)
-    val cardBg = Color(0xFF161B2E)
     val maxChars = 200
+
+    // Theme-aware colors
+    val bgColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onSurfaceMuted = MaterialTheme.colorScheme.onSurfaceVariant
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Feedback & Complaints", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = {
+                    Text(
+                        "Help Centre",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0D0F17))
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         bottomBar = {
-            // Prominent Bottom Submit Button Bar
             Surface(
-                color = Color(0xFF0D0F17),
+                color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
@@ -119,7 +135,10 @@ fun FeedbackScreen(
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isSubmitting) {
-                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(
+                            color = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
                     } else {
                         Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black)
                         Spacer(Modifier.width(10.dp))
@@ -133,7 +152,7 @@ fun FeedbackScreen(
                 }
             }
         },
-        containerColor = Color(0xFF0D0F17)
+        containerColor = bgColor
     ) { padding ->
         Column(
             modifier = Modifier
@@ -145,7 +164,7 @@ fun FeedbackScreen(
         ) {
             Text(
                 text = "We value your input! Share feedback or report an issue directly to the admin (Max 200 characters).",
-                color = Color.LightGray,
+                color = onSurfaceMuted,
                 fontSize = 14.sp
             )
 
@@ -160,7 +179,7 @@ fun FeedbackScreen(
                         modifier = Modifier
                             .weight(1f)
                             .background(
-                                color = if (isSelected) goldColor else cardBg,
+                                color = if (isSelected) goldColor else surfaceColor,
                                 shape = RoundedCornerShape(12.dp)
                             )
                             .clickable { feedbackType = type }
@@ -170,7 +189,7 @@ fun FeedbackScreen(
                         Text(
                             text = if (type == "Feedback") "💡 Feedback" else "🚨 Complaint",
                             fontWeight = FontWeight.Bold,
-                            color = if (isSelected) Color.Black else Color.White
+                            color = if (isSelected) Color.Black else onSurfaceColor
                         )
                     }
                 }
@@ -184,11 +203,11 @@ fun FeedbackScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = goldColor,
-                    unfocusedBorderColor = Color.Gray,
+                    unfocusedBorderColor = onSurfaceMuted,
                     focusedLabelColor = goldColor,
-                    unfocusedLabelColor = Color.Gray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = onSurfaceMuted,
+                    focusedTextColor = onSurfaceColor,
+                    unfocusedTextColor = onSurfaceColor
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -204,18 +223,18 @@ fun FeedbackScreen(
                         .height(180.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = goldColor,
-                        unfocusedBorderColor = Color.Gray,
+                        unfocusedBorderColor = onSurfaceMuted,
                         focusedLabelColor = goldColor,
-                        unfocusedLabelColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedLabelColor = onSurfaceMuted,
+                        focusedTextColor = onSurfaceColor,
+                        unfocusedTextColor = onSurfaceColor
                     ),
                     shape = RoundedCornerShape(12.dp),
                     maxLines = 8
                 )
                 Text(
                     text = "${message.length} / $maxChars characters",
-                    color = if (message.length >= maxChars) Color(0xFFEF4444) else Color.Gray,
+                    color = if (message.length >= maxChars) Color(0xFFEF4444) else onSurfaceMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.End)
                 )
