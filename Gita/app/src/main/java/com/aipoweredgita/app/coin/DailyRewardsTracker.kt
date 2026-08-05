@@ -460,4 +460,20 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         }
         return newState
     }
+
+    fun restoreCheckinAndShareStreaks(targetDay: Int = 7) = synchronized(this) {
+        val state = getState()
+        val today = now()
+        val yesterday = yesterdayStr(today)
+        val restoredDay = targetDay.coerceIn(1, 7)
+        val updatedState = state.copy(
+            checkinDay = restoredDay,
+            lastCheckinDate = yesterday,
+            isCheckinSynced = false,
+            shareDay = restoredDay,
+            lastShareDate = yesterday,
+            isShareSynced = false
+        )
+        saveState(updatedState)
+    }
 }
