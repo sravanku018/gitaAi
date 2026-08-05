@@ -24,7 +24,11 @@ class LoginViewModel @Inject constructor(
 
     fun handleLoginSuccess(userId: String) {
         viewModelScope.launch {
-            userStatsDao.insertIfEmpty(UserStats(userId = userId))
+            userStatsDao.updateUserId(userId)
+            val existing = userStatsDao.getUserStatsOnce()
+            if (existing == null) {
+                userStatsDao.insertStats(UserStats(id = 1, userId = userId))
+            }
             statsRepository.refreshUserState(userId)
         }
     }

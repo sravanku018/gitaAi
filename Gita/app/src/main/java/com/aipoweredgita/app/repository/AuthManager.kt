@@ -211,6 +211,16 @@ if (response.success) {
             }
         }
         authPrefs.clearLoginState()
+        try {
+            val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+            db.userStatsDao().updateUserId("")
+            db.userStatsDao().updateProfile("", "")
+            db.userStatsDao().insertStats(com.aipoweredgita.app.database.UserStats(id = 1, userId = "", krishnaCoins = 0, serverUpdatedAt = ""))
+            db.chatSummaryDao().deleteSummary("krishna-guest-${java.time.LocalDate.now()}")
+            db.voiceChatMessageDao().deleteAllMessages()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reset Room database on logout", e)
+        }
     }
 
     /**

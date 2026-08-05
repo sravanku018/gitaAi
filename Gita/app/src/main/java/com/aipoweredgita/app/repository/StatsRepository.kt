@@ -99,7 +99,13 @@ class StatsRepository(
         val token = authPrefs.token ?: return
         try {
             val balance = CoinApi.retrofitService.getBalance(uid, "Bearer $token")
-            val currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
+            var currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
+
+            // If user changed or user_stats has different userId, update userId and reset staleness guard
+            if (currentStats.userId != uid) {
+                userStatsDao.updateUserId(uid)
+                currentStats = currentStats.copy(userId = uid, serverUpdatedAt = "")
+            }
 
             // Server timestamp guard against stale overwrites
             val serverUpdated = balance.updated_at

@@ -152,9 +152,12 @@ class AuthPreferences(context: Context) {
             commit()
         }
         // Always remove old token first to prevent token leak across accounts
+        val authTokenToSave = token
         securePrefs.edit().apply {
             remove(KEY_TOKEN)
-            token?.let { putString(KEY_TOKEN, it) }
+            if (!authTokenToSave.isNullOrEmpty()) {
+                putString(KEY_TOKEN, authTokenToSave)
+            }
             commit()
         }
     }
