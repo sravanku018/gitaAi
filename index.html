@@ -587,6 +587,10 @@
           <label>Description</label>
           <input type="text" id="edit-coin-description" class="form-input" placeholder="Transaction description or note">
         </div>
+        <div class="form-group full-width">
+          <label>Date & Time (YYYY-MM-DD HH:MM:SS)</label>
+          <input type="text" id="edit-coin-date" class="form-input" placeholder="Leave empty for current timestamp">
+        </div>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: space-between; margin-top: 20px; align-items: center;">
@@ -1104,6 +1108,7 @@
       document.getElementById("edit-coin-amount").value = tx.amount || 0;
       document.getElementById("edit-coin-source").value = tx.source || "";
       document.getElementById("edit-coin-description").value = tx.description || "";
+      document.getElementById("edit-coin-date").value = tx.created_at || "";
       document.getElementById("btn-delete-coin").style.display = "inline-block";
 
       document.getElementById("coin-modal").style.display = "flex";
@@ -1117,6 +1122,8 @@
       document.getElementById("edit-coin-amount").value = 10;
       document.getElementById("edit-coin-source").value = "admin_adjustment";
       document.getElementById("edit-coin-description").value = "Manual coin grant by admin";
+      const nowFormatted = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      document.getElementById("edit-coin-date").value = nowFormatted;
       document.getElementById("btn-delete-coin").style.display = "none";
 
       document.getElementById("coin-modal").style.display = "flex";
@@ -1134,8 +1141,10 @@
         const amount = Number(document.getElementById("edit-coin-amount").value) || 0;
         const rawSource = document.getElementById("edit-coin-source").value.trim();
         const rawDesc = document.getElementById("edit-coin-description").value.trim();
+        const rawDate = document.getElementById("edit-coin-date").value.trim();
         const source = rawSource.replace(/'/g, "''");
         const desc = rawDesc.replace(/'/g, "''");
+        const dateStr = rawDate ? rawDate.replace(/'/g, "''") : null;
 
         if (!uid) {
           alert("Please enter a User ID");
@@ -1154,11 +1163,13 @@
           const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
           delta = newNet - oldNet;
 
-          await queryTurso(`UPDATE coin_transactions SET user_id = '${uid}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}' WHERE id = ${id}`);
+          const dateUpdateSql = dateStr ? `, created_at = '${dateStr}'` : '';
+          await queryTurso(`UPDATE coin_transactions SET user_id = '${uid}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}'${dateUpdateSql} WHERE id = ${id}`);
           alert(`✅ Transaction #${id} updated! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
         } else {
           delta = newNet;
-          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${amount}, '${type}', '${source}', '${desc}', datetime('now'))`);
+          const dateInsertSql = dateStr ? `'${dateStr}'` : "datetime('now')";
+          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${amount}, '${type}', '${source}', '${desc}', ${dateInsertSql})`);
           alert(`✅ New coin transaction added! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
         }
 
