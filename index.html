@@ -314,7 +314,12 @@
               <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
               <span>Live Coin History & Transaction Audit Log</span>
             </div>
-            <span class="badge badge-success">Auto-Logged to Turso DB</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn btn-primary btn-sm" onclick="openAddCoinModal()" style="padding: 6px 12px; font-size: 12px;">
+                <i class="fa-solid fa-plus"></i> Add Transaction
+              </button>
+              <span class="badge badge-success">Auto-Logged to Turso DB</span>
+            </div>
           </div>
 
           <div class="table-responsive">
@@ -328,10 +333,11 @@
                   <th>Source</th>
                   <th>Description</th>
                   <th>Date & Time</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="coin-history-body">
-                <tr><td colspan="7" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>
               </tbody>
             </table>
           </div>
@@ -491,12 +497,17 @@
 
       <!-- DOSSIER TAB 3: USER COIN HISTORY -->
       <div class="dossier-view" id="dossier-view-coins" style="display: none;">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <button class="btn btn-primary btn-sm" onclick="openAddCoinModal(activeDossierUser?.user_id)" style="padding: 6px 12px; font-size: 12px;">
+            <i class="fa-solid fa-plus"></i> Add Transaction
+          </button>
+        </div>
         <div class="table-responsive">
           <table>
             <thead>
-              <tr><th>ID</th><th>Type</th><th>Amount</th><th>Source</th><th>Description</th><th>Date</th></tr>
+              <tr><th>ID</th><th>Type</th><th>Amount</th><th>Source</th><th>Description</th><th>Date</th><th>Actions</th></tr>
             </thead>
-            <tbody id="user-coins-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+            <tbody id="user-coins-body"><tr><td colspan="7" style="text-align:center;">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -540,6 +551,54 @@
     </div>
   </div>
 
+  <!-- EDIT / ADD COIN TRANSACTION MODAL -->
+  <div class="modal-overlay" id="coin-modal">
+    <div class="modal glass" style="max-width: 500px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 18px; font-weight: 700;" id="coin-modal-title">Edit Coin Transaction</h3>
+          <p style="font-size: 12px; color: var(--text-muted);" id="coin-modal-sub">Modify transaction entry live in Turso DB</p>
+        </div>
+        <button class="modal-close" onclick="closeCoinModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-grid" style="margin-top: 10px;">
+        <input type="hidden" id="edit-coin-id">
+        <div class="form-group full-width">
+          <label>User ID</label>
+          <input type="text" id="edit-coin-user-id" class="form-input" placeholder="User ID string">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="edit-coin-type" class="form-input">
+            <option value="EARN">EARN 🟢</option>
+            <option value="SPEND">SPEND 🔴</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (Coins)</label>
+          <input type="number" id="edit-coin-amount" class="form-input" min="1" value="10">
+        </div>
+        <div class="form-group full-width">
+          <label>Source</label>
+          <input type="text" id="edit-coin-source" class="form-input" placeholder="e.g. quiz_reward, meditation, admin_adjustment">
+        </div>
+        <div class="form-group full-width">
+          <label>Description</label>
+          <input type="text" id="edit-coin-description" class="form-input" placeholder="Transaction description or note">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: space-between; margin-top: 20px; align-items: center;">
+        <button class="btn btn-danger" id="btn-delete-coin" onclick="deleteCoinTransaction()"><i class="fa-solid fa-trash"></i> Delete</button>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="closeCoinModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveCoinTransaction()"><i class="fa-solid fa-floppy-disk"></i> Save Transaction</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
@@ -551,6 +610,8 @@
     const dirtySet = new Set();  // user_ids edited by admin this session
     const newSet   = new Set();  // user_ids with days_active === 1 (first login)
     let activeDossierUser = null;
+    let currentCoinLogs = [];
+    let currentDossierCoins = [];
 
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
@@ -889,10 +950,23 @@
       }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
 
       // 2. User Coins History
-      const coins = await queryTurso(`SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+      const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+      currentDossierCoins = coins || [];
       document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
-        <tr><td>#${c.id}</td><td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td><td><strong>${c.amount} 🪙</strong></td><td><code>${c.source}</code></td><td>${c.description}</td><td>${c.created_at}</td></tr>
-      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+        <tr>
+          <td>#${c.id}</td>
+          <td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td>
+          <td><strong>${c.amount} 🪙</strong></td>
+          <td><code>${c.source}</code></td>
+          <td>${c.description || ''}</td>
+          <td>${c.created_at || ''}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${c.id})" style="padding: 3px 8px; font-size: 11px;">
+              <i class="fa-solid fa-pen"></i> Edit
+            </button>
+          </td>
+        </tr>
+      `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
 
       // 3. User Meditation Sessions
       const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
@@ -915,11 +989,27 @@
 
     async function fetchCoinHistoryLog() {
       const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+      currentCoinLogs = logs || [];
       const body = document.getElementById("coin-history-body");
       if (logs && logs.length > 0) {
         body.innerHTML = logs.map(l => `
-          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge ${l.type==='EARN'?'badge-success':'badge-danger'}">${l.type}</span></td><td><strong>${l.amount} 🪙</strong></td><td><code>${l.source}</code></td><td>${l.description}</td><td>${l.created_at}</td></tr>
+          <tr>
+            <td>#${l.id}</td>
+            <td><strong>${l.user_id}</strong></td>
+            <td><span class="badge ${l.type==='EARN'?'badge-success':'badge-danger'}">${l.type}</span></td>
+            <td><strong>${l.amount} 🪙</strong></td>
+            <td><code>${l.source}</code></td>
+            <td>${l.description || ''}</td>
+            <td>${l.created_at || ''}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${l.id})" style="padding: 3px 8px; font-size: 11px;">
+                <i class="fa-solid fa-pen"></i> Edit
+              </button>
+            </td>
+          </tr>
         `).join("");
+      } else {
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;">No coin history found.</td></tr>`;
       }
     }
 
@@ -992,6 +1082,102 @@
       } catch (err) {
         console.error("Save profile error:", err);
         alert(`❌ Failed to save profile: ${err.message || err}`);
+      }
+    }
+
+    // ── COIN TRANSACTION EDIT / ADD / DELETE FUNCTIONS ──
+    async function openEditCoinModal(id) {
+      let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => c.id === id);
+      if (!tx) {
+        const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
+        if (res && res.length > 0) tx = res[0];
+      }
+      if (!tx) {
+        alert("Transaction record not found!");
+        return;
+      }
+
+      document.getElementById("coin-modal-title").innerText = `Edit Transaction #${id}`;
+      document.getElementById("edit-coin-id").value = tx.id;
+      document.getElementById("edit-coin-user-id").value = tx.user_id;
+      document.getElementById("edit-coin-type").value = tx.type || "EARN";
+      document.getElementById("edit-coin-amount").value = tx.amount || 0;
+      document.getElementById("edit-coin-source").value = tx.source || "";
+      document.getElementById("edit-coin-description").value = tx.description || "";
+      document.getElementById("btn-delete-coin").style.display = "inline-block";
+
+      document.getElementById("coin-modal").style.display = "flex";
+    }
+
+    function openAddCoinModal(presetUserId = "") {
+      document.getElementById("coin-modal-title").innerText = "Add New Coin Transaction";
+      document.getElementById("edit-coin-id").value = "";
+      document.getElementById("edit-coin-user-id").value = presetUserId || (activeDossierUser ? activeDossierUser.user_id : "");
+      document.getElementById("edit-coin-type").value = "EARN";
+      document.getElementById("edit-coin-amount").value = 10;
+      document.getElementById("edit-coin-source").value = "admin_adjustment";
+      document.getElementById("edit-coin-description").value = "Manual coin grant by admin";
+      document.getElementById("btn-delete-coin").style.display = "none";
+
+      document.getElementById("coin-modal").style.display = "flex";
+    }
+
+    function closeCoinModal() {
+      document.getElementById("coin-modal").style.display = "none";
+    }
+
+    async function saveCoinTransaction() {
+      try {
+        const id = document.getElementById("edit-coin-id").value;
+        const uid = document.getElementById("edit-coin-user-id").value.trim();
+        const type = document.getElementById("edit-coin-type").value;
+        const amount = Number(document.getElementById("edit-coin-amount").value) || 0;
+        const rawSource = document.getElementById("edit-coin-source").value.trim();
+        const rawDesc = document.getElementById("edit-coin-description").value.trim();
+        const source = rawSource.replace(/'/g, "''");
+        const desc = rawDesc.replace(/'/g, "''");
+
+        if (!uid) {
+          alert("Please enter a User ID");
+          return;
+        }
+
+        if (id) {
+          await queryTurso(`UPDATE coin_transactions SET user_id = '${uid}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}' WHERE id = ${id}`);
+          alert(`✅ Transaction #${id} updated successfully!`);
+        } else {
+          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${amount}, '${type}', '${source}', '${desc}', datetime('now'))`);
+          alert(`✅ New coin transaction added for user ${uid}!`);
+        }
+
+        closeCoinModal();
+        fetchCoinHistoryLog();
+        if (activeDossierUser && activeDossierUser.user_id === uid) {
+          loadUserIsolatedData(uid);
+        }
+      } catch (err) {
+        console.error("Save transaction error:", err);
+        alert(`❌ Failed to save transaction: ${err.message || err}`);
+      }
+    }
+
+    async function deleteCoinTransaction() {
+      const id = document.getElementById("edit-coin-id").value;
+      if (!id) return;
+      if (!confirm(`Are you sure you want to delete Coin Transaction #${id}? This cannot be undone.`)) return;
+
+      try {
+        const uid = document.getElementById("edit-coin-user-id").value;
+        await queryTurso(`DELETE FROM coin_transactions WHERE id = ${id}`);
+        alert(`✅ Transaction #${id} deleted.`);
+        closeCoinModal();
+        fetchCoinHistoryLog();
+        if (activeDossierUser && activeDossierUser.user_id === uid) {
+          loadUserIsolatedData(uid);
+        }
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        alert(`❌ Failed to delete transaction: ${err.message || err}`);
       }
     }
   </script>
