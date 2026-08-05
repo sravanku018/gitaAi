@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
@@ -341,19 +342,54 @@ fun MeditationTimerScreen(
             Spacer(Modifier.height(24.dp))
 
             if (!uiState.isRunning) {
-                // Duration selection
-                Text("Choose Duration", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MeditationDuration.entries.forEach { duration ->
-                        FilterChip(
-                            selected = uiState.selectedDuration == duration,
-                            onClick = { viewModel.selectDuration(duration) },
-                            label = { Text(duration.label) }
+                // Meditation Reward Banner
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF261D0C)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "🧘 Meditate & Earn Krishna Coins 🪙",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color(0xFFF59E0B),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "5m = +10 🪙  |  10m = +20 🪙  |  15m = +30 🪙  |  20m = +40 🪙",
+                            fontSize = 12.sp,
+                            color = Color.LightGray
                         )
                     }
                 }
-                Spacer(Modifier.height(48.dp))
+
+                Spacer(Modifier.height(20.dp))
+
+                // Duration selection
+                Text("Choose Duration", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MeditationDuration.entries.forEach { duration ->
+                        val coins = duration.minutes * 2
+                        FilterChip(
+                            selected = uiState.selectedDuration == duration,
+                            onClick = { viewModel.selectDuration(duration) },
+                            label = { Text("${duration.label} (+${coins}🪙)") }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Reward: +${uiState.selectedDuration.minutes * 2} Krishna Coins 🪙 upon completion",
+                    color = Color(0xFFF59E0B),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(32.dp))
                 Button(
                     onClick = {
                         viewModel.startTimer()
