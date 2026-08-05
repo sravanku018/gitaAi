@@ -1419,6 +1419,63 @@ app.post("/admin/restore-streak", async (c) => {
   return c.json({ success: true, user_id, current_streak: newStreak, longest_streak: newLongest });
 });
 
+// ─── MEDITATION TIME TRACKER & REWARDS ────────────────────────
+app.post("/meditation/log", async (c) => {
+  const { user_id, minutes } = await c.req.json();
+  if (!user_id || !minutes) return c.json({ error: "user_id and minutes required" }, 400);
+
+  const min = Math.max(1, Number(minutes));
+  // Reward Rule: 5 min -> 10 coins, 10 min -> 20 coins, 15 min -> 30 coins, 20 min -> 40 coins
+  const coinsEarned = Math.min(40, Math.floor(min / 5) * 10);
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  await db.execute({
+    sql: `INSERT INTO meditation_sessions (user_id, minutes, coins_earned, session_date) VALUES (?, ?, ?, ?)`,
+    args: [user_id, min, coinsEarned, todayStr],
+  });
+
+  if (coinsEarned > 0) {
+    await db.execute({
+      sql: `UPDATE user_stats SET krishna_coins = MIN(krishna_coins + ?, 10000), last_activity_date = ?, updated_at = datetime('now') WHERE user_id = ?`,
+      args: [coinsEarned, todayStr, user_id],
+    });
+
+    await db.execute({
+      sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, ?, 'EARN', 'meditation', ?, datetime('now'))`,
+      args: [user_id, coinsEarned, `Meditation ${min} mins reward (${coinsEarned} coins)`],
+    });
+  }
+
+  const stats = await db.execute({ sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`, args: [user_id] });
+  return c.json({ success: true, user_id, minutes: min, coins_earned: coinsEarned, total_coins: stats.rows[0]?.krishna_coins ?? 0 });
+});
+
+app.get("/meditation/history", async (c) => {
+  const user_id = c.req.query("user_id");
+  if (!user_id) return c.json({ error: "user_id required" }, 400);
+  const result = await db.execute({
+    sql: `SELECT id, minutes, coins_earned, session_date, created_at FROM meditation_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 50`,
+    args: [user_id],
+  });
+  return c.json(result.rows);
+});
+
+// ─── USER FEEDBACK & COMPLAINTS ───────────────────────────────
+app.post("/feedback", async (c) => {
+  const { user_id, type = "feedback", subject = "", message } = await c.req.json();
+  if (!user_id || !message) return c.json({ error: "user_id and message required" }, 400);
+  await db.execute({
+    sql: `INSERT INTO user_feedback (user_id, type, subject, message, status) VALUES (?, ?, ?, ?, 'open')`,
+    args: [user_id, type, subject, message],
+  });
+  return c.json({ success: true, message: "Feedback submitted successfully" });
+});
+
+app.get("/feedback/list", async (c) => {
+  const result = await db.execute(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 100`);
+  return c.json(result.rows);
+});
+
 // ─── ERROR HANDLER (replaces try/catch wrapper around everything) ──
 app.onError((error, c) => {
   console.error("FULL ERROR:", error);
