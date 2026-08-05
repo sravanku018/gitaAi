@@ -75,11 +75,13 @@ fun FeedbackScreen(
                         isSubmitting = true
                         coroutineScope.launch(Dispatchers.IO) {
                             val userId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId ?: "guest"
+                            val nowStr = java.text.SimpleDateFormat("yyyy-MM-DD HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
                             val json = JSONObject().apply {
                                 put("user_id", userId)
                                 put("type", feedbackType.lowercase())
                                 put("subject", subject.ifBlank { "General $feedbackType" })
                                 put("message", message.trim().take(maxChars))
+                                put("client_timestamp", nowStr)
                             }
 
                             val client = OkHttpClient()

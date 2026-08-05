@@ -1513,13 +1513,19 @@ app.get("/meditation/history", async (c) => {
 
 // ─── USER FEEDBACK & COMPLAINTS ───────────────────────────────
 app.post("/feedback", async (c) => {
-  const { user_id, type = "feedback", subject = "", message } = await c.req.json();
+  const { user_id, type = "feedback", subject = "", message, client_timestamp } = await c.req.json();
   if (!user_id || !message) return c.json({ error: "user_id and message required" }, 400);
+
+  // Enforce 200 character max limit & auto timestamp
+  const trimmedMsg = String(message).trim().slice(0, 200);
+  const trimmedSub = String(subject).trim().slice(0, 100);
+  const timestamp = client_timestamp || new Date().toISOString().replace("T", " ").substring(0, 19);
+
   await db.execute({
-    sql: `INSERT INTO user_feedback (user_id, type, subject, message, status) VALUES (?, ?, ?, ?, 'open')`,
-    args: [user_id, type, subject, message],
+    sql: `INSERT INTO user_feedback (user_id, type, subject, message, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)`,
+    args: [user_id, type, trimmedSub, trimmedMsg, timestamp],
   });
-  return c.json({ success: true, message: "Feedback submitted successfully" });
+  return c.json({ success: true, message: "Feedback submitted successfully", created_at: timestamp, content: trimmedMsg });
 });
 
 app.get("/feedback/list", async (c) => {
