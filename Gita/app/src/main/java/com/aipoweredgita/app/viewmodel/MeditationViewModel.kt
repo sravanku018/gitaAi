@@ -135,7 +135,7 @@ class MeditationViewModel @Inject constructor(
         val minutes = _uiState.value.selectedDuration.minutes
         val coins = minutes * 2
         viewModelScope.launch {
-            statsRepository.claimDailyReward(coins, "Meditation reward")
+            statsRepository.claimDailyReward(coins, "Meditation practice - $minutes mins")
         }
     }
 
