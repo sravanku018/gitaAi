@@ -249,8 +249,14 @@ fun DrawerContent(
                 onClick = onNavigateToFavorites
             )
             TwitterMenuItem(
-                icon = { Icon(imageVector = Icons.Filled.Feedback, contentDescription = "Feedback & Complaints") },
-                title = "Feedback & Complaints",
+                icon = { Icon(imageVector = Icons.Filled.Lightbulb, contentDescription = "Seeker Ideas & Feedback") },
+                title = "Seeker Ideas & Feedback",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToFeedback
+            )
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.Feedback, contentDescription = "Support & Complaints") },
+                title = "Support & Complaints",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToFeedback
             )

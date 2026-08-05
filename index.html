@@ -162,9 +162,13 @@
           <i class="fa-solid fa-spa"></i>
           <span>Meditation Tracker</span>
         </li>
-        <li class="nav-item" onclick="switchView('feedback', this)">
-          <i class="fa-solid fa-comments"></i>
-          <span>Feedback & Complaints</span>
+        <li class="nav-item" onclick="switchView('ideas', this)">
+          <i class="fa-solid fa-lightbulb" style="color:#f59e0b;"></i>
+          <span>Seeker Ideas & Feedback</span>
+        </li>
+        <li class="nav-item" onclick="switchView('grievances', this)">
+          <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>
+          <span>Support Tickets & Grievances</span>
         </li>
         <li class="nav-item" onclick="switchView('notes', this)">
           <i class="fa-solid fa-book-bookmark"></i>
@@ -346,15 +350,15 @@
         </div>
       </div>
 
-      <!-- VIEW 5: FEEDBACK & COMPLAINTS -->
-      <div class="view-section" id="view-feedback">
+      <!-- VIEW 5: SEEKER IDEAS & FEEDBACK -->
+      <div class="view-section" id="view-ideas">
         <div class="section-card glass">
           <div class="section-header">
             <div class="section-title">
-              <i class="fa-solid fa-comments" style="color: var(--danger);"></i>
-              <span>User Feedback & Complaints Box</span>
+              <i class="fa-solid fa-lightbulb" style="color: var(--primary);"></i>
+              <span>Seeker Ideas, Suggestions & Praise Box</span>
             </div>
-            <span class="badge badge-danger" id="feedback-count-badge">0 Items</span>
+            <span class="badge badge-warning" id="ideas-count-badge">0 Ideas</span>
           </div>
 
           <div class="table-responsive">
@@ -363,22 +367,52 @@
                 <tr>
                   <th>ID</th>
                   <th>User ID</th>
-                  <th>Category</th>
                   <th>Subject</th>
-                  <th>Message / Complaint</th>
+                  <th>Feedback & Idea Details</th>
                   <th>Status</th>
                   <th>Date & Time</th>
                 </tr>
               </thead>
-              <tbody id="feedback-body">
-                <tr><td colspan="7" style="text-align:center; padding:30px;">No feedback or complaints submitted yet.</td></tr>
+              <tbody id="ideas-body">
+                <tr><td colspan="6" style="text-align:center; padding:30px;">No feedback or ideas submitted yet.</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- VIEW 6: SAVED VERSE NOTES -->
+      <!-- VIEW 6: SUPPORT TICKETS & GRIEVANCES -->
+      <div class="view-section" id="view-grievances">
+        <div class="section-card glass">
+          <div class="section-header">
+            <div class="section-title">
+              <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i>
+              <span>Support Tickets & Grievance Center</span>
+            </div>
+            <span class="badge badge-danger" id="grievance-count-badge">0 Complaints</span>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ticket ID</th>
+                  <th>User ID</th>
+                  <th>Grievance Subject</th>
+                  <th>Complaint Message</th>
+                  <th>Status</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody id="grievances-body">
+                <tr><td colspan="6" style="text-align:center; padding:30px;">No complaints or support tickets submitted.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 7: SAVED VERSE NOTES -->
       <div class="view-section" id="view-notes">
         <div class="section-card glass">
           <div class="section-header">
@@ -428,7 +462,8 @@
         <button class="dossier-tab" onclick="switchDossierTab('studyplans', this)">🎯 Study Plans</button>
         <button class="dossier-tab" onclick="switchDossierTab('coins', this)">🪙 Coin History</button>
         <button class="dossier-tab" onclick="switchDossierTab('meditation', this)">🧘 Meditation Logs</button>
-        <button class="dossier-tab" onclick="switchDossierTab('feedback', this)">💬 Complaints</button>
+        <button class="dossier-tab" onclick="switchDossierTab('ideas', this)">💡 Ideas & Feedback</button>
+        <button class="dossier-tab" onclick="switchDossierTab('grievances', this)">🚨 Support Tickets</button>
         <button class="dossier-tab" onclick="switchDossierTab('notes', this)">📖 Verse Notes</button>
       </div>
 
@@ -490,19 +525,31 @@
         </div>
       </div>
 
-      <!-- DOSSIER TAB 5: USER COMPLAINTS -->
-      <div class="dossier-view" id="dossier-view-feedback" style="display: none;">
+      <!-- DOSSIER TAB 5: USER IDEAS & FEEDBACK -->
+      <div class="dossier-view" id="dossier-view-ideas" style="display: none;">
         <div class="table-responsive">
           <table>
             <thead>
-              <tr><th>ID</th><th>Category</th><th>Subject</th><th>Message</th><th>Status</th><th>Date & Time</th></tr>
+              <tr><th>ID</th><th>Subject</th><th>Idea / Feedback</th><th>Status</th><th>Date & Time</th></tr>
             </thead>
-            <tbody id="user-feedback-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+            <tbody id="user-ideas-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
 
-      <!-- DOSSIER TAB 6: USER VERSE NOTES -->
+      <!-- DOSSIER TAB 6: USER COMPLAINTS / TICKETS -->
+      <div class="dossier-view" id="dossier-view-grievances" style="display: none;">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>Ticket ID</th><th>Subject</th><th>Complaint</th><th>Status</th><th>Date & Time</th></tr>
+            </thead>
+            <tbody id="user-grievances-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOSSIER TAB 7: USER VERSE NOTES -->
       <div class="dossier-view" id="dossier-view-notes" style="display: none;">
         <div class="table-responsive">
           <table>
@@ -585,7 +632,8 @@
         studyplans: ["Study Plans Progress Tracker", "Track Active Seeker Plans, Completion % & Daily Goals"],
         history: ["Coin History Audit Log", "Live Stream of All Earned & Spent Krishna Coins"],
         meditation: ["Meditation Time Tracker", "Track 5-20 Min Daily/Monthly Meditation Rewards"],
-        feedback: ["Feedback & Complaints Box", "Review & Action Seeker Feedback & Support Tickets"],
+        ideas: ["Seeker Ideas & Suggestions", "Review Feature Ideas & Positive Feedback"],
+        grievances: ["Support Tickets & Grievances", "Action Complaints & Account Assistance Tickets"],
         notes: ["Saved Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"]
       };
 
@@ -600,7 +648,8 @@
       else if (currentView === "studyplans") fetchStudyPlansList();
       else if (currentView === "history") fetchCoinHistoryLog();
       else if (currentView === "meditation") fetchMeditationLogs();
-      else if (currentView === "feedback") fetchFeedbackList();
+      else if (currentView === "ideas") fetchIdeasFeedback();
+      else if (currentView === "grievances") fetchGrievances();
       else if (currentView === "notes") fetchVerseNotes();
     }
 
@@ -684,6 +733,48 @@
       }
     }
 
+    async function fetchIdeasFeedback() {
+      const list = await queryTurso(`SELECT * FROM user_feedback WHERE LOWER(type) = 'feedback' ORDER BY id DESC LIMIT 50`);
+      const body = document.getElementById("ideas-body");
+      document.getElementById("ideas-count-badge").innerText = `${list ? list.length : 0} Ideas`;
+
+      if (list && list.length > 0) {
+        body.innerHTML = list.map(f => `
+          <tr>
+            <td>#${f.id}</td>
+            <td><strong>${f.user_id}</strong></td>
+            <td><strong>${f.subject || 'General Idea'}</strong></td>
+            <td>${f.message}</td>
+            <td><span class="badge badge-success">${f.status || 'Open'}</span></td>
+            <td>${f.created_at}</td>
+          </tr>
+        `).join("");
+      } else {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No seeker ideas or feedback submitted yet.</td></tr>`;
+      }
+    }
+
+    async function fetchGrievances() {
+      const list = await queryTurso(`SELECT * FROM user_feedback WHERE LOWER(type) = 'complaint' ORDER BY id DESC LIMIT 50`);
+      const body = document.getElementById("grievances-body");
+      document.getElementById("grievance-count-badge").innerText = `${list ? list.length : 0} Complaints`;
+
+      if (list && list.length > 0) {
+        body.innerHTML = list.map(f => `
+          <tr>
+            <td>#${f.id}</td>
+            <td><strong>${f.user_id}</strong></td>
+            <td><strong>${f.subject || 'Complaint'}</strong></td>
+            <td><span style="color:#f87171;">${f.message}</span></td>
+            <td><span class="badge badge-danger">${f.status || 'Open Ticket'}</span></td>
+            <td>${f.created_at}</td>
+          </tr>
+        `).join("");
+      } else {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">No support tickets or complaints submitted.</td></tr>`;
+      }
+    }
+
     async function openDossierFor(userId) {
       const user = allUsersList.find(u => u.user_id === userId);
       if (!user) return;
@@ -746,13 +837,19 @@
         <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
       `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
 
-      // 4. User Feedback & Complaints
-      const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
-        <tr><td>#${f.id}</td><td><span class="badge badge-warning">${f.type}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status}</span></td><td>${f.created_at}</td></tr>
-      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
+      // 4. User Ideas & Feedback
+      const ideas = await queryTurso(`SELECT id, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' AND LOWER(type) = 'feedback' ORDER BY id DESC LIMIT 50`);
+      document.getElementById("user-ideas-body").innerHTML = (ideas && ideas.length > 0) ? ideas.map(f => `
+        <tr><td>#${f.id}</td><td><strong>${f.subject||'Idea'}</strong></td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+      `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No ideas or feedback from this user.</td></tr>`;
 
-      // 5. User Verse Notes
+      // 5. User Support Complaints
+      const complaints = await queryTurso(`SELECT id, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' AND LOWER(type) = 'complaint' ORDER BY id DESC LIMIT 50`);
+      document.getElementById("user-grievances-body").innerHTML = (complaints && complaints.length > 0) ? complaints.map(f => `
+        <tr><td>#${f.id}</td><td><strong>${f.subject||'Complaint'}</strong></td><td><span style="color:#f87171;">${f.message}</span></td><td><span class="badge badge-danger">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+      `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No complaints from this user.</td></tr>`;
+
+      // 6. User Verse Notes
       const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
       document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
         <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
@@ -778,17 +875,6 @@
         document.getElementById("kpi-meditation-mins").innerText = `${totalMins} Mins`;
         body.innerHTML = logs.map(l => `
           <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge badge-success">${l.minutes} Mins</span></td><td>+${l.coins_earned} 🪙</td><td>${l.session_date}</td><td>${l.created_at}</td></tr>
-        `).join("");
-      }
-    }
-
-    async function fetchFeedbackList() {
-      const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
-      const body = document.getElementById("feedback-body");
-      document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
-      if (list && list.length > 0) {
-        body.innerHTML = list.map(f => `
-          <tr><td>#${f.id}</td><td><strong>${f.user_id}</strong></td><td><span class="badge badge-warning">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
         `).join("");
       }
     }
