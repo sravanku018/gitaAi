@@ -1142,12 +1142,41 @@
           return;
         }
 
+        let delta = 0;
+        const newNet = (type === 'EARN' ? amount : -amount);
+
         if (id) {
+          let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
+          if (!tx) {
+            const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
+            if (res && res.length > 0) tx = res[0];
+          }
+          const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
+          delta = newNet - oldNet;
+
           await queryTurso(`UPDATE coin_transactions SET user_id = '${uid}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}' WHERE id = ${id}`);
-          alert(`✅ Transaction #${id} updated successfully!`);
+          alert(`✅ Transaction #${id} updated! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
         } else {
+          delta = newNet;
           await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${amount}, '${type}', '${source}', '${desc}', datetime('now'))`);
-          alert(`✅ New coin transaction added for user ${uid}!`);
+          alert(`✅ New coin transaction added! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
+        }
+
+        // Automatically update user_stats.krishna_coins total
+        if (delta !== 0) {
+          await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', ${Math.max(0, delta)}, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = MAX(0, krishna_coins + (${delta})), updated_at = datetime('now')`);
+          dirtySet.add(uid);
+
+          const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (userIdx !== -1) {
+            allUsersCache[userIdx].krishna_coins = Math.max(0, Number(allUsersCache[userIdx].krishna_coins || 0) + delta);
+          }
+          if (activeDossierUser && activeDossierUser.user_id === uid) {
+            activeDossierUser.krishna_coins = Math.max(0, Number(activeDossierUser.krishna_coins || 0) + delta);
+            const editCoinsInput = document.getElementById("edit-coins");
+            if (editCoinsInput) editCoinsInput.value = activeDossierUser.krishna_coins;
+          }
+          renderRoster(allUsersCache);
         }
 
         closeCoinModal();
@@ -1167,9 +1196,34 @@
       if (!confirm(`Are you sure you want to delete Coin Transaction #${id}? This cannot be undone.`)) return;
 
       try {
-        const uid = document.getElementById("edit-coin-user-id").value;
+        const uid = document.getElementById("edit-coin-user-id").value.trim();
+        let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
+        if (!tx) {
+          const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
+          if (res && res.length > 0) tx = res[0];
+        }
+        const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
+        const delta = -oldNet;
+
         await queryTurso(`DELETE FROM coin_transactions WHERE id = ${id}`);
-        alert(`✅ Transaction #${id} deleted.`);
+
+        if (delta !== 0 && uid) {
+          await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = MAX(0, krishna_coins + (${delta})), updated_at = datetime('now')`);
+          dirtySet.add(uid);
+
+          const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (userIdx !== -1) {
+            allUsersCache[userIdx].krishna_coins = Math.max(0, Number(allUsersCache[userIdx].krishna_coins || 0) + delta);
+          }
+          if (activeDossierUser && activeDossierUser.user_id === uid) {
+            activeDossierUser.krishna_coins = Math.max(0, Number(activeDossierUser.krishna_coins || 0) + delta);
+            const editCoinsInput = document.getElementById("edit-coins");
+            if (editCoinsInput) editCoinsInput.value = activeDossierUser.krishna_coins;
+          }
+          renderRoster(allUsersCache);
+        }
+
+        alert(`✅ Transaction #${id} deleted and user total coins updated!`);
         closeCoinModal();
         fetchCoinHistoryLog();
         if (activeDossierUser && activeDossierUser.user_id === uid) {
