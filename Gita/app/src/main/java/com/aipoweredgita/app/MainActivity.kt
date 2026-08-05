@@ -257,6 +257,26 @@ class MainActivity : ComponentActivity() {
             onThemeToggle = onThemeToggle
         )
     }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val db = GitaDatabase.getDatabase(applicationContext)
+                val uid = db.userStatsDao().getUserStatsOnce()?.userId
+                if (!uid.isNullOrEmpty()) {
+                    val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
+                        userStatsDao = db.userStatsDao(),
+                        dailyActivityDao = db.dailyActivityDao(),
+                        appContext = applicationContext
+                    )
+                    statsRepo.refreshUserState(uid)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "onResume refresh error: ${e.message}")
+            }
+        }
+    }
 }
 
 private fun ComponentActivity.scheduleDailyVerseWorker() {
