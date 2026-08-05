@@ -201,13 +201,6 @@ fun DrawerContent(
             )
 
             TwitterMenuItem(
-                icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Study Plans") },
-                title = "Study Plans",
-                textColor = textColor,
-                onClick = onNavigateToStudyPlan
-            )
-
-            TwitterMenuItem(
                 icon = { Icon(Icons.Default.EditNote, contentDescription = "My Notes") },
                 title = "My Notes",
                 textColor = textColor,

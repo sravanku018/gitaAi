@@ -283,7 +283,6 @@ fun MainScreen(
                             Triple(Icons.Filled.EditNote, "My Notes", Screen.Notes.route),
                             Triple(Icons.Filled.SelfImprovement, "Meditation", Screen.Meditation.route),
                             Triple(Icons.Filled.SportsMma, "Quiz Battle", Screen.QuizBattle.route),
-                            Triple(Icons.Filled.CalendarMonth, "Study Plans", Screen.Recommendations.route),
                             Triple(Icons.Filled.Favorite, "Favorites", Screen.Favorites.route),
                             Triple(Icons.Filled.Person, "Profile", Screen.Profile.route)
                         )
