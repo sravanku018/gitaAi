@@ -62,21 +62,9 @@ fun DailyRewardsStrip(
         // ─── Daily Check-in ───────────────────────────────────────────
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Daily Check-in Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    "Restore 🔥",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
-                        tracker.restoreCheckinAndShareStreaks(7)
-                        android.widget.Toast.makeText(context, "Daily & Share Streaks Restored! 🔥", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                )
-                if (dailyState.hasProtection) {
-                    Box(Modifier.clip(MaterialTheme.shapes.small).background(Color(0xFFFF9800).copy(alpha = 0.15f)).border(0.5.dp, Color(0xFFFF9800).copy(alpha = 0.3f), MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                        Text("Protected", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF9800))
-                    }
+            if (dailyState.hasProtection) {
+                Box(Modifier.clip(MaterialTheme.shapes.small).background(Color(0xFFFF9800).copy(alpha = 0.15f)).border(0.5.dp, Color(0xFFFF9800).copy(alpha = 0.3f), MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                    Text("Protected", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF9800))
                 }
             }
         }

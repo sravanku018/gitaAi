@@ -46,16 +46,6 @@ fun NotesScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.restoreStreak()
-                            android.widget.Toast.makeText(context, "Streak Restored! 🔥", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    ) {
-                        Icon(Icons.Default.Refresh, "Restore Streak", tint = MaterialTheme.colorScheme.primary)
-                    }
                 }
             )
         },
