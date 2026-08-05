@@ -4,7 +4,9 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
@@ -56,14 +58,88 @@ fun FeedbackScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0D0F17))
             )
         },
+        bottomBar = {
+            // Prominent Bottom Submit Button Bar
+            Surface(
+                color = Color(0xFF0D0F17),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (message.isBlank()) {
+                            Toast.makeText(context, "Please enter your message", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        isSubmitting = true
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val userId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId ?: "guest"
+                            val json = JSONObject().apply {
+                                put("user_id", userId)
+                                put("type", feedbackType.lowercase())
+                                put("subject", subject.ifBlank { "General $feedbackType" })
+                                put("message", message.trim().take(maxChars))
+                            }
+
+                            val client = OkHttpClient()
+                            val req = Request.Builder()
+                                .url("${GitaConstants.COIN_API_BASE_URL}feedback")
+                                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                                .build()
+
+                            try {
+                                val resp = client.newCall(req).execute()
+                                withContext(Dispatchers.Main) {
+                                    isSubmitting = false
+                                    if (resp.isSuccessful) {
+                                        Toast.makeText(context, "$feedbackType submitted successfully! 🙏", Toast.LENGTH_LONG).show()
+                                        subject = ""
+                                        message = ""
+                                        onNavigateBack()
+                                    } else {
+                                        Toast.makeText(context, "Failed to submit. Please try again.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    isSubmitting = false
+                                    Toast.makeText(context, "Network error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isSubmitting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = goldColor),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                    } else {
+                        Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "SUBMIT ${feedbackType.uppercase()}",
+                            color = Color.Black,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+        },
         containerColor = Color(0xFF0D0F17)
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Text(
                 text = "We value your input! Share feedback or report an issue directly to the admin (Max 200 characters).",
@@ -141,73 +217,6 @@ fun FeedbackScreen(
                     fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.End)
                 )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Submit Button
-            Button(
-                onClick = {
-                    if (message.isBlank()) {
-                        Toast.makeText(context, "Please enter your message", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    isSubmitting = true
-                    coroutineScope.launch(Dispatchers.IO) {
-                        val userId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId ?: "guest"
-                        val json = JSONObject().apply {
-                            put("user_id", userId)
-                            put("type", feedbackType.lowercase())
-                            put("subject", subject.ifBlank { "General $feedbackType" })
-                            put("message", message.trim().take(maxChars))
-                        }
-
-                        val client = OkHttpClient()
-                        val req = Request.Builder()
-                            .url("${GitaConstants.COIN_API_BASE_URL}feedback")
-                            .post(json.toString().toRequestBody("application/json".toMediaType()))
-                            .build()
-
-                        try {
-                            val resp = client.newCall(req).execute()
-                            withContext(Dispatchers.Main) {
-                                isSubmitting = false
-                                if (resp.isSuccessful) {
-                                    Toast.makeText(context, "$feedbackType submitted successfully! 🙏", Toast.LENGTH_LONG).show()
-                                    subject = ""
-                                    message = ""
-                                    onNavigateBack()
-                                } else {
-                                    Toast.makeText(context, "Failed to submit. Please try again.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                isSubmitting = false
-                                Toast.makeText(context, "Network error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                },
-                enabled = !isSubmitting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = goldColor),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(Icons.Default.Send, contentDescription = null, tint = Color.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Submit $feedbackType",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
             }
         }
     }
