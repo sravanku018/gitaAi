@@ -87,19 +87,68 @@ fun ActivePlanCard(plan: StudyPlan, viewModel: StudyPlanViewModel, onOpenChapter
     val completedDays = progress.count { it.isCompleted }
     val totalDays = plan.durationDays
     val currentDayProgress = progress.find { it.day == plan.currentDay }
+    val percent = if (totalDays > 0) ((completedDays.toFloat() / totalDays) * 100).toInt() else 0
 
-    Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(plan.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(plan.description, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(progress = { completedDays.toFloat() / totalDays }, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "🎯 " + plan.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Badge(containerColor = Color(0xFFF59E0B)) {
+                    Text("$percent% Complete", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(plan.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "$completedDays of $totalDays Days Completed",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "Day ${plan.currentDay}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFFF59E0B),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { completedDays.toFloat() / totalDays },
+                modifier = Modifier.fillMaxWidth().height(10.dp),
+                color = Color(0xFFF59E0B),
+                trackColor = Color.Gray.copy(alpha = 0.2f)
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             if (currentDayProgress != null && !currentDayProgress.isCompleted) {
-                Text("Day ${plan.currentDay}: Chapter ${currentDayProgress.chapterNo}")
-                Button(onClick = { onOpenChapter(currentDayProgress.chapterNo) }, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.PlayArrow, null)
-                    Text("Start Reading")
+                Text(
+                    text = "Today's Study Goal: Chapter ${currentDayProgress.chapterNo}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { onOpenChapter(currentDayProgress.chapterNo) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B))
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Start Chapter ${currentDayProgress.chapterNo} Reading", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             }
         }
