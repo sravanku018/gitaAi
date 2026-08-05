@@ -19,8 +19,8 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 27
-        versionName = "2.7.0"
+        versionCode = 28
+        versionName = "2.8.0"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -117,7 +117,10 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
+            // Enable 16 KB page size alignment for Android 15 compatibility
         }
+        // 16 KB ELF segment alignment — required for Android 15 devices
+        jniLibs.keepDebugSymbols.add("**/*.so")
     }
 }
 
@@ -208,13 +211,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // TensorFlow Lite runtime for on-device ML inference
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    // LiteRT-LM for chat-style Gemma inference (replaces MediaPipe tasks-genai)
+    // 2.17.0+ ships with 16 KB page-aligned .so files
+    implementation("org.tensorflow:tensorflow-lite:2.17.0")
+    // LiteRT-LM for chat-style Gemma inference
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
     // Compose LiveData runtime for observeAsState on LiveData
     implementation("androidx.compose.runtime:runtime-livedata:1.7.5")
 
-    // Google ML Kit Translation for On-Device local translation
+    // Google ML Kit Translation — 17.0.3 already supports 16 KB page alignment
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
