@@ -23,7 +23,7 @@ interface VerseNoteDao {
     @Query("SELECT * FROM verse_notes WHERE chapterNo = :chapter AND verseNo = :verse LIMIT 1")
     fun getNoteFlow(chapter: Int, verse: Int): Flow<VerseNote?>
 
-    @Query("SELECT * FROM verse_notes ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM verse_notes ORDER BY chapterNo ASC, verseNo ASC")
     fun getAllNotes(): Flow<List<VerseNote>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

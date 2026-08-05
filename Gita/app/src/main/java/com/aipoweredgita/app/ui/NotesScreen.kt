@@ -73,15 +73,63 @@ fun NotesScreen(
                 }
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(notes) { note ->
-                    NoteCard(
-                        note = note,
-                        onEdit = { noteToEdit = note },
-                        onDelete = {
-                            viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
+            val groupedNotes = remember(notes) {
+                notes.sortedWith(compareBy({ it.chapterNo }, { it.verseNo }))
+                    .groupBy { it.chapterNo }
+            }
+
+            val chapterNames = remember {
+                mapOf(
+                    1 to "Arjuna Visada Yoga", 2 to "Sankhya Yoga", 3 to "Karma Yoga",
+                    4 to "Jnana Karma Sanyasa Yoga", 5 to "Karma Sanyasa Yoga", 6 to "Dhyana Yoga",
+                    7 to "Jnana Vijnana Yoga", 8 to "Aksara Brahma Yoga", 9 to "Raja Vidya Raja Guhya Yoga",
+                    10 to "Vibhuti Yoga", 11 to "Visvarupa Darsana Yoga", 12 to "Bhakti Yoga",
+                    13 to "Ksetra Ksetrajna Vibhaga Yoga", 14 to "Gunatraya Vibhaga Yoga",
+                    15 to "Purusottama Yoga", 16 to "Daivasura Sampad Vibhaga Yoga",
+                    17 to "Sraddhatraya Vibhaga Yoga", 18 to "Moksa Sanyasa Yoga"
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
+                groupedNotes.forEach { (chapterNo, chapterNotes) ->
+                    item(key = "chapter_header_$chapterNo") {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "📖 Chapter $chapterNo: ${chapterNames[chapterNo] ?: "Bhagavad Gita"}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                    Text("${chapterNotes.size} Note${if (chapterNotes.size > 1) "s" else ""}")
+                                }
+                            }
                         }
-                    )
+                    }
+
+                    items(chapterNotes, key = { it.id }) { note ->
+                        NoteCard(
+                            note = note,
+                            onEdit = { noteToEdit = note },
+                            onDelete = {
+                                viewModel.deleteNote(note.id, note.chapterNo, note.verseNo)
+                            }
+                        )
+                    }
                 }
             }
         }
