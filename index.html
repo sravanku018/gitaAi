@@ -713,7 +713,12 @@
           <td><span class="badge ${isGuest?'badge-guest':'badge-success'}">${isGuest?'GUEST':'SEEKER'}</span></td>
           <td><div style="display:flex;flex-direction:column;gap:3px;"><div class="activity-bar">${activityDots(u)}</div><span style="font-size:10px;color:var(--text-muted);">${acts} act${acts!==1?'s':''}</span></div></td>
           <td><strong style="color:var(--primary);">${u.current_streak||0} 🔥</strong></td>
-          <td><strong style="color:var(--success);">${u.krishna_coins||0} 🪙</strong></td>
+          <td>
+            <span onclick="quickEditCoins('${u.user_id}', ${u.krishna_coins||0})" title="Click to edit coin balance" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='transparent'">
+              <strong style="color:var(--success);">${u.krishna_coins||0} 🪙</strong>
+              <i class="fa-solid fa-pen" style="font-size:10px; opacity:0.5; color:#f59e0b;"></i>
+            </span>
+          </td>
           <td>Lvl ${u.yoga_level||1}</td>
           <td>${formatLastSeen(u.last_activity_date)}</td>
           <td><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="openDossierFor('${u.user_id}')">
@@ -1243,6 +1248,40 @@
       } catch (err) {
         console.error("Delete transaction error:", err);
         alert(`❌ Failed to delete transaction: ${err.message || err}`);
+      }
+    }
+
+    async function quickEditCoins(userId, currentCoins) {
+      const input = prompt(`Edit total Krishna Coins balance for user "${userId}":`, currentCoins);
+      if (input === null) return;
+      const newCoins = Number(input.trim());
+      if (isNaN(newCoins) || newCoins < 0) {
+        alert("Please enter a valid positive number for coin balance.");
+        return;
+      }
+      if (newCoins === currentCoins) return;
+
+      const coinDiff = newCoins - currentCoins;
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${userId}', ${newCoins}, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = ${newCoins}, updated_at = datetime('now')`);
+        await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${userId}', ${Math.abs(coinDiff)}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_quick_edit', 'Admin quick-edited total balance from ${currentCoins} to ${newCoins}', datetime('now'))`);
+
+        dirtySet.add(userId);
+        const userIdx = allUsersCache.findIndex(u => u.user_id === userId);
+        if (userIdx !== -1) {
+          allUsersCache[userIdx].krishna_coins = newCoins;
+        }
+        if (activeDossierUser && activeDossierUser.user_id === userId) {
+          activeDossierUser.krishna_coins = newCoins;
+          const editCoinsInput = document.getElementById("edit-coins");
+          if (editCoinsInput) editCoinsInput.value = newCoins;
+        }
+        renderRoster(allUsersCache);
+        alert(`✅ Krishna Coins for ${userId} updated to ${newCoins} 🪙! (Row flagged ✏️ EDITED)`);
+      } catch (err) {
+        console.error("Quick edit coins error:", err);
+        alert(`❌ Failed to update total coins: ${err.message || err}`);
       }
     }
   </script>
