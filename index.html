@@ -84,6 +84,23 @@
     .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .badge-guest { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-active { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.5); animation: pulse-active 2s infinite; }
+    .badge-new    { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.5); animation: pulse-active 2s infinite; }
+    .badge-edited { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid rgba(245,158,11,0.45); }
+    @keyframes pulse-active { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4);} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0);} }
+    .refresh-btn { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: all 0.2s; }
+    .refresh-btn:hover { background: rgba(16,185,129,0.25); transform: translateY(-1px); }
+    .refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+    .active-filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .filter-chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--card-border); background: rgba(255,255,255,0.05); color: var(--text-muted); transition: all 0.2s; }
+    .filter-chip.active-chip { background: rgba(16,185,129,0.2); color: #34d399; border-color: rgba(16,185,129,0.4); }
+    .activity-bar { display: flex; gap: 3px; align-items: center; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--card-border); }
+    .activity-dot.filled { background: #34d399; }
+    .last-seen-fresh { color: #34d399; font-weight: 600; }
+    .last-seen-old { color: var(--text-muted); }
+    .smart-refresh-info { font-size: 11px; color: var(--text-muted); padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); }
 
     .table-responsive { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
@@ -219,8 +236,19 @@
             <div class="section-title">
               <i class="fa-solid fa-users" style="color: var(--primary);"></i>
               <span>All Seekers & User Profiles</span>
+              <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
             </div>
-            <span class="badge badge-success" id="user-count-badge">Loading...</span>
+            <div class="active-filter-row">
+              <span class="filter-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
+              <span class="filter-chip active-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
+              <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
+              <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
+              <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
+              <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
+                <i class="fa-solid fa-bolt"></i> Smart Refresh
+              </button>
+              <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
+            </div>
           </div>
 
           <div class="table-responsive">
@@ -228,19 +256,18 @@
               <thead>
                 <tr>
                   <th>User ID & Account</th>
+                  <th>Status</th>
                   <th>Type</th>
-                  <th>Current Streak</th>
-                  <th>Longest Streak</th>
-                  <th>Check-in Streak</th>
-                  <th>Share Streak</th>
-                  <th>Coins</th>
+                  <th>Activity</th>
+                  <th>Streak 🔥</th>
+                  <th>Coins 🪙</th>
                   <th>Yoga Level</th>
                   <th>Last Active</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="master-roster-body">
-                <tr><td colspan="10" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading...</td></tr>
+                <tr><td colspan="9" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -519,7 +546,10 @@
     const ADMIN_PIN = "108";
 
     let currentView = "roster";
-    let allUsersList = [];
+    let allUsersCache = [];
+    let rosterFilter = 'active';
+    const dirtySet = new Set();  // user_ids edited by admin this session
+    const newSet   = new Set();  // user_ids with days_active === 1 (first login)
     let activeDossierUser = null;
 
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
@@ -568,6 +598,131 @@
       } catch (e) { console.error("Turso Error:", e); return null; }
     }
 
+    function isActiveProfile(u) { return Number(u.days_active || 0) >= 2; }
+    function isNewProfile(u)    { return newSet.has(u.user_id); }
+    function isEditedProfile(u) { return dirtySet.has(u.user_id); }
+
+    function activityDots(u) {
+      const acts = Math.min(Number(u.days_active || 0), 5);
+      return Array.from({length: 5}, (_, i) =>
+        `<div class="activity-dot ${i < acts ? 'filled' : ''}"></div>`
+      ).join('');
+    }
+
+    function formatLastSeen(dateStr) {
+      if (!dateStr) return '<span class="last-seen-old">Never</span>';
+      const d = new Date(dateStr), now = new Date();
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays === 0) return '<span class="last-seen-fresh">Today 🟢</span>';
+      if (diffDays === 1) return '<span class="last-seen-fresh">Yesterday</span>';
+      if (diffDays <= 3)  return `<span class="last-seen-fresh">${diffDays}d ago</span>`;
+      return '<span class="last-seen-old">${diffDays}d ago</span>';
+    }
+
+    function getStatusBadge(u) {
+      if (isEditedProfile(u)) return `<span class="badge badge-edited">✏️ EDITED</span>`;
+      if (isNewProfile(u))    return `<span class="badge badge-new">🔵 NEW</span>`;
+      if (isActiveProfile(u)) return `<span class="badge badge-active">🟢 ACTIVE</span>`;
+      return `<span class="badge" style="background:rgba(156,163,175,0.1);color:#6b7280;border:1px solid rgba(156,163,175,0.2);">INACTIVE</span>`;
+    }
+
+    function getBorderStyle(u) {
+      if (isEditedProfile(u)) return 'border-left:3px solid #f59e0b;';
+      if (isNewProfile(u))    return 'border-left:3px solid #6366f1;';
+      if (isActiveProfile(u)) return 'border-left:3px solid #10b981;';
+      return '';
+    }
+
+    function renderRosterRow(u) {
+      const isGuest = Number(u.is_guest) === 1;
+      const acts = Number(u.days_active || 0);
+      const active = isActiveProfile(u);
+      const avatarBorder = isEditedProfile(u) ? 'border:2px solid #f59e0b;' : isNewProfile(u) ? 'border:2px solid #6366f1;' : active ? 'border:2px solid #10b981;' : '';
+      return `
+        <tr id="row-${u.user_id}" style="${getBorderStyle(u)}">
+          <td><div class="user-pill">
+            <div class="avatar" style="${avatarBorder}${isGuest?'background:linear-gradient(135deg,#4b5563,#6b7280);':''}"> ${u.user_id.substring(0,2).toUpperCase()}</div>
+            <div><strong>${u.user_id}</strong><br><span style="font-size:11px;color:var(--text-muted);">${u.name||'Seeker'}</span></div>
+          </div></td>
+          <td>${getStatusBadge(u)}</td>
+          <td><span class="badge ${isGuest?'badge-guest':'badge-success'}">${isGuest?'GUEST':'SEEKER'}</span></td>
+          <td><div style="display:flex;flex-direction:column;gap:3px;"><div class="activity-bar">${activityDots(u)}</div><span style="font-size:10px;color:var(--text-muted);">${acts} act${acts!==1?'s':''}</span></div></td>
+          <td><strong style="color:var(--primary);">${u.current_streak||0} 🔥</strong></td>
+          <td><strong style="color:var(--success);">${u.krishna_coins||0} 🪙</strong></td>
+          <td>Lvl ${u.yoga_level||1}</td>
+          <td>${formatLastSeen(u.last_activity_date)}</td>
+          <td><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="openDossierFor('${u.user_id}')">
+            <i class="fa-solid fa-address-card"></i> Dossier</button></td>
+        </tr>`;
+    }
+
+    function renderRoster(users) {
+      let filtered;
+      if      (rosterFilter === 'active') filtered = users.filter(isActiveProfile);
+      else if (rosterFilter === 'edited') filtered = users.filter(isEditedProfile);
+      else if (rosterFilter === 'new')    filtered = users.filter(isNewProfile);
+      else                                 filtered = users;
+
+      const activeCount  = users.filter(isActiveProfile).length;
+      const editedCount  = dirtySet.size;
+      const newCount     = newSet.size;
+      document.getElementById('active-count-badge').innerText = `${activeCount} Active 🟢`;
+      document.getElementById('user-count-badge').innerText   = `${users.length} Total`;
+      document.getElementById('smart-refresh-info').innerText =
+        (editedCount + newCount) > 0
+          ? `⚡ ${editedCount} edited · ${newCount} new — click Smart Refresh`
+          : 'No pending updates';
+
+      const body = document.getElementById('master-roster-body');
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">No ${rosterFilter} profiles found.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(renderRosterRow).join('');
+    }
+
+    function filterRoster(mode, chip) {
+      rosterFilter = mode;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-chip'));
+      chip.classList.add('active-chip');
+      renderRoster(allUsersCache);
+    }
+
+    // ── Smart Refresh: only re-fetches dirty + new user rows, zero full scan ──
+    async function smartRefresh(btn) {
+      const targets = [...new Set([...dirtySet, ...newSet])];
+      if (!targets.length) {
+        document.getElementById('smart-refresh-info').innerText = '✅ Nothing to refresh';
+        return;
+      }
+      btn.classList.add('spinning');
+      document.getElementById('smart-refresh-info').innerText = `⚡ Refreshing ${targets.length} profile(s)...`;
+
+      const inClause = targets.map(id => `'${id}'`).join(',');
+      const fresh = await queryTurso(`
+        SELECT u.user_id, u.name, u.email, u.is_guest,
+               us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level
+        FROM users u
+        LEFT JOIN user_stats us ON us.user_id = u.user_id
+        WHERE u.user_id IN (${inClause})
+      `);
+
+      if (fresh) {
+        fresh.forEach(fu => {
+          const idx = allUsersCache.findIndex(u => u.user_id === fu.user_id);
+          if (idx !== -1) allUsersCache[idx] = { ...allUsersCache[idx], ...fu };
+          // Re-render just this row in-place
+          const row = document.getElementById(`row-${fu.user_id}`);
+          if (row) row.outerHTML = renderRosterRow(fu);
+        });
+      }
+
+      dirtySet.clear();
+      newSet.clear();
+      btn.classList.remove('spinning');
+      document.getElementById('smart-refresh-info').innerText = `✅ Refreshed ${targets.length} row(s)`;
+    }
+
     function switchView(viewName, navElem) {
       currentView = viewName;
       document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
@@ -609,46 +764,24 @@
         FROM users u
         LEFT JOIN user_stats us ON us.user_id = u.user_id
         LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
-        ORDER BY us.current_streak DESC, us.krishna_coins DESC
+        ORDER BY us.days_active DESC, us.current_streak DESC, us.krishna_coins DESC
       `);
 
       if (users) {
-        allUsersList = users;
-        document.getElementById("kpi-total-users").innerText = users.length;
-        const top = users[0] || {};
-        document.getElementById("kpi-top-streak").innerText = `${top.current_streak || 0} Days 🔥`;
-        document.getElementById("kpi-top-user").innerText = top.user_id || "N/A";
-
-        document.getElementById("user-count-badge").innerText = `${users.length} Users`;
-        const body = document.getElementById("master-roster-body");
-        body.innerHTML = users.map(u => {
-          const isGuest = Number(u.is_guest) === 1;
-          return `
-            <tr>
-              <td>
-                <div class="user-pill">
-                  <div class="avatar" style="${isGuest ? 'background:linear-gradient(135deg, #4b5563, #6b7280);':''}">${u.user_id.substring(0, 2).toUpperCase()}</div>
-                  <div><strong>${u.user_id}</strong><br><span style="font-size:11px; color:var(--text-muted);">${u.name || 'Seeker'}</span></div>
-                </div>
-              </td>
-              <td><span class="badge ${isGuest ? 'badge-guest' : 'badge-success'}">${isGuest ? 'GUEST' : 'SEEKER'}</span></td>
-              <td><strong style="color:var(--primary);">${u.current_streak || 0} Days 🔥</strong></td>
-              <td>${u.longest_streak || 0} Days</td>
-              <td>Day ${u.checkin_day || 1} (W${u.checkin_week || 1})</td>
-              <td>Day ${u.share_day || 1} (W${u.share_week || 1})</td>
-              <td><strong style="color:var(--success);">${u.krishna_coins || 0} 🪙</strong></td>
-              <td>Level ${u.yoga_level || 1}</td>
-              <td>${u.last_activity_date || 'N/A'}</td>
-              <td>
-                <button class="btn btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openDossierFor('${u.user_id}')">
-                  <i class="fa-solid fa-address-card"></i> View Dossier
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join("");
+        allUsersCache = users;
+        // Flag first-login users (days_active === 1) as new
+        newSet.clear();
+        users.forEach(u => { if (Number(u.days_active || 0) === 1) newSet.add(u.user_id); });
+        document.getElementById('kpi-total-users').innerText = users.length;
+        const activeOnes = users.filter(isActiveProfile);
+        const top = activeOnes[0] || users[0] || {};
+        document.getElementById('kpi-top-streak').innerText = `${top.current_streak || 0} Days 🔥`;
+        document.getElementById('kpi-top-user').innerText = top.user_id || 'N/A';
+        renderRoster(users);
       }
     }
+
+    // No auto-refresh — use Smart Refresh button for targeted delta updates
 
     async function fetchStudyPlansList() {
       const plans = await queryTurso(`SELECT * FROM study_plans ORDER BY id DESC LIMIT 50`);
@@ -706,7 +839,7 @@
     }
 
     async function openDossierFor(userId) {
-      const user = allUsersList.find(u => u.user_id === userId);
+      const user = allUsersCache.find(u => u.user_id === userId);
       if (!user) return;
       activeDossierUser = user;
 
@@ -840,9 +973,18 @@
         await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
       }
 
-      alert(`User profile updated for ${uid}!`);
+      // Mark this user as edited — smart refresh will re-fetch only this row
+      dirtySet.add(uid);
+      // Optimistically patch the in-memory cache so UI reflects changes immediately
+      const idx = allUsersCache.findIndex(u => u.user_id === uid);
+      if (idx !== -1) {
+        allUsersCache[idx] = { ...allUsersCache[idx], name, email,
+          current_streak: curStreak, longest_streak: maxStreak,
+          krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel };
+      }
+      renderRoster(allUsersCache);
+      alert(`✅ Profile saved! Row flagged ✏️ EDITED — use Smart Refresh to pull latest DB values.`);
       closeDossierModal();
-      fetchCurrentViewData();
     }
   </script>
 </body>
