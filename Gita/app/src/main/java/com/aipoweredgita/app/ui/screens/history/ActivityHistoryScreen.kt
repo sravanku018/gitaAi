@@ -99,6 +99,8 @@ fun ActivityHistoryScreen(
     val jnanaCount = state.jnanaYogaCount
     val dhyanaCount = state.dhyanaYogaCount
     val rajaCount = state.rajaYogaCount
+    val meditationMinutes = state.meditationMinutesTotal
+    val meditationSessions = state.meditationSessionCount
 
     var selectedTab by remember { mutableIntStateOf(initialTab) }
     val uiCfg = LocalUiConfig.current
@@ -147,7 +149,9 @@ fun ActivityHistoryScreen(
                 totalCoins = totalCoins,
                 yogaLevels = yogaLevels,
                 yogaSubStages = yogaSubStages,
-                totalQuizAttempts = attempts.size
+                totalQuizAttempts = attempts.size,
+                meditationMinutes = meditationMinutes,
+                meditationSessions = meditationSessions
             )
             1 -> QuizTab(
                 attempts = attempts,

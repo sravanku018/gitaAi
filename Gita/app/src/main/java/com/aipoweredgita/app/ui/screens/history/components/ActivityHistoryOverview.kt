@@ -29,7 +29,9 @@ fun OverviewTab(
     totalCoins: Int,
     yogaLevels: List<YogaLevel>,
     yogaSubStages: List<YogaSubStage>,
-    totalQuizAttempts: Int
+    totalQuizAttempts: Int,
+    meditationMinutes: Long = 0L,
+    meditationSessions: Int = 0
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -39,11 +41,13 @@ fun OverviewTab(
         val normalTime = userStats?.normalModeTimeSeconds ?: 0L
         val quizTime = userStats?.quizModeTimeSeconds ?: 0L
         val voiceTime = userStats?.voiceStudioTimeSeconds ?: 0L
-        val totalTime = normalTime + quizTime + voiceTime
+        val meditationTime = meditationMinutes * 60L   // convert mins → seconds
+        val totalTime = normalTime + quizTime + voiceTime + meditationTime
 
-        val readingColor = Color(0xFFE08A1E)   // saffron gold
-        val quizColor = Color(0xFFC2410C)       // terracotta
-        val chatColor = Color(0xFFF59E0B)       // amber
+        val readingColor    = Color(0xFFE08A1E)   // saffron gold
+        val quizColor       = Color(0xFFC2410C)   // terracotta
+        val chatColor       = Color(0xFFF59E0B)   // amber
+        val meditationColor = Color(0xFF6366F1)   // indigo
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -77,10 +81,11 @@ fun OverviewTab(
                             listOf(Triple("Empty", 1f, Color.LightGray))
                         } else {
                             listOf(
-                                Triple("Reading", normalTime.toFloat() / totalTime, readingColor),
-                                Triple("Quiz", quizTime.toFloat() / totalTime, quizColor),
-                                Triple("Chat", voiceTime.toFloat() / totalTime, chatColor)
-                            )
+                                Triple("Reading",    normalTime.toFloat()    / totalTime, readingColor),
+                                Triple("Quiz",       quizTime.toFloat()      / totalTime, quizColor),
+                                Triple("Chat",       voiceTime.toFloat()     / totalTime, chatColor),
+                                Triple("Meditation", meditationTime.toFloat()/ totalTime, meditationColor)
+                            ).filter { it.second > 0f }
                         }
 
                         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -115,9 +120,10 @@ fun OverviewTab(
 
                     // Legend
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        TimeDistributionLegendItem("📖 Reading", normalTime, readingColor)
-                        TimeDistributionLegendItem("📝 Quiz", quizTime, quizColor)
-                        TimeDistributionLegendItem("💬 Chat", voiceTime, chatColor)
+                        TimeDistributionLegendItem("📖 Reading",   normalTime,    readingColor)
+                        TimeDistributionLegendItem("📝 Quiz",       quizTime,      quizColor)
+                        TimeDistributionLegendItem("💬 Chat",       voiceTime,     chatColor)
+                        TimeDistributionLegendItem("🧘 Meditation", meditationTime,meditationColor)
                     }
                 }
             }
@@ -160,6 +166,27 @@ fun OverviewTab(
                 value = "$totalQuizAttempts",
                 label = "Quizzes Taken",
                 color = Color(0xFF3B82F6),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // ── Meditation Stats Row ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OverviewStatCard(
+                icon = "🧘",
+                value = "${meditationMinutes}m",
+                label = "Meditation Time",
+                color = Color(0xFF6366F1),
+                modifier = Modifier.weight(1f)
+            )
+            OverviewStatCard(
+                icon = "✨",
+                value = "$meditationSessions",
+                label = "Sessions Done",
+                color = Color(0xFF8B5CF6),
                 modifier = Modifier.weight(1f)
             )
         }

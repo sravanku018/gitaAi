@@ -51,6 +51,7 @@ class ActivityHistoryViewModel @Inject constructor(
         loadQuizStats()
         loadGroupedQuizStats()
         loadSpiritualPathStats()
+        loadMeditationStats()
     }
 
     fun onEvent(event: ActivityHistoryEvent) {
@@ -301,6 +302,41 @@ class ActivityHistoryViewModel @Inject constructor(
             spiritualPathRepo.rajaYogaCount.collect { count ->
                 _uiState.update { it.copy(rajaYogaCount = count) }
             } 
+        }
+    }   // end loadSpiritualPathStats
+
+    private fun loadMeditationStats() {
+        viewModelScope.launch {
+            try {
+                val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                val uid = authPrefs.userId
+                val token = authPrefs.token
+                if (uid != null && token != null) {
+                    val history = com.aipoweredgita.app.network.CoinApi.retrofitService
+                        .getHistory(uid, "Bearer $token", limit = 500)
+                    // Filter meditation earn transactions
+                    val meditationEntries = history.filter {
+                        it.source.contains("meditation", ignoreCase = true) && it.isEarn
+                    }
+                    // Map coins earned → minutes (10→5, 20→10, 30→15, 40→20)
+                    val totalMins = meditationEntries.sumOf { entry ->
+                        when {
+                            entry.amount >= 40 -> 20L
+                            entry.amount >= 30 -> 15L
+                            entry.amount >= 20 -> 10L
+                            else              ->  5L
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            meditationMinutesTotal = totalMins,
+                            meditationSessionCount = meditationEntries.size
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // meditation history unavailable offline
+            }
         }
     }
 }

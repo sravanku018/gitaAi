@@ -23,6 +23,8 @@ data class ActivityHistoryUiState(
     val jnanaYogaCount: Int = 0,
     val dhyanaYogaCount: Int = 0,
     val rajaYogaCount: Int = 0,
+    val meditationMinutesTotal: Long = 0L,   // total minutes meditated
+    val meditationSessionCount: Int = 0,      // number of sessions
     override val isLoading: Boolean = false,
     override val error: String? = null
 ) : BaseUiState
