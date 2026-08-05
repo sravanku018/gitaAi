@@ -69,6 +69,7 @@ fun DrawerContent(
     onNavigateToSettings: () -> Unit,
     onNavigateToNotes: () -> Unit = {},
     onNavigateToMeditation: () -> Unit = {},
+    onNavigateToFeedback: () -> Unit = {},
     onNavigateToStudyPlan: () -> Unit = {},
     onNavigateToQuizBattle: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
@@ -246,6 +247,12 @@ fun DrawerContent(
                 title = "Favorites",
                 isDarkTheme = isDarkTheme,
                 onClick = onNavigateToFavorites
+            )
+            TwitterMenuItem(
+                icon = { Icon(imageVector = Icons.Filled.Feedback, contentDescription = "Feedback & Complaints") },
+                title = "Feedback & Complaints",
+                isDarkTheme = isDarkTheme,
+                onClick = onNavigateToFeedback
             )
 
             DrawerSectionHeader("PROGRESS")

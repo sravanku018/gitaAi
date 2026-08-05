@@ -237,6 +237,7 @@ fun CoinTransactionItem(
         entry.source == "daily_checkin" || entry.source.contains("checkin")
     val isShareSource = entry.source == "share_sloka" || entry.source == "share" ||
         entry.source == "daily_share" || entry.source.contains("share")
+    val isMeditationSource = entry.source == "meditation" || entry.description.lowercase().contains("meditation")
 
     val cleanDesc = if (entry.description.trim().startsWith("{")) "" else entry.description
 
@@ -248,6 +249,7 @@ fun CoinTransactionItem(
         entry.source == "chapter_completion" -> "Chapter completed"
         isCheckinSource -> "Daily check-in"
         isShareSource -> "Daily share"
+        isMeditationSource -> "Meditation practice"
         isVoiceSource -> if (isEarn) "Voice chat" else "Voice chat question"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "Level up bonus"
         else -> if (cleanDesc.isNotBlank()) cleanDesc else if (isEarn) "Earned coins" else "Spent coins"
@@ -260,6 +262,7 @@ fun CoinTransactionItem(
         entry.source == "chapter_completion" -> "📚"
         isCheckinSource -> "☀️"
         isShareSource -> "📖"
+        isMeditationSource -> "🧘"
         isVoiceSource -> "🎙"
         entry.source == "level_up_bonus" || entry.source == "level_up" -> "⬆"
         else -> if (isEarn) "✦" else "◈"

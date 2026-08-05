@@ -139,6 +139,10 @@ fun MainScreen(
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Meditation.route)
                     },
+                    onNavigateToFeedback = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.Feedback.route)
+                    },
                     onNavigateToStudyPlan = {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Recommendations.route)

@@ -50,6 +50,7 @@ sealed class Screen(val route: String) {
     object Notes : Screen("notes")
     object Meditation : Screen("meditation")
     object QuizBattle : Screen("quiz_battle")
+    object Feedback : Screen("feedback")
 
     object Flashcards : Screen("flashcards?topic={topic}")
     object RandomSloka : Screen("random_sloka?chapter={chapter}&verse={verse}")
@@ -365,6 +366,12 @@ fun NavGraph(
                     }
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable(Screen.Feedback.route) {
+            com.aipoweredgita.app.ui.FeedbackScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
