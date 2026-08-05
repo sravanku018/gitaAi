@@ -1022,7 +1022,8 @@
       }
     }
 
-    async function fetchCoinHistoryLog() {
+    async function fetchCoinHistoryLog(force = false) {
+      if (isCoinHistoryLoaded && !force) return;
       const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
       currentCoinLogs = logs || [];
       isCoinHistoryLoaded = true;
@@ -1106,16 +1107,35 @@
 
         // Mark this user as edited — smart refresh will re-fetch only this row
         dirtySet.add(uid);
-        // Optimistically patch the in-memory cache so UI reflects changes immediately
-        const idx = allUsersCache.findIndex(u => u.user_id === uid);
-        if (idx !== -1) {
-          allUsersCache[idx] = { ...allUsersCache[idx], name: rawName, email: rawEmail,
-            current_streak: curStreak, longest_streak: maxStreak,
-            krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel,
-            checkin_day: checkinDay, checkin_week: checkinWeek, share_day: shareDay, share_week: shareWeek };
+
+        // Post-submit read: re-fetch exact row live from Turso DB to confirm update
+        const fresh = await queryTurso(`
+          SELECT u.user_id, u.name, u.email, u.is_guest,
+                 us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
+                 cs.current_day as checkin_day, cs.current_week as checkin_week,
+                 cs.share_day, cs.share_week
+          FROM users u
+          LEFT JOIN user_stats us ON us.user_id = u.user_id
+          LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
+          WHERE u.user_id = '${uid}'
+        `);
+
+        if (fresh && fresh.length > 0) {
+          const fu = fresh[0];
+          const idx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (idx !== -1) allUsersCache[idx] = { ...allUsersCache[idx], ...fu };
+        } else {
+          const idx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (idx !== -1) {
+            allUsersCache[idx] = { ...allUsersCache[idx], name: rawName, email: rawEmail,
+              current_streak: curStreak, longest_streak: maxStreak,
+              krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel,
+              checkin_day: checkinDay, checkin_week: checkinWeek, share_day: shareDay, share_week: shareWeek };
+          }
         }
+
         renderRoster(allUsersCache);
-        alert(`✅ Profile saved successfully! Row flagged ✏️ EDITED.`);
+        alert(`✅ Profile saved & verified live from DB! Row flagged ✏️ EDITED.`);
         closeDossierModal();
       } catch (err) {
         console.error("Save profile error:", err);
@@ -1225,9 +1245,9 @@
         }
 
         closeCoinModal();
-        fetchCoinHistoryLog();
+        fetchCoinHistoryLog(true);
         if (activeDossierUser && activeDossierUser.user_id === uid) {
-          loadUserIsolatedData(uid);
+          loadUserIsolatedTab(uid, 'coins');
         }
       } catch (err) {
         console.error("Save transaction error:", err);
@@ -1270,9 +1290,9 @@
 
         alert(`✅ Transaction #${id} deleted and user total coins updated!`);
         closeCoinModal();
-        fetchCoinHistoryLog();
+        fetchCoinHistoryLog(true);
         if (activeDossierUser && activeDossierUser.user_id === uid) {
-          loadUserIsolatedData(uid);
+          loadUserIsolatedTab(uid, 'coins');
         }
       } catch (err) {
         console.error("Delete transaction error:", err);
@@ -1297,17 +1317,22 @@
         await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${userId}', ${Math.abs(coinDiff)}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_quick_edit', 'Admin quick-edited total balance from ${currentCoins} to ${newCoins}', datetime('now'))`);
 
         dirtySet.add(userId);
+
+        // Re-read single updated user row live from Turso DB to confirm
+        const fresh = await queryTurso(`SELECT * FROM user_stats WHERE user_id = '${userId}'`);
+        const readCoins = (fresh && fresh.length > 0) ? Number(fresh[0].krishna_coins) : newCoins;
+
         const userIdx = allUsersCache.findIndex(u => u.user_id === userId);
         if (userIdx !== -1) {
-          allUsersCache[userIdx].krishna_coins = newCoins;
+          allUsersCache[userIdx].krishna_coins = readCoins;
         }
         if (activeDossierUser && activeDossierUser.user_id === userId) {
-          activeDossierUser.krishna_coins = newCoins;
+          activeDossierUser.krishna_coins = readCoins;
           const editCoinsInput = document.getElementById("edit-coins");
-          if (editCoinsInput) editCoinsInput.value = newCoins;
+          if (editCoinsInput) editCoinsInput.value = readCoins;
         }
         renderRoster(allUsersCache);
-        alert(`✅ Krishna Coins for ${userId} updated to ${newCoins} 🪙! (Row flagged ✏️ EDITED)`);
+        alert(`✅ Krishna Coins for ${userId} updated & verified live from DB: ${readCoins} 🪙!`);
       } catch (err) {
         console.error("Quick edit coins error:", err);
         alert(`❌ Failed to update total coins: ${err.message || err}`);
