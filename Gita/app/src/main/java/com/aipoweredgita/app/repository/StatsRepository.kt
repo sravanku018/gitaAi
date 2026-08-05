@@ -76,17 +76,17 @@ class StatsRepository(
         return current.copy(
             userId = userId,
             krishnaCoins = krishna_coins,
-            daysActive = days_active,
-            currentStreak = current_streak,
-            longestStreak = longest_streak,
-            totalQuizzesTaken = total_quizzes_taken,
-            totalQuestionsAnswered = total_questions_answered,
-            totalCorrectAnswers = total_correct_answers,
-            bestScore = best_score,
-            bestScoreOutOf = best_score_out_of,
-            versesRead = verses_read,
-            chaptersCompleted = chapters_completed,
-            lastActiveDate = last_activity_date ?: current.lastActiveDate,
+            daysActive = maxOf(current.daysActive, days_active),
+            currentStreak = maxOf(current.currentStreak, current_streak),
+            longestStreak = maxOf(current.longestStreak, longest_streak),
+            totalQuizzesTaken = maxOf(current.totalQuizzesTaken, total_quizzes_taken),
+            totalQuestionsAnswered = maxOf(current.totalQuestionsAnswered, total_questions_answered),
+            totalCorrectAnswers = maxOf(current.totalCorrectAnswers, total_correct_answers),
+            bestScore = maxOf(current.bestScore, best_score),
+            bestScoreOutOf = maxOf(current.bestScoreOutOf, best_score_out_of),
+            versesRead = maxOf(current.versesRead, verses_read),
+            chaptersCompleted = maxOf(current.chaptersCompleted, chapters_completed),
+            lastActiveDate = if (!last_activity_date.isNullOrEmpty()) last_activity_date else current.lastActiveDate,
             serverUpdatedAt = updated_at ?: current.serverUpdatedAt
         )
     }
@@ -391,6 +391,20 @@ class StatsRepository(
         }
     }
 
+    suspend fun checkPassiveStreakReset() {
+        runInTransaction {
+            val currentStats = userStatsDao.getUserStatsOnce() ?: return@runInTransaction
+            val rawLastActiveDate = currentStats.lastActiveDate
+            val lastActiveLocalDate = parseLocalDate(rawLastActiveDate) ?: return@runInTransaction
+            val today = LocalDate.now(ZoneId.systemDefault())
+
+            // Reset streak to 0 only if user missed more than 1 calendar day
+            if (lastActiveLocalDate < today.minusDays(1)) {
+                userStatsDao.updateCurrentStreak(0)
+            }
+        }
+    }
+
     private suspend fun updateStreak() {
         runInTransaction {
             val currentStats = userStatsDao.getUserStatsOnce() ?: return@runInTransaction
@@ -400,22 +414,21 @@ class StatsRepository(
             val rawLastActiveDate = currentStats.lastActiveDate
             val lastActiveLocalDate = parseLocalDate(rawLastActiveDate)
 
-            userStatsDao.updateLastActive(System.currentTimeMillis(), todayStr)
-
             when {
                 lastActiveLocalDate == null -> {
                     userStatsDao.updateCurrentStreak(1)
-                    userStatsDao.updateLongestStreak(1)
-                    userStatsDao.updateDaysActive(1)
+                    userStatsDao.updateLongestStreak(maxOf(1, currentStats.longestStreak))
+                    userStatsDao.updateDaysActive(maxOf(1, currentStats.daysActive))
                 }
                 lastActiveLocalDate == today -> {
                     if (currentStats.currentStreak == 0) {
                         userStatsDao.updateCurrentStreak(1)
-                        if (currentStats.longestStreak == 0) userStatsDao.updateLongestStreak(1)
+                        userStatsDao.updateLongestStreak(maxOf(1, currentStats.longestStreak))
                     }
                 }
                 lastActiveLocalDate == today.minusDays(1) -> {
-                    val newStreak = currentStats.currentStreak + 1
+                    val baseStreak = if (currentStats.currentStreak == 0) 1 else currentStats.currentStreak
+                    val newStreak = baseStreak + 1
                     userStatsDao.updateCurrentStreak(newStreak)
                     if (newStreak > currentStats.longestStreak) {
                         userStatsDao.updateLongestStreak(newStreak)
@@ -427,6 +440,8 @@ class StatsRepository(
                     userStatsDao.updateDaysActive(currentStats.daysActive + 1)
                 }
             }
+
+            userStatsDao.updateLastActive(System.currentTimeMillis(), todayStr)
         }
 
         val currentStats = userStatsDao.getUserStatsOnce() ?: return
