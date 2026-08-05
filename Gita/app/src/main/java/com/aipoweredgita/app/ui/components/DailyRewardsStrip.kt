@@ -75,6 +75,10 @@ fun DailyRewardsStrip(
             isToday = { d -> d == claimedCount + 1 && !claimedDay },
             wasJustClaimed = { d -> claimedDayIndex == d },
             onDayClick = { d ->
+                if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {
+                    android.widget.Toast.makeText(context, "Internet connection required to claim daily streak!", android.widget.Toast.LENGTH_SHORT).show()
+                    return@StreakStrip
+                }
                 claimedDayIndex = d
                 val coins = tracker.claimDaily(); claimedDay = true; claimedCount++
                 if (coins > 0) {
@@ -156,7 +160,13 @@ fun DailyRewardsStrip(
             isClaimed = { d -> d < shareState.day || (d == shareState.day && claimedShare) },
             isToday = { d -> d == shareState.day && !claimedShare },
             wasJustClaimed = { false },
-            onDayClick = { onNavigateToShare() },
+            onDayClick = {
+                if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {
+                    android.widget.Toast.makeText(context, "Internet connection required to claim daily streak!", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    onNavigateToShare()
+                }
+            },
             activeColor = Color(0xFFFF9800),
             dimColor = dim,
             bgColor = bg,
