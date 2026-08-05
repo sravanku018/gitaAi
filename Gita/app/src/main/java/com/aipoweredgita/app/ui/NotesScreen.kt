@@ -126,8 +126,10 @@ fun AddNoteDialog(
     var chapter by remember { mutableStateOf("") }
     var verse by remember { mutableStateOf("") }
     var noteText by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     var chapterError by remember { mutableStateOf(false) }
     var verseError by remember { mutableStateOf(false) }
+    var textError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -137,8 +139,12 @@ fun AddNoteDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = chapter,
-                        onValueChange = { chapter = it.filter { c -> c.isDigit() }; chapterError = false },
-                        label = { Text("Chapter") },
+                        onValueChange = { 
+                            chapter = it.filter { c -> c.isDigit() }
+                            chapterError = false 
+                            errorMessage = null
+                        },
+                        label = { Text("Chapter (1-18)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = chapterError,
                         modifier = Modifier.weight(1f),
@@ -146,8 +152,12 @@ fun AddNoteDialog(
                     )
                     OutlinedTextField(
                         value = verse,
-                        onValueChange = { verse = it.filter { c -> c.isDigit() }; verseError = false },
-                        label = { Text("Verse") },
+                        onValueChange = { 
+                            verse = it.filter { c -> c.isDigit() }
+                            verseError = false 
+                            errorMessage = null
+                        },
+                        label = { Text("Sloka") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = verseError,
                         modifier = Modifier.weight(1f),
@@ -156,11 +166,23 @@ fun AddNoteDialog(
                 }
                 OutlinedTextField(
                     value = noteText,
-                    onValueChange = { noteText = it },
+                    onValueChange = { 
+                        noteText = it 
+                        textError = false
+                        errorMessage = null
+                    },
                     label = { Text("Your note") },
+                    isError = textError,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                     maxLines = 6
                 )
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
@@ -168,10 +190,21 @@ fun AddNoteDialog(
                 onClick = {
                     val ch = chapter.toIntOrNull()
                     val vs = verse.toIntOrNull()
+                    val maxVerse = if (ch != null && ch in 1..18) {
+                        com.aipoweredgita.app.util.GitaConstants.CHAPTER_VERSE_COUNTS[ch] ?: 78
+                    } else 78
+
                     chapterError = ch == null || ch < 1 || ch > 18
-                    verseError = vs == null || vs < 1
-                    if (!chapterError && !verseError && noteText.isNotBlank()) {
-                        onSave(ch!!, vs!!, noteText)
+                    verseError = vs == null || vs < 1 || vs > maxVerse
+                    textError = noteText.isBlank()
+
+                    when {
+                        chapterError -> errorMessage = "Invalid Chapter. Enter a number between 1 and 18."
+                        verseError -> errorMessage = "Invalid Sloka. Chapter $ch only has $maxVerse slokas."
+                        textError -> errorMessage = "Note content cannot be empty."
+                        else -> {
+                            onSave(ch!!, vs!!, noteText.trim())
+                        }
                     }
                 }
             ) { Text("Save") }
