@@ -1299,6 +1299,56 @@ app.get("/activity/history", async (c) => {
   return c.json(result.rows);
 });
 
+// ─── VERSE NOTES ──────────────────────────────────────────────
+app.post("/notes/save", async (c) => {
+  const { user_id, chapter_no, verse_no, note } = await c.req.json();
+  if (!user_id || chapter_no == null || verse_no == null || !note) {
+    return c.json({ error: "user_id, chapter_no, verse_no, note required" }, 400);
+  }
+
+  // Enforce 200 character limit
+  const trimmedNote = String(note).trim().slice(0, 200);
+
+  await db.execute({
+    sql: `INSERT INTO verse_notes (user_id, chapter_no, verse_no, note, updated_at)
+          VALUES (?, ?, ?, ?, datetime('now'))
+          ON CONFLICT(user_id, chapter_no, verse_no) DO UPDATE SET note = ?, updated_at = datetime('now')`,
+    args: [user_id, chapter_no, verse_no, trimmedNote, trimmedNote],
+  });
+
+  return c.json({ success: true, note: trimmedNote });
+});
+
+app.get("/notes/list", async (c) => {
+  const user_id = c.req.query("user_id");
+  if (!user_id) return c.json({ error: "user_id required" }, 400);
+  const result = await db.execute({
+    sql: `SELECT id, chapter_no, verse_no, note, created_at, updated_at FROM verse_notes WHERE user_id = ? ORDER BY chapter_no, verse_no`,
+    args: [user_id],
+  });
+  return c.json(result.rows);
+});
+
+app.post("/notes/sync", async (c) => {
+  const { user_id, notes } = await c.req.json();
+  if (!user_id || !Array.isArray(notes)) return c.json({ error: "user_id and notes array required" }, 400);
+
+  let synced = 0;
+  for (const note of notes) {
+    if (note.chapterNo != null && note.verseNo != null && note.note) {
+      const trimmed = String(note.note).trim().slice(0, 200);
+      await db.execute({
+        sql: `INSERT INTO verse_notes (user_id, chapter_no, verse_no, note, updated_at)
+              VALUES (?, ?, ?, ?, datetime('now'))
+              ON CONFLICT(user_id, chapter_no, verse_no) DO UPDATE SET note = ?, updated_at = datetime('now')`,
+        args: [user_id, note.chapterNo, note.verseNo, trimmed, trimmed],
+      });
+    }
+    synced++;
+  }
+  return c.json({ success: true, synced });
+});
+
 // ─── ADMIN RESET STATS ────────────────────────────────────────
 app.post("/admin/reset-stats", async (c) => {
   const { user_id, current_streak = 1, longest_streak = 1, total_quizzes_taken = 0, total_questions_answered = 0, total_correct_answers = 0, best_score = 0, best_score_out_of = 0, verses_read = 0, chapters_completed = 0 } = await c.req.json();
