@@ -947,44 +947,52 @@
     }
 
     async function saveUserProfile() {
-      const uid = document.getElementById("edit-user-id").value.trim();
-      const name = document.getElementById("edit-name").value.trim();
-      const email = document.getElementById("edit-email").value.trim();
-      const curStreak = Number(document.getElementById("edit-current-streak").value);
-      const maxStreak = Number(document.getElementById("edit-longest-streak").value);
-      const checkinDay = Number(document.getElementById("edit-checkin-day").value);
-      const checkinWeek = Number(document.getElementById("edit-checkin-week").value);
-      const shareDay = Number(document.getElementById("edit-share-day").value);
-      const shareWeek = Number(document.getElementById("edit-share-week").value);
-      const coins = Number(document.getElementById("edit-coins").value);
-      const daysActive = Number(document.getElementById("edit-days-active").value);
-      const yogaLevel = Number(document.getElementById("edit-yoga-level").value);
+      try {
+        const uid = document.getElementById("edit-user-id").value.trim();
+        const rawName = document.getElementById("edit-name").value.trim();
+        const rawEmail = document.getElementById("edit-email").value.trim();
+        const name = rawName.replace(/'/g, "''");
+        const email = rawEmail.replace(/'/g, "''");
+        const curStreak = Number(document.getElementById("edit-current-streak").value) || 0;
+        const maxStreak = Number(document.getElementById("edit-longest-streak").value) || 0;
+        const checkinDay = Number(document.getElementById("edit-checkin-day").value) || 1;
+        const checkinWeek = Number(document.getElementById("edit-checkin-week").value) || 1;
+        const shareDay = Number(document.getElementById("edit-share-day").value) || 1;
+        const shareWeek = Number(document.getElementById("edit-share-week").value) || 1;
+        const coins = Number(document.getElementById("edit-coins").value) || 0;
+        const daysActive = Number(document.getElementById("edit-days-active").value) || 1;
+        const yogaLevel = Number(document.getElementById("edit-yoga-level").value) || 1;
 
-      const targetUser = allUsersList.find(u => u.user_id === uid) || {};
-      const oldCoins = Number(targetUser.krishna_coins || 0);
-      const coinDiff = coins - oldCoins;
-      const today = new Date().toISOString().split("T")[0];
+        const targetUser = allUsersCache.find(u => u.user_id === uid) || {};
+        const oldCoins = Number(targetUser.krishna_coins || 0);
+        const coinDiff = coins - oldCoins;
+        const today = new Date().toISOString().split("T")[0];
 
-      await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
-      await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
-      await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
+        await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
+        await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
+        await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
 
-      if (coinDiff !== 0) {
-        await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
+        if (coinDiff !== 0) {
+          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
+        }
+
+        // Mark this user as edited — smart refresh will re-fetch only this row
+        dirtySet.add(uid);
+        // Optimistically patch the in-memory cache so UI reflects changes immediately
+        const idx = allUsersCache.findIndex(u => u.user_id === uid);
+        if (idx !== -1) {
+          allUsersCache[idx] = { ...allUsersCache[idx], name: rawName, email: rawEmail,
+            current_streak: curStreak, longest_streak: maxStreak,
+            krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel,
+            checkin_day: checkinDay, checkin_week: checkinWeek, share_day: shareDay, share_week: shareWeek };
+        }
+        renderRoster(allUsersCache);
+        alert(`✅ Profile saved successfully! Row flagged ✏️ EDITED.`);
+        closeDossierModal();
+      } catch (err) {
+        console.error("Save profile error:", err);
+        alert(`❌ Failed to save profile: ${err.message || err}`);
       }
-
-      // Mark this user as edited — smart refresh will re-fetch only this row
-      dirtySet.add(uid);
-      // Optimistically patch the in-memory cache so UI reflects changes immediately
-      const idx = allUsersCache.findIndex(u => u.user_id === uid);
-      if (idx !== -1) {
-        allUsersCache[idx] = { ...allUsersCache[idx], name, email,
-          current_streak: curStreak, longest_streak: maxStreak,
-          krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel };
-      }
-      renderRoster(allUsersCache);
-      alert(`✅ Profile saved! Row flagged ✏️ EDITED — use Smart Refresh to pull latest DB values.`);
-      closeDossierModal();
     }
   </script>
 </body>
