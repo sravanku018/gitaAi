@@ -203,7 +203,10 @@
           <h1 id="page-title">Users</h1>
           <p id="page-subtitle">Inspect & Edit Every User Profile Live in Turso DB</p>
         </div>
-        <div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <select id="global-profile-select" class="form-input" style="width: 220px; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--card-border);" onchange="onGlobalProfileChange(this.value)">
+            <option value="">👤 All Seeker Profiles</option>
+          </select>
           <button class="btn btn-secondary" onclick="fetchCurrentViewData()">
             <i class="fa-solid fa-rotate-right"></i> Refresh Data
           </button>
@@ -891,7 +894,28 @@
         </tr>`;
     }
 
+    function updateGlobalProfileDropdown(users) {
+      const select = document.getElementById('global-profile-select');
+      if (!select) return;
+      const current = select.value;
+      let html = '<option value="">👤 All Seeker Profiles</option>';
+      users.forEach(u => {
+        const name = u.name ? ` (${u.name})` : '';
+        html += `<option value="${u.user_id}" ${u.user_id === current ? 'selected' : ''}>👤 ${u.user_id}${name}</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    function onGlobalProfileChange(userId) {
+      if (!userId) {
+        renderRoster(allUsersCache);
+        return;
+      }
+      openDossierFor(userId);
+    }
+
     function renderRoster(users) {
+      updateGlobalProfileDropdown(users);
       let filtered;
       if      (rosterFilter === 'active') filtered = users.filter(isActiveProfile);
       else if (rosterFilter === 'edited') filtered = users.filter(isEditedProfile);
