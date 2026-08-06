@@ -290,22 +290,28 @@ class ProfileViewModel @Inject constructor(
     }
 
     /**
-     * Load coin history (merges local and server data).
-     * Always prefer the merged local cache after server sync so recent
-     * offline/local-only earns still appear when the server list is incomplete.
+     * Load coin history for the *current* profile only.
+     * Local cache is user-scoped; server fetch uses the auth token's user.
+     * Never merges history from other accounts.
      */
     fun loadCoinHistory() {
         viewModelScope.launch {
             val authPrefs = AuthPreferences.getInstance(appContext)
             val isGuest = authPrefs.isGuestUser
+            // Prefer session userId only — never fall back to stale Room stats.userId
+            // from a previous profile (that caused mixed coin history).
             val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
-                ?: _stats.value?.userId?.takeIf { it.isNotEmpty() }
 
             fun isGuestSignupNoise(entry: com.aipoweredgita.app.network.CoinHistoryEntry): Boolean =
                 entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true)
 
-            if (isGuest || effectiveUid == null || effectiveUid.isEmpty()) {
-                _coinHistory.value = buildLocalHistory().filterNot(::isGuestSignupNoise)
+            if (effectiveUid == null) {
+                _coinHistory.value = emptyList()
+                return@launch
+            }
+
+            if (isGuest) {
+                _coinHistory.value = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
                 return@launch
             }
 
@@ -316,10 +322,12 @@ class ProfileViewModel @Inject constructor(
                         effectiveUid, "Bearer $token", limit = 500
                     )
                     if (serverHistory.isNotEmpty()) {
-                        com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
+                        com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(
+                            appContext, serverHistory, effectiveUid
+                        )
                     }
-                    // After sync, local log contains server + unsynced local entries.
-                    val merged = buildLocalHistory().filterNot(::isGuestSignupNoise)
+                    // Per-user local cache after sync (server + this user's offline-only rows).
+                    val merged = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
                     _coinHistory.value = if (merged.isNotEmpty()) {
                         merged
                     } else {
@@ -333,15 +341,15 @@ class ProfileViewModel @Inject constructor(
                 }
             }
 
-            _coinHistory.value = buildLocalHistory().filterNot(::isGuestSignupNoise)
+            _coinHistory.value = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
         }
     }
 
-    private suspend fun buildLocalHistory(): List<com.aipoweredgita.app.network.CoinHistoryEntry> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    private suspend fun buildLocalHistory(userId: String): List<com.aipoweredgita.app.network.CoinHistoryEntry> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val utcFmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }
-        com.aipoweredgita.app.coin.CoinTransactionLogger.getHistory(appContext).map { tx ->
+        com.aipoweredgita.app.coin.CoinTransactionLogger.getHistory(appContext, userId).map { tx ->
             val isSpend = tx.type == com.aipoweredgita.app.coin.CoinTxType.SPEND || tx.amount < 0
             val signedAmt = if (isSpend) -kotlin.math.abs(tx.amount) else kotlin.math.abs(tx.amount)
             val txType = if (isSpend) "SPEND" else "EARN"
