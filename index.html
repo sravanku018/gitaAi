@@ -820,8 +820,11 @@
           body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql } }, { type: "close" }] })
         });
         const data = await res.json();
-        const result = data.results[0]?.response?.result;
+        const result = data.results?.[0]?.response?.result;
         if (!result) return [];
+        if (!result.cols || !Array.isArray(result.cols)) {
+          return { affected_rows: result.affected_rows || 0, success: true };
+        }
         const cols = result.cols.map(c => c.name);
         return result.rows.map(row => {
           const obj = {};
@@ -1331,10 +1334,10 @@
 
     // ── COIN TRANSACTION EDIT / ADD / DELETE FUNCTIONS ──
     async function openEditCoinModal(id) {
-      let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => c.id === id);
+      let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
       if (!tx) {
         const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
-        if (res && res.length > 0) tx = res[0];
+        if (res && Array.isArray(res) && res.length > 0) tx = res[0];
       }
       if (!tx) {
         alert("Transaction record not found!");
@@ -1398,7 +1401,7 @@
           let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
           if (!tx) {
             const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
-            if (res && res.length > 0) tx = res[0];
+            if (res && Array.isArray(res) && res.length > 0) tx = res[0];
           }
           const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
           delta = newNet - oldNet;
@@ -1415,7 +1418,14 @@
 
         // Automatically update user_stats.krishna_coins total
         if (delta !== 0) {
-          await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', ${Math.max(0, delta)}, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = MAX(0, krishna_coins + (${delta})), updated_at = datetime('now')`);
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${uid}'`);
+          if (checkUser && Array.isArray(checkUser) && checkUser.length > 0) {
+            const currentCoins = Number(checkUser[0].krishna_coins || 0);
+            const newCoins = Math.max(0, currentCoins + delta);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${uid}'`);
+          } else {
+            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', ${Math.max(0, delta)}, datetime('now'))`);
+          }
           dirtySet.add(uid);
 
           const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
