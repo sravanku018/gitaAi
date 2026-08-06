@@ -63,6 +63,38 @@ private fun parseDateRobust(dateStr: String?): Date? {
     return null
 }
 
+/**
+ * Convert JSON metadata stored in coin_transactions.description (from /coins/award)
+ * into a short human-readable label for the history UI.
+ */
+private fun humanizeJsonDescription(raw: String, source: String): String {
+    return try {
+        val obj = org.json.JSONObject(raw)
+        when {
+            source.contains("quiz", ignoreCase = true) || obj.has("score") -> {
+                val score = obj.optInt("score", -1)
+                val total = obj.optInt("totalQuestions", obj.optInt("questionsAnswered", -1))
+                val type = obj.optString("quizType", "").ifBlank { "quiz" }
+                when {
+                    score >= 0 && total > 0 -> "Quiz ($type): $score/$total"
+                    score >= 0 -> "Quiz: $score correct"
+                    else -> "Quiz completed"
+                }
+            }
+            source.contains("battle", ignoreCase = true) || obj.has("battleCoins") -> {
+                val coins = obj.optInt("battleCoins", -1)
+                val score = obj.optInt("score", -1)
+                if (coins >= 0 && score >= 0) "Battle quiz: $score correct (+$coins)"
+                else if (score >= 0) "Battle quiz: $score correct"
+                else "Battle quiz"
+            }
+            else -> source.replace('_', ' ').replaceFirstChar { it.uppercase() }.ifBlank { "Earned coins" }
+        }
+    } catch (_: Exception) {
+        source.replace('_', ' ').ifBlank { "Activity" }
+    }
+}
+
 @Composable
 fun CoinBalanceCard(
     coinBalance: Int,
@@ -232,53 +264,73 @@ fun CoinTransactionItem(
         if (parsed != null) localFmt.format(parsed) else ""
     } catch (_: Exception) { "" }
 
-    val isVoiceSource = entry.source == "voice_chat" || entry.source == "voice" || entry.description.lowercase().contains("question") || entry.description.lowercase().contains("asked")
-    val isCheckinSource = entry.source == "checkin_day" || entry.source == "checkin" ||
-        entry.source == "daily_checkin" || entry.source.contains("checkin")
-    val isShareSource = entry.source == "share_sloka" || entry.source == "share" ||
-        entry.source == "daily_share" || entry.source.contains("share")
-    val isMeditationSource = entry.source == "meditation" || entry.description.lowercase().contains("meditation")
+    val src = entry.source.lowercase()
+    val rawDesc = entry.description.trim()
+    // Prefer server/admin description. JSON blobs (quiz metadata) → human summary.
+    val cleanDesc = when {
+        rawDesc.isEmpty() -> ""
+        rawDesc.startsWith("{") -> humanizeJsonDescription(rawDesc, entry.source)
+        else -> rawDesc
+    }
 
-    val cleanDesc = if (entry.description.trim().startsWith("{")) "" else entry.description
+    val isVoiceSource = src == "voice_chat" || src == "voice" ||
+        rawDesc.lowercase().contains("question") || rawDesc.lowercase().contains("asked")
+    val isCheckinSource = src == "checkin_day" || src == "checkin" || src == "daily_checkin" ||
+        src.contains("checkin") || src.contains("daily login") || src.contains("daily_login")
+    val isShareSource = src == "share_sloka" || src == "share" || src == "daily_share" ||
+        (src.contains("share") && !src.contains("chapter"))
+    val isMeditationSource = src == "meditation" || rawDesc.lowercase().contains("meditation")
 
-    val label = when {
-        entry.source == "signup" && cleanDesc.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
-        entry.source == "signup" -> "Welcome bonus"
-        entry.source == "quiz_completion" || entry.source == "quiz" -> "Quiz completed"
-        entry.source == "battle_quiz" -> "Battle Quiz"
-        entry.source == "chapter_completion" -> "Chapter completed"
+    // Fallback labels by source — only used when description is empty
+    val fallbackLabel = when {
+        src == "signup" && cleanDesc.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
+        src == "signup" || src.contains("welcome") -> "Welcome bonus"
+        src == "quiz_completion" || src == "quiz" -> "Quiz completed"
+        src == "battle_quiz" || src.contains("battle") -> "Battle Quiz"
+        src == "chapter_completion" || src.contains("chapter") -> "Chapter completed"
         isCheckinSource -> "Daily check-in"
         isShareSource -> "Daily share"
         isMeditationSource -> "Meditation practice"
         isVoiceSource -> if (isEarn) "Voice chat" else "Voice chat question"
-        entry.source == "level_up_bonus" || entry.source == "level_up" -> "Level up bonus"
-        else -> if (cleanDesc.isNotBlank()) cleanDesc else if (isEarn) "Earned coins" else "Spent coins"
+        src == "level_up_bonus" || src.contains("level") -> "Level up bonus"
+        src == "admin_adjustment" || src == "admin_quick_edit" -> "Admin adjustment"
+        else -> if (isEarn) "Earned coins" else "Spent coins"
     }
+
+    // Admin/dashboard edits write description in Turso — always show it in the app.
+    val label = if (cleanDesc.isNotBlank()) cleanDesc else fallbackLabel
     
     val icon = when {
-        entry.source == "signup" -> "🎉"
-        entry.source == "quiz_completion" || entry.source == "quiz" -> "📚"
-        entry.source == "battle_quiz" -> "⚔️"
-        entry.source == "chapter_completion" -> "📚"
+        src == "signup" || src.contains("welcome") -> "🎉"
+        src == "quiz_completion" || src == "quiz" -> "📚"
+        src == "battle_quiz" || src.contains("battle") -> "⚔️"
+        src == "chapter_completion" || src.contains("chapter") -> "📚"
         isCheckinSource -> "☀️"
         isShareSource -> "📖"
         isMeditationSource -> "🧘"
         isVoiceSource -> "🎙"
-        entry.source == "level_up_bonus" || entry.source == "level_up" -> "⬆"
+        src == "level_up_bonus" || src.contains("level") -> "⬆"
+        src.startsWith("admin") -> "🛠"
         else -> if (isEarn) "✦" else "◈"
     }
         
     val supporting = when {
-        isVoiceSource && !isEarn -> cleanDesc.replace(Regex("(?i)asked question:\\s*"), "").take(35)
-        entry.source == "signup" -> "Welcome bonus"
-        entry.source == "quiz_completion" || entry.source == "quiz" -> "Quiz reward"
-        entry.source == "battle_quiz" -> "Battle reward"
-        entry.source == "chapter_completion" -> "Chapter done"
-        isCheckinSource -> "Daily reward"
-        isShareSource -> "Sloka shared"
-        isVoiceSource -> "Voice chat"
-        entry.source == "level_up_bonus" || entry.source == "level_up" -> "Bonus"
-        else -> ""
+        // Custom description already shown as title — show source category under it
+        cleanDesc.isNotBlank() && cleanDesc != fallbackLabel -> fallbackLabel
+        isVoiceSource && !isEarn && cleanDesc.isNotBlank() ->
+            cleanDesc.replace(Regex("(?i)asked question:\\s*"), "").take(35)
+        cleanDesc.isBlank() -> when {
+            src == "signup" -> "Welcome bonus"
+            src == "quiz_completion" || src == "quiz" -> "Quiz reward"
+            src == "battle_quiz" -> "Battle reward"
+            src == "chapter_completion" -> "Chapter done"
+            isCheckinSource -> "Daily reward"
+            isShareSource -> "Sloka shared"
+            isVoiceSource -> "Voice chat"
+            src == "level_up_bonus" -> "Bonus"
+            else -> entry.source.takeIf { it.isNotBlank() } ?: ""
+        }
+        else -> entry.source.takeIf { it.isNotBlank() && it != cleanDesc } ?: ""
     }
 
     val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()

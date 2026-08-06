@@ -1265,7 +1265,24 @@ app.post("/coins/award", requireAuth, async (c) => {
   const multiplier = userStats.rows.length ? (userStats.rows[0].multiplier as number) : 1;
   coins = Math.floor(coins * multiplier);
 
-  await db.execute({ sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, ?, 'EARN', ?, ?, ?)`, args: [user_id, coins, source, JSON.stringify(metadata ?? {}), dbDate] });
+  // Human-readable description for app + admin dashboard (not raw JSON metadata)
+  let description = source.replace(/_/g, " ");
+  if (source === "quiz_completion" && metadata) {
+    const totalQ = metadata.totalQuestions ?? 0;
+    const scoreQ = metadata.score ?? 0;
+    const quizType = metadata.quizType ?? "general";
+    description = totalQ > 0
+      ? `Quiz (${quizType}): ${scoreQ}/${totalQ}`
+      : `Quiz (${quizType}): ${scoreQ} correct`;
+  } else if (source === "battle_quiz" && metadata) {
+    const scoreQ = metadata.score ?? 0;
+    const battleCoins = metadata.battleCoins ?? coins;
+    description = `Battle quiz: ${scoreQ} correct (+${battleCoins})`;
+  } else if (source === "chapter_completion") {
+    description = "Chapter completed";
+  }
+
+  await db.execute({ sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, ?, 'EARN', ?, ?, ?)`, args: [user_id, coins, source, description, dbDate] });
   await db.execute({ sql: `UPDATE user_stats SET krishna_coins = MIN(krishna_coins + ?, 10000), updated_at = datetime('now') WHERE user_id = ?`, args: [coins, user_id] });
 
   // Store quiz stats in user_stats
@@ -1282,12 +1299,6 @@ app.post("/coins/award", requireAuth, async (c) => {
         best_score_out_of = CASE WHEN ? > best_score THEN ? ELSE best_score_out_of END
       WHERE user_id = ?`,
       args: [totalQ, scoreQ, scoreQ, scoreQ, totalQ, user_id]
-    });
-    // Update description to include quizType for display
-    const enrichedMeta = { ...metadata, quizType };
-    await db.execute({
-      sql: `UPDATE coin_transactions SET description = ? WHERE user_id = ? AND source = 'quiz_completion' AND id = (SELECT MAX(id) FROM coin_transactions WHERE user_id = ? AND source = 'quiz_completion')`,
-      args: [JSON.stringify(enrichedMeta), user_id, user_id]
     });
     const attempt_id = metadata?.attemptId ?? null;
     const language = metadata?.language ?? 'en';
