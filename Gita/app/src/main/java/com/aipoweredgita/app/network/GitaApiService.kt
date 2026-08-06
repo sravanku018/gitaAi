@@ -93,7 +93,8 @@ data class CoinAwardRequest(
     val source: String,
     val metadata: Map<String, Any>? = null,
     val client_date: String? = null,
-    val country_code: String? = null
+    val country_code: String? = null,
+    val timezone: String? = null
 )
 
 data class CoinSpendRequest(
@@ -101,7 +102,8 @@ data class CoinSpendRequest(
     val question: String,
     val idempotency_key: String? = null,
     val client_date: String? = null,
-    val country_code: String? = null
+    val country_code: String? = null,
+    val timezone: String? = null
 )
 
 data class ShareSlokaRequest(
@@ -112,7 +114,7 @@ data class ShareSlokaRequest(
     val idempotency_key: String? = null,
     val client_date: String? = null,
     val country_code: String? = null,
-    val timezone: String? = java.util.TimeZone.getDefault().id
+    val timezone: String? = null
 )
 
 data class ClaimGuestRequest(
