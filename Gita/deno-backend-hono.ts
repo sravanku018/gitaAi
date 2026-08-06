@@ -214,7 +214,7 @@ async function initTables() {
     await db.execute({ sql: `CREATE UNIQUE INDEX IF NOT EXISTS index_quiz_attempts_attempt_id ON quiz_attempts (attempt_id)` }).catch(() => {});
     await db.execute({ sql: `ALTER TABLE quiz_attempts ADD COLUMN language TEXT DEFAULT 'en'` }).catch(() => {});
 
-    // Verse notes table
+    // Verse notes table — unique constraint required for ON CONFLICT upsert
     await db.execute({
       sql: `CREATE TABLE IF NOT EXISTS verse_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,10 +223,39 @@ async function initTables() {
         verse_no INTEGER NOT NULL,
         note TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now')),
-        updated_at TEXT DEFAULT (datetime('now'))
+        updated_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(user_id, chapter_no, verse_no)
       )`
     }).catch(() => {});
+    // Backfill unique constraint on existing databases (idempotent)
+    await db.execute({ sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_verse_notes_unique ON verse_notes(user_id, chapter_no, verse_no)` }).catch(() => {});
     await db.execute({ sql: `CREATE INDEX IF NOT EXISTS idx_verse_notes_user ON verse_notes(user_id)` }).catch(() => {});
+
+    // Meditation sessions table
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS meditation_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        minutes INTEGER NOT NULL,
+        coins_earned INTEGER DEFAULT 0,
+        session_date TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`
+    }).catch(() => {});
+    await db.execute({ sql: `CREATE INDEX IF NOT EXISTS idx_meditation_user ON meditation_sessions(user_id)` }).catch(() => {});
+
+    // User feedback table
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS user_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT DEFAULT 'feedback',
+        subject TEXT DEFAULT '',
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`
+    }).catch(() => {});
 
     await db.execute({
       sql: `CREATE TABLE IF NOT EXISTS checkin_streaks (
@@ -283,12 +312,52 @@ async function initTables() {
 await initTables();
 
 // ─── HELPERS ─────────────────────────────────────────────────
+// ─── PBKDF2-SHA256 password helpers (salted, 100k iterations) ─
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_KEY_LENGTH = 32;
+
 async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", encoder.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+    keyMaterial, PBKDF2_KEY_LENGTH * 8
+  );
+  const hash = new Uint8Array(derivedBits);
+  const saltB64 = btoa(String.fromCharCode(...salt));
+  const hashB64 = btoa(String.fromCharCode(...hash));
+  return `${PBKDF2_ITERATIONS}:${saltB64}:${hashB64}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  // Support legacy plain SHA-256 hashes (hex, 64 chars) during migration
+  if (!stored.includes(":")) {
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(password));
+    const legacyHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return legacyHash === stored;
+  }
+  const parts = stored.split(":");
+  if (parts.length !== 3) return false;
+  const iterations = parseInt(parts[0], 10);
+  const salt = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+  const expectedHash = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", encoder.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    keyMaterial, PBKDF2_KEY_LENGTH * 8
+  );
+  const candidateHash = new Uint8Array(derivedBits);
+  if (candidateHash.length !== expectedHash.length) return false;
+  let diff = 0;
+  for (let i = 0; i < candidateHash.length; i++) diff |= candidateHash[i] ^ expectedHash[i];
+  return diff === 0;
 }
 
 function generateToken(): string {
@@ -461,6 +530,304 @@ app.get("/", (c) => c.json({
   ],
 }));
 
+// ─── ADMIN DASHBOARD (browser UI) ────────────────────────────
+app.get("/admin", (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gita App — Admin Dashboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh}
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  #lock{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:20px}
+  #app{display:none;padding:24px;max-width:1100px;margin:0 auto}
+  .card{background:#12121a;border:1px solid #1e1e2e;border-radius:14px;padding:20px;margin-bottom:20px}
+  h1{font-size:22px;font-weight:700;color:#f59e0b;margin-bottom:4px}
+  h2{font-size:15px;font-weight:600;color:#94a3b8;margin-bottom:16px}
+  label{font-size:12px;color:#64748b;font-weight:500;display:block;margin-bottom:6px}
+  input,select{width:100%;padding:10px 14px;background:#0f0f1a;border:1px solid #1e2a3a;border-radius:8px;color:#e2e8f0;font-size:14px;outline:none;transition:border .2s}
+  input:focus,select:focus{border-color:#f59e0b}
+  button{padding:10px 20px;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s}
+  .btn-gold{background:#f59e0b;color:#0a0a0f}.btn-gold:hover{background:#d97706}
+  .btn-red{background:#dc2626;color:#fff}.btn-red:hover{background:#b91c1c}
+  .btn-blue{background:#2563eb;color:#fff}.btn-blue:hover{background:#1d4ed8}
+  .btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:600px){.grid{grid-template-columns:1fr}}
+  .stat{background:#0f0f1a;border:1px solid #1e2a3a;border-radius:10px;padding:14px}
+  .stat-val{font-size:22px;font-weight:700;color:#f59e0b}
+  .stat-label{font-size:11px;color:#64748b;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:8px 10px;color:#64748b;font-weight:500;border-bottom:1px solid #1e1e2e}
+  td{padding:8px 10px;border-bottom:1px solid #12121a}
+  tr:hover td{background:#0f0f1a}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .earn{background:#052e16;color:#4ade80}.spend{background:#450a0a;color:#f87171}
+  .msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px}
+  .msg.ok{background:#052e16;color:#4ade80}.msg.err{background:#450a0a;color:#f87171}
+  #lockBox{background:#12121a;border:1px solid #1e1e2e;border-radius:16px;padding:32px;width:340px;text-align:center}
+  #lockBox h1{margin-bottom:8px}
+  #lockBox p{font-size:13px;color:#64748b;margin-bottom:24px}
+  #lockBox input{margin-bottom:14px}
+  .sep{border:none;border-top:1px solid #1e1e2e;margin:20px 0}
+  .row{display:flex;gap:10px;align-items:flex-end}
+  .row .field{flex:1}
+  .tag{font-size:10px;background:#1e2a3a;color:#64748b;border-radius:4px;padding:2px 6px;margin-left:6px}
+  #userCard{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock">
+  <div id="lockBox">
+    <h1>🪷 Gita Admin</h1>
+    <p>Enter your admin key to continue</p>
+    <label>Admin Key</label>
+    <input type="password" id="keyInput" placeholder="Enter admin key" onkeydown="if(event.key==='Enter')unlock()">
+    <button class="btn-gold" style="width:100%" onclick="unlock()">Unlock Dashboard</button>
+    <div id="lockMsg"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="app">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div><h1>🪷 Gita Admin Dashboard</h1><p style="font-size:13px;color:#64748b">Manage users, coins &amp; streaks</p></div>
+    <button class="btn-sm" style="background:#1e2a3a;color:#94a3b8" onclick="lockout()">🔒 Lock</button>
+  </div>
+
+  <!-- USER SEARCH -->
+  <div class="card">
+    <h2>👤 User Lookup</h2>
+    <div class="row">
+      <div class="field"><label>User ID</label><input type="text" id="uidInput" placeholder="e.g. raja21" onkeydown="if(event.key==='Enter')loadUser()"></div>
+      <button class="btn-gold" onclick="loadUser()">Load</button>
+    </div>
+    <div id="searchMsg"></div>
+  </div>
+
+  <!-- USER CARD -->
+  <div id="userCard">
+    <div class="card">
+      <h2>📊 Stats <span class="tag" id="uidTag"></span></h2>
+      <div class="grid" id="statsGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔧 Actions</h2>
+      <div class="grid">
+        <div>
+          <label>Reset Streak to</label>
+          <div class="row">
+            <div class="field"><input type="number" id="streakInput" placeholder="e.g. 5" min="0"></div>
+            <button class="btn-blue btn-sm" onclick="restoreStreak()">Restore Streak</button>
+          </div>
+        </div>
+        <div>
+          <label>Reset All Stats</label>
+          <button class="btn-red btn-sm" style="width:100%;margin-top:6px" onclick="resetStats()">⚠️ Reset Stats</button>
+        </div>
+      </div>
+      <div id="actionMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>🪙 Coin History <span id="histCount" class="tag"></span></h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Source</th><th>Amount</th><th>Description</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let KEY = '';
+let CURRENT_UID = '';
+const BASE = '';
+
+async function unlock() {
+  const k = document.getElementById('keyInput').value.trim();
+  if (!k) return;
+  // Verify key by calling a protected admin endpoint
+  const res = await fetch(BASE + '/admin/clean-duplicates?admin_key=' + encodeURIComponent(k), {method:'GET'});
+  if (res.status === 403) {
+    showMsg('lockMsg','err','❌ Wrong admin key');
+    return;
+  }
+  KEY = k;
+  localStorage.setItem('gita_admin_key', k);
+  document.getElementById('lock').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  showMsg('lockMsg','','');
+}
+
+function lockout() {
+  KEY = '';
+  localStorage.removeItem('gita_admin_key');
+  document.getElementById('lock').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function loadUser() {
+  const uid = document.getElementById('uidInput').value.trim();
+  if (!uid) return;
+  CURRENT_UID = uid;
+  document.getElementById('searchMsg').innerHTML = '<p style="color:#64748b;font-size:13px;margin-top:10px">Loading...</p>';
+  try {
+    // Use admin key to fetch balance (coins/balance is protected by requireAuth so call via admin endpoint approach)
+    // We'll use a direct DB query via admin/clean-duplicates won't work - let's call coins/balance with a workaround
+    // Instead, we add a dedicated admin user lookup below — for now show what we can
+    const res = await fetch(BASE + '/admin/reset-stats', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-key':KEY},
+      body: JSON.stringify({user_id: uid, _check_only: true})
+    });
+    const statsRes = await fetchAdmin('/admin/user-stats?user_id=' + encodeURIComponent(uid));
+    if (!statsRes) { showMsg('searchMsg','err','User not found or API error'); return; }
+    renderUser(statsRes);
+  } catch(e) {
+    showMsg('searchMsg','err','Error: ' + e.message);
+  }
+}
+
+async function fetchAdmin(path) {
+  try {
+    const res = await fetch(BASE + path + (path.includes('?') ? '&' : '?') + 'admin_key=' + encodeURIComponent(KEY));
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function loadUserDirect(uid) {
+  CURRENT_UID = uid;
+  document.getElementById('uidTag').textContent = uid;
+  document.getElementById('searchMsg').innerHTML = '';
+  // Load stats
+  const stats = await fetchAdmin('/admin/user-stats?user_id=' + encodeURIComponent(uid));
+  if (!stats || stats.error) { showMsg('searchMsg','err','User not found'); document.getElementById('userCard').style.display='none'; return; }
+  renderStats(stats);
+  // Load coin history
+  const hist = await fetchAdmin('/admin/coin-history?user_id=' + encodeURIComponent(uid) + '&limit=50');
+  renderHistory(hist || []);
+  document.getElementById('userCard').style.display = 'block';
+}
+
+function renderStats(s) {
+  const grid = document.getElementById('statsGrid');
+  const items = [
+    ['Krishna Coins', s.krishna_coins ?? 0, '🪙'],
+    ['Yoga Level', s.yoga_level ?? 1, '🧘'],
+    ['Current Streak', s.current_streak ?? 0, '🔥'],
+    ['Longest Streak', s.longest_streak ?? 0, '⚡'],
+    ['Quizzes Taken', s.total_quizzes_taken ?? 0, '📝'],
+    ['Correct Answers', s.total_correct_answers ?? 0, '✅'],
+    ['Verses Read', s.verses_read ?? 0, '📖'],
+    ['Chapters Done', s.chapters_completed ?? 0, '📚'],
+  ];
+  grid.innerHTML = items.map(([label, val, icon]) =>
+    \`<div class="stat"><div class="stat-val">\${icon} \${val}</div><div class="stat-label">\${label}</div></div>\`
+  ).join('');
+}
+
+function renderHistory(rows) {
+  document.getElementById('histCount').textContent = rows.length + ' records';
+  document.getElementById('histBody').innerHTML = rows.map((r,i) => {
+    const cls = r.type === 'EARN' ? 'earn' : 'spend';
+    const sign = r.type === 'EARN' ? '+' : '';
+    const date = (r.created_at || '').substring(0,16).replace('T',' ');
+    return \`<tr><td>\${i+1}</td><td>\${date}</td><td><span class="badge \${cls}">\${r.type}</span></td><td>\${r.source}</td><td style="color:\${r.type==='EARN'?'#4ade80':'#f87171'}">\${sign}\${r.amount}</td><td style="color:#64748b">\${r.description||''}</td></tr>\`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">No records</td></tr>';
+}
+
+async function restoreStreak() {
+  const target = document.getElementById('streakInput').value.trim();
+  if (!CURRENT_UID) return showMsg('actionMsg','err','Load a user first');
+  const res = await fetch(BASE + '/admin/restore-streak', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-key':KEY},
+    body: JSON.stringify({user_id: CURRENT_UID, target_streak: target ? Number(target) : undefined})
+  });
+  const j = await res.json();
+  if (j.success) showMsg('actionMsg','ok','✅ Streak restored to ' + j.current_streak);
+  else showMsg('actionMsg','err','Error: ' + (j.error || 'unknown'));
+  loadUserDirect(CURRENT_UID);
+}
+
+async function resetStats() {
+  if (!CURRENT_UID) return showMsg('actionMsg','err','Load a user first');
+  if (!confirm('Reset all stats for ' + CURRENT_UID + '? This cannot be undone.')) return;
+  const res = await fetch(BASE + '/admin/reset-stats', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-key':KEY},
+    body: JSON.stringify({user_id: CURRENT_UID})
+  });
+  const j = await res.json();
+  if (j.success) showMsg('actionMsg','ok','✅ Stats reset');
+  else showMsg('actionMsg','err','Error: ' + (j.error || 'unknown'));
+  loadUserDirect(CURRENT_UID);
+}
+
+function showMsg(id, type, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = text ? \`<div class="msg \${type}">\${text}</div>\` : '';
+}
+
+// Override loadUser to use the direct approach
+async function loadUser() {
+  const uid = document.getElementById('uidInput').value.trim();
+  if (!uid) return;
+  document.getElementById('searchMsg').innerHTML = '<p style="color:#64748b;font-size:13px;margin-top:10px">Loading...</p>';
+  await loadUserDirect(uid);
+}
+
+// Try restoring saved key on load
+window.onload = () => {
+  const saved = localStorage.getItem('gita_admin_key');
+  if (saved) document.getElementById('keyInput').value = saved;
+};
+</script>
+</body>
+</html>`;
+  return c.html(html);
+});
+
+// ─── ADMIN USER STATS (admin-key protected, returns full user stats) ──
+app.get("/admin/user-stats", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const user_id = c.req.query("user_id");
+  if (!user_id) return c.json({ error: "user_id required" }, 400);
+  const stats = await db.execute({
+    sql: `SELECT us.*, yl.name as yoga_name, yl.multiplier
+          FROM user_stats us
+          LEFT JOIN yoga_levels yl ON yl.level = us.yoga_level
+          WHERE us.user_id = ?`,
+    args: [user_id],
+  });
+  if (!stats.rows.length) return c.json({ error: "User not found" }, 404);
+  const user = await db.execute({ sql: `SELECT name, email, is_guest, created_at FROM users WHERE user_id = ?`, args: [user_id] });
+  return c.json({ ...stats.rows[0], ...(user.rows[0] || {}) });
+});
+
+// ─── ADMIN COIN HISTORY (admin-key protected) ─────────────────
+app.get("/admin/coin-history", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const user_id = c.req.query("user_id");
+  if (!user_id) return c.json({ error: "user_id required" }, 400);
+  const limit = Math.min(parseInt(c.req.query("limit") ?? "100"), 500);
+  const result = await db.execute({
+    sql: `SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
+    args: [user_id, limit],
+  });
+  return c.json(result.rows);
+});
+
 // ─── SERVER TIME (Internet Time Check for Any Country) ───────
 app.get("/server-time", (c) => {
   const country = c.req.query("country_code");
@@ -487,18 +854,24 @@ app.post("/auth/register", async (c) => {
     if (!email) email = `${user_id}@gita.com`;
 
     const existing = await db.execute({
-      sql: "SELECT user_id FROM users WHERE user_id = ?",
+      sql: "SELECT user_id, password_hash FROM users WHERE user_id = ?",
       args: [user_id],
     });
     if (existing.rows.length) {
-      // User exists — return token instead of error (prevents retry duplicates)
+      // User already registered — verify password before issuing a new token
+      const storedHash = existing.rows[0].password_hash as string;
+      const passwordOk = await verifyPassword(password, storedHash);
+      if (!passwordOk) {
+        return c.json({ error: "User already registered. Use /auth/login to sign in." }, 409);
+      }
+      // Correct password — issue a new session (acts like login)
       const token = generateToken();
       await db.execute({
         sql: `INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+30 days'))`,
         args: [user_id, token],
       });
       const stats = await db.execute({ sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`, args: [user_id] });
-      return c.json({ success: true, user_id, token, coins: stats.rows[0]?.krishna_coins ?? 0 });
+      return c.json({ success: true, user_id, token, coins: stats.rows[0]?.krishna_coins ?? 0, duplicate: true });
     }
 
     const passwordHash = await hashPassword(password);
@@ -548,8 +921,9 @@ app.post("/auth/login", async (c) => {
     return c.json({ error: "User not found" }, 404);
   }
 
-  const passwordHash = await hashPassword(password);
-  if (user.rows[0].password_hash !== passwordHash) {
+  const storedHash = user.rows[0].password_hash as string;
+  const passwordOk = await verifyPassword(password, storedHash);
+  if (!passwordOk) {
     return c.json({ error: "Invalid password" }, 401);
   }
 
@@ -633,8 +1007,14 @@ app.post("/guest/create", async (c) => {
 });
 
 // ─── GUEST CLAIM ──────────────────────────────────────────────
-app.post("/guest/claim", async (c) => {
+app.post("/guest/claim", requireAuth, async (c) => {
+  const token_user_id = c.get("userId" as any) as string;
   const { guest_id, real_user_id, name = "", email = "" } = await c.req.json();
+
+  // Enforce: the caller's session token must belong to the guest being claimed
+  if (token_user_id !== guest_id) {
+    return c.json({ error: "Token does not match the guest_id being claimed" }, 403);
+  }
 
   const guestStats = await db.execute({ sql: "SELECT * FROM user_stats WHERE user_id = ?", args: [guest_id] });
   if (!guestStats.rows.length) return c.json({ error: "Guest not found" }, 404);
@@ -676,38 +1056,19 @@ app.post("/guest/claim", async (c) => {
   return c.json({ success: true, user_id: real_user_id, sync_bonus: SYNC_BONUS });
 });
 
-// ─── USERS CREATE ─────────────────────────────────────────────
-app.post("/users/create", async (c) => {
-  let { user_id, name = "", email = "" } = await c.req.json();
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
-  if (!email) email = `${user_id}@gita.com`;
+// ─── USERS CREATE — REMOVED (passwordless accounts cannot log in) ───────────
+// Use POST /auth/register instead (requires password).
+app.post("/users/create", (c) =>
+  c.json({ error: "This endpoint is removed. Use POST /auth/register to create an account with a password." }, 410)
+);
 
-  // Check if user already exists — return existing session
-  const existing = await db.execute({ sql: `SELECT user_id FROM users WHERE user_id = ?`, args: [user_id] });
-  if (existing.rows.length) {
-    // User exists — just give them a token, no duplicate welcome bonus
-    const token = generateToken();
-    await db.execute({
-      sql: `INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+30 days'))`,
-      args: [user_id, token],
-    });
-    const stats = await db.execute({ sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`, args: [user_id] });
-    return c.json({ success: true, coins: stats.rows[0]?.krishna_coins ?? 0, token, duplicate: false });
-  }
-
-  // New user — create everything in order
-  await db.execute({ sql: `INSERT INTO users (user_id, name, email, is_guest) VALUES (?, ?, ?, 0)`, args: [user_id, name, email] });
-  await db.execute({ sql: `INSERT INTO user_stats (user_id, krishna_coins, days_active, yoga_level, last_activity_date) VALUES (?, 200, 1, 1, ?)`, args: [user_id, new Date().toISOString().split("T")[0]] });
-  await db.execute({ sql: `INSERT OR IGNORE INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week) VALUES (?, 0, 1, 0, 1)`, args: [user_id] });
-  await db.execute({ sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, 200, 'EARN', 'signup', 'Welcome bonus — new seeker', datetime('now'))`, args: [user_id] });
-
-  const token = generateToken();
-  await db.execute({
-    sql: `INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+30 days'))`,
-    args: [user_id, token],
-  });
-  return c.json({ success: true, coins: 200, token });
-});
+// ─── ADMIN KEY HELPER ─────────────────────────────────────────
+function requireAdminKey(c: any): boolean {
+  const adminKey = Deno.env.get("ADMIN_SECRET_KEY");
+  if (!adminKey) return false; // No key configured — deny all
+  const provided = c.req.header("x-admin-key") || c.req.query("admin_key");
+  return provided === adminKey;
+}
 
 // ─── STREAK HELPER ─────────────────────────────────────────────
 function calculateStreak(
@@ -766,9 +1127,9 @@ function calculateStreak(
 }
 
 // ─── USERS STATS SYNC ──────────────────────────────────────────
-app.post("/users/stats/sync", async (c) => {
+app.post("/users/stats/sync", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const {
-    user_id,
     current_streak = 0,
     longest_streak = 0,
     total_quizzes_taken = 0,
@@ -850,8 +1211,8 @@ app.post("/users/stats/sync", async (c) => {
 });
 
 // ─── COINS BALANCE ────────────────────────────────────────────
-app.get("/coins/balance", async (c) => {
-  const user_id = c.req.query("user_id");
+app.get("/coins/balance", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
 
   const result = await db.execute({
     sql: `SELECT us.krishna_coins, us.days_active,
@@ -874,8 +1235,9 @@ app.get("/coins/balance", async (c) => {
 });
 
 // ─── COINS AWARD ──────────────────────────────────────────────
-app.post("/coins/award", async (c) => {
-  const { user_id, source, metadata, client_date, country_code } = await c.req.json();
+app.post("/coins/award", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { source, metadata, client_date, country_code } = await c.req.json();
   if (country_code) await updateUserCountry(user_id, country_code);
   const dbDate = client_date ? client_date : new Date().toISOString();
   const rule = await db.execute({ sql: "SELECT base_coins, max_coins FROM coin_rules WHERE source = ?", args: [source] });
@@ -903,7 +1265,24 @@ app.post("/coins/award", async (c) => {
   const multiplier = userStats.rows.length ? (userStats.rows[0].multiplier as number) : 1;
   coins = Math.floor(coins * multiplier);
 
-  await db.execute({ sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, ?, 'EARN', ?, ?, ?)`, args: [user_id, coins, source, JSON.stringify(metadata ?? {}), dbDate] });
+  // Human-readable description for app + admin dashboard (not raw JSON metadata)
+  let description = source.replace(/_/g, " ");
+  if (source === "quiz_completion" && metadata) {
+    const totalQ = metadata.totalQuestions ?? 0;
+    const scoreQ = metadata.score ?? 0;
+    const quizType = metadata.quizType ?? "general";
+    description = totalQ > 0
+      ? `Quiz (${quizType}): ${scoreQ}/${totalQ}`
+      : `Quiz (${quizType}): ${scoreQ} correct`;
+  } else if (source === "battle_quiz" && metadata) {
+    const scoreQ = metadata.score ?? 0;
+    const battleCoins = metadata.battleCoins ?? coins;
+    description = `Battle quiz: ${scoreQ} correct (+${battleCoins})`;
+  } else if (source === "chapter_completion") {
+    description = "Chapter completed";
+  }
+
+  await db.execute({ sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES (?, ?, 'EARN', ?, ?, ?)`, args: [user_id, coins, source, description, dbDate] });
   await db.execute({ sql: `UPDATE user_stats SET krishna_coins = MIN(krishna_coins + ?, 10000), updated_at = datetime('now') WHERE user_id = ?`, args: [coins, user_id] });
 
   // Store quiz stats in user_stats
@@ -920,12 +1299,6 @@ app.post("/coins/award", async (c) => {
         best_score_out_of = CASE WHEN ? > best_score THEN ? ELSE best_score_out_of END
       WHERE user_id = ?`,
       args: [totalQ, scoreQ, scoreQ, scoreQ, totalQ, user_id]
-    });
-    // Update description to include quizType for display
-    const enrichedMeta = { ...metadata, quizType };
-    await db.execute({
-      sql: `UPDATE coin_transactions SET description = ? WHERE user_id = ? AND source = 'quiz_completion' AND id = (SELECT MAX(id) FROM coin_transactions WHERE user_id = ? AND source = 'quiz_completion')`,
-      args: [JSON.stringify(enrichedMeta), user_id, user_id]
     });
     const attempt_id = metadata?.attemptId ?? null;
     const language = metadata?.language ?? 'en';
@@ -977,8 +1350,9 @@ app.post("/coins/award", async (c) => {
 });
 
 // ─── COINS SPEND ──────────────────────────────────────────────
-app.post("/coins/spend", async (c) => {
-  const { user_id, question, idempotency_key, client_date, country_code } = await c.req.json();
+app.post("/coins/spend", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { question, idempotency_key, client_date, country_code } = await c.req.json();
   if (country_code) await updateUserCountry(user_id, country_code);
   const dbDate = client_date ? client_date : new Date().toISOString();
 
@@ -1018,13 +1392,14 @@ app.post("/coins/spend", async (c) => {
 });
 
 // ─── CHECKIN ──────────────────────────────────────────────────
-app.post("/checkin", async (c) => {
-  const { user_id, idempotency_key: rawKey, client_date, country_code, timezone } = await c.req.json();
+app.post("/checkin", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { idempotency_key: rawKey, client_date, country_code, timezone } = await c.req.json();
   if (country_code) await updateUserCountry(user_id, country_code);
   const dbDate = new Date().toISOString();
-  // Authoritative Internet Server Time for user's country timezone — locks once per calendar day
+  const clientDateStr = (client_date ? String(client_date).trim().substring(0, 10) : "");
   const userTz = getTimezone(c, country_code, timezone);
-  const today = getLocalDate(userTz);
+  const today = (clientDateStr.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(clientDateStr)) ? clientDateStr : getLocalDate(userTz);
   const idempotency_key = rawKey || `checkin_${user_id}_${today}`;
 
   // Always check idempotency first — prevents race conditions
@@ -1049,9 +1424,14 @@ app.post("/checkin", async (c) => {
     });
   }
 
+  let current_day = 1;
+  let current_week = 1;
+
   if (streak.rows.length) {
-    const last = streak.rows[0].last_checkin as string;
-    if (last && last === today) {
+    const rawCheckin = String(streak.rows[0].last_checkin || "").trim();
+    const lastCheckinDate = rawCheckin.substring(0, 10);
+
+    if (lastCheckinDate === today) {
       const stats = await db.execute({ sql: "SELECT krishna_coins FROM user_stats WHERE user_id = ?", args: [user_id] });
       return c.json({
         day: existingDay === 0 ? 7 : existingDay,
@@ -1063,21 +1443,21 @@ app.post("/checkin", async (c) => {
         remaining_balance: stats.rows.length ? (stats.rows[0].krishna_coins as number) : 0
       });
     }
-  }
 
-  let current_day = streak.rows.length ? ((streak.rows[0].current_day as number) % 7) + 1 : 1;
-  let current_week = streak.rows.length ? (streak.rows[0].current_week as number) : 1;
+    current_day = ((streak.rows[0].current_day as number) % 7) + 1;
+    current_week = (streak.rows[0].current_week as number) || 1;
 
-  if (streak.rows.length && streak.rows[0].last_checkin) {
-    const lastCheckinRaw = streak.rows[0].last_checkin as string;
-    const lastCheckinDate = lastCheckinRaw.split(' ')[0];
-    const todayDate = new Date(today + "T12:00:00Z");
-    todayDate.setUTCDate(todayDate.getUTCDate() - 1);
-    const yesterdayDate = todayDate.toISOString().split("T")[0];
+    if (lastCheckinDate) {
+      const tDate = new Date(today + "T12:00:00Z");
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const yesterdayDate = tDate.toISOString().substring(0, 10);
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const dayBeforeYesterdayDate = tDate.toISOString().substring(0, 10);
 
-    if (lastCheckinDate !== yesterdayDate && lastCheckinDate !== today) {
-      current_day = 1;
-      current_week = 1;
+      if (lastCheckinDate !== yesterdayDate && lastCheckinDate !== dayBeforeYesterdayDate) {
+        current_day = 1;
+        current_week = 1;
+      }
     }
   }
 
@@ -1098,13 +1478,14 @@ app.post("/checkin", async (c) => {
 });
 
 // ─── SHARE ────────────────────────────────────────────────────
-app.post("/share", async (c) => {
-  const { user_id, sloka_id = null, chapter = null, verse = null, idempotency_key: rawKey, client_date, country_code, timezone } = await c.req.json();
+app.post("/share", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { sloka_id = null, chapter = null, verse = null, idempotency_key: rawKey, client_date, country_code, timezone } = await c.req.json();
   if (country_code) await updateUserCountry(user_id, country_code);
   const dbDate = new Date().toISOString();
-  // Authoritative Internet Server Time for user's country timezone — locks once per calendar day
+  const clientDateStr = (client_date ? String(client_date).trim().substring(0, 10) : "");
   const userTz = getTimezone(c, country_code, timezone);
-  const today = getLocalDate(userTz);
+  const today = (clientDateStr.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(clientDateStr)) ? clientDateStr : getLocalDate(userTz);
   const idempotency_key = rawKey || `share_${user_id}_${today}`;
 
   // Always check idempotency first — prevents race conditions
@@ -1129,9 +1510,14 @@ app.post("/share", async (c) => {
     });
   }
 
+  let share_day = 1;
+  let share_week = 1;
+
   if (streak.rows.length) {
-    const last = streak.rows[0].last_share as string;
-    if (last && last === today) {
+    const rawShare = String(streak.rows[0].last_share || "").trim();
+    const lastShareDate = rawShare.substring(0, 10);
+
+    if (lastShareDate === today) {
       const stats = await db.execute({ sql: "SELECT krishna_coins FROM user_stats WHERE user_id = ?", args: [user_id] });
       return c.json({
         share_day: existingShareDay === 0 ? 7 : existingShareDay,
@@ -1143,21 +1529,21 @@ app.post("/share", async (c) => {
         remaining_balance: stats.rows.length ? (stats.rows[0].krishna_coins as number) : 0
       });
     }
-  }
 
-  let share_day = streak.rows.length ? ((streak.rows[0].share_day as number) % 7) + 1 : 1;
-  let share_week = streak.rows.length ? (streak.rows[0].share_week as number) : 1;
+    share_day = ((streak.rows[0].share_day as number) % 7) + 1;
+    share_week = (streak.rows[0].share_week as number) || 1;
 
-  if (streak.rows.length && streak.rows[0].last_share) {
-    const lastShareRaw = streak.rows[0].last_share as string;
-    const lastShareDate = lastShareRaw.split(' ')[0];
-    const todayDate = new Date(today + "T12:00:00Z");
-    todayDate.setUTCDate(todayDate.getUTCDate() - 1);
-    const yesterdayDate = todayDate.toISOString().split("T")[0];
+    if (lastShareDate) {
+      const tDate = new Date(today + "T12:00:00Z");
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const yesterdayDate = tDate.toISOString().substring(0, 10);
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const dayBeforeYesterdayDate = tDate.toISOString().substring(0, 10);
 
-    if (lastShareDate !== yesterdayDate && lastShareDate !== today) {
-      share_day = 1;
-      share_week = 1;
+      if (lastShareDate !== yesterdayDate && lastShareDate !== dayBeforeYesterdayDate) {
+        share_day = 1;
+        share_week = 1;
+      }
     }
   }
 
@@ -1192,8 +1578,8 @@ app.post("/share", async (c) => {
 });
 
 // ─── COINS HISTORY ────────────────────────────────────────────
-app.get("/coins/history", async (c) => {
-  const user_id = c.req.query("user_id");
+app.get("/coins/history", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
 
   const limitParam  = parseInt(c.req.query("limit")  ?? "500");
   const offsetParam = parseInt(c.req.query("offset") ?? "0");
@@ -1253,11 +1639,11 @@ app.get("/coins/voice-cost", async (c) => {
 });
 
 // ─── QUIZ ATTEMPTS ────────────────────────────────────────────
-app.post("/quiz/attempt", async (c) => {
-  const { user_id, score, total_questions, quiz_type = "general", time_spent_seconds = 0, coins_earned = 0, client_date, country_code, attempt_id, language = "en" } = await c.req.json();
+app.post("/quiz/attempt", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { score, total_questions, quiz_type = "general", time_spent_seconds = 0, coins_earned = 0, client_date, country_code, attempt_id, language = "en" } = await c.req.json();
   if (country_code) await updateUserCountry(user_id, country_code);
   const dbDate = client_date ? client_date : new Date().toISOString();
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
   const avg_time = total_questions > 0 ? Math.round(time_spent_seconds / total_questions) : 0;
   const accuracy = total_questions > 0 ? Math.round((score / total_questions) * 100) : 0;
   await db.execute({
@@ -1267,9 +1653,8 @@ app.post("/quiz/attempt", async (c) => {
   return c.json({ success: true });
 });
 
-app.get("/quiz/history", async (c) => {
-  const user_id = c.req.query("user_id");
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.get("/quiz/history", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const limit = Math.min(parseInt(c.req.query("limit") ?? "100"), 500);
   const result = await db.execute({
     sql: `SELECT id, score, total_questions, quiz_type, time_spent_seconds, avg_time_per_question, coins_earned, accuracy, created_at, attempt_id, language FROM quiz_attempts WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
@@ -1278,9 +1663,8 @@ app.get("/quiz/history", async (c) => {
   return c.json(result.rows);
 });
 
-app.get("/activity/history", async (c) => {
-  const user_id = c.req.query("user_id");
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.get("/activity/history", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const result = await db.execute({
     sql: `SELECT DATE(created_at) as date,
             COUNT(CASE WHEN source = 'checkin_day' THEN 1 END) as checkins,
@@ -1301,10 +1685,11 @@ app.get("/activity/history", async (c) => {
 });
 
 // ─── VERSE NOTES ──────────────────────────────────────────────
-app.post("/notes/save", async (c) => {
-  const { user_id, chapter_no, verse_no, note } = await c.req.json();
-  if (!user_id || chapter_no == null || verse_no == null || !note) {
-    return c.json({ error: "user_id, chapter_no, verse_no, note required" }, 400);
+app.post("/notes/save", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { chapter_no, verse_no, note } = await c.req.json();
+  if (chapter_no == null || verse_no == null || !note) {
+    return c.json({ error: "chapter_no, verse_no, note required" }, 400);
   }
 
   // Enforce 200 character limit
@@ -1320,9 +1705,8 @@ app.post("/notes/save", async (c) => {
   return c.json({ success: true, note: trimmedNote });
 });
 
-app.get("/notes/list", async (c) => {
-  const user_id = c.req.query("user_id");
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.get("/notes/list", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const result = await db.execute({
     sql: `SELECT id, chapter_no, verse_no, note, created_at, updated_at FROM verse_notes WHERE user_id = ? ORDER BY chapter_no, verse_no`,
     args: [user_id],
@@ -1330,28 +1714,11 @@ app.get("/notes/list", async (c) => {
   return c.json(result.rows);
 });
 
-app.post("/notes/sync", async (c) => {
-  const { user_id, notes } = await c.req.json();
-  if (!user_id || !Array.isArray(notes)) return c.json({ error: "user_id and notes array required" }, 400);
-
-  let synced = 0;
-  for (const note of notes) {
-    if (note.chapterNo != null && note.verseNo != null && note.note) {
-      const trimmed = String(note.note).trim().slice(0, 200);
-      await db.execute({
-        sql: `INSERT INTO verse_notes (user_id, chapter_no, verse_no, note, updated_at)
-              VALUES (?, ?, ?, ?, datetime('now'))
-              ON CONFLICT(user_id, chapter_no, verse_no) DO UPDATE SET note = ?, updated_at = datetime('now')`,
-        args: [user_id, note.chapterNo, note.verseNo, trimmed, trimmed],
-      });
-    }
-    synced++;
-  }
-  return c.json({ success: true, synced });
-});
+// (first /notes/sync removed — canonical version is below at line ~1412)
 
 // ─── ADMIN RESET STATS ────────────────────────────────────────
 app.post("/admin/reset-stats", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
   const { user_id, current_streak = 1, longest_streak = 1, total_quizzes_taken = 0, total_questions_answered = 0, total_correct_answers = 0, best_score = 0, best_score_out_of = 0, verses_read = 0, chapters_completed = 0 } = await c.req.json();
   if (!user_id) return c.json({ error: "user_id required" }, 400);
   await db.execute({
@@ -1363,6 +1730,7 @@ app.post("/admin/reset-stats", async (c) => {
 
 // ─── ADMIN CLEANUP (Fix Turso DB) ─────────────────────────────
 app.get("/admin/clean-duplicates", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
   try {
     // 1. Delete duplicate coin transactions for battle_quiz
     await db.execute(`
@@ -1399,9 +1767,8 @@ app.get("/admin/clean-duplicates", async (c) => {
     return c.json({ success: false, error: e.message });
   }
 });
-app.get("/notes", async (c) => {
-  const user_id = c.req.query("user_id");
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.get("/notes", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const result = await db.execute({
     sql: `SELECT id, chapter_no, verse_no, note, created_at, updated_at FROM verse_notes WHERE user_id = ? ORDER BY updated_at DESC`,
     args: [user_id],
@@ -1409,9 +1776,9 @@ app.get("/notes", async (c) => {
   return c.json(result.rows);
 });
 
-app.post("/notes/sync", async (c) => {
-  const { user_id, notes } = await c.req.json();
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.post("/notes/sync", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { notes } = await c.req.json();
   if (!Array.isArray(notes)) return c.json({ error: "notes array required" }, 400);
 
   let synced = 0;
@@ -1436,9 +1803,9 @@ app.post("/notes/sync", async (c) => {
   return c.json({ success: true, synced });
 });
 
-app.post("/notes/delete", async (c) => {
-  const { user_id, chapter_no, verse_no } = await c.req.json();
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.post("/notes/delete", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { chapter_no, verse_no } = await c.req.json();
   await db.execute({
     sql: `DELETE FROM verse_notes WHERE user_id = ? AND chapter_no = ? AND verse_no = ?`,
     args: [user_id, chapter_no, verse_no],
@@ -1448,6 +1815,7 @@ app.post("/notes/delete", async (c) => {
 
 // ─── ADMIN RESTORE STREAK ─────────────────────────────────────
 app.post("/admin/restore-streak", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
   const { user_id, target_streak } = await c.req.json();
   if (!user_id) return c.json({ error: "user_id required" }, 400);
 
@@ -1471,9 +1839,10 @@ app.post("/admin/restore-streak", async (c) => {
 });
 
 // ─── MEDITATION TIME TRACKER & REWARDS ────────────────────────
-app.post("/meditation/log", async (c) => {
-  const { user_id, minutes } = await c.req.json();
-  if (!user_id || !minutes) return c.json({ error: "user_id and minutes required" }, 400);
+app.post("/meditation/log", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { minutes } = await c.req.json();
+  if (!minutes) return c.json({ error: "minutes required" }, 400);
 
   const min = Math.max(1, Number(minutes));
   // Reward Rule: 5 min -> 10 coins, 10 min -> 20 coins, 15 min -> 30 coins, 20 min -> 40 coins
@@ -1501,9 +1870,8 @@ app.post("/meditation/log", async (c) => {
   return c.json({ success: true, user_id, minutes: min, coins_earned: coinsEarned, total_coins: stats.rows[0]?.krishna_coins ?? 0 });
 });
 
-app.get("/meditation/history", async (c) => {
-  const user_id = c.req.query("user_id");
-  if (!user_id) return c.json({ error: "user_id required" }, 400);
+app.get("/meditation/history", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
   const result = await db.execute({
     sql: `SELECT id, minutes, coins_earned, session_date, created_at FROM meditation_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 50`,
     args: [user_id],
@@ -1512,9 +1880,10 @@ app.get("/meditation/history", async (c) => {
 });
 
 // ─── USER FEEDBACK & COMPLAINTS ───────────────────────────────
-app.post("/feedback", async (c) => {
-  const { user_id, type = "feedback", subject = "", message, client_timestamp } = await c.req.json();
-  if (!user_id || !message) return c.json({ error: "user_id and message required" }, 400);
+app.post("/feedback", requireAuth, async (c) => {
+  const user_id = c.get("userId" as any) as string;
+  const { type = "feedback", subject = "", message, client_timestamp } = await c.req.json();
+  if (!message) return c.json({ error: "message required" }, 400);
 
   // Enforce 200 character max limit & auto timestamp
   const trimmedMsg = String(message).trim().slice(0, 200);
@@ -1529,6 +1898,7 @@ app.post("/feedback", async (c) => {
 });
 
 app.get("/feedback/list", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
   const result = await db.execute(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 100`);
   return c.json(result.rows);
 });
