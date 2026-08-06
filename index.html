@@ -1441,9 +1441,9 @@
         }
 
         closeCoinModal();
-        fetchCoinHistoryLog(true);
-        if (activeDossierUser && activeDossierUser.user_id === uid) {
-          loadUserIsolatedTab(uid, 'coins');
+        await fetchCoinHistoryLog(true);
+        if (uid) {
+          await loadUserIsolatedTab(uid, 'coins');
         }
       } catch (err) {
         console.error("Save transaction error:", err);
@@ -1469,7 +1469,14 @@
         await queryTurso(`DELETE FROM coin_transactions WHERE id = ${id}`);
 
         if (delta !== 0 && uid) {
-          await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = MAX(0, krishna_coins + (${delta})), updated_at = datetime('now')`);
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${uid}'`);
+          if (checkUser && Array.isArray(checkUser) && checkUser.length > 0) {
+            const currentCoins = Number(checkUser[0].krishna_coins || 0);
+            const newCoins = Math.max(0, currentCoins + delta);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${uid}'`);
+          } else {
+            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', 0, datetime('now'))`);
+          }
           dirtySet.add(uid);
 
           const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
@@ -1484,11 +1491,11 @@
           renderRoster(allUsersCache);
         }
 
-        alert(`✅ Transaction #${id} deleted and user total coins updated!`);
+        alert(`✅ Transaction #${id} deleted!`);
         closeCoinModal();
-        fetchCoinHistoryLog(true);
-        if (activeDossierUser && activeDossierUser.user_id === uid) {
-          loadUserIsolatedTab(uid, 'coins');
+        await fetchCoinHistoryLog(true);
+        if (uid) {
+          await loadUserIsolatedTab(uid, 'coins');
         }
       } catch (err) {
         console.error("Delete transaction error:", err);
