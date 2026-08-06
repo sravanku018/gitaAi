@@ -33,7 +33,7 @@
 
     /* LOCK SCREEN */
     .lock-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(11, 13, 20, 0.96); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
-    .lock-card { width: 100%; max-width: 400px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+    .lock-card { max-height: 92vh; overflow-y: auto; width: 100%; max-width: 400px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
     .lock-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--primary); }
     .pin-input { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); border-radius: 10px; color: #fff; font-size: 18px; text-align: center; letter-spacing: 4px; outline: none; }
     .pin-input:focus { border-color: var(--primary); }
@@ -150,36 +150,38 @@
           <i class="fa-solid fa-shield-halved"></i> Register Authenticator first (Settings → scan QR), then unlock
         </p>
       </div>
+      <!-- ALWAYS visible: scan BEFORE unlock (no login needed) -->
+      <div style="width:100%; text-align:center; margin: 4px 0 14px; padding: 14px; border: 1px solid rgba(52,211,153,0.35); border-radius: 12px; background: rgba(16,185,129,0.08);">
+        <div style="font-size: 13px; font-weight: 800; color: #34d399; margin-bottom: 8px;">
+          Step 1 — Scan this QR first (no unlock needed)
+        </div>
+        <div style="background:#fff; padding:10px; border-radius:10px; display:inline-block; margin-bottom:10px;">
+          <img id="lock-totp-qr"
+               src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30"
+               alt="Scan with Google Authenticator before unlock"
+               width="180" height="180" style="display:block;">
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.45;">
+          Or type secret into Authenticator:<br>
+          <code id="lock-totp-secret" style="color:#fbbf24; letter-spacing:1px; word-break:break-all;">TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px; padding:4px 10px; font-size:11px;"
+                  onclick="navigator.clipboard.writeText('TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB'); alert('Secret copied — paste into Google Authenticator');">
+            Copy secret
+          </button>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; font-weight: 800; color: #fbbf24; width:100%; text-align:left; margin-bottom: 6px;">
+        Step 2 — Then unlock
+      </div>
       <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (Deno ADMIN_SECRET_KEY)</label>
       <input type="password" id="admin-secret-key" class="pin-input" placeholder="ADMIN_SECRET_KEY from Deno env" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
-      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%; margin-top: 8px;">Google Authenticator 6-digit (after you registered the secret)</label>
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%; margin-top: 8px;">6-digit code from Authenticator (after scanning above)</label>
       <input type="text" id="admin-pin" class="pin-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
-
-      <!-- First-time: register Authenticator BEFORE unlock -->
-      <details style="width:100%; margin-top: 12px; text-align:left; border:1px solid var(--card-border); border-radius:10px; padding:10px 12px;">
-        <summary style="cursor:pointer; font-size:12px; font-weight:700; color:#fbbf24;">
-          First time? Register Google Authenticator first (required)
-        </summary>
-        <p style="font-size:11px; color:var(--text-muted); margin:10px 0 8px; line-height:1.45;">
-          1) Deno env has the same <code>TOTP_SECRET</code><br>
-          2) Scan QR or enter secret in Authenticator<br>
-          3) Wait for a fresh 6-digit code, then unlock above
-        </p>
-        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
-          <div style="background:#fff; padding:8px; border-radius:8px;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30"
-                 alt="Register TOTP first" width="120" height="120" style="display:block;">
-          </div>
-          <div style="font-size:11px; color:var(--text-muted);">
-            <div style="font-weight:600; color:#e5e7eb; margin-bottom:4px;">Manual secret</div>
-            <code style="word-break:break-all; color:#34d399;">TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
-          </div>
-        </div>
-      </details>
       <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
         API: lofty-crocodile-6332.sravanku018.deno.net
       </p>
