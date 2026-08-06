@@ -67,22 +67,18 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             var newDate = state.lastCheckinDate
             val cleanDate = lastCheckin?.take(10)
 
-            val isServerDateNewer = cleanDate != null && cleanDate > newDate
-            val isSameDateHigherDay = cleanDate != null && cleanDate == newDate && serverDay > state.checkinDay
-            val isLocalEmpty = newDate.isEmpty()
-
-            if (isServerDateNewer || isSameDateHigherDay || isLocalEmpty) {
-                if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
-                    newDate = cleanDate
-                }
-                val targetDay = if (isLocalEmpty) serverDay else maxOf(state.checkinDay, serverDay)
-                val targetWeek = if (isLocalEmpty) serverWeek else maxOf(state.checkinWeek, serverWeek)
-                saveState(state.copy(
-                    checkinDay = targetDay,
-                    checkinWeek = targetWeek,
-                    lastCheckinDate = newDate
-                ))
+            // Only update date if server has a strictly newer date than local record
+            if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
+                newDate = cleanDate
             }
+
+            val targetDay = if (state.lastCheckinDate.isEmpty()) serverDay else maxOf(state.checkinDay, serverDay)
+            val targetWeek = if (state.lastCheckinDate.isEmpty()) serverWeek else maxOf(state.checkinWeek, serverWeek)
+            saveState(state.copy(
+                checkinDay = targetDay,
+                checkinWeek = targetWeek,
+                lastCheckinDate = newDate
+            ))
         }
     }
 
