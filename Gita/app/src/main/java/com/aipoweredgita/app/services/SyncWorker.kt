@@ -118,7 +118,8 @@ class SyncWorker(
                         val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
                         val language = if (jsonObject.has("language") && !jsonObject.get("language").isJsonNull) jsonObject.get("language").asString else "en"
 
-                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode, attemptId=$attemptId, language=$language")
+                        val userTz = java.util.TimeZone.getDefault().id
+                        Log.d(TAG, "Syncing QUIZ: score=$score, total=$totalQuestions, accuracy=$accuracy, type=$quizType, date=$clientDate, country=$countryCode, tz=$userTz, attemptId=$attemptId, language=$language")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
@@ -135,7 +136,8 @@ class SyncWorker(
                                     if (attemptId != null) it + ("attemptId" to attemptId) else it
                                 },
                                 client_date = clientDate,
-                                country_code = countryCode
+                                country_code = countryCode,
+                                timezone = userTz
                             )
                         )
                         
@@ -167,14 +169,16 @@ class SyncWorker(
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
+                        val userTz = java.util.TimeZone.getDefault().id
 
-                        Log.d(TAG, "Syncing CHAPTER completion: date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing CHAPTER completion: date=$clientDate, country=$countryCode, tz=$userTz")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
                                 source = "chapter_completion",
                                 client_date = clientDate,
-                                country_code = countryCode
+                                country_code = countryCode,
+                                timezone = userTz
                             )
                         )
                         userStatsDao.updateKrishnaCoins(response.total_coins)
@@ -189,8 +193,9 @@ class SyncWorker(
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
                         val attemptId = if (jsonObject.has("attemptId") && !jsonObject.get("attemptId").isJsonNull) jsonObject.get("attemptId").asString else null
                         val language = if (jsonObject.has("language") && !jsonObject.get("language").isJsonNull) jsonObject.get("language").asString else "en"
+                        val userTz = java.util.TimeZone.getDefault().id
 
-                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode, attemptId=$attemptId, language=$language")
+                        Log.d(TAG, "Syncing BATTLE: battleCoins=$battleCoins, score=$score, qa=$questionsAnswered, date=$clientDate, country=$countryCode, tz=$userTz, attemptId=$attemptId, language=$language")
                         val response = CoinApi.retrofitService.awardCoins(
                             CoinAwardRequest(
                                 user_id = event.userId,
@@ -205,7 +210,8 @@ class SyncWorker(
                                     if (attemptId != null) it + ("attemptId" to attemptId) else it
                                 },
                                 client_date = clientDate,
-                                country_code = countryCode
+                                country_code = countryCode,
+                                timezone = userTz
                             )
                         )
                         userStatsDao.updateKrishnaCoins(response.total_coins)
@@ -216,15 +222,17 @@ class SyncWorker(
                         val question = jsonObject.get("question")?.asString ?: ""
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
+                        val userTz = java.util.TimeZone.getDefault().id
 
-                        Log.d(TAG, "Syncing SPEND: question=${question.take(50)}, idempotencyKey=${event.idempotencyKey}, date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing SPEND: question=${question.take(50)}, idempotencyKey=${event.idempotencyKey}, date=$clientDate, country=$countryCode, tz=$userTz")
                         val response = CoinApi.retrofitService.spendCoins(
                             CoinSpendRequest(
                                 user_id = event.userId,
                                 question = question,
                                 idempotency_key = event.idempotencyKey,
                                 client_date = clientDate,
-                                country_code = countryCode
+                                country_code = countryCode,
+                                timezone = userTz
                             )
                         )
                         
@@ -239,9 +247,11 @@ class SyncWorker(
                         Log.d(TAG, "Syncing CHECKIN")
                         val jsonObject = try { gson.fromJson(event.payload, com.google.gson.JsonObject::class.java) } catch (_: Exception) { null }
                         val clientDate = if (jsonObject?.has("clientDate") == true && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
+                        val userTz = java.util.TimeZone.getDefault().id
                         
                         val requestMap = mutableMapOf<String, String>(
-                            "user_id" to event.userId
+                            "user_id" to event.userId,
+                            "timezone" to userTz
                         )
                         event.idempotencyKey?.let { requestMap["idempotency_key"] = it }
                         if (clientDate != null) {
@@ -272,8 +282,9 @@ class SyncWorker(
                         val slokaId = if (jsonObject.has("slokaId") && !jsonObject.get("slokaId").isJsonNull) jsonObject.get("slokaId").asString else null
                         val clientDate = if (jsonObject.has("clientDate") && !jsonObject.get("clientDate").isJsonNull) jsonObject.get("clientDate").asString else null
                         val countryCode = if (jsonObject.has("countryCode") && !jsonObject.get("countryCode").isJsonNull) jsonObject.get("countryCode").asString else null
+                        val userTz = java.util.TimeZone.getDefault().id
 
-                        Log.d(TAG, "Syncing SHARE: chapter=$chapter, verse=$verse, slokaId=$slokaId, date=$clientDate, country=$countryCode")
+                        Log.d(TAG, "Syncing SHARE: chapter=$chapter, verse=$verse, slokaId=$slokaId, date=$clientDate, country=$countryCode, tz=$userTz")
                         val response = CoinApi.retrofitService.share(
                             ShareSlokaRequest(
                                 user_id = event.userId,
@@ -282,6 +293,7 @@ class SyncWorker(
                                 verse = verse,
                                 client_date = clientDate,
                                 country_code = countryCode,
+                                timezone = userTz,
                                 idempotency_key = event.idempotencyKey
                             )
                         )
