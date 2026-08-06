@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Identity Services (Sign-In) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --bg: #0b0d14;
@@ -149,6 +151,14 @@
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
+      <div style="width: 100%; margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">— OR —</div>
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID"
+             data-callback="handleGoogleLogin">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-theme="filled_black" data-size="large" data-shape="pill"></div>
+      </div>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
     </div>
   </div>
@@ -182,6 +192,10 @@
         <li class="nav-item" onclick="switchView('notes', this)">
           <i class="fa-solid fa-book-bookmark"></i>
           <span>Verse Notes</span>
+        </li>
+        <li class="nav-item" onclick="switchView('settings', this)">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
         </li>
       </ul>
 
@@ -438,6 +452,34 @@
         </div>
       </div>
 
+      <!-- VIEW 7: SETTINGS (Admin Password Management) -->
+      <div class="view-section" id="view-settings">
+        <div class="glass section-card">
+          <div class="section-header">
+            <h3 class="section-title"><i class="fa-solid fa-key" style="color: var(--primary);"></i> Admin Security Settings</h3>
+          </div>
+          <div style="max-width: 480px; display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
+            <p style="font-size: 13px; color: var(--text-muted);">Create or update your admin password for this GitHub Pages dashboard.</p>
+            <div class="form-group">
+              <label>Current Password</label>
+              <input type="password" id="settings-current-pass" class="form-input" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="settings-new-pass" class="form-input" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="settings-confirm-pass" class="form-input" placeholder="Confirm new password">
+            </div>
+            <button class="btn btn-primary" style="align-self: flex-start;" onclick="updateAdminPassword()">
+              <i class="fa-solid fa-floppy-disk"></i> Save New Password
+            </button>
+            <p id="settings-msg" style="font-size: 13px; font-weight: 600; display: none;"></p>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -607,6 +649,26 @@
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
     const ADMIN_PIN = localStorage.getItem("gita_admin_pin") || "108";
+
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) { return null; }
+    }
+
+    function handleGoogleLogin(response) {
+      const payload = parseJwt(response.credential);
+      if (payload && payload.email) {
+        localStorage.setItem("gita_admin_user", payload.email);
+        localStorage.setItem("gita_admin_unlocked", "true");
+        document.getElementById("lock-screen").style.display = "none";
+        document.getElementById("app-layout").style.display = "flex";
+        fetchCurrentViewData();
+      }
+    }
 
     let currentView = "roster";
     let allUsersCache = [];
