@@ -304,14 +304,16 @@ fun MainScreen(
                     }
                 }
             }
-            NavGraph(
-                navController = navController,
-                modifier = Modifier.padding(innerPadding),
-                isDarkTheme = isDarkTheme,
-                onThemeToggle = onThemeToggle,
-                onAuthChanged = { authVersion++ },
-                sharedProfileViewModel = profileViewModel
-            )
+            androidx.compose.runtime.key(authVersion) {
+                NavGraph(
+                    navController = navController,
+                    modifier = Modifier.padding(innerPadding),
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = onThemeToggle,
+                    onAuthChanged = { authVersion++ },
+                    sharedProfileViewModel = profileViewModel
+                )
+            }
         }
     }
 }
