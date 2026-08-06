@@ -43,7 +43,6 @@ class StatsRepository(
     private val appContext: Context,
     private val pendingSyncEventDao: PendingSyncEventDao = GitaDatabase.getDatabase(appContext).pendingSyncEventDao()
 ) {
-
     /** Observable network state for UI feedback. */
     private val _networkState = MutableStateFlow<NetworkState>(NetworkState.Idle)
     val networkState: StateFlow<NetworkState> = _networkState.asStateFlow()
@@ -138,17 +137,23 @@ class StatsRepository(
 
     /** Ensures the user exists on the server before any coin API call. */
     private suspend fun ensureUserSynced() {
-        val uid = userId() ?: return
-
+        val uid = resolvedUserId() ?: return
         if (authPrefs.isGuestUser) {
             return
         }
-
         refreshUserState(uid)
         syncUserWithCloud()
     }
 
+    /** Local-DB cached userId — kept for offline/legacy lookups. Prefer resolvedUserId() for gating logic. */
     private suspend fun userId(): String? = userStatsDao.getUserStatsOnce()?.userId?.takeIf { it.isNotEmpty() }
+
+    /**
+     * The real signed-in identity. Prefers the auth session (available immediately at login,
+     * no DB round-trip needed) over the local `user_stats.userId` cache, which can be stale
+     * right after login/guest-claim and must never gate whether a reward is awarded or logged.
+     */
+    private fun resolvedUserId(): String? = authPrefs.userId?.takeIf { it.isNotEmpty() }
 
     suspend fun trackQuizCompletion(
         score: Int,
@@ -228,11 +233,16 @@ class StatsRepository(
             }
             result.totalCoins
         } else {
-            userId()?.let { uid ->
-                val fallback = result.totalCoins
-                userStatsDao.addKrishnaCoins(fallback)
-                CoinTransactionLogger.log(appContext, fallback, result.breakdown, source = "quiz_completion")
+            // Always award + log for a signed-in user. Don't gate on the local
+            // DB's cached userId — it can be stale right after login.
+            val fallback = result.totalCoins
+            userStatsDao.addKrishnaCoins(fallback)
+            CoinTransactionLogger.log(appContext, fallback, result.breakdown, source = "quiz_completion")
 
+            // Resolve the real uid for the sync queue only — prefer the auth
+            // session over the local cached row, which may not be populated yet.
+            val uid = resolvedUserId() ?: userId()
+            if (uid != null) {
                 try {
                     val payloadMap = mapOf(
                         "score" to score,
@@ -261,8 +271,10 @@ class StatsRepository(
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue quiz sync event: ${dbEx.message}")
                 }
-                fallback
-            } ?: 0
+            } else {
+                Log.w("StatsRepository", "trackQuizCompletion: no uid available, coin awarded locally but server sync not queued")
+            }
+            fallback
         }
 
         return Pair(coins, result.breakdown)
@@ -312,12 +324,16 @@ class StatsRepository(
                 CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)", source = "battle_quiz")
             }
         } else {
-            userId()?.let { uid ->
-                if (battleCoins > 0) {
-                    userStatsDao.addKrishnaCoins(battleCoins)
-                    val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
+            // Always award + log for a signed-in user regardless of local cached uid.
+            if (battleCoins > 0) {
+                userStatsDao.addKrishnaCoins(battleCoins)
+                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}", source = "battle_quiz")
+
+                val uid = resolvedUserId() ?: userId()
+                if (uid != null) {
                     try {
-                        db.pendingSyncEventDao().insert(
+                        val db2 = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
+                        db2.pendingSyncEventDao().insert(
                             com.aipoweredgita.app.database.PendingSyncEvent(
                                 userId = uid,
                                 eventType = "BATTLE",
@@ -326,11 +342,12 @@ class StatsRepository(
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )
                         )
-                        CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}", source = "battle_quiz")
                         SyncWorker.schedule(appContext)
                     } catch (dbEx: Exception) {
                         Log.e("StatsRepository", "Failed to queue battle sync event: ${dbEx.message}")
                     }
+                } else {
+                    Log.w("StatsRepository", "trackBattleCompletion: no uid available, coin awarded locally but server sync not queued")
                 }
             }
         }
@@ -394,6 +411,7 @@ class StatsRepository(
             val currentStats = userStatsDao.getUserStatsOnce() ?: return@runInTransaction
             val rawLastActiveDate = currentStats.lastActiveDate
             val lastActiveLocalDate = parseLocalDate(rawLastActiveDate) ?: return@runInTransaction
+
             val today = LocalDate.now(ZoneId.systemDefault())
 
             // Allow 48-hour grace window (today.minusDays(2)) so late night / timezone shifts don't wipe streaks
@@ -408,7 +426,6 @@ class StatsRepository(
     private suspend fun updateStreak() {
         runInTransaction {
             val currentStats = userStatsDao.getUserStatsOnce() ?: return@runInTransaction
-
             val today = LocalDate.now(ZoneId.systemDefault())
             val todayStr = today.toString()
             val rawLastActiveDate = currentStats.lastActiveDate
@@ -499,16 +516,22 @@ class StatsRepository(
             fallbackCoins
         } else {
             ensureUserSynced()
-            userId()?.let { uid ->
-                userStatsDao.addKrishnaCoins(fallbackCoins)
-                if (isWeeklyBonus) {
-                    CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share", source = "share_daily")
-                    CoinTransactionLogger.log(appContext, 10, "7-day share bonus", source = "share_day7_bonus")
-                } else {
-                    CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share", source = "share_daily")
-                }
-                tracker.isShareSynced = true
 
+            // Always award + log for a signed-in user. Don't gate on the local
+            // DB's cached userId — it can be stale right after login.
+            userStatsDao.addKrishnaCoins(fallbackCoins)
+            if (isWeeklyBonus) {
+                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share", source = "share_daily")
+                CoinTransactionLogger.log(appContext, 10, "7-day share bonus", source = "share_day7_bonus")
+            } else {
+                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share", source = "share_daily")
+            }
+            tracker.isShareSynced = true
+
+            // Resolve the real uid for the sync queue only — prefer the auth
+            // session over the local cached row, which may not be populated yet.
+            val uid = resolvedUserId() ?: userId()
+            if (uid != null) {
                 try {
                     val slokaId = if (chapter != null && verse != null) "ch${chapter}v${verse}" else null
                     val payloadMap = mapOf(
@@ -533,9 +556,12 @@ class StatsRepository(
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue share sync event: ${dbEx.message}")
                 }
-                fallbackCoins
-            } ?: fallbackCoins
+            } else {
+                Log.w("StatsRepository", "trackSlokaShared: no uid available, coin awarded locally but server sync not queued")
+            }
+            fallbackCoins
         }
+
         return coinsAwarded
     }
 
@@ -551,6 +577,7 @@ class StatsRepository(
 
     suspend fun trackChapterCompleted(chapterNo: Int) {
         userStatsDao.incrementChaptersCompleted()
+
         val isGuest = authPrefs.isGuestUser
 
         if (isGuest) {
@@ -558,10 +585,13 @@ class StatsRepository(
             CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
         } else {
             ensureUserSynced()
-            userId()?.let { uid ->
-                userStatsDao.addKrishnaCoins(15)
-                CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion", source = "chapter_completion")
-                
+
+            // Always award + log for a signed-in user regardless of local cached uid.
+            userStatsDao.addKrishnaCoins(15)
+            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion", source = "chapter_completion")
+
+            val uid = resolvedUserId() ?: userId()
+            if (uid != null) {
                 try {
                     val payloadMap = mapOf(
                         "chapterNo" to chapterNo,
@@ -582,8 +612,11 @@ class StatsRepository(
                 } catch (dbEx: Exception) {
                     Log.e("StatsRepository", "Failed to queue chapter sync event: ${dbEx.message}")
                 }
+            } else {
+                Log.w("StatsRepository", "trackChapterCompleted: no uid available, coin awarded locally but server sync not queued")
             }
         }
+
         updateStreak()
     }
 
@@ -620,7 +653,7 @@ class StatsRepository(
     /** Sync a locally-recorded check-in to the cloud (safe to call even if already synced). */
     suspend fun syncCheckinToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
-        val uid = userId() ?: return
+        val uid = resolvedUserId() ?: userId() ?: return
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
             val response = CoinApi.retrofitService.checkin(mapOf(
@@ -667,7 +700,7 @@ class StatsRepository(
     /** Sync a locally-recorded share to the cloud (safe to call even if already synced). */
     suspend fun syncShareToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
-        val uid = userId() ?: return
+        val uid = resolvedUserId() ?: userId() ?: return
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
             val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync", client_date = localDate))
@@ -712,7 +745,6 @@ class StatsRepository(
     suspend fun claimDailyReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
         CoinTransactionLogger.log(appContext, coins, description, source = "checkin_daily")
-
         if (!authPrefs.isGuestUser) {
             syncCheckinToCloud(coins)
         }
@@ -721,7 +753,6 @@ class StatsRepository(
     suspend fun claimShareReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
         CoinTransactionLogger.log(appContext, coins, description, source = "share_daily")
-
         if (!authPrefs.isGuestUser) {
             syncShareToCloud(coins)
         }
@@ -738,7 +769,7 @@ class StatsRepository(
             return coinBalance.value
         }
 
-        val uid = userId() ?: return coinBalance.value
+        val uid = resolvedUserId() ?: userId() ?: return coinBalance.value
         val token = authPrefs.token ?: run {
             Log.w("StatsRepository", "No auth token — returning local balance")
             return coinBalance.value
@@ -750,10 +781,12 @@ class StatsRepository(
                 userId = uid,
                 token  = "Bearer $token"
             )
+
             val serverCoins = balanceResponse.krishna_coins
             val pendingEvents = pendingSyncEventDao.getPendingEvents(uid)
             val pendingCoinsAdjustment = pendingEvents.sumOf { it.coinsToAdjust }
             val adjustedBalance = serverCoins + pendingCoinsAdjustment
+
             userStatsDao.updateKrishnaCoins(adjustedBalance)
             
             val currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
@@ -790,7 +823,7 @@ class StatsRepository(
 
     suspend fun syncStatsToServer() {
         if (authPrefs.isGuestUser) return
-        val uid = userId() ?: return
+        val uid = resolvedUserId() ?: userId() ?: return
         val token = authPrefs.token ?: return
         
         val localStats = userStatsDao.getUserStatsOnce() ?: return
@@ -853,8 +886,9 @@ class StatsRepository(
 
     suspend fun spendCoins(question: String): Boolean {
         val isGuest = authPrefs.isGuestUser
+
         // Use question hash as idempotency key to prevent duplicate spends
-        val idempotencyKey = "spend_${userId() ?: "guest"}_${question.hashCode()}"
+        val idempotencyKey = "spend_${resolvedUserId() ?: userId() ?: "guest"}_${question.hashCode()}"
 
         if (isGuest) {
             // Dynamic pricing based on question length (min 4, max 10 coins)
@@ -868,6 +902,7 @@ class StatsRepository(
                 Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
                 return false
             }
+
             userStatsDao.addKrishnaCoins(-cost)
             CoinTransactionLogger.log(appContext, -cost, "Asked question: $question")
             Log.d("StatsRepository", "Guest spend: -$cost coins (${question.length} chars)")
@@ -875,7 +910,7 @@ class StatsRepository(
         }
 
         ensureUserSynced()
-        val uid = userId() ?: return false
+        val uid = resolvedUserId() ?: userId() ?: return false
         
         val offlineCost = when {
             question.length <= 50  -> 4   // Short (min 4)
