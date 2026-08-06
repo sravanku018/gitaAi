@@ -37,3 +37,10 @@ deno.lock
 .idea/
 *.iws
 *.out
+
+# Deno Backend Code
+deno-backend-hono.ts
+deno-backend-*.ts
+deno-backend-*.md
+deno.json
+deno.lock
