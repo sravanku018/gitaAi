@@ -1437,11 +1437,13 @@ app.post("/checkin", requireAuth, async (c) => {
     current_week = (streak.rows[0].current_week as number) || 1;
 
     if (lastCheckinDate) {
-      const todayDate = new Date(today + "T12:00:00Z");
-      todayDate.setUTCDate(todayDate.getUTCDate() - 1);
-      const yesterdayDate = todayDate.toISOString().substring(0, 10);
+      const tDate = new Date(today + "T12:00:00Z");
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const yesterdayDate = tDate.toISOString().substring(0, 10);
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const dayBeforeYesterdayDate = tDate.toISOString().substring(0, 10);
 
-      if (lastCheckinDate !== yesterdayDate) {
+      if (lastCheckinDate !== yesterdayDate && lastCheckinDate !== dayBeforeYesterdayDate) {
         current_day = 1;
         current_week = 1;
       }
@@ -1521,11 +1523,13 @@ app.post("/share", requireAuth, async (c) => {
     share_week = (streak.rows[0].share_week as number) || 1;
 
     if (lastShareDate) {
-      const todayDate = new Date(today + "T12:00:00Z");
-      todayDate.setUTCDate(todayDate.getUTCDate() - 1);
-      const yesterdayDate = todayDate.toISOString().substring(0, 10);
+      const tDate = new Date(today + "T12:00:00Z");
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const yesterdayDate = tDate.toISOString().substring(0, 10);
+      tDate.setUTCDate(tDate.getUTCDate() - 1);
+      const dayBeforeYesterdayDate = tDate.toISOString().substring(0, 10);
 
-      if (lastShareDate !== yesterdayDate) {
+      if (lastShareDate !== yesterdayDate && lastShareDate !== dayBeforeYesterdayDate) {
         share_day = 1;
         share_week = 1;
       }
