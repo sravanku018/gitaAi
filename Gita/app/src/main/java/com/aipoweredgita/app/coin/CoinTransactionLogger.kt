@@ -101,8 +101,7 @@ object CoinTransactionLogger {
             val key = when {
                 eventKey.isNotEmpty() -> eventKey
                 id.isNotEmpty() && !id.contains("-") -> "server_id_$id"
-                normSrc == "checkin_daily" || normSrc == "share_daily" -> "${dateStr}_${normSrc}"
-                else -> "${dateStr}_${normSrc}_${amt}_${desc.take(20)}"
+                else -> "${dateStr}_${normSrc}_${amt}_${desc.take(30)}"
             }
 
             if (seenKeys.add(key)) {
