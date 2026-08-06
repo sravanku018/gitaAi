@@ -499,14 +499,14 @@
 
             <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
               <div style="background: #fff; padding: 12px; border-radius: 12px; display: inline-block;">
-                <img id="totp-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=otpauth://totp/GitaAI:sravan@gmail.com?secret=JBSWY3DPEHPK3PXP&issuer=GitaAI" alt="Google Authenticator QR Code" style="width: 160px; height: 160px; display: block;">
+                <img id="totp-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30" alt="Google Authenticator QR Code" style="width: 160px; height: 160px; display: block;">
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 12px; max-width: 360px;">
                 <div class="form-group">
                   <label>2FA Secret Key (Manual Entry)</label>
                   <div style="display: flex; gap: 8px;">
-                    <input type="text" id="totp-secret-input" class="form-input" value="(set as TOTP_SECRET on Deno Deploy only)" readonly style="font-family: monospace; letter-spacing: 2px;">
+                    <input type="text" id="totp-secret-input" class="form-input" value="TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB" readonly style="font-family: monospace; letter-spacing: 2px;">
                     <button class="btn btn-secondary" onclick="copyTotpSecret()"><i class="fa-solid fa-copy"></i></button>
                   </div>
                 </div>
@@ -703,7 +703,11 @@
     }
 
     function copyTotpSecret() {
-      alert("TOTP secret is only on Deno Deploy env (TOTP_SECRET). Keep it in your password manager.");
+      const input = document.getElementById("totp-secret-input");
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value);
+        alert("2FA Secret Key copied! Paste into Google Authenticator (manual entry).");
+      }
     }
 
     async function testTotpCode() {
