@@ -311,9 +311,9 @@ async function initTables() {
 }
 
 /** Bump when adding migrations/indexes so cold starts re-run init once. */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
-/** Hot-path indexes for coin history / idempotency (idempotent). */
+/** Hot-path indexes for coin history / quizzes / sessions (idempotent). */
 async function ensureHotPathIndexes() {
   await db.execute({
     sql: `CREATE INDEX IF NOT EXISTS idx_coin_tx_user_created ON coin_transactions(user_id, created_at)`,
@@ -322,10 +322,22 @@ async function ensureHotPathIndexes() {
     sql: `CREATE INDEX IF NOT EXISTS idx_coin_tx_user_idem ON coin_transactions(user_id, idempotency_key)`,
   }).catch(() => {});
   await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_coin_tx_user_type_created ON coin_transactions(user_id, type, created_at)`,
+  }).catch(() => {});
+  await db.execute({
     sql: `CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`,
   }).catch(() => {});
   await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
+  }).catch(() => {});
+  await db.execute({
     sql: `CREATE INDEX IF NOT EXISTS idx_checkin_streaks_user ON checkin_streaks(user_id)`,
+  }).catch(() => {});
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_created ON quiz_attempts(user_id, created_at)`,
+  }).catch(() => {});
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_level_history_user ON level_history(user_id)`,
   }).catch(() => {});
 }
 
@@ -353,8 +365,13 @@ async function ensureSchema() {
       return;
     }
 
-    console.log(`Schema v${current} → v${SCHEMA_VERSION}: running initTables + indexes`);
-    await initTables();
+    // Fresh DB: full init. Already-migrated (v2+): indexes only (cheap).
+    if (current === 0) {
+      console.log(`Schema v0 → v${SCHEMA_VERSION}: running initTables + indexes`);
+      await initTables();
+    } else {
+      console.log(`Schema v${current} → v${SCHEMA_VERSION}: indexes only`);
+    }
     await ensureHotPathIndexes();
 
     await db.execute({
@@ -719,10 +736,14 @@ const BASE = '';
 async function unlock() {
   const k = document.getElementById('keyInput').value.trim();
   if (!k) return;
-  // Verify key by calling a protected admin endpoint
-  const res = await fetch(BASE + '/admin/clean-duplicates?admin_key=' + encodeURIComponent(k), {method:'GET'});
+  // Cheap key check only — never run clean-duplicates on unlock (that scanned huge tables)
+  const res = await fetch(BASE + '/admin/verify?admin_key=' + encodeURIComponent(k), {method:'GET'});
   if (res.status === 403) {
     showMsg('lockMsg','err','❌ Wrong admin key');
+    return;
+  }
+  if (!res.ok) {
+    showMsg('lockMsg','err','❌ Unlock failed (' + res.status + ')');
     return;
   }
   KEY = k;
@@ -1651,12 +1672,28 @@ app.get("/coins/history", requireAuth, async (c) => {
   const offsetParam = parseInt(c.req.query("offset") ?? "0");
   const limit  = Math.min(Math.max(isNaN(limitParam)  ? 100 : limitParam,  1), 500);
   const offset = Math.max(isNaN(offsetParam) ? 0 : offsetParam, 0);
+  // Cursor pagination preferred: before_id = last id from previous page (avoids deep OFFSET scans)
+  const beforeIdParam = parseInt(c.req.query("before_id") ?? "");
+  const beforeId = !isNaN(beforeIdParam) && beforeIdParam > 0 ? beforeIdParam : null;
 
+  if (beforeId != null) {
+    const result = await db.execute({
+      sql: `SELECT id, amount, type, source, description, idempotency_key, created_at
+            FROM coin_transactions
+            WHERE user_id = ? AND source != 'auto_reconcile' AND id < ?
+            ORDER BY id DESC
+            LIMIT ?`,
+      args: [user_id as string, beforeId, limit],
+    });
+    return c.json(result.rows);
+  }
+
+  // First page (or legacy offset). Prefer offset=0; deep OFFSET still supported for old clients.
   const result = await db.execute({
     sql: `SELECT id, amount, type, source, description, idempotency_key, created_at
           FROM coin_transactions
           WHERE user_id = ? AND source != 'auto_reconcile'
-          ORDER BY created_at DESC
+          ORDER BY id DESC
           LIMIT ? OFFSET ?`,
     args: [user_id as string, limit, offset],
   });
@@ -1732,6 +1769,7 @@ app.get("/quiz/history", requireAuth, async (c) => {
 
 app.get("/activity/history", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
+  // Only last ~90 calendar days of raw rows (not full-history GROUP BY then LIMIT)
   const result = await db.execute({
     sql: `SELECT DATE(created_at) as date,
             COUNT(CASE WHEN source = 'checkin_day' THEN 1 END) as checkins,
@@ -1743,6 +1781,7 @@ app.get("/activity/history", requireAuth, async (c) => {
             COUNT(*) as total_events
           FROM coin_transactions
           WHERE user_id = ? AND type = 'EARN'
+            AND date(created_at) >= date('now', '-90 days')
           GROUP BY DATE(created_at)
           ORDER BY date DESC
           LIMIT 90`,
@@ -1795,8 +1834,15 @@ app.post("/admin/reset-stats", async (c) => {
   return c.json({ success: true, message: `Stats reset for ${user_id}` });
 });
 
-// ─── ADMIN CLEANUP (Fix Turso DB) ─────────────────────────────
-app.get("/admin/clean-duplicates", async (c) => {
+// ─── ADMIN VERIFY (cheap key check — use this for unlock) ─────
+app.get("/admin/verify", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  return c.json({ success: true, ok: true });
+});
+
+// ─── ADMIN CLEANUP (explicit only — heavy; do NOT call on unlock) ─
+// POST preferred; GET kept but returns 405 with message so old unlock can't silently scan.
+async function runAdminCleanDuplicates(c: any) {
   if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
   try {
     // 1. Delete duplicate coin transactions for battle_quiz
@@ -1808,7 +1854,7 @@ app.get("/admin/clean-duplicates", async (c) => {
         GROUP BY user_id, amount, created_at
       ) AND source = 'battle_quiz';
     `);
-    
+
     // 2. Delete duplicate quiz attempts
     await db.execute(`
       DELETE FROM quiz_attempts 
@@ -1833,7 +1879,17 @@ app.get("/admin/clean-duplicates", async (c) => {
   } catch (e: any) {
     return c.json({ success: false, error: e.message });
   }
+}
+
+app.post("/admin/clean-duplicates", runAdminCleanDuplicates);
+app.get("/admin/clean-duplicates", async (c) => {
+  // Block accidental unlock-style GET cleanup (was scanning huge tables)
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  return c.json({
+    error: "Use POST /admin/clean-duplicates for cleanup. GET is disabled to prevent unlock-time full scans. Use GET /admin/verify to check the admin key.",
+  }, 405);
 });
+
 app.get("/notes", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
   const result = await db.execute({
@@ -1845,29 +1901,33 @@ app.get("/notes", requireAuth, async (c) => {
 
 app.post("/notes/sync", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
-  const { notes } = await c.req.json();
+  const body = await c.req.json();
+  const notes = body?.notes;
   if (!Array.isArray(notes)) return c.json({ error: "notes array required" }, 400);
 
+  // Cap batch size to avoid huge free-tier spikes
+  const MAX_NOTES = 100;
+  const batch = notes.slice(0, MAX_NOTES);
   let synced = 0;
-  for (const note of notes) {
-    const existing = await db.execute({
-      sql: `SELECT id FROM verse_notes WHERE user_id = ? AND chapter_no = ? AND verse_no = ?`,
-      args: [user_id, note.chapterNo, note.verseNo],
+
+  // Bulk upsert — no per-note SELECT (unique index on user_id, chapter_no, verse_no)
+  for (const note of batch) {
+    const chapterNo = note.chapterNo ?? note.chapter_no;
+    const verseNo = note.verseNo ?? note.verse_no;
+    const text = String(note.note ?? "").trim().slice(0, 200);
+    if (chapterNo == null || verseNo == null || !text) continue;
+
+    await db.execute({
+      sql: `INSERT INTO verse_notes (user_id, chapter_no, verse_no, note, updated_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(user_id, chapter_no, verse_no) DO UPDATE SET
+              note = excluded.note,
+              updated_at = datetime('now')`,
+      args: [user_id, chapterNo, verseNo, text],
     });
-    if (existing.rows.length) {
-      await db.execute({
-        sql: `UPDATE verse_notes SET note = ?, updated_at = datetime('now') WHERE user_id = ? AND chapter_no = ? AND verse_no = ?`,
-        args: [note.note, user_id, note.chapterNo, note.verseNo],
-      });
-    } else {
-      await db.execute({
-        sql: `INSERT INTO verse_notes (user_id, chapter_no, verse_no, note) VALUES (?, ?, ?, ?)`,
-        args: [user_id, note.chapterNo, note.verseNo, note.note],
-      });
-    }
     synced++;
   }
-  return c.json({ success: true, synced });
+  return c.json({ success: true, synced, truncated: notes.length > MAX_NOTES });
 });
 
 app.post("/notes/delete", requireAuth, async (c) => {
