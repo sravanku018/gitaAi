@@ -606,7 +606,7 @@
   <script>
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
-    const ADMIN_PIN = "108";
+    const ADMIN_PIN = localStorage.getItem("gita_admin_pin") || "108";
 
     let currentView = "roster";
     let allUsersCache = [];
@@ -626,12 +626,15 @@
 
     function unlockDashboard() {
       const input = document.getElementById("admin-pin").value;
-      if (input === ADMIN_PIN || input === "108") {
+      const customPin = localStorage.getItem("gita_admin_pin");
+      if (input === "108" || input === ADMIN_PIN || (customPin && input === customPin)) {
         document.getElementById("lock-screen").style.display = "none";
         document.getElementById("app-layout").style.display = "flex";
         localStorage.setItem("gita_admin_unlocked", "true");
+        if (input !== "108") localStorage.setItem("gita_admin_pin", input);
         fetchCurrentViewData();
       } else {
+        document.getElementById("pin-error").textContent = "Invalid Admin Password.";
         document.getElementById("pin-error").style.display = "block";
       }
     }
