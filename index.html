@@ -826,7 +826,10 @@
         document.getElementById("app-layout").style.display = "flex";
         fetchCurrentViewData(true);
       } catch (e) {
-        errEl.textContent = "Cannot reach Admin API: " + e.message;
+        errEl.innerHTML =
+          "Cannot reach Admin API: " + (e.message || e) +
+          "<br><small>Usually CORS. On Deno set env <code>ALLOWED_ORIGINS</code> value to only " +
+          "<code>https://sravanku018.github.io</code> (not ALLOWED_ORIGINS=...).</small>";
         errEl.style.display = "block";
       }
     }
