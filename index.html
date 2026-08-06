@@ -113,6 +113,8 @@
 
     /* MODALS */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+    /* Coin editor must sit above the user dossier modal */
+    #coin-modal { z-index: 1100; }
     .modal { width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; }
     .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
@@ -812,26 +814,74 @@
       fetchCurrentViewData();
     }
 
+    function escHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function sqlStr(s) {
+      return String(s ?? "").replace(/'/g, "''");
+    }
+
+    /** Normalize admin date inputs for SQLite text timestamps. */
+    function normalizeAdminDate(raw) {
+      const s = String(raw || "").trim();
+      if (!s) return null;
+      // Accept ISO "2026-08-06T08:54:48.276Z" → "2026-08-06 08:54:48"
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+      if (m) return `${m[1]} ${m[2]}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s} 12:00:00`;
+      return s;
+    }
+
+    /**
+     * Run SQL against Turso. Throws on HTTP/SQL errors so callers can alert.
+     * SELECT → array of row objects. WRITE → { success, affected_rows, last_insert_rowid }.
+     */
     async function queryTurso(sql) {
-      try {
-        const res = await fetch(TURSO_URL, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${TURSO_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql } }, { type: "close" }] })
+      const res = await fetch(TURSO_URL, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${TURSO_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql } }, { type: "close" }] })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Turso HTTP ${res.status}`);
+      }
+      const first = data.results?.[0];
+      if (!first) throw new Error("Empty Turso response");
+      if (first.type === "error" || first.error) {
+        throw new Error(first.error?.message || first.error || "Turso SQL error");
+      }
+      const result = first.response?.result;
+      if (!result) throw new Error("Turso result missing");
+
+      const cols = Array.isArray(result.cols) ? result.cols : [];
+      const rows = Array.isArray(result.rows) ? result.rows : [];
+      const affected = Number(result.affected_row_count ?? result.affected_rows ?? 0);
+      const lastId = result.last_insert_rowid;
+
+      // Write / DDL (no meaningful row projection)
+      if (cols.length === 0) {
+        return {
+          success: true,
+          affected_rows: affected,
+          last_insert_rowid: lastId != null ? String(lastId) : null
+        };
+      }
+
+      return rows.map(row => {
+        const obj = {};
+        cols.forEach((col, idx) => {
+          const cell = row[idx];
+          obj[col.name] = (cell && typeof cell === "object" && "value" in cell) ? cell.value : cell;
         });
-        const data = await res.json();
-        const result = data.results?.[0]?.response?.result;
-        if (!result) return [];
-        if (!result.cols || !Array.isArray(result.cols)) {
-          return { affected_rows: result.affected_rows || 0, success: true };
-        }
-        const cols = result.cols.map(c => c.name);
-        return result.rows.map(row => {
-          const obj = {};
-          cols.forEach((col, idx) => { obj[col] = row[idx]?.value; });
-          return obj;
-        });
-      } catch (e) { console.error("Turso Error:", e); return null; }
+        return obj;
+      });
     }
 
     function isActiveProfile(u) { return Number(u.days_active || 0) >= 2; }
@@ -1031,30 +1081,35 @@
     }
 
     async function fetchAllUsers() {
-      const users = await queryTurso(`
-        SELECT u.user_id, u.name, u.email, u.is_guest,
-               us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
-               cs.current_day as checkin_day, cs.current_week as checkin_week,
-               cs.share_day, cs.share_week
-        FROM users u
-        LEFT JOIN user_stats us ON us.user_id = u.user_id
-        LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
-        ORDER BY us.days_active DESC, us.current_streak DESC, us.krishna_coins DESC
-        LIMIT 100
-      `);
+      try {
+        const users = await queryTurso(`
+          SELECT u.user_id, u.name, u.email, u.is_guest,
+                 us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
+                 cs.current_day as checkin_day, cs.current_week as checkin_week,
+                 cs.share_day, cs.share_week
+          FROM users u
+          LEFT JOIN user_stats us ON us.user_id = u.user_id
+          LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
+          ORDER BY us.days_active DESC, us.current_streak DESC, us.krishna_coins DESC
+          LIMIT 100
+        `);
 
-      if (users) {
-        allUsersCache = users;
-        isUsersLoaded = true;
-        // Flag first-login users (days_active === 1) as new
-        newSet.clear();
-        users.forEach(u => { if (Number(u.days_active || 0) === 1) newSet.add(u.user_id); });
-        document.getElementById('kpi-total-users').innerText = users.length;
-        const activeOnes = users.filter(isActiveProfile);
-        const top = activeOnes[0] || users[0] || {};
-        document.getElementById('kpi-top-streak').innerText = `${top.current_streak || 0} Days 🔥`;
-        document.getElementById('kpi-top-user').innerText = top.user_id || 'N/A';
-        renderRoster(users);
+        if (Array.isArray(users)) {
+          allUsersCache = users;
+          isUsersLoaded = true;
+          // Flag first-login users (days_active === 1) as new
+          newSet.clear();
+          users.forEach(u => { if (Number(u.days_active || 0) === 1) newSet.add(u.user_id); });
+          document.getElementById('kpi-total-users').innerText = users.length;
+          const activeOnes = users.filter(isActiveProfile);
+          const top = activeOnes[0] || users[0] || {};
+          document.getElementById('kpi-top-streak').innerText = `${top.current_streak || 0} Days 🔥`;
+          document.getElementById('kpi-top-user').innerText = top.user_id || 'N/A';
+          renderRoster(users);
+        }
+      } catch (err) {
+        console.error("fetchAllUsers:", err);
+        alert(`Failed to load users: ${err.message || err}`);
       }
     }
 
@@ -1173,23 +1228,28 @@
         }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
       }
       else if (tabName === 'coins') {
-        const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-        currentDossierCoins = coins || [];
-        document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
-          <tr>
-            <td>#${c.id}</td>
-            <td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td>
-            <td><strong>${c.amount} 🪙</strong></td>
-            <td><code>${c.source}</code></td>
-            <td>${c.description || ''}</td>
-            <td>${c.created_at || ''}</td>
-            <td>
-              <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${c.id})" style="padding: 3px 8px; font-size: 11px;">
-                <i class="fa-solid fa-pen"></i> Edit
-              </button>
-            </td>
-          </tr>
-        `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+        try {
+          const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${sqlStr(userId)}' ORDER BY id DESC LIMIT 50`);
+          currentDossierCoins = Array.isArray(coins) ? coins : [];
+          document.getElementById("user-coins-body").innerHTML = currentDossierCoins.length > 0 ? currentDossierCoins.map(c => `
+            <tr>
+              <td>#${escHtml(c.id)}</td>
+              <td><span class="badge ${String(c.type).toUpperCase()==='EARN'?'badge-success':'badge-danger'}">${escHtml(c.type)}</span></td>
+              <td><strong>${escHtml(c.amount)} 🪙</strong></td>
+              <td><code>${escHtml(c.source)}</code></td>
+              <td>${escHtml(c.description || '')}</td>
+              <td>${escHtml(c.created_at || '')}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(c.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+              </td>
+            </tr>
+          `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+        } catch (err) {
+          console.error(err);
+          document.getElementById("user-coins-body").innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;">Failed to load: ${escHtml(err.message)}</td></tr>`;
+        }
       }
       else if (tabName === 'meditation') {
         const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
@@ -1213,29 +1273,36 @@
 
     async function fetchCoinHistoryLog(force = false) {
       if (isCoinHistoryLoaded && !force) return;
-      const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
-      currentCoinLogs = logs || [];
-      isCoinHistoryLoaded = true;
       const body = document.getElementById("coin-history-body");
-      if (logs && logs.length > 0) {
-        body.innerHTML = logs.map(l => `
-          <tr>
-            <td>#${l.id}</td>
-            <td><strong>${l.user_id}</strong></td>
-            <td><span class="badge ${l.type==='EARN'?'badge-success':'badge-danger'}">${l.type}</span></td>
-            <td><strong>${l.amount} 🪙</strong></td>
-            <td><code>${l.source}</code></td>
-            <td>${l.description || ''}</td>
-            <td>${l.created_at || ''}</td>
-            <td>
-              <button class="btn btn-secondary btn-sm" onclick="openEditCoinModal(${l.id})" style="padding: 3px 8px; font-size: 11px;">
-                <i class="fa-solid fa-pen"></i> Edit
-              </button>
-            </td>
-          </tr>
-        `).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;">No coin history found.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>`;
+      try {
+        const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+        currentCoinLogs = Array.isArray(logs) ? logs : [];
+        isCoinHistoryLoaded = true;
+        if (currentCoinLogs.length > 0) {
+          body.innerHTML = currentCoinLogs.map(l => `
+            <tr>
+              <td>#${escHtml(l.id)}</td>
+              <td><strong>${escHtml(l.user_id)}</strong></td>
+              <td><span class="badge ${String(l.type).toUpperCase()==='EARN'?'badge-success':'badge-danger'}">${escHtml(l.type)}</span></td>
+              <td><strong>${escHtml(l.amount)} 🪙</strong></td>
+              <td><code>${escHtml(l.source)}</code></td>
+              <td>${escHtml(l.description || '')}</td>
+              <td>${escHtml(l.created_at || '')}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(l.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+              </td>
+            </tr>
+          `).join("");
+        } else {
+          body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;">No coin history found.</td></tr>`;
+        }
+      } catch (err) {
+        console.error("fetchCoinHistoryLog:", err);
+        isCoinHistoryLoaded = false;
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">Failed to load coin history: ${escHtml(err.message)}</td></tr>`;
       }
     }
 
@@ -1334,27 +1401,44 @@
 
     // ── COIN TRANSACTION EDIT / ADD / DELETE FUNCTIONS ──
     async function openEditCoinModal(id) {
-      let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
-      if (!tx) {
-        const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
-        if (res && Array.isArray(res) && res.length > 0) tx = res[0];
-      }
-      if (!tx) {
-        alert("Transaction record not found!");
-        return;
-      }
+      try {
+        const txId = String(id ?? "").trim();
+        if (!txId || !/^\d+$/.test(txId)) {
+          alert("Invalid transaction id");
+          return;
+        }
 
-      document.getElementById("coin-modal-title").innerText = `Edit Transaction #${id}`;
-      document.getElementById("edit-coin-id").value = tx.id;
-      document.getElementById("edit-coin-user-id").value = tx.user_id;
-      document.getElementById("edit-coin-type").value = tx.type || "EARN";
-      document.getElementById("edit-coin-amount").value = tx.amount || 0;
-      document.getElementById("edit-coin-source").value = tx.source || "";
-      document.getElementById("edit-coin-description").value = tx.description || "";
-      document.getElementById("edit-coin-date").value = tx.created_at || "";
-      document.getElementById("btn-delete-coin").style.display = "inline-block";
+        // Always re-fetch from DB so edits work even if cache is stale/empty
+        let tx = null;
+        const res = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE id = ${Number(txId)}`);
+        if (Array.isArray(res) && res.length > 0) tx = res[0];
+        if (!tx) {
+          tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === txId) || null;
+        }
+        if (!tx) {
+          alert(`Transaction #${txId} not found in database.`);
+          return;
+        }
 
-      document.getElementById("coin-modal").style.display = "flex";
+        const rawType = String(tx.type || "EARN").toUpperCase();
+        const type = rawType === "SPEND" ? "SPEND" : "EARN";
+        const amount = Math.abs(Number(tx.amount) || 0);
+
+        document.getElementById("coin-modal-title").innerText = `Edit Transaction #${txId}`;
+        document.getElementById("edit-coin-id").value = String(tx.id);
+        document.getElementById("edit-coin-user-id").value = tx.user_id || "";
+        document.getElementById("edit-coin-type").value = type;
+        document.getElementById("edit-coin-amount").value = amount;
+        document.getElementById("edit-coin-source").value = tx.source || "";
+        document.getElementById("edit-coin-description").value = tx.description || "";
+        document.getElementById("edit-coin-date").value = normalizeAdminDate(tx.created_at) || (tx.created_at || "");
+        document.getElementById("btn-delete-coin").style.display = "inline-block";
+
+        document.getElementById("coin-modal").style.display = "flex";
+      } catch (err) {
+        console.error("openEditCoinModal:", err);
+        alert(`❌ Could not open editor: ${err.message || err}`);
+      }
     }
 
     function openAddCoinModal(presetUserId = "") {
@@ -1365,7 +1449,7 @@
       document.getElementById("edit-coin-amount").value = 10;
       document.getElementById("edit-coin-source").value = "admin_adjustment";
       document.getElementById("edit-coin-description").value = "Manual coin grant by admin";
-      const nowFormatted = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const nowFormatted = new Date().toISOString().replace("T", " ").substring(0, 19);
       document.getElementById("edit-coin-date").value = nowFormatted;
       document.getElementById("btn-delete-coin").style.display = "none";
 
@@ -1378,53 +1462,76 @@
 
     async function saveCoinTransaction() {
       try {
-        const id = document.getElementById("edit-coin-id").value;
+        const id = document.getElementById("edit-coin-id").value.trim();
         const uid = document.getElementById("edit-coin-user-id").value.trim();
-        const type = document.getElementById("edit-coin-type").value;
-        const amount = Number(document.getElementById("edit-coin-amount").value) || 0;
-        const rawSource = document.getElementById("edit-coin-source").value.trim();
-        const rawDesc = document.getElementById("edit-coin-description").value.trim();
-        const rawDate = document.getElementById("edit-coin-date").value.trim();
-        const source = rawSource.replace(/'/g, "''");
-        const desc = rawDesc.replace(/'/g, "''");
-        const dateStr = rawDate ? rawDate.replace(/'/g, "''") : null;
+        const typeRaw = document.getElementById("edit-coin-type").value;
+        const type = String(typeRaw).toUpperCase() === "SPEND" ? "SPEND" : "EARN";
+        const amount = Math.abs(Number(document.getElementById("edit-coin-amount").value) || 0);
+        const source = sqlStr(document.getElementById("edit-coin-source").value.trim() || "admin_adjustment");
+        const desc = sqlStr(document.getElementById("edit-coin-description").value.trim());
+        const dateStr = normalizeAdminDate(document.getElementById("edit-coin-date").value);
 
         if (!uid) {
           alert("Please enter a User ID");
           return;
         }
-
-        let delta = 0;
-        const newNet = (type === 'EARN' ? amount : -amount);
-
-        if (id) {
-          let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
-          if (!tx) {
-            const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
-            if (res && Array.isArray(res) && res.length > 0) tx = res[0];
-          }
-          const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
-          delta = newNet - oldNet;
-
-          const dateUpdateSql = dateStr ? `, created_at = '${dateStr}'` : '';
-          await queryTurso(`UPDATE coin_transactions SET user_id = '${uid}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}'${dateUpdateSql} WHERE id = ${id}`);
-          alert(`✅ Transaction #${id} updated! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
-        } else {
-          delta = newNet;
-          const dateInsertSql = dateStr ? `'${dateStr}'` : "datetime('now')";
-          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${amount}, '${type}', '${source}', '${desc}', ${dateInsertSql})`);
-          alert(`✅ New coin transaction added! Total coins adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
+        if (!amount || amount < 1) {
+          alert("Amount must be at least 1");
+          return;
         }
 
-        // Automatically update user_stats.krishna_coins total
+        let delta = 0;
+        const newNet = (type === "EARN" ? amount : -amount);
+
+        if (id) {
+          if (!/^\d+$/.test(id)) {
+            alert("Invalid transaction id");
+            return;
+          }
+          let tx = null;
+          const res = await queryTurso(`SELECT id, amount, type FROM coin_transactions WHERE id = ${Number(id)}`);
+          if (Array.isArray(res) && res.length > 0) tx = res[0];
+          if (!tx) {
+            alert(`Transaction #${id} no longer exists.`);
+            return;
+          }
+          const oldType = String(tx.type || "EARN").toUpperCase();
+          const oldAmt = Math.abs(Number(tx.amount) || 0);
+          const oldNet = oldType === "SPEND" ? -oldAmt : oldAmt;
+          delta = newNet - oldNet;
+
+          const dateUpdateSql = dateStr ? `, created_at = '${sqlStr(dateStr)}'` : "";
+          const write = await queryTurso(
+            `UPDATE coin_transactions SET user_id = '${sqlStr(uid)}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}'${dateUpdateSql} WHERE id = ${Number(id)}`
+          );
+          if (!write || write.success !== true) {
+            throw new Error("UPDATE did not return success");
+          }
+          if (Number(write.affected_rows || 0) < 1) {
+            throw new Error(`No row updated for id=${id} (affected_rows=0)`);
+          }
+          alert(`✅ Transaction #${id} updated! Balance delta: ${delta > 0 ? "+" : ""}${delta}.`);
+        } else {
+          delta = newNet;
+          const dateInsertSql = dateStr ? `'${sqlStr(dateStr)}'` : "datetime('now')";
+          const write = await queryTurso(
+            `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${sqlStr(uid)}', ${amount}, '${type}', '${source}', '${desc}', ${dateInsertSql})`
+          );
+          if (!write || write.success !== true) {
+            throw new Error("INSERT did not return success");
+          }
+          alert(`✅ New coin transaction added! Balance delta: ${delta > 0 ? "+" : ""}${delta}.`);
+        }
+
+        // Keep user_stats.krishna_coins in sync with the edit
         if (delta !== 0) {
-          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${uid}'`);
-          if (checkUser && Array.isArray(checkUser) && checkUser.length > 0) {
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${sqlStr(uid)}'`);
+          if (Array.isArray(checkUser) && checkUser.length > 0) {
             const currentCoins = Number(checkUser[0].krishna_coins || 0);
             const newCoins = Math.max(0, currentCoins + delta);
-            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${uid}'`);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${sqlStr(uid)}'`);
           } else {
-            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', ${Math.max(0, delta)}, datetime('now'))`);
+            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${sqlStr(uid)}', ${Math.max(0, delta)}, datetime('now'))`);
           }
           dirtySet.add(uid);
 
@@ -1441,9 +1548,10 @@
         }
 
         closeCoinModal();
+        isCoinHistoryLoaded = false;
         await fetchCoinHistoryLog(true);
-        if (uid) {
-          await loadUserIsolatedTab(uid, 'coins');
+        if (uid && activeDossierUser && activeDossierUser.user_id === uid) {
+          await loadUserIsolatedTab(uid, "coins");
         }
       } catch (err) {
         console.error("Save transaction error:", err);
@@ -1452,30 +1560,30 @@
     }
 
     async function deleteCoinTransaction() {
-      const id = document.getElementById("edit-coin-id").value;
-      if (!id) return;
+      const id = document.getElementById("edit-coin-id").value.trim();
+      if (!id || !/^\d+$/.test(id)) return;
       if (!confirm(`Are you sure you want to delete Coin Transaction #${id}? This cannot be undone.`)) return;
 
       try {
         const uid = document.getElementById("edit-coin-user-id").value.trim();
-        let tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === String(id));
-        if (!tx) {
-          const res = await queryTurso(`SELECT * FROM coin_transactions WHERE id = ${id}`);
-          if (res && res.length > 0) tx = res[0];
-        }
-        const oldNet = tx ? ((tx.type === 'EARN' || String(tx.type).toUpperCase() === 'EARN') ? Number(tx.amount || 0) : -Number(tx.amount || 0)) : 0;
+        let tx = null;
+        const res = await queryTurso(`SELECT id, amount, type FROM coin_transactions WHERE id = ${Number(id)}`);
+        if (Array.isArray(res) && res.length > 0) tx = res[0];
+        const oldType = String(tx?.type || "EARN").toUpperCase();
+        const oldAmt = Math.abs(Number(tx?.amount) || 0);
+        const oldNet = oldType === "SPEND" ? -oldAmt : oldAmt;
         const delta = -oldNet;
 
-        await queryTurso(`DELETE FROM coin_transactions WHERE id = ${id}`);
+        const write = await queryTurso(`DELETE FROM coin_transactions WHERE id = ${Number(id)}`);
+        if (!write || write.success !== true) throw new Error("DELETE failed");
+        if (Number(write.affected_rows || 0) < 1) throw new Error(`No row deleted for id=${id}`);
 
         if (delta !== 0 && uid) {
-          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${uid}'`);
-          if (checkUser && Array.isArray(checkUser) && checkUser.length > 0) {
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${sqlStr(uid)}'`);
+          if (Array.isArray(checkUser) && checkUser.length > 0) {
             const currentCoins = Number(checkUser[0].krishna_coins || 0);
             const newCoins = Math.max(0, currentCoins + delta);
-            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${uid}'`);
-          } else {
-            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${uid}', 0, datetime('now'))`);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${sqlStr(uid)}'`);
           }
           dirtySet.add(uid);
 
@@ -1493,9 +1601,10 @@
 
         alert(`✅ Transaction #${id} deleted!`);
         closeCoinModal();
+        isCoinHistoryLoaded = false;
         await fetchCoinHistoryLog(true);
-        if (uid) {
-          await loadUserIsolatedTab(uid, 'coins');
+        if (uid && activeDossierUser && activeDossierUser.user_id === uid) {
+          await loadUserIsolatedTab(uid, "coins");
         }
       } catch (err) {
         console.error("Delete transaction error:", err);
