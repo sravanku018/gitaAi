@@ -36,3 +36,5 @@ ksp_error.log
 *.keystore
 keystore.properties
 opencode.json
+*.apk
+*.apk

@@ -79,24 +79,36 @@ fun DailyRewardsStrip(
                     android.widget.Toast.makeText(context, "Internet connection required to claim daily streak!", android.widget.Toast.LENGTH_SHORT).show()
                     return@StreakStrip
                 }
-                claimedDayIndex = d
-                val coins = tracker.claimDaily(); claimedDay = true; claimedCount++
-                if (coins > 0) {
-                    if (d == 7) {
-                        weekCompleted = true
-                        val total = coins + weeklyState.reward
-                        val desc = buildString {
-                            append("Day 7 check-in")
-                            append(" + Week ${weeklyState.week} bonus")
-                            append(" = $total coins")
+                val isAlreadyClaimed = d <= claimedCount
+                val isTodaySlot = d == claimedCount + 1 && !claimedDay
+                val isFutureSlot = d > claimedCount + 1
+                when {
+                    isAlreadyClaimed -> android.widget.Toast.makeText(context, "Day $d already claimed ✓", android.widget.Toast.LENGTH_SHORT).show()
+                    isFutureSlot -> android.widget.Toast.makeText(context, "Complete previous days first!", android.widget.Toast.LENGTH_SHORT).show()
+                    claimedDay -> android.widget.Toast.makeText(context, "Already claimed today — come back tomorrow!", android.widget.Toast.LENGTH_SHORT).show()
+                    isTodaySlot -> {
+                        val coins = tracker.claimDaily()
+                        claimedDayIndex = d
+                        claimedDay = true
+                        if (coins > 0) {
+                            claimedCount++
+                            if (d == 7) {
+                                weekCompleted = true
+                                val total = coins + weeklyState.reward
+                                val desc = "Day 7 check-in + Week ${weeklyState.week} bonus = $total coins"
+                                onEarnCoins(total, desc)
+                                dayBonusMessage = "Week ${weeklyState.week} done! +$total bonus"
+                            } else {
+                                onEarnCoins(coins, "Day $d check-in")
+                                dayBonusMessage = "+$coins coins"
+                            }
+                        } else {
+                            val desc = "Day $d check-in (Streak Protected)"
+                            onEarnCoins(0, desc)
+                            dayBonusMessage = "Streak Protected ✓"
                         }
-                        onEarnCoins(total, desc)
-                        dayBonusMessage = "Week ${weeklyState.week} done! +$total bonus"
-                    } else {
-                        onEarnCoins(coins, "Day $d check-in")
-                        dayBonusMessage = "+$coins coins"
                     }
-                } else { dayBonusMessage = "Protection used" }
+                }
             },
             activeColor = GoldSpark,
             dimColor = dim,
@@ -163,6 +175,8 @@ fun DailyRewardsStrip(
             onDayClick = {
                 if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {
                     android.widget.Toast.makeText(context, "Internet connection required to claim daily streak!", android.widget.Toast.LENGTH_SHORT).show()
+                } else if (claimedShare) {
+                    android.widget.Toast.makeText(context, "Already shared today — come back tomorrow!", android.widget.Toast.LENGTH_SHORT).show()
                 } else {
                     onNavigateToShare()
                 }

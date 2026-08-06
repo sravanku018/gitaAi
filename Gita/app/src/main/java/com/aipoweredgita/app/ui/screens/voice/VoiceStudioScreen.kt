@@ -567,7 +567,7 @@ private fun VoiceChatContent(
                         style = MaterialTheme.typography.bodySmall.copy(color = if (colors.IsDark) Color(0xFFFFCDD2) else Color(0xFFC62828)))
                     Text(
                         text = "Retry",
-                        modifier = Modifier.clickable { voiceChatViewModel.retryLastFailedMessage() },
+                        modifier = Modifier.clickable { onClearError() },
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = colors.RevolvingYellow, fontWeight = FontWeight.Medium
                         )

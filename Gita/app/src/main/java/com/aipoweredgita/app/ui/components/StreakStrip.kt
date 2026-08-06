@@ -94,9 +94,7 @@ fun StreakStrip(
                     .clip(MaterialTheme.shapes.small)
                     .background(currentBgColor)
                     .border(if (today) 1.5.dp else 0.5.dp, currentBdColor, MaterialTheme.shapes.small)
-                    .clickable(enabled = today) {
-                        onDayClick(d)
-                    },
+                    .clickable { onDayClick(d) },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
