@@ -996,16 +996,18 @@
         history: ["Coin History", "Live Stream of All Earned & Spent Krishna Coins"],
         meditation: ["Meditation", "Track 5-20 Min Daily/Monthly Meditation Rewards"],
         feedback: ["Feedback & Complaints", "Review Seeker Feedback, Ideas & Support Complaints"],
-        notes: ["Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"]
+        notes: ["Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"],
+        settings: ["Settings & 2FA", "Manage Admin Security Password & Google Authenticator 2FA"]
       };
 
-      document.getElementById("page-title").innerText = titles[viewName][0];
-      document.getElementById("page-subtitle").innerText = titles[viewName][1];
+      document.getElementById("page-title").innerText = titles[viewName]?.[0] || "Settings";
+      document.getElementById("page-subtitle").innerText = titles[viewName]?.[1] || "Security Settings";
 
       fetchCurrentViewData();
     }
 
     function fetchCurrentViewData(force = false) {
+      if (currentView === "settings") return;
       if (currentView === "roster") {
         if (!isUsersLoaded || force) fetchAllUsers();
         else renderRoster(allUsersCache);
