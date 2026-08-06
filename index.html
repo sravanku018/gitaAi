@@ -140,19 +140,25 @@
 </head>
 <body>
 
-  <!-- ADMIN PASSCODE LOCK SCREEN -->
+  <!-- ADMIN LOCK — secrets verified on Deno API (not in this page) -->
   <div class="lock-screen" id="lock-screen">
     <div class="lock-card glass">
       <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
       <div>
         <h2 style="font-size: 20px; font-weight: 800;">Protected Admin Portal</h2>
-        <p id="lock-subtitle" style="font-size: 13px; color: #34d399; font-weight: 600; margin-top: 4px;"><i class="fa-solid fa-shield-halved"></i> Google Authenticator 2FA — Enter 6-Digit Code</p>
+        <p id="lock-subtitle" style="font-size: 13px; color: #34d399; font-weight: 600; margin-top: 4px;">
+          <i class="fa-solid fa-shield-halved"></i> Deno Admin API + Google Authenticator
+        </p>
       </div>
-      <input type="text" id="admin-pin" class="pin-input" placeholder="Enter 6-Digit Authenticator Code (e.g. 123456)" maxlength="6" onkeyup="checkPin(event)">
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key</label>
+      <input type="password" id="admin-secret-key" class="pin-input" placeholder="ADMIN_SECRET_KEY from Deno env" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%; margin-top: 8px;">Google Authenticator (6 digits)</label>
+      <input type="text" id="admin-pin" class="pin-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
+      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">API: lofty-crocodile-6332.sravanku018.deno.net</p>
     </div>
   </div>
 
@@ -500,7 +506,7 @@
                 <div class="form-group">
                   <label>2FA Secret Key (Manual Entry)</label>
                   <div style="display: flex; gap: 8px;">
-                    <input type="text" id="totp-secret-input" class="form-input" value="JBSWY3DPEHPK3PXP" readonly style="font-family: monospace; letter-spacing: 2px;">
+                    <input type="text" id="totp-secret-input" class="form-input" value="(set as TOTP_SECRET on Deno Deploy only)" readonly style="font-family: monospace; letter-spacing: 2px;">
                     <button class="btn btn-secondary" onclick="copyTotpSecret()"><i class="fa-solid fa-copy"></i></button>
                   </div>
                 </div>
@@ -685,81 +691,44 @@
   </div>
 
   <script>
-    const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
-    const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
-    const ADMIN_PIN = localStorage.getItem("gita_admin_pin") || "108";
+    // ── Secure Admin API (secrets live on Deno only) ──────────
+    const ADMIN_API = "https://lofty-crocodile-6332.sravanku018.deno.net";
 
-    // ─── GOOGLE AUTHENTICATOR (TOTP 2FA) ──────────────────────────
-    function base32ToBytes(base32) {
-      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-      let bits = 0, value = 0, output = [];
-      for (let i = 0; i < base32.length; i++) {
-        const idx = alphabet.indexOf(base32[i].toUpperCase());
-        if (idx === -1) continue;
-        value = (value << 5) | idx;
-        bits += 5;
-        if (bits >= 8) {
-          output.push((value >>> (bits - 8)) & 255);
-          bits -= 8;
-        }
-      }
-      return new Uint8Array(output);
+    function getAdminKey() {
+      return sessionStorage.getItem("gita_admin_key") || "";
     }
-
-    async function generateTOTP(secretBase32, timeOffset = 0) {
-      const epoch = Math.floor((Date.now() / 1000) / 30) + timeOffset;
-      const timeBytes = new Uint8Array(8);
-      let temp = epoch;
-      for (let i = 7; i >= 0; temp = Math.floor(temp / 256), i--) {
-        timeBytes[i] = temp & 0xff;
-      }
-      const keyBytes = base32ToBytes(secretBase32);
-      const cryptoKey = await crypto.subtle.importKey(
-        "raw", keyBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
-      );
-      const signature = await crypto.subtle.sign("HMAC", cryptoKey, timeBytes);
-      const sigBytes = new Uint8Array(signature);
-      const offset = sigBytes[sigBytes.length - 1] & 0xf;
-      const code = ((sigBytes[offset] & 0x7f) << 24) |
-                   ((sigBytes[offset + 1] & 0xff) << 16) |
-                   ((sigBytes[offset + 2] & 0xff) << 8) |
-                   (sigBytes[offset + 3] & 0xff);
-      return (code % 1000000).toString().padStart(6, '0');
-    }
-
-    async function verifyGoogleAuthCode(inputCode) {
-      const secret = localStorage.getItem("gita_totp_secret") || "JBSWY3DPEHPK3PXP";
-      for (let offset of [0, -1, 1]) {
-        try {
-          const validCode = await generateTOTP(secret, offset);
-          if (inputCode.trim() === validCode) return true;
-        } catch(e) {}
-      }
-      return false;
+    function setAdminKey(key) {
+      if (key) sessionStorage.setItem("gita_admin_key", key);
+      else sessionStorage.removeItem("gita_admin_key");
     }
 
     function copyTotpSecret() {
-      const input = document.getElementById("totp-secret-input");
-      navigator.clipboard.writeText(input.value);
-      alert("2FA Secret Key copied to clipboard! Paste it into Google Authenticator app.");
+      alert("TOTP secret is only on Deno Deploy env (TOTP_SECRET). Keep it in your password manager.");
     }
 
     async function testTotpCode() {
-      const code = document.getElementById("totp-test-code").value.trim();
+      const code = document.getElementById("totp-test-code")?.value.trim();
       const msgEl = document.getElementById("totp-test-msg");
+      if (!msgEl) return;
       if (!code || code.length !== 6) {
-        msgEl.textContent = "❌ Please enter a 6-digit code";
+        msgEl.textContent = "Enter 6-digit code";
         msgEl.style.color = "#ef4444";
         msgEl.style.display = "block";
         return;
       }
-      const ok = await verifyGoogleAuthCode(code);
-      if (ok) {
-        msgEl.textContent = "✅ Google Authenticator 2FA code is valid!";
-        msgEl.style.color = "#10b981";
+      try {
+        const key = getAdminKey() || document.getElementById("admin-secret-key")?.value.trim();
+        const res = await fetch(ADMIN_API + "/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_key: key, totp: code }),
+        });
+        const data = await res.json();
+        msgEl.textContent = (res.ok && data.success) ? "TOTP valid on server" : ("Error: " + (data.error || "Invalid"));
+        msgEl.style.color = (res.ok && data.success) ? "#10b981" : "#ef4444";
         msgEl.style.display = "block";
-      } else {
-        msgEl.textContent = "❌ Code invalid or expired. Check your phone's clock.";
+      } catch (e) {
+        msgEl.textContent = "Error: " + e.message;
         msgEl.style.color = "#ef4444";
         msgEl.style.display = "block";
       }
@@ -768,8 +737,8 @@
     let currentView = "roster";
     let allUsersCache = [];
     let rosterFilter = 'active';
-    const dirtySet = new Set();  // user_ids edited by admin this session
-    const newSet   = new Set();  // user_ids with days_active === 1 (first login)
+    const dirtySet = new Set();
+    const newSet   = new Set();
     let activeDossierUser = null;
     let currentCoinLogs = [];
     let currentDossierCoins = [];
@@ -782,37 +751,52 @@
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
     async function unlockDashboard() {
-      const input = document.getElementById("admin-pin").value.trim();
-      if (!input) {
-        document.getElementById("pin-error").textContent = "Please enter password or 6-digit Authenticator code.";
-        document.getElementById("pin-error").style.display = "block";
+      const errEl = document.getElementById("pin-error");
+      const adminKey = (document.getElementById("admin-secret-key")?.value || getAdminKey() || "").trim();
+      const totp = document.getElementById("admin-pin").value.trim();
+      if (!adminKey) {
+        errEl.textContent = "Enter ADMIN_SECRET_KEY (from Deno env / password manager).";
+        errEl.style.display = "block";
         return;
       }
-
-      // Check if it's a 6-digit Google Authenticator code
-      const isTotpOk = (input.length === 6 && /^\d+$/.test(input)) ? await verifyGoogleAuthCode(input) : false;
-      const storedPin = localStorage.getItem("gita_admin_pin") || "108";
-
-      if (isTotpOk || input === storedPin || input === "108") {
-        localStorage.setItem("gita_admin_pin", input);
-        localStorage.setItem("gita_admin_unlocked", "true");
+      if (!totp || totp.length !== 6) {
+        errEl.textContent = "Enter current 6-digit Google Authenticator code.";
+        errEl.style.display = "block";
+        return;
+      }
+      errEl.style.display = "none";
+      try {
+        const res = await fetch(ADMIN_API + "/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_key: adminKey, totp: totp }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          errEl.textContent = data.error || "Login failed";
+          errEl.style.display = "block";
+          return;
+        }
+        setAdminKey(data.admin_key || adminKey);
+        sessionStorage.setItem("gita_admin_unlocked", "true");
         document.getElementById("lock-screen").style.display = "none";
         document.getElementById("app-layout").style.display = "flex";
-        fetchCurrentViewData();
-      } else {
-        document.getElementById("pin-error").textContent = "Invalid Password or 6-digit Authenticator Code.";
-        document.getElementById("pin-error").style.display = "block";
+        fetchCurrentViewData(true);
+      } catch (e) {
+        errEl.textContent = "Cannot reach Admin API: " + e.message;
+        errEl.style.display = "block";
       }
     }
 
     function lockDashboard() {
-      localStorage.removeItem("gita_admin_unlocked");
+      sessionStorage.removeItem("gita_admin_unlocked");
+      setAdminKey("");
       document.getElementById("app-layout").style.display = "none";
       document.getElementById("lock-screen").style.display = "flex";
       document.getElementById("admin-pin").value = "";
     }
 
-    if (localStorage.getItem("gita_admin_unlocked") === "true") {
+    if (sessionStorage.getItem("gita_admin_unlocked") === "true" && getAdminKey()) {
       document.getElementById("lock-screen").style.display = "none";
       document.getElementById("app-layout").style.display = "flex";
       fetchCurrentViewData();
@@ -847,48 +831,46 @@
      * SELECT → array of row objects. WRITE → { success, affected_rows, last_insert_rowid }.
      */
     async function queryTurso(sql) {
-      const res = await fetch(TURSO_URL, {
+      const key = getAdminKey();
+      if (!key) throw new Error("Not logged in — unlock with ADMIN_SECRET_KEY + TOTP first");
+      const res = await fetch(ADMIN_API + "/admin/query", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${TURSO_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql } }, { type: "close" }] })
+        headers: { "Content-Type": "application/json", "X-Admin-Key": key },
+        body: JSON.stringify({ sql: sql }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Turso HTTP ${res.status}`);
+      if (!res.ok) throw new Error(data.error || data.message || ("Admin API HTTP " + res.status));
+      if (data && data.success === true && Array.isArray(data.rows)) {
+        const rows = data.rows.map(normalizeAdminRow);
+        const affected = Number(data.affected_rows || 0);
+        if (rows.length === 0 && /^\s*(insert|update|delete)\b/i.test(sql)) {
+          return { success: true, affected_rows: affected };
+        }
+        return rows;
       }
-      const first = data.results?.[0];
-      if (!first) throw new Error("Empty Turso response");
-      if (first.type === "error" || first.error) {
-        throw new Error(first.error?.message || first.error || "Turso SQL error");
-      }
-      const result = first.response?.result;
-      if (!result) throw new Error("Turso result missing");
+      if (Array.isArray(data)) return data.map(normalizeAdminRow);
+      return { success: true, affected_rows: 0 };
+    }
 
-      const cols = Array.isArray(result.cols) ? result.cols : [];
-      const rows = Array.isArray(result.rows) ? result.rows : [];
-      const affected = Number(result.affected_row_count ?? result.affected_rows ?? 0);
-      const lastId = result.last_insert_rowid;
+    function normalizeAdminRow(row) {
+      if (!row || typeof row !== "object") return row;
+      const o = {};
+      for (const [k, v] of Object.entries(row)) o[k] = tursoCellValue(v);
+      return o;
+    }
 
-      // Write / DDL (no meaningful row projection)
-      if (cols.length === 0) {
-        return {
-          success: true,
-          affected_rows: affected,
-          last_insert_rowid: lastId != null ? String(lastId) : null
-        };
-      }
+    function tursoCellValue(cell) {
+      if (cell == null) return null;
+      if (typeof cell !== "object") return cell;
+      if (cell.type === "null" || cell.value === null) return null;
+      if ("value" in cell) return cell.value;
+      return null;
+    }
 
-      return rows.map(row => {
-        const obj = {};
-        // Turso may return a cell array OR a sparse object keyed by index
-        const cells = Array.isArray(row) ? row : Object.keys(row || {}).sort((a, b) => Number(a) - Number(b)).map(k => row[k]);
-        cols.forEach((col, idx) => {
-          const colName = typeof col === "string" ? col : col.name;
-          const cell = cells[idx];
-          obj[colName] = tursoCellValue(cell);
-        });
-        return obj;
-      });
+    function fieldText(v) {
+      if (v == null) return "";
+      if (typeof v === "object") return "";
+      return String(v);
     }
 
     /** Normalize Turso cell shapes: {type,value} | primitive | null */
