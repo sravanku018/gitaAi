@@ -10,8 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Identity Services (Sign-In) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --bg: #0b0d14;
@@ -675,26 +673,6 @@
     const TURSO_URL = "https://gita-app-sravan.aws-ap-south-1.turso.io/v2/pipeline";
     const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU5MDU5NjQsImlkIjoiMDE5ZTZkN2MtMTcwMS03OWRiLWJjMWMtM2M0NzI2NTBhZDI5Iiwia2lkIjoiZFpLY3BHWDVnWDdlVGRndTktX0dSaXludmFHc0tqSEZHeWE4M21BV3NnQSIsInJpZCI6IjBhMjk1M2NiLTdiYTEtNDczOC1hNjk2LWU2NTQ1ZDM5NzEwYyJ9.N7gWBPVBTN_sSnnRufjYXbOHz9GP3ToznVP-t3sgw3A667GHaMScwXlAY_XDsqAop6PmbnYtTXUusD2X_LJSBw";
     const ADMIN_PIN = localStorage.getItem("gita_admin_pin") || "108";
-
-    function parseJwt(token) {
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-        return JSON.parse(jsonPayload);
-      } catch (e) { return null; }
-    }
-
-    function handleGoogleLogin(response) {
-      const payload = parseJwt(response.credential);
-      if (payload && payload.email) {
-        localStorage.setItem("gita_admin_user", payload.email);
-        localStorage.setItem("gita_admin_unlocked", "true");
-        document.getElementById("lock-screen").style.display = "none";
-        document.getElementById("app-layout").style.display = "flex";
-        fetchCurrentViewData();
-      }
-    }
 
     // ─── GOOGLE AUTHENTICATOR (TOTP 2FA) ──────────────────────────
     function base32ToBytes(base32) {
