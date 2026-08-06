@@ -870,7 +870,7 @@
       if (diffDays === 0) return '<span class="last-seen-fresh">Today 🟢</span>';
       if (diffDays === 1) return '<span class="last-seen-fresh">Yesterday</span>';
       if (diffDays <= 3)  return `<span class="last-seen-fresh">${diffDays}d ago</span>`;
-      return '<span class="last-seen-old">${diffDays}d ago</span>';
+      return `<span class="last-seen-old">${diffDays}d ago</span>`;
     }
 
     function getStatusBadge(u) {
