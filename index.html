@@ -876,12 +876,34 @@
 
       return rows.map(row => {
         const obj = {};
+        // Turso may return a cell array OR a sparse object keyed by index
+        const cells = Array.isArray(row) ? row : Object.keys(row || {}).sort((a, b) => Number(a) - Number(b)).map(k => row[k]);
         cols.forEach((col, idx) => {
-          const cell = row[idx];
-          obj[col.name] = (cell && typeof cell === "object" && "value" in cell) ? cell.value : cell;
+          const colName = typeof col === "string" ? col : col.name;
+          const cell = cells[idx];
+          obj[colName] = tursoCellValue(cell);
         });
         return obj;
       });
+    }
+
+    /** Normalize Turso cell shapes: {type,value} | primitive | null */
+    function tursoCellValue(cell) {
+      if (cell == null) return null;
+      if (typeof cell !== "object") return cell;
+      if (cell.type === "null" || cell.value === null) return null;
+      if ("value" in cell) {
+        // Integers/floats often come back as strings — keep as-is for text fields
+        return cell.value;
+      }
+      // Never put raw objects into form fields
+      return null;
+    }
+
+    function fieldText(v) {
+      if (v == null) return "";
+      if (typeof v === "object") return "";
+      return String(v);
     }
 
     function isActiveProfile(u) { return Number(u.days_active || 0) >= 2; }
@@ -1424,16 +1446,31 @@
         const type = rawType === "SPEND" ? "SPEND" : "EARN";
         const amount = Math.abs(Number(tx.amount) || 0);
 
+        // Description: prefer DB description; if JSON metadata, show readable form
+        let descText = fieldText(tx.description);
+        if (descText.trim().startsWith("{")) {
+          try {
+            const meta = JSON.parse(descText);
+            if (meta.score != null && (meta.totalQuestions != null || meta.questionsAnswered != null)) {
+              const total = meta.totalQuestions ?? meta.questionsAnswered;
+              descText = `Quiz (${meta.quizType || "general"}): ${meta.score}/${total}`;
+            } else if (meta.battleCoins != null) {
+              descText = `Battle quiz: ${meta.score ?? "?"} correct (+${meta.battleCoins})`;
+            }
+          } catch (_) { /* keep raw */ }
+        }
+
         document.getElementById("coin-modal-title").innerText = `Edit Transaction #${txId}`;
-        document.getElementById("edit-coin-id").value = String(tx.id);
-        document.getElementById("edit-coin-user-id").value = tx.user_id || "";
+        document.getElementById("edit-coin-id").value = fieldText(tx.id);
+        document.getElementById("edit-coin-user-id").value = fieldText(tx.user_id);
         document.getElementById("edit-coin-type").value = type;
         document.getElementById("edit-coin-amount").value = amount;
-        document.getElementById("edit-coin-source").value = tx.source || "";
-        document.getElementById("edit-coin-description").value = tx.description || "";
-        document.getElementById("edit-coin-date").value = normalizeAdminDate(tx.created_at) || (tx.created_at || "");
+        document.getElementById("edit-coin-source").value = fieldText(tx.source);
+        document.getElementById("edit-coin-description").value = descText;
+        document.getElementById("edit-coin-date").value = normalizeAdminDate(fieldText(tx.created_at)) || fieldText(tx.created_at);
         document.getElementById("btn-delete-coin").style.display = "inline-block";
 
+        console.log("openEditCoinModal loaded", { id: txId, source: tx.source, description: descText, raw: tx });
         document.getElementById("coin-modal").style.display = "flex";
       } catch (err) {
         console.error("openEditCoinModal:", err);
