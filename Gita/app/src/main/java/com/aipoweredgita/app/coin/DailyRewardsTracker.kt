@@ -60,25 +60,63 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             }
         }
 
+    /**
+     * Map server check-in (day 1..7, week 1..4) to local storage.
+     * Backend stores day=7 and advances week to the *next* week.
+     * Local uses day=0 for "week complete" and keeps the *completed* week number.
+     * e.g. server (7, 2) → local (0, 1); server (7, 1) → local (0, 4).
+     */
+    private fun mapServerDayWeek(serverDay: Int, serverWeek: Int): Pair<Int, Int> {
+        val d = serverDay.coerceIn(1, 7)
+        val w = serverWeek.coerceIn(1, 4)
+        return if (d == 7) {
+            val completedWeek = if (w == 1) 4 else w - 1
+            0 to completedWeek
+        } else {
+            d to w
+        }
+    }
+
+    /** Higher = further along the 4-week cycle. day 0 (complete) ranks above day 7. */
+    private fun progressScore(day: Int, week: Int): Int {
+        val w = week.coerceIn(1, 4)
+        val dayScore = when {
+            day == 0 -> 8
+            day in 1..7 -> day
+            else -> 0
+        }
+        return w * 10 + dayScore
+    }
+
     fun syncWithServer(serverDay: Int, serverWeek: Int, lastCheckin: String? = null) {
         if (serverDay !in 1..7) return
         synchronized(this) {
             val state = getState()
+            val (mappedDay, mappedWeek) = mapServerDayWeek(serverDay, serverWeek)
+
             var newDate = state.lastCheckinDate
             val cleanDate = lastCheckin?.take(10)
-
-            // Only update date if server has a strictly newer date than local record
             if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
 
-            val targetDay = if (state.lastCheckinDate.isEmpty()) serverDay else maxOf(state.checkinDay, serverDay)
-            val targetWeek = if (state.lastCheckinDate.isEmpty()) serverWeek else maxOf(state.checkinWeek, serverWeek)
-            saveState(state.copy(
-                checkinDay = targetDay,
-                checkinWeek = targetWeek,
-                lastCheckinDate = newDate
-            ))
+            val localScore = progressScore(state.checkinDay, state.checkinWeek)
+            val serverScore = progressScore(mappedDay, mappedWeek)
+
+            // Never downgrade local progress; only adopt server when it is strictly ahead
+            val (finalDay, finalWeek) = if (serverScore > localScore) {
+                mappedDay to mappedWeek
+            } else {
+                state.checkinDay to state.checkinWeek
+            }
+
+            saveState(
+                state.copy(
+                    checkinDay = finalDay,
+                    checkinWeek = finalWeek.coerceIn(1, 4),
+                    lastCheckinDate = newDate
+                )
+            )
         }
     }
 
@@ -86,25 +124,30 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         if (serverDay !in 1..7) return
         synchronized(this) {
             val state = getState()
+            val (mappedDay, mappedWeek) = mapServerDayWeek(serverDay, serverWeek)
+
             var newDate = state.lastShareDate
             val cleanDate = lastShare?.take(10)
-
-            val isServerDateNewer = cleanDate != null && cleanDate > newDate
-            val isSameDateHigherDay = cleanDate != null && cleanDate == newDate && serverDay > state.shareDay
-            val isLocalEmpty = newDate.isEmpty()
-
-            if (isServerDateNewer || isSameDateHigherDay || isLocalEmpty) {
-                if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
-                    newDate = cleanDate
-                }
-                val targetDay = if (isLocalEmpty) serverDay else maxOf(state.shareDay, serverDay)
-                val targetWeek = if (isLocalEmpty) serverWeek else maxOf(state.shareWeek, serverWeek)
-                saveState(state.copy(
-                    shareDay = targetDay,
-                    shareWeek = targetWeek,
-                    lastShareDate = newDate
-                ))
+            if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
+                newDate = cleanDate
             }
+
+            val localScore = progressScore(state.shareDay, state.shareWeek)
+            val serverScore = progressScore(mappedDay, mappedWeek)
+
+            val (finalDay, finalWeek) = if (serverScore > localScore) {
+                mappedDay to mappedWeek
+            } else {
+                state.shareDay to state.shareWeek
+            }
+
+            saveState(
+                state.copy(
+                    shareDay = finalDay,
+                    shareWeek = finalWeek.coerceIn(1, 4),
+                    lastShareDate = newDate
+                )
+            )
         }
     }
 
