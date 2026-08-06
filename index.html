@@ -158,8 +158,29 @@
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
+
+      <!-- First-time: register Authenticator BEFORE unlock -->
+      <details style="width:100%; margin-top: 12px; text-align:left; border:1px solid var(--card-border); border-radius:10px; padding:10px 12px;">
+        <summary style="cursor:pointer; font-size:12px; font-weight:700; color:#fbbf24;">
+          First time? Register Google Authenticator first (required)
+        </summary>
+        <p style="font-size:11px; color:var(--text-muted); margin:10px 0 8px; line-height:1.45;">
+          1) Deno env has the same <code>TOTP_SECRET</code><br>
+          2) Scan QR or enter secret in Authenticator<br>
+          3) Wait for a fresh 6-digit code, then unlock above
+        </p>
+        <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <div style="background:#fff; padding:8px; border-radius:8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30"
+                 alt="Register TOTP first" width="120" height="120" style="display:block;">
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">
+            <div style="font-weight:600; color:#e5e7eb; margin-bottom:4px;">Manual secret</div>
+            <code style="word-break:break-all; color:#34d399;">TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+          </div>
+        </div>
+      </details>
       <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-        First time? Open Settings after a one-time setup unlock, or scan QR from password manager.<br>
         API: lofty-crocodile-6332.sravanku018.deno.net
       </p>
     </div>
