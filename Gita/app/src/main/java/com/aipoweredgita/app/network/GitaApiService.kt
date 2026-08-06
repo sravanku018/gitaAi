@@ -117,6 +117,20 @@ data class ShareSlokaRequest(
     val timezone: String? = null
 )
 
+data class MeditationLogRequest(
+    val minutes: Int,
+    val country_code: String? = null,
+    val timezone: String? = null
+)
+
+data class MeditationLogResponse(
+    val success: Boolean = false,
+    val user_id: String = "",
+    val minutes: Int = 0,
+    val coins_earned: Int = 0,
+    val total_coins: Int = 0
+)
+
 data class ClaimGuestRequest(
     val guest_id: String,
     val real_user_id: String,
@@ -496,6 +510,12 @@ interface CoinApiService {
         @Body request: QuizAttemptRequest,
         @Header("Authorization") token: String? = null
     ): Map<String, Any>
+
+    @POST("meditation/log")
+    suspend fun logMeditation(
+        @Body request: MeditationLogRequest,
+        @Header("Authorization") token: String? = null
+    ): MeditationLogResponse
 
     @GET("quiz/history")
     suspend fun getQuizHistory(
