@@ -145,11 +145,11 @@
         <h2 style="font-size: 20px; font-weight: 800;">Protected Admin Portal</h2>
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Private Access — Enter Admin Security PIN</p>
       </div>
-      <input type="password" id="admin-pin" class="pin-input" placeholder="••••" maxlength="6" onkeyup="checkPin(event)">
+      <input type="password" id="admin-pin" class="pin-input" placeholder="Enter Admin Password" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
-      <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;">Invalid PIN Code. Default PIN is 108</p>
+      <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
     </div>
   </div>
 
@@ -625,18 +625,17 @@
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
     function unlockDashboard() {
-      const input = document.getElementById("admin-pin").value;
-      const customPin = localStorage.getItem("gita_admin_pin");
-      if (input === "108" || input === ADMIN_PIN || (customPin && input === customPin)) {
-        document.getElementById("lock-screen").style.display = "none";
-        document.getElementById("app-layout").style.display = "flex";
-        localStorage.setItem("gita_admin_unlocked", "true");
-        if (input !== "108") localStorage.setItem("gita_admin_pin", input);
-        fetchCurrentViewData();
-      } else {
-        document.getElementById("pin-error").textContent = "Invalid Admin Password.";
+      const input = document.getElementById("admin-pin").value.trim();
+      if (!input) {
+        document.getElementById("pin-error").textContent = "Please enter a password.";
         document.getElementById("pin-error").style.display = "block";
+        return;
       }
+      localStorage.setItem("gita_admin_pin", input);
+      localStorage.setItem("gita_admin_unlocked", "true");
+      document.getElementById("lock-screen").style.display = "none";
+      document.getElementById("app-layout").style.display = "flex";
+      fetchCurrentViewData();
     }
 
     function lockDashboard() {
