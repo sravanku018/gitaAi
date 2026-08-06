@@ -477,6 +477,40 @@
             </button>
             <p id="settings-msg" style="font-size: 13px; font-weight: 600; display: none;"></p>
           </div>
+
+          <div style="margin-top: 32px; border-top: 1px solid var(--card-border); padding-top: 24px;">
+            <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Google Authenticator (2FA) Setup
+            </h4>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              Scan the QR code below with the <strong>Google Authenticator app</strong> on your phone (like X/Twitter 2FA).
+            </p>
+
+            <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+              <div style="background: #fff; padding: 12px; border-radius: 12px; display: inline-block;">
+                <img id="totp-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=otpauth://totp/GitaAIAdmin:sravan?secret=JBSWY3DPEHPK3PXP&issuer=GitaAI" alt="Google Authenticator QR Code" style="width: 160px; height: 160px; display: block;">
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; max-width: 360px;">
+                <div class="form-group">
+                  <label>2FA Secret Key (Manual Entry)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="totp-secret-input" class="form-input" value="JBSWY3DPEHPK3PXP" readonly style="font-family: monospace; letter-spacing: 2px;">
+                    <button class="btn btn-secondary" onclick="copyTotpSecret()"><i class="fa-solid fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Test 6-Digit Code</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="totp-test-code" class="form-input" placeholder="e.g. 123456" maxlength="6">
+                    <button class="btn btn-primary" onclick="testTotpCode()">Verify</button>
+                  </div>
+                  <p id="totp-test-msg" style="font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -717,6 +751,33 @@
         } catch(e) {}
       }
       return false;
+    }
+
+    function copyTotpSecret() {
+      const input = document.getElementById("totp-secret-input");
+      navigator.clipboard.writeText(input.value);
+      alert("2FA Secret Key copied to clipboard! Paste it into Google Authenticator app.");
+    }
+
+    async function testTotpCode() {
+      const code = document.getElementById("totp-test-code").value.trim();
+      const msgEl = document.getElementById("totp-test-msg");
+      if (!code || code.length !== 6) {
+        msgEl.textContent = "❌ Please enter a 6-digit code";
+        msgEl.style.color = "#ef4444";
+        msgEl.style.display = "block";
+        return;
+      }
+      const ok = await verifyGoogleAuthCode(code);
+      if (ok) {
+        msgEl.textContent = "✅ Google Authenticator 2FA code is valid!";
+        msgEl.style.color = "#10b981";
+        msgEl.style.display = "block";
+      } else {
+        msgEl.textContent = "❌ Code invalid or expired. Check your phone's clock.";
+        msgEl.style.color = "#ef4444";
+        msgEl.style.display = "block";
+      }
     }
 
     let currentView = "roster";
