@@ -396,9 +396,11 @@ class StatsRepository(
             val lastActiveLocalDate = parseLocalDate(rawLastActiveDate) ?: return@runInTransaction
             val today = LocalDate.now(ZoneId.systemDefault())
 
-            // Reset streak to 0 only if user missed more than 1 calendar day
-            if (lastActiveLocalDate < today.minusDays(1)) {
-                userStatsDao.updateCurrentStreak(0)
+            // Allow 48-hour grace window (today.minusDays(2)) so late night / timezone shifts don't wipe streaks
+            if (lastActiveLocalDate < today.minusDays(2)) {
+                if (currentStats.currentStreak > 0) {
+                    userStatsDao.updateCurrentStreak(0)
+                }
             }
         }
     }
@@ -414,8 +416,9 @@ class StatsRepository(
 
             when {
                 lastActiveLocalDate == null -> {
-                    userStatsDao.updateCurrentStreak(1)
-                    userStatsDao.updateLongestStreak(maxOf(1, currentStats.longestStreak))
+                    val streakVal = maxOf(1, currentStats.currentStreak)
+                    userStatsDao.updateCurrentStreak(streakVal)
+                    userStatsDao.updateLongestStreak(maxOf(streakVal, currentStats.longestStreak))
                     userStatsDao.updateDaysActive(maxOf(1, currentStats.daysActive))
                 }
                 lastActiveLocalDate == today -> {
@@ -424,7 +427,8 @@ class StatsRepository(
                         userStatsDao.updateLongestStreak(maxOf(1, currentStats.longestStreak))
                     }
                 }
-                lastActiveLocalDate == today.minusDays(1) -> {
+                lastActiveLocalDate == today.minusDays(1) || lastActiveLocalDate == today.minusDays(2) -> {
+                    // Continued streak (yesterday or 2-day timezone grace window)
                     val baseStreak = if (currentStats.currentStreak == 0) 1 else currentStats.currentStreak
                     val newStreak = baseStreak + 1
                     userStatsDao.updateCurrentStreak(newStreak)

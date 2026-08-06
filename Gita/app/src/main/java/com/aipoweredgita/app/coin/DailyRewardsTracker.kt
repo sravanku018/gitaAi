@@ -66,15 +66,23 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val state = getState()
             var newDate = state.lastCheckinDate
             val cleanDate = lastCheckin?.take(10)
-            if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
-                newDate = cleanDate
-            }
 
-            saveState(state.copy(
-                checkinDay = serverDay,
-                checkinWeek = serverWeek,
-                lastCheckinDate = newDate
-            ))
+            val isServerDateNewer = cleanDate != null && cleanDate > newDate
+            val isSameDateHigherDay = cleanDate != null && cleanDate == newDate && serverDay > state.checkinDay
+            val isLocalEmpty = newDate.isEmpty()
+
+            if (isServerDateNewer || isSameDateHigherDay || isLocalEmpty) {
+                if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
+                    newDate = cleanDate
+                }
+                val targetDay = if (isLocalEmpty) serverDay else maxOf(state.checkinDay, serverDay)
+                val targetWeek = if (isLocalEmpty) serverWeek else maxOf(state.checkinWeek, serverWeek)
+                saveState(state.copy(
+                    checkinDay = targetDay,
+                    checkinWeek = targetWeek,
+                    lastCheckinDate = newDate
+                ))
+            }
         }
     }
 
@@ -84,15 +92,23 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val state = getState()
             var newDate = state.lastShareDate
             val cleanDate = lastShare?.take(10)
-            if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
-                newDate = cleanDate
-            }
 
-            saveState(state.copy(
-                shareDay = serverDay,
-                shareWeek = serverWeek,
-                lastShareDate = newDate
-            ))
+            val isServerDateNewer = cleanDate != null && cleanDate > newDate
+            val isSameDateHigherDay = cleanDate != null && cleanDate == newDate && serverDay > state.shareDay
+            val isLocalEmpty = newDate.isEmpty()
+
+            if (isServerDateNewer || isSameDateHigherDay || isLocalEmpty) {
+                if (cleanDate != null && (newDate.isEmpty() || cleanDate > newDate)) {
+                    newDate = cleanDate
+                }
+                val targetDay = if (isLocalEmpty) serverDay else maxOf(state.shareDay, serverDay)
+                val targetWeek = if (isLocalEmpty) serverWeek else maxOf(state.shareWeek, serverWeek)
+                saveState(state.copy(
+                    shareDay = targetDay,
+                    shareWeek = targetWeek,
+                    lastShareDate = newDate
+                ))
+            }
         }
     }
 

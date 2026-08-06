@@ -18,8 +18,9 @@ object CoinTransactionLogger {
     private const val TAG = "CoinTxLogger"
 
     fun log(context: Context, amount: Int, description: String, source: String = "", eventKey: String? = null, id: String = java.util.UUID.randomUUID().toString()) {
-        if (amount == 0) return
         val safeDesc = description.take(120)
+        val normSrc = normalizeSource(source, safeDesc)
+        if (amount == 0 && normSrc != "checkin_daily" && normSrc != "share_daily") return
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val arr = readJson(prefs)
@@ -90,12 +91,21 @@ object CoinTransactionLogger {
         for (obj in sorted) {
             val id = obj.optString("id", "")
             val eventKey = obj.optString("eventKey", "")
-            val key = eventKey.ifEmpty { id }
-            if (key.isNotEmpty()) {
-                if (seenKeys.add(key)) {
-                    deduplicated.add(obj)
-                }
-            } else {
+            val desc = obj.optString("description", "")
+            val amt = obj.optInt("amount", 0)
+            val src = obj.optString("source", "")
+            val normSrc = normalizeSource(src, desc)
+            val ts = obj.optLong("timestamp", 0L)
+            val dateStr = getEntryDateStr(ts)
+
+            val key = when {
+                eventKey.isNotEmpty() -> eventKey
+                id.isNotEmpty() && !id.contains("-") -> "server_id_$id"
+                normSrc == "checkin_daily" || normSrc == "share_daily" -> "${dateStr}_${normSrc}"
+                else -> "${dateStr}_${normSrc}_${amt}_${desc.take(20)}"
+            }
+
+            if (seenKeys.add(key)) {
                 deduplicated.add(obj)
             }
         }
@@ -106,11 +116,6 @@ object CoinTransactionLogger {
         synchronized(this) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val serverEntries = serverHistory.reversed().takeLast(MAX)
-
-            val oldestServerTs = serverEntries.minOfOrNull { entry ->
-                try { com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time ?: Long.MAX_VALUE }
-                catch (_: Exception) { Long.MAX_VALUE }
-            } ?: Long.MAX_VALUE
 
             val serverJsonEntries = serverEntries.map { entry ->
                 val isSpendEntry = entry.type.equals("SPEND", ignoreCase = true) || entry.amount < 0
@@ -141,18 +146,14 @@ object CoinTransactionLogger {
             }
 
             val existingArr = readJson(prefs)
-            val localOnlyList = mutableListOf<JSONObject>()
+            val allLocalEntries = mutableListOf<JSONObject>()
             for (i in 0 until existingArr.length()) {
                 try {
-                    val obj = existingArr.getJSONObject(i)
-                    val ts = obj.optLong("timestamp", 0L)
-                    if (ts < oldestServerTs) {
-                        localOnlyList.add(obj)
-                    }
+                    allLocalEntries.add(existingArr.getJSONObject(i))
                 } catch (_: Exception) { }
             }
 
-            val merged = deduplicateJsonEntries(localOnlyList + serverJsonEntries)
+            val merged = deduplicateJsonEntries(allLocalEntries + serverJsonEntries)
             val finalArr = JSONArray()
             merged.takeLast(MAX).forEach { finalArr.put(it) }
             prefs.edit().putString(KEY, finalArr.toString()).commit()
