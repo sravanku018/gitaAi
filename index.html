@@ -1189,7 +1189,11 @@
         }
       } catch (err) {
         console.error("fetchAllUsers:", err);
-        alert(`Failed to load users: ${err.message || err}`);
+        const msg = String(err.message || err);
+        const hint = msg.includes("404") || msg.includes("SERVER_ERROR")
+          ? "\n\nTurso config on Deno is wrong/missing.\nSet TURSO_URL=libsql://YOUR-DB.aws-ap-south-1.turso.io\n(not https://.../v2/pipeline) and a valid TURSO_TOKEN, then redeploy."
+          : "";
+        alert(`Failed to load users: ${msg}${hint}`);
       }
     }
 
