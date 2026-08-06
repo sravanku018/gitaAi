@@ -174,8 +174,12 @@
       <div style="font-size: 13px; font-weight: 800; color: #fbbf24; width:100%; text-align:left; margin-bottom: 6px;">
         Step 2 — Then unlock
       </div>
-      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (Deno ADMIN_SECRET_KEY)</label>
-      <input type="password" id="admin-secret-key" class="pin-input" placeholder="ADMIN_SECRET_KEY from Deno env" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match Deno env ADMIN_SECRET_KEY exactly)</label>
+      <input type="password" id="admin-secret-key" class="pin-input" placeholder="Paste full key — not the TOTP secret" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); width:100%; margin-top:4px; cursor:pointer;">
+        <input type="checkbox" id="show-admin-key" onchange="document.getElementById('admin-secret-key').type=this.checked?'text':'password'">
+        Show admin key (check for typos)
+      </label>
       <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%; margin-top: 8px;">6-digit code from Authenticator (after scanning above)</label>
       <input type="text" id="admin-pin" class="pin-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
@@ -816,7 +820,12 @@
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          errEl.textContent = data.error || "Login failed";
+          const msg = data.error || "Login failed";
+          const hint = data.hint ? "<br><small>" + data.hint + "</small>" : "";
+          // "Unauthorized" always meant wrong admin key (TOTP has its own message)
+          errEl.innerHTML = msg.includes("Unauthorized") || msg.includes("Admin Secret")
+            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from Deno env. TOTP is only checked after the key matches.</small>"
+            : ("❌ " + msg + hint);
           errEl.style.display = "block";
           return;
         }
