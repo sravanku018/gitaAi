@@ -820,7 +820,12 @@
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          errEl.textContent = data.error || "Login failed";
+          const msg = data.error || "Login failed";
+          const hint = data.hint ? "<br><small>" + data.hint + "</small>" : "";
+          // "Unauthorized" always meant wrong admin key (TOTP has its own message)
+          errEl.innerHTML = msg.includes("Unauthorized") || msg.includes("Admin Secret")
+            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from Deno env. TOTP is only checked after the key matches.</small>"
+            : ("❌ " + msg + hint);
           errEl.style.display = "block";
           return;
         }
