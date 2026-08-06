@@ -77,13 +77,13 @@ fun CoinHistoryScreen(
     var activeFilter by remember { mutableStateOf("all") }
 
     var refreshTrigger by remember { mutableIntStateOf(0) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshTrigger++
-                viewModel.refreshCoinBalance()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -92,15 +92,15 @@ fun CoinHistoryScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshCoinBalance()
-        viewModel.loadCoinHistory()
-        kotlinx.coroutines.delay(300)
-        refreshTrigger++
-    }
-
-    LaunchedEffect(refreshTrigger, coinBalance) {
-        viewModel.loadCoinHistory()
+    // Single refresh pipeline — balance + history together
+    LaunchedEffect(refreshTrigger) {
+        isRefreshing = true
+        try {
+            viewModel.refreshCoinBalance()
+            viewModel.loadCoinHistory()
+        } finally {
+            isRefreshing = false
+        }
     }
 
     val filtered = when (activeFilter) {
@@ -166,12 +166,25 @@ fun CoinHistoryScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { refreshTrigger++ }) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = textPrimary
-                    )
+                IconButton(
+                    onClick = {
+                        if (!isRefreshing) refreshTrigger++
+                    },
+                    enabled = !isRefreshing
+                ) {
+                    if (isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = textPrimary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = textPrimary
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
