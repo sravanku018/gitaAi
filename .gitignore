@@ -50,4 +50,3 @@ deno-admin-api.ts
 deno-admin*.ts
 .env.admin
 .env.admin.*
-!.env.admin.example
