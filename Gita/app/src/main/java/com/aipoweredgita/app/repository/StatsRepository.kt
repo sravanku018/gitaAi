@@ -654,21 +654,36 @@ class StatsRepository(
     suspend fun syncCheckinToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return
+        val token = authPrefs.token
+        if (token.isNullOrEmpty()) {
+            Log.w("StatsRepository", "Checkin sync skipped — no auth token; queueing")
+            queueCheckinSync(uid, coinsToAdjust)
+            return
+        }
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
-            val response = CoinApi.retrofitService.checkin(mapOf(
-                "user_id" to uid,
-                "client_date" to localDate,
-                "timezone" to java.util.TimeZone.getDefault().id
-            ))
+            val response = CoinApi.retrofitService.checkin(
+                mapOf(
+                    "user_id" to uid,
+                    "client_date" to localDate,
+                    "timezone" to java.util.TimeZone.getDefault().id
+                ),
+                "Bearer $token"
+            )
             if (response.day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncWithServer(response.day, response.week, localDate)
             }
             refreshUserState(uid)
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: retrofit2.HttpException) {
-            Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
-            DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
+            // 401/403 means the server never recorded this check-in — do NOT mark synced.
+            if (e.code() == 401 || e.code() == 403) {
+                Log.e("StatsRepository", "Checkin sync unauthorized (HTTP ${e.code()}) — will retry")
+                queueCheckinSync(uid, coinsToAdjust)
+            } else {
+                Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
+                DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
+            }
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to sync checkin: ${e.message}")
             queueCheckinSync(uid, coinsToAdjust)
@@ -701,17 +716,31 @@ class StatsRepository(
     suspend fun syncShareToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return
+        val token = authPrefs.token
+        if (token.isNullOrEmpty()) {
+            Log.w("StatsRepository", "Share sync skipped — no auth token; queueing")
+            queueShareSync(uid, coinsToAdjust)
+            return
+        }
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
-            val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync", client_date = localDate))
+            val response = CoinApi.retrofitService.share(
+                ShareSlokaRequest(uid, "local_sync", client_date = localDate),
+                "Bearer $token"
+            )
             if (response.share_day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
             }
             refreshUserState(uid)
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: retrofit2.HttpException) {
-            Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
-            DailyRewardsTracker.getInstance(appContext).isShareSynced = true
+            if (e.code() == 401 || e.code() == 403) {
+                Log.e("StatsRepository", "Share sync unauthorized (HTTP ${e.code()}) — will retry")
+                queueShareSync(uid, coinsToAdjust)
+            } else {
+                Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
+                DailyRewardsTracker.getInstance(appContext).isShareSynced = true
+            }
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to sync share: ${e.message}")
             queueShareSync(uid, coinsToAdjust)

@@ -290,7 +290,9 @@ class ProfileViewModel @Inject constructor(
     }
 
     /**
-     * Load coin history (merges local and server data)
+     * Load coin history (merges local and server data).
+     * Always prefer the merged local cache after server sync so recent
+     * offline/local-only earns still appear when the server list is incomplete.
      */
     fun loadCoinHistory() {
         viewModelScope.launch {
@@ -298,44 +300,40 @@ class ProfileViewModel @Inject constructor(
             val isGuest = authPrefs.isGuestUser
             val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
                 ?: _stats.value?.userId?.takeIf { it.isNotEmpty() }
-            
+
+            fun isGuestSignupNoise(entry: com.aipoweredgita.app.network.CoinHistoryEntry): Boolean =
+                entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true)
+
             if (isGuest || effectiveUid == null || effectiveUid.isEmpty()) {
-                _coinHistory.value = buildLocalHistory()
-            } else {
-                val token = authPrefs.token
-                var serverLoaded = false
-                if (!token.isNullOrEmpty()) {
-                    try {
-                        val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
-                            effectiveUid, "Bearer $token", limit = 500
-                        )
-                        if (serverHistory.isNotEmpty()) {
-                            com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
-                            _coinHistory.value = serverHistory
-                                .distinctBy { it.id ?: "${it.created_at}_${it.amount}_${it.description}" }
-                                .filter { entry ->
-                                    !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
-                                }
-                        } else {
-                            val mergedHistory = buildLocalHistory()
-                            _coinHistory.value = mergedHistory.filter { entry ->
-                                !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
-                            }
-                        }
-                        
-                        serverLoaded = true
-                    } catch (e: Exception) {
-                        android.util.Log.e("ProfileViewModel", "Failed to fetch server coin history: ${e.message}")
+                _coinHistory.value = buildLocalHistory().filterNot(::isGuestSignupNoise)
+                return@launch
+            }
+
+            val token = authPrefs.token
+            if (!token.isNullOrEmpty()) {
+                try {
+                    val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
+                        effectiveUid, "Bearer $token", limit = 500
+                    )
+                    if (serverHistory.isNotEmpty()) {
+                        com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(appContext, serverHistory)
                     }
-                }
-                
-                if (!serverLoaded) {
-                    val localOnly = buildLocalHistory()
-                    _coinHistory.value = localOnly.filter { entry ->
-                        !(entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true))
+                    // After sync, local log contains server + unsynced local entries.
+                    val merged = buildLocalHistory().filterNot(::isGuestSignupNoise)
+                    _coinHistory.value = if (merged.isNotEmpty()) {
+                        merged
+                    } else {
+                        serverHistory
+                            .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
+                            .filterNot(::isGuestSignupNoise)
                     }
+                    return@launch
+                } catch (e: Exception) {
+                    android.util.Log.e("ProfileViewModel", "Failed to fetch server coin history: ${e.message}")
                 }
             }
+
+            _coinHistory.value = buildLocalHistory().filterNot(::isGuestSignupNoise)
         }
     }
 
