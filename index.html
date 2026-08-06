@@ -145,7 +145,7 @@
       <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
       <div>
         <h2 style="font-size: 20px; font-weight: 800;">Protected Admin Portal</h2>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Private Access — Enter Admin Security PIN</p>
+        <p id="lock-subtitle" style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Private Access — Enter Admin Security PIN</p>
       </div>
       <input type="password" id="admin-pin" class="pin-input" placeholder="Enter Admin Password" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
@@ -770,13 +770,25 @@
       }
       const ok = await verifyGoogleAuthCode(code);
       if (ok) {
-        msgEl.textContent = "✅ Google Authenticator 2FA code is valid!";
+        localStorage.setItem("gita_totp_enabled", "true");
+        msgEl.textContent = "✅ Google Authenticator 2FA verified & enabled! Login screen updated.";
         msgEl.style.color = "#10b981";
         msgEl.style.display = "block";
+        updateLockScreenUI();
       } else {
         msgEl.textContent = "❌ Code invalid or expired. Check your phone's clock.";
         msgEl.style.color = "#ef4444";
         msgEl.style.display = "block";
+      }
+    }
+
+    function updateLockScreenUI() {
+      const isTotp = localStorage.getItem("gita_totp_enabled") === "true";
+      const sub = document.getElementById("lock-subtitle");
+      const pin = document.getElementById("admin-pin");
+      if (isTotp && sub && pin) {
+        sub.innerHTML = '<span style="color: #34d399; font-weight:600;"><i class="fa-solid fa-shield-halved"></i> Google Authenticator 2FA Enabled</span>';
+        pin.placeholder = "Enter 6-Digit Authenticator Code (e.g. 123456)";
       }
     }
 
@@ -825,8 +837,10 @@
       document.getElementById("app-layout").style.display = "none";
       document.getElementById("lock-screen").style.display = "flex";
       document.getElementById("admin-pin").value = "";
+      updateLockScreenUI();
     }
 
+    updateLockScreenUI();
     if (localStorage.getItem("gita_admin_unlocked") === "true") {
       document.getElementById("lock-screen").style.display = "none";
       document.getElementById("app-layout").style.display = "flex";
