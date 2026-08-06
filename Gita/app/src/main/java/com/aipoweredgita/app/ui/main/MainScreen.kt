@@ -164,6 +164,10 @@ fun MainScreen(
                         scope.launch { drawerState.close() }
                         navController.navigate("flashcards?topic=")
                     },
+                    onNavigateToVoiceStudio = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Screen.VoiceStudio.route)
+                    },
                     onLogout = {
                         scope.launch {
                             drawerState.close()

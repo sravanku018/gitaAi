@@ -49,6 +49,7 @@ fun DrawerContent(
     onNavigateToQuizBattle: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onNavigateToFlashcards: () -> Unit = {},
+    onNavigateToVoiceStudio: () -> Unit = {},
     onLogout: () -> Unit = {},
     stats: com.aipoweredgita.app.database.UserStats?,
     coinBalance: Int = 0,
@@ -187,10 +188,10 @@ fun DrawerContent(
             )
 
             TwitterMenuItem(
-                icon = { Icon(Icons.Default.Mic, contentDescription = "AI Voice Chat") },
-                title = "AI Voice Chat",
+                icon = { Icon(Icons.Default.Mic, contentDescription = "Voice Chat") },
+                title = "Voice Chat",
                 textColor = textColor,
-                onClick = onNavigateToHome
+                onClick = onNavigateToVoiceStudio
             )
 
             TwitterMenuItem(
