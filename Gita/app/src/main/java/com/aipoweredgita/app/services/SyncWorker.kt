@@ -428,7 +428,7 @@ class SyncWorker(
         
         // TOP-TO-BOTTOM SYNC: Fetch authoritative state from server after all offline events are processed
         Log.d(TAG, "Fetching latest authoritative state from server")
-        statsRepository.refreshUserState(currentUserId)
+        statsRepository.refreshUserState(currentUserId, force = true)
         
         return Result.success()
     }

@@ -174,7 +174,7 @@ if (response.success) {
                         dbInstance.dailyActivityDao(),
                         context
                     )
-                    statsRepo.refreshUserState(response.user_id)
+                    statsRepo.refreshUserState(response.user_id, force = true)
                     statsRepo.syncStatsToServer()
                 } catch (e: Exception) {
                     Log.e(TAG, "Stats sync failed during login", e)

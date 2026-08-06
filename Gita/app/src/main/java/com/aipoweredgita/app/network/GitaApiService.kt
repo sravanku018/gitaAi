@@ -486,7 +486,7 @@ interface CoinApiService {
     suspend fun getHistory(
         @Query("user_id") userId: String,
         @Header("Authorization") token: String? = null,
-        @Query("limit") limit: Int = 500,
+        @Query("limit") limit: Int = 100,
         @Query("offset") offset: Int = 0
     ): List<CoinHistoryEntry>
 
@@ -521,7 +521,7 @@ interface CoinApiService {
     suspend fun getQuizHistory(
         @Query("user_id") userId: String,
         @Header("Authorization") token: String? = null,
-        @Query("limit") limit: Int = 100
+        @Query("limit") limit: Int = 50
     ): List<QuizAttemptDto>
 
     @GET("activity/history")

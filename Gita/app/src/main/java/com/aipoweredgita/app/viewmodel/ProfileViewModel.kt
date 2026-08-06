@@ -92,6 +92,14 @@ class ProfileViewModel @Inject constructor(
     private val _coinHistory = MutableStateFlow<List<com.aipoweredgita.app.network.CoinHistoryEntry>>(emptyList())
     val coinHistory: StateFlow<List<com.aipoweredgita.app.network.CoinHistoryEntry>> = _coinHistory.asStateFlow()
 
+    /** Avoid re-fetching full history on every screen open (Turso row budget). */
+    private var lastHistoryFetchMs: Long = 0L
+    private var lastHistoryUid: String? = null
+    private companion object {
+        private const val HISTORY_TTL_MS = 10 * 60 * 1000L // 10 minutes
+        private const val HISTORY_LIMIT = 100
+    }
+
     init {
         loadStats()
         loadRecommendations()
@@ -293,8 +301,9 @@ class ProfileViewModel @Inject constructor(
      * Load coin history for the *current* profile only.
      * Local cache is user-scoped; server fetch uses the auth token's user.
      * Never merges history from other accounts.
+     * @param forceRefresh true on pull-to-refresh; false uses 10‑min TTL + in-memory list.
      */
-    fun loadCoinHistory() {
+    fun loadCoinHistory(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             val authPrefs = AuthPreferences.getInstance(appContext)
             val isGuest = authPrefs.isGuestUser
@@ -315,11 +324,21 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
+            // TTL: reuse last server-backed list when reopening history quickly
+            val now = System.currentTimeMillis()
+            if (!forceRefresh &&
+                effectiveUid == lastHistoryUid &&
+                _coinHistory.value.isNotEmpty() &&
+                now - lastHistoryFetchMs < HISTORY_TTL_MS
+            ) {
+                return@launch
+            }
+
             val token = authPrefs.token
             if (!token.isNullOrEmpty()) {
                 try {
                     val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
-                        effectiveUid, "Bearer $token", limit = 500
+                        effectiveUid, "Bearer $token", limit = HISTORY_LIMIT
                     )
                     if (serverHistory.isNotEmpty()) {
                         com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(
@@ -335,6 +354,8 @@ class ProfileViewModel @Inject constructor(
                             .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
                             .filterNot(::isGuestSignupNoise)
                     }
+                    lastHistoryFetchMs = now
+                    lastHistoryUid = effectiveUid
                     return@launch
                 } catch (e: Exception) {
                     android.util.Log.e("ProfileViewModel", "Failed to fetch server coin history: ${e.message}")

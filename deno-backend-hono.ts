@@ -309,7 +309,72 @@ async function initTables() {
     console.error("Failed to init tables:", e);
   }
 }
-await initTables();
+
+/** Bump when adding migrations/indexes so cold starts re-run init once. */
+const SCHEMA_VERSION = 2;
+
+/** Hot-path indexes for coin history / idempotency (idempotent). */
+async function ensureHotPathIndexes() {
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_coin_tx_user_created ON coin_transactions(user_id, created_at)`,
+  }).catch(() => {});
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_coin_tx_user_idem ON coin_transactions(user_id, idempotency_key)`,
+  }).catch(() => {});
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`,
+  }).catch(() => {});
+  await db.execute({
+    sql: `CREATE INDEX IF NOT EXISTS idx_checkin_streaks_user ON checkin_streaks(user_id)`,
+  }).catch(() => {});
+}
+
+/**
+ * Schema gate: skip full initTables (~63 SQLs) when DB already at SCHEMA_VERSION.
+ * Cold starts pay 1–2 cheap queries instead of full CREATE/ALTER/seed spam.
+ * Safe for old APKs — HTTP contract unchanged.
+ */
+async function ensureSchema() {
+  try {
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS schema_meta (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        version INTEGER NOT NULL DEFAULT 0
+      )`,
+    }).catch(() => {});
+
+    const meta = await db.execute({
+      sql: `SELECT version FROM schema_meta WHERE id = 1`,
+    });
+    const current = meta.rows.length ? Number(meta.rows[0].version) || 0 : 0;
+
+    if (current >= SCHEMA_VERSION) {
+      console.log(`Schema v${current} up to date — skip initTables`);
+      return;
+    }
+
+    console.log(`Schema v${current} → v${SCHEMA_VERSION}: running initTables + indexes`);
+    await initTables();
+    await ensureHotPathIndexes();
+
+    await db.execute({
+      sql: `INSERT INTO schema_meta (id, version) VALUES (1, ?)
+            ON CONFLICT(id) DO UPDATE SET version = excluded.version`,
+      args: [SCHEMA_VERSION],
+    });
+    console.log(`Schema upgraded to v${SCHEMA_VERSION}`);
+  } catch (e) {
+    console.error("ensureSchema failed (falling back to initTables):", e);
+    try {
+      await initTables();
+      await ensureHotPathIndexes();
+    } catch (e2) {
+      console.error("Fallback initTables failed:", e2);
+    }
+  }
+}
+
+await ensureSchema();
 
 // ─── HELPERS ─────────────────────────────────────────────────
 // ─── PBKDF2-SHA256 password helpers (salted, 100k iterations) ─
@@ -1581,9 +1646,10 @@ app.post("/share", requireAuth, async (c) => {
 app.get("/coins/history", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
 
-  const limitParam  = parseInt(c.req.query("limit")  ?? "500");
+  // Default 100 (was 500) — old APKs that pass limit=500 still get up to max 500
+  const limitParam  = parseInt(c.req.query("limit")  ?? "100");
   const offsetParam = parseInt(c.req.query("offset") ?? "0");
-  const limit  = Math.min(Math.max(isNaN(limitParam)  ? 500 : limitParam,  1), 1000);
+  const limit  = Math.min(Math.max(isNaN(limitParam)  ? 100 : limitParam,  1), 500);
   const offset = Math.max(isNaN(offsetParam) ? 0 : offsetParam, 0);
 
   const result = await db.execute({
@@ -1655,7 +1721,8 @@ app.post("/quiz/attempt", requireAuth, async (c) => {
 
 app.get("/quiz/history", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
-  const limit = Math.min(parseInt(c.req.query("limit") ?? "100"), 500);
+  // Default 50, max 200 — old clients asking for more are capped (shorter list, no crash)
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") ?? "50") || 50, 1), 200);
   const result = await db.execute({
     sql: `SELECT id, score, total_questions, quiz_type, time_spent_seconds, avg_time_per_question, coins_earned, accuracy, created_at, attempt_id, language FROM quiz_attempts WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
     args: [user_id, limit],

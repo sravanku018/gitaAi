@@ -97,7 +97,8 @@ fun CoinHistoryScreen(
         isRefreshing = true
         try {
             viewModel.refreshCoinBalance()
-            viewModel.loadCoinHistory()
+            // First open may use 10‑min cache; pull-to-refresh (trigger > 0) forces network
+            viewModel.loadCoinHistory(forceRefresh = refreshTrigger > 0)
         } finally {
             isRefreshing = false
         }

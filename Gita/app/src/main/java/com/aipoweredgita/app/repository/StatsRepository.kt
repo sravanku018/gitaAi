@@ -50,9 +50,23 @@ class StatsRepository(
     private val authPrefs by lazy { AuthPreferences.getInstance(appContext) }
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /** Balance network TTL — skip resume/MainScreen spam within window. */
+    @Volatile private var lastBalanceFetchMs: Long = 0L
+    @Volatile private var lastBalanceUid: String? = null
+
+    companion object {
+        private const val BALANCE_TTL_MS = 10 * 60 * 1000L // 10 minutes
+    }
+
     val coinBalance: StateFlow<Int> = userStatsDao.getUserStats()
         .map { it?.krishnaCoins ?: 0 }
         .stateIn(coroutineScope, SharingStarted.Eagerly, 0)
+
+    /** Call after earn/spend/login so next pull is not TTL-skipped. */
+    fun invalidateBalanceCache() {
+        lastBalanceFetchMs = 0L
+        lastBalanceUid = null
+    }
 
     fun cancel() {
         coroutineScope.cancel()
@@ -93,9 +107,19 @@ class StatsRepository(
     /**
      * Unified sync function that acts as the single source of truth for pulling state from the server.
      * Uses a staleness guard (serverUpdatedAt) to prevent slow background syncs from clobbering fresh optimistic updates.
+     * @param force when false, skips network if a successful pull ran within [BALANCE_TTL_MS] for same user.
      */
-    suspend fun refreshUserState(uid: String) {
+    suspend fun refreshUserState(uid: String, force: Boolean = false) {
         val token = authPrefs.token ?: return
+        val now = System.currentTimeMillis()
+        if (!force &&
+            uid == lastBalanceUid &&
+            lastBalanceFetchMs > 0L &&
+            now - lastBalanceFetchMs < BALANCE_TTL_MS
+        ) {
+            Log.d("Sync", "refreshUserState skipped (TTL ${now - lastBalanceFetchMs}ms)")
+            return
+        }
         try {
             val balance = CoinApi.retrofitService.getBalance(uid, "Bearer $token")
             var currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
@@ -127,7 +151,9 @@ class StatsRepository(
             if (balance.share_day > 0) {
                 tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
             }
-            
+
+            lastBalanceFetchMs = System.currentTimeMillis()
+            lastBalanceUid = uid
             _networkState.value = NetworkState.Success
         } catch (e: Exception) {
             Log.e("Sync", "Failed refreshUserState: ${e.message}")
@@ -141,7 +167,7 @@ class StatsRepository(
         if (authPrefs.isGuestUser) {
             return
         }
-        refreshUserState(uid)
+        refreshUserState(uid, force = true)
         syncUserWithCloud()
     }
 
@@ -673,7 +699,7 @@ class StatsRepository(
             if (response.day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncWithServer(response.day, response.week, localDate)
             }
-            refreshUserState(uid)
+            refreshUserState(uid, force = true)
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: retrofit2.HttpException) {
             // 401/403 means the server never recorded this check-in — do NOT mark synced.
@@ -731,7 +757,7 @@ class StatsRepository(
             if (response.share_day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
             }
-            refreshUserState(uid)
+            refreshUserState(uid, force = true)
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: retrofit2.HttpException) {
             if (e.code() == 401 || e.code() == 403) {
@@ -787,7 +813,7 @@ class StatsRepository(
         }
     }
 
-    suspend fun getBalance(): Int {
+    suspend fun getBalance(force: Boolean = false): Int {
         if (authPrefs.isGuestUser) {
             // Award 50 coin welcome bonus to new guests (once only)
             if (!authPrefs.guestWelcomeAwarded) {
@@ -801,6 +827,16 @@ class StatsRepository(
         val uid = resolvedUserId() ?: userId() ?: return coinBalance.value
         val token = authPrefs.token ?: run {
             Log.w("StatsRepository", "No auth token — returning local balance")
+            return coinBalance.value
+        }
+
+        val now = System.currentTimeMillis()
+        if (!force &&
+            uid == lastBalanceUid &&
+            lastBalanceFetchMs > 0L &&
+            now - lastBalanceFetchMs < BALANCE_TTL_MS
+        ) {
+            Log.d("StatsRepository", "getBalance skipped (TTL ${now - lastBalanceFetchMs}ms)")
             return coinBalance.value
         }
 
@@ -840,7 +876,9 @@ class StatsRepository(
             if (balanceResponse.share_day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balanceResponse.share_day, balanceResponse.share_week, balanceResponse.last_share)
             }
-            
+
+            lastBalanceFetchMs = System.currentTimeMillis()
+            lastBalanceUid = uid
             _networkState.value = NetworkState.Success
             adjustedBalance
         } catch (e: Exception) {

@@ -29,7 +29,7 @@ class LoginViewModel @Inject constructor(
             if (existing == null) {
                 userStatsDao.insertStats(UserStats(id = 1, userId = userId))
             }
-            statsRepository.refreshUserState(userId)
+            statsRepository.refreshUserState(userId, force = true)
         }
     }
 
