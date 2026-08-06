@@ -44,3 +44,10 @@ deno-backend-*.ts
 deno-backend-*.md
 deno.json
 deno.lock
+
+# Local-only admin API (deploy from machine; do not commit)
+deno-admin-api.ts
+deno-admin*.ts
+.env.admin
+.env.admin.*
+!.env.admin.example
