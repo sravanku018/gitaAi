@@ -1,0 +1,479 @@
+/**
+ * GitaAI — Secure Admin API (Deno)
+ * ─────────────────────────────────
+ * Secrets live ONLY in Deno Deploy env vars. Never put them in GitHub Pages HTML.
+ *
+ * Required env:
+ *   TURSO_URL          libsql://...turso.io
+ *   TURSO_TOKEN        Turso auth token (read-write)
+ *   ADMIN_SECRET_KEY   long random string (send as X-Admin-Key header)
+ *
+ * Optional env:
+ *   TOTP_SECRET        base32 secret for Google Authenticator (e.g. JBSWY3DPEHPK3PXP → REPLACE)
+ *   ADMIN_PIN          simple backup PIN (optional; prefer TOTP + ADMIN_SECRET_KEY)
+ *   ALLOWED_ORIGINS    comma-separated, e.g. https://sravanku018.github.io,http://localhost:8000
+ *
+ * Deploy (Deno Deploy):
+ *   1. Create project, paste this file as main
+ *   2. Set env vars in project Settings → Environment Variables
+ *   3. Send me the public URL, e.g. https://your-admin.deno.dev
+ *
+ * Local run:
+ *   export TURSO_URL=... TURSO_TOKEN=... ADMIN_SECRET_KEY=...
+ *   deno run --allow-net --allow-env --allow-sys --allow-ffi deno-admin-api.ts
+ */
+
+import { Hono } from "https://deno.land/x/hono@v4.3.11/mod.ts";
+import { cors } from "https://deno.land/x/hono@v4.3.11/middleware.ts";
+import { createClient } from "npm:@libsql/client";
+
+// ─── ENV ─────────────────────────────────────────────────────
+const TURSO_URL = Deno.env.get("TURSO_URL") ?? "";
+const TURSO_TOKEN = Deno.env.get("TURSO_TOKEN") ?? "";
+const ADMIN_SECRET_KEY = Deno.env.get("ADMIN_SECRET_KEY") ?? "";
+const TOTP_SECRET = (Deno.env.get("TOTP_SECRET") ?? "").replace(/\s+/g, "").toUpperCase();
+const ADMIN_PIN = Deno.env.get("ADMIN_PIN") ?? "";
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "*")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+if (!TURSO_URL || !TURSO_TOKEN) {
+  console.error("Missing TURSO_URL or TURSO_TOKEN env");
+}
+if (!ADMIN_SECRET_KEY) {
+  console.error("Missing ADMIN_SECRET_KEY env — all admin routes will reject");
+}
+
+const db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
+
+const app = new Hono();
+
+app.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      if (ALLOWED_ORIGINS.includes("*")) return origin || "*";
+      if (origin && ALLOWED_ORIGINS.includes(origin)) return origin;
+      return ALLOWED_ORIGINS[0] ?? "*";
+    },
+    allowHeaders: ["Content-Type", "Authorization", "X-Admin-Key"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  }),
+);
+
+// ─── TOTP (RFC 6238, SHA-1, 30s, 6 digits) ───────────────────
+function base32ToBytes(base32: string): Uint8Array {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  const output: number[] = [];
+  for (const ch of base32.replace(/=+$/, "")) {
+    const idx = alphabet.indexOf(ch.toUpperCase());
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(output);
+}
+
+async function generateTOTP(secretBase32: string, timeOffset = 0): Promise<string> {
+  const epoch = Math.floor(Date.now() / 1000 / 30) + timeOffset;
+  const timeBytes = new Uint8Array(8);
+  let temp = epoch;
+  for (let i = 7; i >= 0; i--, temp = Math.floor(temp / 256)) {
+    timeBytes[i] = temp & 0xff;
+  }
+  const keyBytes = base32ToBytes(secretBase32);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, timeBytes));
+  const offset = signature[signature.length - 1] & 0xf;
+  const code =
+    ((signature[offset] & 0x7f) << 24) |
+    ((signature[offset + 1] & 0xff) << 16) |
+    ((signature[offset + 2] & 0xff) << 8) |
+    (signature[offset + 3] & 0xff);
+  return (code % 1_000_000).toString().padStart(6, "0");
+}
+
+async function verifyTotp(inputCode: string): Promise<boolean> {
+  if (!TOTP_SECRET || !/^\d{6}$/.test(inputCode.trim())) return false;
+  for (const off of [0, -1, 1]) {
+    try {
+      if ((await generateTOTP(TOTP_SECRET, off)) === inputCode.trim()) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+// ─── AUTH HELPERS ────────────────────────────────────────────
+function requireAdminKey(c: { req: { header: (n: string) => string | undefined } }): boolean {
+  if (!ADMIN_SECRET_KEY) return false;
+  const key =
+    c.req.header("X-Admin-Key") ||
+    c.req.header("x-admin-key") ||
+    c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
+  return !!key && key === ADMIN_SECRET_KEY;
+}
+
+function sqlEscape(s: string): string {
+  return String(s ?? "").replace(/'/g, "''");
+}
+
+function normalizeDate(raw: string | null | undefined): string | null {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  if (m) return `${m[1]} ${m[2]}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s} 12:00:00`;
+  return s;
+}
+
+// ─── PUBLIC ──────────────────────────────────────────────────
+app.get("/", (c) =>
+  c.json({
+    status: "GitaAI Admin API ✅",
+    secrets: "env-only",
+    totp_configured: !!TOTP_SECRET,
+    admin_key_configured: !!ADMIN_SECRET_KEY,
+    endpoints: [
+      "POST /admin/login",
+      "GET  /admin/users",
+      "GET  /admin/coin-history",
+      "GET  /admin/coin-history/:id",
+      "POST /admin/coin-history",
+      "PUT  /admin/coin-history/:id",
+      "DELETE /admin/coin-history/:id",
+      "POST /admin/sql  (read-only SELECT)",
+    ],
+  }),
+);
+
+/**
+ * Step 1 login: prove PIN and/or TOTP, receive nothing secret back except ok.
+ * Dashboard should store ADMIN_SECRET_KEY only in sessionStorage after login
+ * if you choose to ship the key encrypted — better: this returns a short-lived
+ * session token derived from ADMIN_SECRET_KEY for simplicity we return { ok, admin_key }
+ * ONLY when credentials match, and the key is already known to deploy operator.
+ *
+ * Recommended UX:
+ *   - Operator knows ADMIN_SECRET_KEY (password manager)
+ *   - Dashboard prompts for admin key once, stores in sessionStorage (tab-only)
+ *   - Optional: also require TOTP on each sensitive write
+ */
+app.post("/admin/login", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const pin = String(body.pin ?? body.password ?? "").trim();
+  const totp = String(body.totp ?? body.code ?? "").trim();
+  const adminKey = String(body.admin_key ?? body.adminKey ?? "").trim();
+
+  // Path A: correct admin key (required for API access)
+  if (ADMIN_SECRET_KEY && adminKey === ADMIN_SECRET_KEY) {
+    if (TOTP_SECRET) {
+      const totpOk = await verifyTotp(totp);
+      if (!totpOk) return c.json({ error: "Invalid or missing 6-digit TOTP code" }, 401);
+    }
+    return c.json({
+      success: true,
+      message: "Admin authenticated",
+      // Client should send this as X-Admin-Key on every admin request
+      admin_key: ADMIN_SECRET_KEY,
+      totp_required: !!TOTP_SECRET,
+    });
+  }
+
+  // Path B: PIN only (weaker) — still need ADMIN_SECRET_KEY in env to return access
+  if (ADMIN_PIN && pin === ADMIN_PIN && ADMIN_SECRET_KEY) {
+    if (TOTP_SECRET) {
+      const totpOk = await verifyTotp(totp);
+      if (!totpOk) return c.json({ error: "Invalid or missing 6-digit TOTP code" }, 401);
+    }
+    return c.json({
+      success: true,
+      message: "Admin authenticated via PIN",
+      admin_key: ADMIN_SECRET_KEY,
+      totp_required: !!TOTP_SECRET,
+    });
+  }
+
+  return c.json({ error: "Unauthorized" }, 401);
+});
+
+// ─── ADMIN: USERS ────────────────────────────────────────────
+app.get("/admin/users", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden — set X-Admin-Key" }, 403);
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") ?? "100", 10) || 100, 1), 500);
+  const result = await db.execute({
+    sql: `
+      SELECT u.user_id, u.name, u.email, u.is_guest,
+             us.current_streak, us.longest_streak, us.days_active, us.last_activity_date,
+             us.krishna_coins, us.yoga_level,
+             cs.current_day as checkin_day, cs.current_week as checkin_week,
+             cs.share_day, cs.share_week
+      FROM users u
+      LEFT JOIN user_stats us ON us.user_id = u.user_id
+      LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
+      ORDER BY us.days_active DESC, us.krishna_coins DESC
+      LIMIT ?
+    `,
+    args: [limit],
+  });
+  return c.json(result.rows);
+});
+
+// ─── ADMIN: COIN HISTORY ─────────────────────────────────────
+app.get("/admin/coin-history", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden — set X-Admin-Key" }, 403);
+  const userId = c.req.query("user_id")?.trim();
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") ?? "100", 10) || 100, 1), 500);
+
+  const result = userId
+    ? await db.execute({
+      sql: `SELECT id, user_id, amount, type, source, description, created_at
+            FROM coin_transactions WHERE user_id = ? ORDER BY id DESC LIMIT ?`,
+      args: [userId, limit],
+    })
+    : await db.execute({
+      sql: `SELECT id, user_id, amount, type, source, description, created_at
+            FROM coin_transactions ORDER BY id DESC LIMIT ?`,
+      args: [limit],
+    });
+  return c.json(result.rows);
+});
+
+app.get("/admin/coin-history/:id", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const id = parseInt(c.req.param("id"), 10);
+  if (!id) return c.json({ error: "Invalid id" }, 400);
+  const result = await db.execute({
+    sql: `SELECT id, user_id, amount, type, source, description, created_at
+          FROM coin_transactions WHERE id = ?`,
+    args: [id],
+  });
+  if (!result.rows.length) return c.json({ error: "Not found" }, 404);
+  return c.json(result.rows[0]);
+});
+
+/** Create transaction (+ adjust balance by default) */
+app.post("/admin/coin-history", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json();
+  const user_id = String(body.user_id ?? "").trim();
+  const type = String(body.type ?? "EARN").toUpperCase() === "SPEND" ? "SPEND" : "EARN";
+  const amount = Math.abs(Number(body.amount) || 0);
+  const source = String(body.source ?? "admin_adjustment").trim() || "admin_adjustment";
+  const description = String(body.description ?? "").trim();
+  const created_at = normalizeDate(body.created_at) ?? null;
+  const adjust_balance = body.adjust_balance !== false;
+
+  if (!user_id || amount < 1) {
+    return c.json({ error: "user_id and amount (>=1) required" }, 400);
+  }
+
+  const dateSql = created_at ? `'${sqlEscape(created_at)}'` : "datetime('now')";
+  await db.execute({
+    sql: `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at)
+          VALUES (?, ?, ?, ?, ?, ${dateSql === "datetime('now')" ? "datetime('now')" : "?"})`,
+    args: dateSql === "datetime('now')"
+      ? [user_id, amount, type, source, description]
+      : [user_id, amount, type, source, description, created_at],
+  });
+
+  const delta = type === "EARN" ? amount : -amount;
+  let new_balance: number | null = null;
+  if (adjust_balance) {
+    const stats = await db.execute({
+      sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`,
+      args: [user_id],
+    });
+    if (stats.rows.length) {
+      const current = Number(stats.rows[0].krishna_coins || 0);
+      new_balance = Math.max(0, current + delta);
+      await db.execute({
+        sql: `UPDATE user_stats SET krishna_coins = ?, updated_at = datetime('now') WHERE user_id = ?`,
+        args: [new_balance, user_id],
+      });
+    } else {
+      new_balance = Math.max(0, delta);
+      await db.execute({
+        sql: `INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES (?, ?, datetime('now'))`,
+        args: [user_id, new_balance],
+      });
+    }
+  }
+
+  return c.json({ success: true, delta, new_balance });
+});
+
+/** Update transaction + adjust balance by net change */
+app.put("/admin/coin-history/:id", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const id = parseInt(c.req.param("id"), 10);
+  if (!id) return c.json({ error: "Invalid id" }, 400);
+
+  const body = await c.req.json();
+  const existing = await db.execute({
+    sql: `SELECT * FROM coin_transactions WHERE id = ?`,
+    args: [id],
+  });
+  if (!existing.rows.length) return c.json({ error: "Not found" }, 404);
+  const old = existing.rows[0] as Record<string, unknown>;
+
+  const user_id = String(body.user_id ?? old.user_id ?? "").trim();
+  const type = String(body.type ?? old.type ?? "EARN").toUpperCase() === "SPEND" ? "SPEND" : "EARN";
+  const amount = Math.abs(Number(body.amount ?? old.amount) || 0);
+  const source = String(body.source ?? old.source ?? "admin_adjustment").trim();
+  const description = String(body.description ?? old.description ?? "").trim();
+  const created_at = normalizeDate(body.created_at ?? (old.created_at as string));
+  const adjust_balance = body.adjust_balance !== false;
+
+  const oldType = String(old.type || "EARN").toUpperCase();
+  const oldAmt = Math.abs(Number(old.amount) || 0);
+  const oldNet = oldType === "SPEND" ? -oldAmt : oldAmt;
+  const newNet = type === "EARN" ? amount : -amount;
+  const delta = newNet - oldNet;
+
+  if (created_at) {
+    await db.execute({
+      sql: `UPDATE coin_transactions
+            SET user_id = ?, type = ?, amount = ?, source = ?, description = ?, created_at = ?
+            WHERE id = ?`,
+      args: [user_id, type, amount, source, description, created_at, id],
+    });
+  } else {
+    await db.execute({
+      sql: `UPDATE coin_transactions
+            SET user_id = ?, type = ?, amount = ?, source = ?, description = ?
+            WHERE id = ?`,
+      args: [user_id, type, amount, source, description, id],
+    });
+  }
+
+  let new_balance: number | null = null;
+  if (adjust_balance && delta !== 0) {
+    const stats = await db.execute({
+      sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`,
+      args: [user_id],
+    });
+    if (stats.rows.length) {
+      const current = Number(stats.rows[0].krishna_coins || 0);
+      new_balance = Math.max(0, current + delta);
+      await db.execute({
+        sql: `UPDATE user_stats SET krishna_coins = ?, updated_at = datetime('now') WHERE user_id = ?`,
+        args: [new_balance, user_id],
+      });
+    }
+  }
+
+  return c.json({ success: true, id, delta, new_balance });
+});
+
+app.delete("/admin/coin-history/:id", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const id = parseInt(c.req.param("id"), 10);
+  if (!id) return c.json({ error: "Invalid id" }, 400);
+
+  const existing = await db.execute({
+    sql: `SELECT * FROM coin_transactions WHERE id = ?`,
+    args: [id],
+  });
+  if (!existing.rows.length) return c.json({ error: "Not found" }, 404);
+  const old = existing.rows[0] as Record<string, unknown>;
+  const user_id = String(old.user_id || "");
+  const oldType = String(old.type || "EARN").toUpperCase();
+  const oldAmt = Math.abs(Number(old.amount) || 0);
+  const delta = -(oldType === "SPEND" ? -oldAmt : oldAmt);
+  const adjust_balance = c.req.query("adjust_balance") !== "false";
+
+  await db.execute({ sql: `DELETE FROM coin_transactions WHERE id = ?`, args: [id] });
+
+  let new_balance: number | null = null;
+  if (adjust_balance && user_id && delta !== 0) {
+    const stats = await db.execute({
+      sql: `SELECT krishna_coins FROM user_stats WHERE user_id = ?`,
+      args: [user_id],
+    });
+    if (stats.rows.length) {
+      const current = Number(stats.rows[0].krishna_coins || 0);
+      new_balance = Math.max(0, current + delta);
+      await db.execute({
+        sql: `UPDATE user_stats SET krishna_coins = ?, updated_at = datetime('now') WHERE user_id = ?`,
+        args: [new_balance, user_id],
+      });
+    }
+  }
+
+  return c.json({ success: true, id, delta, new_balance });
+});
+
+// ─── ADMIN: safe read-only SQL (SELECT only) ─────────────────
+app.post("/admin/sql", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden" }, 403);
+  const { sql } = await c.req.json();
+  const q = String(sql || "").trim();
+  if (!q) return c.json({ error: "sql required" }, 400);
+  if (!/^\s*select\b/i.test(q)) {
+    return c.json({ error: "Only SELECT allowed on this endpoint" }, 400);
+  }
+  if (/\b(insert|update|delete|drop|alter|attach|pragma)\b/i.test(q)) {
+    return c.json({ error: "Forbidden keyword in SQL" }, 400);
+  }
+  const result = await db.execute(q);
+  return c.json(result.rows);
+});
+
+/**
+ * Full SQL proxy for the GitHub Pages dashboard (replaces browser→Turso).
+ * Requires X-Admin-Key. Blocks destructive DDL (DROP/ALTER/ATTACH).
+ * Prefer dedicated endpoints for production; this keeps the existing admin UI working.
+ */
+app.post("/admin/query", async (c) => {
+  if (!requireAdminKey(c)) return c.json({ error: "Forbidden — set X-Admin-Key" }, 403);
+  const body = await c.req.json().catch(() => ({}));
+  const q = String(body.sql || "").trim();
+  if (!q) return c.json({ error: "sql required" }, 400);
+  if (/\b(drop|alter|attach|detach|vacuum|reindex)\b/i.test(q)) {
+    return c.json({ error: "DDL keyword not allowed" }, 400);
+  }
+  try {
+    const result = await db.execute(q);
+    const rows = result.rows ?? [];
+    const plain = (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => {
+      if (r && typeof r === "object" && !Array.isArray(r)) {
+        const o: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(r)) o[k] = v;
+        return o;
+      }
+      return r;
+    });
+    // Always wrap so the dashboard can tell SELECT (rows) from WRITE (affected_rows)
+    return c.json({
+      success: true,
+      rows: plain,
+      affected_rows: Number((result as { rowsAffected?: number }).rowsAffected ?? 0),
+    });
+  } catch (e) {
+    console.error("admin/query error:", e);
+    return c.json({ error: (e as Error).message }, 400);
+  }
+});
+
+app.onError((err, c) => {
+  console.error("Admin API error:", err);
+  return c.json({ error: (err as Error).message }, 500);
+});
+
+Deno.serve(app.fetch);
+console.log("GitaAI Admin API listening — secrets from env only");
