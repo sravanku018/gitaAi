@@ -124,11 +124,51 @@ object CoinTransactionLogger {
         }
     }
 
+    /** Server numeric ids vs local UUID (contains '-'). */
+    private fun isLocalUuidId(id: String): Boolean = id.contains("-")
+
+    /**
+     * Drop optimistic local rows once the same earn exists on the server.
+     * Local quiz log uses "5base + 6acc = 11"; server uses "Quiz (general): 9/10"
+     * and may multiply by yoga — old dedupe keys never matched → double lines.
+     */
+    private fun isLocalRowCoveredByServer(local: JSONObject, serverRows: List<JSONObject>): Boolean {
+        val localId = local.optString("id", "")
+        if (!isLocalUuidId(localId)) return false
+        val localDesc = local.optString("description", "")
+        val localSrc = normalizeSource(local.optString("source", ""), localDesc)
+        val localTs = local.optLong("timestamp", 0L)
+        val localAmt = kotlin.math.abs(local.optInt("amount", 0))
+        val windowMs = 30 * 60 * 1000L // 30 min — local log then SyncWorker award
+
+        return serverRows.any { server ->
+            val sid = server.optString("id", "")
+            if (isLocalUuidId(sid)) return@any false
+            val sDesc = server.optString("description", "")
+            val sSrc = normalizeSource(server.optString("source", ""), sDesc)
+            if (sSrc != localSrc) return@any false
+            val sTs = server.optLong("timestamp", 0L)
+            if (kotlin.math.abs(sTs - localTs) > windowMs) return@any false
+            val sAmt = kotlin.math.abs(server.optInt("amount", 0))
+            // Same amount, or server applied yoga multiplier to local base
+            localAmt == sAmt ||
+                (localAmt > 0 && sAmt % localAmt == 0) ||
+                (sAmt > 0 && localAmt % sAmt == 0) ||
+                // quiz/battle/chapter: same-source near time is enough (desc/amount always differ)
+                localSrc in setOf("quiz", "chapter", "battle_quiz", "battle")
+        }
+    }
+
     private fun deduplicateJsonEntries(entries: List<JSONObject>): List<JSONObject> {
+        val sorted = entries.sortedBy { it.optLong("timestamp", 0L) }
+        val serverRows = sorted.filter { !isLocalUuidId(it.optString("id", "")) }
         val seenKeys = mutableSetOf<String>()
         val deduplicated = mutableListOf<JSONObject>()
-        val sorted = entries.sortedBy { it.optLong("timestamp", 0L) }
-        for (obj in sorted) {
+
+        // Prefer server rows first so fuzzy keys prefer them
+        val ordered = serverRows + sorted.filter { isLocalUuidId(it.optString("id", "")) }
+
+        for (obj in ordered) {
             val id = obj.optString("id", "")
             val eventKey = obj.optString("eventKey", "")
             val desc = obj.optString("description", "")
@@ -139,9 +179,16 @@ object CoinTransactionLogger {
             val dateStr = getEntryDateStr(ts)
             val uid = obj.optString("user_id", "")
 
+            // Drop local optimistic earn once server counterpart exists
+            if (isLocalUuidId(id) && isLocalRowCoveredByServer(obj, serverRows)) {
+                continue
+            }
+
             val key = when {
                 eventKey.isNotEmpty() -> "${uid}_$eventKey"
-                id.isNotEmpty() && !id.contains("-") -> "${uid}_server_id_$id"
+                id.isNotEmpty() && !isLocalUuidId(id) -> "${uid}_server_id_$id"
+                // Same day + source for local previews (without amount/desc) after server pass
+                isLocalUuidId(id) -> "${uid}_${dateStr}_${normSrc}_local_${amt}_${desc.take(30)}"
                 else -> "${uid}_${dateStr}_${normSrc}_${amt}_${desc.take(30)}"
             }
 
@@ -149,7 +196,7 @@ object CoinTransactionLogger {
                 deduplicated.add(obj)
             }
         }
-        return deduplicated
+        return deduplicated.sortedBy { it.optLong("timestamp", 0L) }
     }
 
     /**
@@ -202,8 +249,8 @@ object CoinTransactionLogger {
                 }
             }
 
-            // Only keep local rows that belong to this user and look local-only
-            // (UUID ids), so we don't reintroduce another account's leftovers.
+            // Keep local-only (UUID) rows only if not already covered by server history.
+            // Fixes double quiz lines: local "5base+6acc" + server "Quiz (general): x/y".
             val existingArr = readJson(prefs, key)
             val localOnly = mutableListOf<JSONObject>()
             for (i in 0 until existingArr.length()) {
@@ -212,10 +259,12 @@ object CoinTransactionLogger {
                     val objUser = obj.optString("user_id", uid)
                     if (objUser != uid && objUser.isNotEmpty()) continue
                     val id = obj.optString("id", "")
-                    val isLocalOnly = id.contains("-") // UUID from local log
+                    val isLocalOnly = isLocalUuidId(id)
                     if (isLocalOnly) {
                         obj.put("user_id", uid)
-                        localOnly.add(obj)
+                        if (!isLocalRowCoveredByServer(obj, serverJsonEntries)) {
+                            localOnly.add(obj)
+                        }
                     }
                 } catch (_: Exception) { }
             }
