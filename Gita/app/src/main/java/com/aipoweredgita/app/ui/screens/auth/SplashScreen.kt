@@ -55,8 +55,8 @@ private val TilakRed     = Color(0xFFCC3311)   // danger / exit accent
 private val StarDust     = Color(0xFF6B5F8A)   // muted decorative
 
 /**
- * Krishna brand mark for splash/exit: circular soft edge.
- * Uses [R.drawable.krishna_icon] (requested Krishna image).
+ * Krishna brand mark for splash/exit: cut-corner frame (not circle).
+ * Uses [R.drawable.krishna_icon] with AbsoluteCutCornerShape soft edges.
  */
 @Composable
 private fun BrandLogoMark(
@@ -64,23 +64,34 @@ private fun BrandLogoMark(
     scale: Float = 1f,
     modifier: Modifier = Modifier,
 ) {
+    // Diagonal cut corners — cleaner than a hard square, not a full circle
+    val cut = AbsoluteCutCornerShape(percent = 18)
+    val outerCut = AbsoluteCutCornerShape(percent = 16)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
             .scale(scale)
-            .shadow(elevation = 12.dp, shape = CircleShape, clip = false, ambientColor = GoldFlame.copy(alpha = 0.35f))
+            .shadow(
+                elevation = 14.dp,
+                shape = outerCut,
+                clip = false,
+                ambientColor = GoldFlame.copy(alpha = 0.40f),
+                spotColor = GoldFlame.copy(alpha = 0.25f),
+            )
     ) {
+        // Soft outer halo
         Box(
             Modifier
                 .matchParentSize()
-                .background(GoldFlame.copy(alpha = 0.10f), CircleShape)
+                .background(GoldFlame.copy(alpha = 0.12f), outerCut)
         )
+        // Dark underlay so light pixels at image edges are masked by the cut frame
         Box(
             Modifier
                 .size(size * 0.94f)
-                .background(MidnightVeil, CircleShape)
-                .border(1.5.dp, GoldFlame.copy(alpha = 0.45f), CircleShape)
+                .background(MidnightVeil, cut)
+                .border(1.6.dp, GoldFlame.copy(alpha = 0.50f), cut)
         )
         Image(
             painter = painterResource(id = R.drawable.krishna_icon),
@@ -88,12 +99,13 @@ private fun BrandLogoMark(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(size * 0.90f)
-                .clip(CircleShape)
+                .clip(cut)
         )
+        // Inner highlight along the cut edges
         Box(
             Modifier
                 .size(size * 0.90f)
-                .border(0.8.dp, GoldGlow.copy(alpha = 0.25f), CircleShape)
+                .border(1.dp, GoldGlow.copy(alpha = 0.28f), cut)
         )
     }
 }
