@@ -39,18 +39,37 @@ fun DailyRewardsStrip(
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
     onNavigateToShare: () -> Unit = {}
 ) {
-    val dailyState = remember(coinBalance) { tracker.getDailyState() }
-    val weeklyState = remember(coinBalance) { tracker.getWeeklyState() }
-    var claimedDay by remember(coinBalance) { mutableStateOf(dailyState.todayClaimed) }
-    var claimedCount by remember(coinBalance) { mutableIntStateOf(if (dailyState.todayClaimed) dailyState.day else dailyState.day - 1) }
-    var weekCompleted by remember(coinBalance) { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
+    var dailyState by remember { mutableStateOf(tracker.getDailyState()) }
+    var weeklyState by remember { mutableStateOf(tracker.getWeeklyState()) }
+    var claimedDay by remember { mutableStateOf(dailyState.todayClaimed) }
+    // Days 1..claimedCount claimed; next slot is claimable when !claimedDay
+    var claimedCount by remember {
+        mutableIntStateOf(
+            if (dailyState.todayClaimed) dailyState.day.coerceIn(1, 7)
+            else (dailyState.day - 1).coerceAtLeast(0)
+        )
+    }
+    var weekCompleted by remember { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
     var dayBonusMessage by remember { mutableStateOf<String?>(null) }
     var claimedDayIndex by remember { mutableIntStateOf(-1) }
+
+    // Re-read after login / balance sync so old accounts get a visible day-1 slot
+    LaunchedEffect(coinBalance) {
+        val ds = tracker.getDailyState()
+        val ws = tracker.getWeeklyState()
+        dailyState = ds
+        weeklyState = ws
+        claimedDay = ds.todayClaimed
+        claimedCount = if (ds.todayClaimed) ds.day.coerceIn(1, 7) else (ds.day - 1).coerceAtLeast(0)
+        weekCompleted = ds.day >= 7 && ds.todayClaimed
+    }
 
     // Reset claimed highlight after animation completes
     LaunchedEffect(claimedDayIndex) {
         if (claimedDayIndex > 0) { delay(350); claimedDayIndex = -1 }
     }
+
+    val todaySlot = (claimedCount + 1).coerceIn(1, 7)
 
     val tc = if (isDark) Color.White else Color.Black
     val dim = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f)
@@ -72,7 +91,7 @@ fun DailyRewardsStrip(
         StreakStrip(
             days = 7,
             isClaimed = { d -> d <= claimedCount },
-            isToday = { d -> d == claimedCount + 1 && !claimedDay },
+            isToday = { d -> !claimedDay && d == todaySlot },
             wasJustClaimed = { d -> claimedDayIndex == d },
             onDayClick = { d ->
                 if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {
@@ -80,8 +99,8 @@ fun DailyRewardsStrip(
                     return@StreakStrip
                 }
                 val isAlreadyClaimed = d <= claimedCount
-                val isTodaySlot = d == claimedCount + 1 && !claimedDay
-                val isFutureSlot = d > claimedCount + 1
+                val isTodaySlot = !claimedDay && d == todaySlot
+                val isFutureSlot = d > todaySlot
                 when {
                     isAlreadyClaimed -> android.widget.Toast.makeText(context, "Day $d already claimed ✓", android.widget.Toast.LENGTH_SHORT).show()
                     isFutureSlot -> android.widget.Toast.makeText(context, "Complete previous days first!", android.widget.Toast.LENGTH_SHORT).show()
@@ -91,7 +110,7 @@ fun DailyRewardsStrip(
                         claimedDayIndex = d
                         claimedDay = true
                         if (coins > 0) {
-                            claimedCount++
+                            claimedCount = d.coerceIn(1, 7)
                             if (d == 7) {
                                 weekCompleted = true
                                 val total = coins + weeklyState.reward
@@ -103,6 +122,8 @@ fun DailyRewardsStrip(
                                 dayBonusMessage = "+$coins coins"
                             }
                         } else {
+                            // Still mark slot claimed so strip refreshes even if 0-coin protection
+                            claimedCount = d.coerceIn(1, 7)
                             val desc = "Day $d check-in (Streak Protected)"
                             onEarnCoins(0, desc)
                             dayBonusMessage = "Streak Protected ✓"
@@ -163,14 +184,19 @@ fun DailyRewardsStrip(
         }
 
         // ─── Share Rewards ──────────────────────────────────────────────
-        val shareState = remember(coinBalance) { tracker.getShareState() }
-        var claimedShare by remember(coinBalance) { mutableStateOf(shareState.todayClaimed) }
+        var shareState by remember { mutableStateOf(tracker.getShareState()) }
+        var claimedShare by remember { mutableStateOf(shareState.todayClaimed) }
+        LaunchedEffect(coinBalance) {
+            shareState = tracker.getShareState()
+            claimedShare = shareState.todayClaimed
+        }
+        val shareToday = shareState.day.coerceIn(1, 7)
         HorizontalDivider(color = bd)
         Text("Daily Share Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
         StreakStrip(
             days = 7,
-            isClaimed = { d -> d < shareState.day || (d == shareState.day && claimedShare) },
-            isToday = { d -> d == shareState.day && !claimedShare },
+            isClaimed = { d -> d < shareToday || (d == shareToday && claimedShare) },
+            isToday = { d -> d == shareToday && !claimedShare },
             wasJustClaimed = { false },
             onDayClick = {
                 if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {

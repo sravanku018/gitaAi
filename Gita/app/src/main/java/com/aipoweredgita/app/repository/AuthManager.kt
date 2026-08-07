@@ -75,6 +75,19 @@ class AuthManager(private val context: Context) {
                     guestSyncManager.syncGuestData(response.user_id, name, email)
                 }
 
+                try {
+                    com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context).resetForAccountSwitch()
+                    val dbInstance = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                    val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
+                        dbInstance.userStatsDao(),
+                        dbInstance.dailyActivityDao(),
+                        context
+                    )
+                    statsRepo.refreshUserState(response.user_id, force = true)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Streak/balance refresh failed after register", e)
+                }
+
                 Log.d(TAG, "Registration successful")
                 return@withContext Result.success(
                     AuthResult(
@@ -166,8 +179,9 @@ if (response.success) {
                     Log.e(TAG, "Auto-reconciliation failed during login", e)
                 }
 
-                // Pull server state into local DB (streak, quizzes, verses, DailyRewardsTracker)
+                // Clear guest/local streak UI, then pull server check-in (old accounts often day 0)
                 try {
+                    com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context).resetForAccountSwitch()
                     val dbInstance = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                     val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
                         dbInstance.userStatsDao(),
@@ -222,6 +236,7 @@ if (response.success) {
             db.userStatsDao().insertStats(com.aipoweredgita.app.database.UserStats(id = 1, userId = "", krishnaCoins = 0, serverUpdatedAt = ""))
             db.chatSummaryDao().deleteSummary("krishna-guest-${java.time.LocalDate.now()}")
             db.voiceChatMessageDao().deleteAllMessages()
+            com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context).resetForAccountSwitch()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reset Room database on logout", e)
         }

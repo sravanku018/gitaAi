@@ -144,14 +144,20 @@ class StatsRepository(
             val updatedStats = balance.updateEntity(currentStats, uid)
             userStatsDao.insertStats(updatedStats) // Upsert
 
-            // Sync daily UI trackers from server balance
+            // Sync daily UI trackers from server (day 0 = never checked in → day 1 clickable)
             val tracker = DailyRewardsTracker.getInstance(appContext)
-            if (balance.checkin_day > 0) {
-                tracker.syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
-            }
-            if (balance.share_day > 0) {
-                tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
-            }
+            tracker.syncWithServer(
+                balance.checkin_day,
+                balance.checkin_week,
+                balance.last_checkin,
+                force = force
+            )
+            tracker.syncShareWithServer(
+                balance.share_day,
+                balance.share_week,
+                balance.last_share,
+                force = force
+            )
 
             lastBalanceFetchMs = System.currentTimeMillis()
             lastBalanceUid = uid
@@ -908,13 +914,20 @@ class StatsRepository(
             val updatedStats = balanceResponse.updateEntity(currentStats, uid).copy(krishnaCoins = adjustedBalance)
             userStatsDao.insertStats(updatedStats)
 
-            // Sync daily UI trackers from server (server is source of truth)
-            if (balanceResponse.checkin_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncWithServer(balanceResponse.checkin_day, balanceResponse.checkin_week, balanceResponse.last_checkin)
-            }
-            if (balanceResponse.share_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balanceResponse.share_day, balanceResponse.share_week, balanceResponse.last_share)
-            }
+            // Sync daily UI trackers (include day 0 so old accounts still get a claimable day 1)
+            val tracker = DailyRewardsTracker.getInstance(appContext)
+            tracker.syncWithServer(
+                balanceResponse.checkin_day,
+                balanceResponse.checkin_week,
+                balanceResponse.last_checkin,
+                force = force
+            )
+            tracker.syncShareWithServer(
+                balanceResponse.share_day,
+                balanceResponse.share_week,
+                balanceResponse.last_share,
+                force = force
+            )
 
             lastBalanceFetchMs = System.currentTimeMillis()
             lastBalanceUid = uid

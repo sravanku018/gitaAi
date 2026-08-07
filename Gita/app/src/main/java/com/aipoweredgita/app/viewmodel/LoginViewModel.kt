@@ -22,6 +22,8 @@ class LoginViewModel @Inject constructor(
 
     fun handleLoginSuccess(userId: String) {
         viewModelScope.launch {
+            // Drop guest streak UI so signed-in (incl. old) accounts show claimable day again
+            com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(appContext).resetForAccountSwitch()
             userStatsDao.updateUserId(userId)
             val existing = userStatsDao.getUserStatsOnce()
             if (existing == null) {
