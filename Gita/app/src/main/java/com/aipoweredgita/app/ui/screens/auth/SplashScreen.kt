@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -380,12 +381,14 @@ fun SplashScreen(
                         0.5.dp, GoldGlow.copy(alpha = 0.20f)
                     )
                 ) {}
-                // Logo image
+                // App logo (brand asset — not the old photo icon)
                 Image(
-                    painter            = painterResource(id = R.drawable.krishna_icon),
+                    painter            = painterResource(id = R.drawable.splash_logo),
                     contentDescription = stringResource(id = R.string.app_name),
+                    contentScale       = ContentScale.Fit,
                     modifier           = Modifier
-                        .size(88.dp)
+                        .size(100.dp)
+                        .clip(CircleShape)
                         .scale(logoScale)
                 )
             }
@@ -404,15 +407,23 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // App title
+            // App title — Bhagavad Gita AI (from strings.xml)
             Text(
                 text          = stringResource(id = R.string.app_name),
-                style         = MaterialTheme.typography.headlineLarge.copy(
+                style         = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 3.sp
+                    letterSpacing = 1.5.sp
                 ),
                 color         = GoldFlame,
                 textAlign     = TextAlign.Center
+            )
+            Text(
+                text          = "Learn · Quiz · AI Insights",
+                style         = MaterialTheme.typography.labelMedium,
+                color         = GoldAsh,
+                letterSpacing = 1.2.sp,
+                textAlign     = TextAlign.Center,
+                modifier      = Modifier.padding(top = 6.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -539,8 +550,9 @@ fun ExitScreen(
             ) {
                 // Logo
                 Image(
-                    painter            = painterResource(id = R.drawable.krishna_icon),
+                    painter            = painterResource(id = R.drawable.splash_logo),
                     contentDescription = stringResource(id = R.string.app_name),
+                    contentScale       = ContentScale.Fit,
                     modifier           = Modifier
                         .size(72.dp)
                         .clip(CircleShape)

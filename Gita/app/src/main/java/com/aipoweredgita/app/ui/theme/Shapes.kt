@@ -5,7 +5,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /**
- * M3 Expressive shape tokens for Gita Learning.
+ * M3 Expressive shape tokens for Bhagavad Gita AI.
  * Uses large radii for the spiritual/expressive aesthetic.
  */
 val GitaShapes = Shapes(

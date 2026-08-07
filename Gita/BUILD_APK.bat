@@ -1,5 +1,5 @@
 @echo off
-REM Build Release APK for Gita Learning App
+REM Build Release APK for Bhagavad Gita AI
 REM This script will:
 REM 1. Clean previous builds
 REM 2. Build release APK with ProGuard enabled and resource shrinking
@@ -7,7 +7,7 @@ REM 3. Display the output APK location
 
 echo.
 echo ====================================
-echo Gita Learning App - APK Builder
+echo Bhagavad Gita AI - APK Builder
 echo ====================================
 echo.
 echo Starting release build with:

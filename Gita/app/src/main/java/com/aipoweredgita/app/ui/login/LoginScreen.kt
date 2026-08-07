@@ -219,8 +219,8 @@ fun LoginScreen(
 
             // App title
             Text(
-                text = "Śrīmad Bhagavad Gītā",
-                fontSize = 20.sp,
+                text = "Bhagavad Gita AI",
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = palette.title,
                 textAlign = TextAlign.Center,
@@ -229,10 +229,18 @@ fun LoginScreen(
 
             // Sanskrit subtitle
             Text(
-                text = "॥ ज्ञान · भक्ति · मोक्ष ॥",
-                fontSize = 10.sp,
+                text = "॥ श्रीमद्भगवद्गीता ॥",
+                fontSize = 11.sp,
                 color = palette.muted,
-                letterSpacing = 2.5.sp,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = "Learn · Quiz · AI Insights",
+                fontSize = 10.sp,
+                color = palette.subtle,
+                letterSpacing = 1.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 2.dp)
             )

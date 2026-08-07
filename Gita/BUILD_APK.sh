@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build Release APK for Gita Learning App
+# Build Release APK for Bhagavad Gita AI
 # This script will:
 # 1. Clean previous builds
 # 2. Build release APK with ProGuard enabled and resource shrinking
@@ -8,7 +8,7 @@
 
 echo ""
 echo "===================================="
-echo "Gita Learning App - APK Builder"
+echo "Bhagavad Gita AI - APK Builder"
 echo "===================================="
 echo ""
 echo "Starting release build with:"
