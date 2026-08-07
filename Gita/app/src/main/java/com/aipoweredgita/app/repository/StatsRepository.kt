@@ -232,11 +232,7 @@ class StatsRepository(
             1
         }
 
-        // Use CoinRewardEngine for calculation with pre-sync multiplier
-        // NOTE: We intentionally do NOT apply the yoga multiplier locally.
-        // The server applies the real multiplier when syncing.
-        // Using local DB level for multiplier causes incorrect display because
-        // the DB accumulates server quiz history which inflates the level calculation.
+        // Same rules as server: base 5 + accuracy, cap 15, then × yoga (1/2/2/3/3), round
         val result = CoinRewardEngine.calculate(
             CoinRewardEngine.Input(
                 score = score,
@@ -244,7 +240,7 @@ class StatsRepository(
                 segmentCorrectMap = segmentCorrectMap,
                 currentStreakDays = currentStreak,
                 dailyCheckinDay = checkinDay,
-                yogaMultiplier = 1.0f   // multiplier applied server-side
+                yogaMultiplier = multiplier
             )
         )
 
@@ -259,10 +255,8 @@ class StatsRepository(
             }
             result.totalCoins
         } else {
-            // Always award + log for a signed-in user. Don't gate on the local
-            // DB's cached userId — it can be stale right after login.
+            // Optimistic amount matches server formula; SyncWorker still sets total_coins from server
             val fallback = result.totalCoins
-            // Optimistic balance only — history is server-only for signed-in (avoids double logs)
             userStatsDao.addKrishnaCoins(fallback)
 
             // Resolve the real uid for the sync queue only — prefer the auth
@@ -314,8 +308,12 @@ class StatsRepository(
         
         userStatsDao.addQuizModeTime(60)
 
-        val stats = userStatsDao.getUserStatsOnce()
-        stats?.let {
+        val preStats = userStatsDao.getUserStatsOnce()
+        val yogaMult = YogaLevelManager.getCoinMultiplier(preStats)
+        // Same as server: fib(correct) × yoga (ignore client battleCoins for final amount)
+        val serverMatchedCoins = CoinRewardEngine.battleTotal(score, yogaMult)
+
+        preStats?.let {
             val currentBestPercentage = if (it.bestScoreOutOf > 0)
                 (it.bestScore.toFloat() / it.bestScoreOutOf) * 100
             else 0f
@@ -324,12 +322,11 @@ class StatsRepository(
                 userStatsDao.updateBestScore(score, questionsAnswered)
         }
 
-        // Record the battle attempt in the history
         val db = GitaDatabase.getDatabase(appContext)
         val battleAttempt = com.aipoweredgita.app.database.QuizAttempt(
             score = score,
             totalQuestions = questionsAnswered,
-            coinsEarned = battleCoins,
+            coinsEarned = serverMatchedCoins,
             quizType = "battle_quiz",
             timeSpentSeconds = 60,
             language = language
@@ -345,26 +342,26 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         if (isGuest) {
-            if (battleCoins > 0) {
-                userStatsDao.addKrishnaCoins(battleCoins)
-                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)", source = "battle_quiz")
+            if (serverMatchedCoins > 0) {
+                userStatsDao.addKrishnaCoins(serverMatchedCoins)
+                CoinTransactionLogger.log(appContext, serverMatchedCoins, "battle_quiz (guest)", source = "battle_quiz")
             }
         } else {
-            // Always award + log for a signed-in user regardless of local cached uid.
-            if (battleCoins > 0) {
-                // Optimistic base coins only (no history log). Server recomputes fib(score)×yoga and sets total_coins.
-                userStatsDao.addKrishnaCoins(battleCoins)
-
+            if (serverMatchedCoins > 0 || score > 0) {
+                if (serverMatchedCoins > 0) {
+                    userStatsDao.addKrishnaCoins(serverMatchedCoins)
+                }
                 val uid = resolvedUserId() ?: userId()
                 if (uid != null) {
                     try {
+                        val fibBase = CoinRewardEngine.battleFibCoins(score)
                         val db2 = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
                         db2.pendingSyncEventDao().insert(
                             com.aipoweredgita.app.database.PendingSyncEvent(
                                 userId = uid,
                                 eventType = "BATTLE",
-                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
-                                coinsToAdjust = battleCoins,
+                                payload = """{"battleCoins":$fibBase,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
+                                coinsToAdjust = serverMatchedCoins,
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )
                         )
@@ -605,15 +602,17 @@ class StatsRepository(
         userStatsDao.incrementChaptersCompleted()
 
         val isGuest = authPrefs.isGuestUser
+        val yogaMult = YogaLevelManager.getCoinMultiplier(userStatsDao.getUserStatsOnce())
+        val chapterCoins = CoinRewardEngine.chapterTotal(yogaMult)
 
         if (isGuest) {
-            userStatsDao.addKrishnaCoins(15)
-            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
+            userStatsDao.addKrishnaCoins(chapterCoins)
+            CoinTransactionLogger.log(appContext, chapterCoins, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
         } else {
             ensureUserSynced()
 
-            // Optimistic balance only — server award is history source of truth
-            userStatsDao.addKrishnaCoins(15)
+            // Same as server: 15 × yoga
+            userStatsDao.addKrishnaCoins(chapterCoins)
 
             val uid = resolvedUserId() ?: userId()
             if (uid != null) {
@@ -629,7 +628,7 @@ class StatsRepository(
                             userId = uid,
                             eventType = "CHAPTER",
                             payload = payloadString,
-                            coinsToAdjust = 15,
+                            coinsToAdjust = chapterCoins,
                             idempotencyKey = "chapter_${chapterNo}_${uid}_${System.currentTimeMillis()}"
                         )
                     )
