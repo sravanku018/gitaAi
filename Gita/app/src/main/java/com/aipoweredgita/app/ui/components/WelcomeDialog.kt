@@ -2,7 +2,6 @@ package com.aipoweredgita.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -47,8 +45,6 @@ fun WelcomeDialog(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    val gold = Color(0xFFC9A227)
-    val deep = Color(0xFF1A1208)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -96,7 +92,7 @@ fun WelcomeDialog(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Your path of wisdom — and how coins reward your practice",
+                        text = "Coins & rewards — short notes",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -107,119 +103,21 @@ fun WelcomeDialog(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
 
-                // ── Scrollable notes ─────────────────────────────────────
+                // ── Short notes (scrollable if needed) ───────────────────
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                         .verticalScroll(scrollState)
                         .padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    SectionTitle("🎁 Welcome gift & sign-up")
-                    RewardNoteCard(
-                        emoji = "👋",
-                        title = "Guest · +50 coins",
-                        body = "Continue as Guest starts you with +50 Krishna Coins (welcome bonus). History shows “Welcome bonus (guest)”."
-                    )
-                    RewardNoteCard(
-                        emoji = "📝",
-                        title = "Register · +200 coins",
-                        body = "Create a new account (sign up) and the server credits +200 coins — “Welcome bonus — new seeker”. This is the full signup gift."
-                    )
-                    RewardNoteCard(
-                        emoji = "🔄",
-                        title = "Guest → new account · +150",
-                        body = "If you convert guest progress into a brand-new account, the server adds +150 welcome coins and keeps your guest balance transferred over."
-                    )
-                    RewardNoteCard(
-                        emoji = "🔐",
-                        title = "Login (existing)",
-                        body = "Signing in to an account you already have does not add another signup bonus — you keep that balance only."
-                    )
-
-                    SectionTitle("✨ How you earn coins")
-                    RewardNoteCard(
-                        emoji = "☀️",
-                        title = "Daily check-in",
-                        body = "Claim once per day. Streak days pay more; completing a 7-day week unlocks a bonus."
-                    )
-                    RewardNoteCard(
-                        emoji = "📚",
-                        title = "Quiz completion",
-                        body = "Base 5 coins + accuracy bonus (up to 6), capped at 15 before yoga level multiplier. Higher yoga levels multiply rewards."
-                    )
-                    RewardNoteCard(
-                        emoji = "⚔️",
-                        title = "Battle quiz",
-                        body = "Fibonacci coins for correct answers (1, 1, 2, 3, 5…), then yoga multiplier. Great for fast practice."
-                    )
-                    RewardNoteCard(
-                        emoji = "📖",
-                        title = "Share a sloka",
-                        body = "Daily share reward; day 7 of the share streak includes a weekly bonus."
-                    )
-                    RewardNoteCard(
-                        emoji = "📕",
-                        title = "Chapter completion",
-                        body = "Finish a chapter for 15 coins × your yoga multiplier."
-                    )
-                    RewardNoteCard(
-                        emoji = "⬆",
-                        title = "Level up",
-                        body = "Crossing yoga thresholds (1k / 3k / 6k / 9k coins) grants a +10 level-up bonus."
-                    )
-
-                    SectionTitle("🎙 Voice chat costs")
-                    RewardNoteCard(
-                        emoji = "💬",
-                        title = "Short · Medium · Long",
-                        body = "Each question costs 4 / 6 / 10 coins by length (≤50 / ≤150 / longer characters). Balance is checked before the answer."
-                    )
-
-                    SectionTitle("🌟 App highlights")
-                    FeatureItem(
-                        icon = "🌐",
-                        title = "Live Telugu & English",
-                        description = "Toggle languages in Read Mode for translations, word meanings, and purports."
-                    )
-                    FeatureItem(
-                        icon = "⚡",
-                        title = "Cloud AI guidance",
-                        description = "Fast Krishna guidance via cloud — no large local model required to start."
-                    )
-                    FeatureItem(
-                        icon = "⚔️",
-                        title = "Mahabharata Battle Quiz",
-                        description = "Thousands of sequence MCQs in English & Telugu with live language toggle."
-                    )
-                    FeatureItem(
-                        icon = "📚",
-                        title = "Offline-ready content",
-                        description = "Bundled Q&A datasets and verses so you can practice without waiting on downloads."
-                    )
-
-                    SectionTitle("📌 Tips")
-                    RewardNoteCard(
-                        emoji = "💡",
-                        title = "Coin History",
-                        body = "Open the drawer → Coin History to see every +earn and spend. Guests keep local history; signed-in users sync with the server."
-                    )
-                    RewardNoteCard(
-                        emoji = "🔐",
-                        title = "Sign in to keep progress",
-                        body = "Create an account to sync coins, streaks, and notes across devices. Guest progress stays on this phone only."
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Scroll for more · ॐ",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    Spacer(Modifier.height(8.dp))
+                    ShortNote("👋", "Guest · +50 coins")
+                    ShortNote("📝", "Sign up · +200 coins")
+                    ShortNote("🔄", "Guest → new account · +150")
+                    ShortNote("✨", "Earn: check-in, quiz, battle, share, chapter")
+                    ShortNote("🎙", "Voice chat · 4 / 6 / 10 coins")
+                    ShortNote("📜", "Coin History shows all +earns & spends")
                 }
 
                 // ── Fixed footer CTAs ────────────────────────────────────
@@ -261,86 +159,22 @@ fun WelcomeDialog(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.padding(top = 4.dp)
-    )
-}
-
-@Composable
-private fun RewardNoteCard(
-    emoji: String,
-    title: String,
-    body: String
-) {
+private fun ShortNote(emoji: String, text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Top
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(emoji, fontSize = 18.sp)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 18.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun FeatureItem(
-    icon: String,
-    title: String,
-    description: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Top
-    ) {
+        Text(emoji, fontSize = 20.sp)
         Text(
-            text = icon,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(end = 10.dp)
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
