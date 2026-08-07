@@ -2,9 +2,11 @@ package com.aipoweredgita.app.ui.screens.auth
 
 import androidx.compose.animation.core.*
 import com.aipoweredgita.app.ui.LocalUiConfig
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.*
@@ -30,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.R
@@ -48,6 +52,55 @@ private val GoldGlow     = Color(0xFFFFE99A)   // near-white gold — accent hig
 private val SaffronAura  = Color(0xFFFF7B1C)   // lotus / aura orange
 private val TilakRed     = Color(0xFFCC3311)   // danger / exit accent
 private val StarDust     = Color(0xFF6B5F8A)   // muted decorative
+
+/**
+ * Brand logo for splash/exit: circular mask with soft edge.
+ * [splash_logo] is square with light corners — Crop + slight zoom hides the square edge.
+ */
+@Composable
+private fun BrandLogoMark(
+    size: Dp,
+    scale: Float = 1f,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(size)
+            .scale(scale)
+            .shadow(elevation = 12.dp, shape = CircleShape, clip = false, ambientColor = GoldFlame.copy(alpha = 0.35f))
+    ) {
+        // Soft outer halo (hides hard clip)
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(GoldFlame.copy(alpha = 0.10f), CircleShape)
+        )
+        // Dark disc under the art so white PNG corners never show
+        Box(
+            Modifier
+                .size(size * 0.92f)
+                .background(MidnightVeil, CircleShape)
+                .border(1.2.dp, GoldFlame.copy(alpha = 0.40f), CircleShape)
+        )
+        Image(
+            painter = painterResource(id = R.drawable.splash_logo),
+            contentDescription = stringResource(id = R.string.app_name),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(size * 0.88f)
+                .clip(CircleShape)
+                // Zoom past light/white margins of the square asset
+                .scale(1.14f)
+        )
+        // Thin inner highlight ring for a clean edge
+        Box(
+            Modifier
+                .size(size * 0.88f)
+                .border(0.8.dp, GoldGlow.copy(alpha = 0.22f), CircleShape)
+        )
+    }
+}
 
 // ─── Gita Quote Pool ──────────────────────────────────────────────────────────
 private val gitaQuotes = listOf(
@@ -361,37 +414,11 @@ fun SplashScreen(
             verticalArrangement    = Arrangement.Center
         ) {
 
-            // Logo in glassy circle
-            Box(contentAlignment = Alignment.Center) {
-                // Outer frosted ring
-                Surface(
-                    modifier = Modifier.size(148.dp),
-                    shape    = CircleShape,
-                    color    = GoldFlame.copy(alpha = 0.06f),
-                    border   = androidx.compose.foundation.BorderStroke(
-                        0.8.dp, GoldFlame.copy(alpha = 0.30f)
-                    )
-                ) {}
-                // Inner glassy disc
-                Surface(
-                    modifier = Modifier.size(120.dp),
-                    shape    = CircleShape,
-                    color    = GoldFlame.copy(alpha = 0.04f),
-                    border   = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, GoldGlow.copy(alpha = 0.20f)
-                    )
-                ) {}
-                // App logo (brand asset — not the old photo icon)
-                Image(
-                    painter            = painterResource(id = R.drawable.splash_logo),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    contentScale       = ContentScale.Fit,
-                    modifier           = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .scale(logoScale)
-                )
-            }
+            // Logo — soft circular edge (no square/white PNG corners)
+            BrandLogoMark(
+                size = 128.dp,
+                scale = logoScale,
+            )
 
             Spacer(modifier = Modifier.height(36.dp))
 
@@ -548,15 +575,7 @@ fun ExitScreen(
                 horizontalAlignment    = Alignment.CenterHorizontally,
                 verticalArrangement    = Arrangement.spacedBy(0.dp)
             ) {
-                // Logo
-                Image(
-                    painter            = painterResource(id = R.drawable.splash_logo),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    contentScale       = ContentScale.Fit,
-                    modifier           = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                )
+                BrandLogoMark(size = 76.dp)
 
                 Spacer(modifier = Modifier.height(20.dp))
 
