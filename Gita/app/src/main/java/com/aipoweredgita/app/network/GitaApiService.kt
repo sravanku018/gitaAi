@@ -169,7 +169,7 @@ data class CoinBalanceResponse(
     val last_activity_date: String? = null,
     val updated_at: String? = null,
     val yoga_name: String? = null,
-    val multiplier: Int = 1,
+    val multiplier: Double = 1.0,
     val is_max: Int = 0,
     val checkin_day: Int = 0,
     val checkin_week: Int = 0,
@@ -370,7 +370,7 @@ data class YogaLevel(
     val name: String = "",
     val min_coins: Int = 0,
     val max_coins: Int = 0,
-    val multiplier: Int = 1,
+    val multiplier: Double = 1.0,
     val description: String = ""
 )
 

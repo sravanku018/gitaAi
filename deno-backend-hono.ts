@@ -101,16 +101,17 @@ async function initTables() {
         name TEXT NOT NULL,
         min_coins INTEGER NOT NULL,
         max_coins INTEGER NOT NULL,
-        multiplier INTEGER DEFAULT 1
+        multiplier REAL DEFAULT 1
       )`
     }).catch(() => {});
     const yogaCount = await db.execute({ sql: "SELECT COUNT(*) as cnt FROM yoga_levels" });
     if ((yogaCount.rows[0].cnt as number) === 0) {
+      // Softened ladder: 1 / 1.5 / 2 / 2.5 / 3 (was 1–5 integer)
       await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (1, 'Karma Yoga', 0, 999, 1)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (2, 'Bhakti Yoga', 1000, 2999, 2)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (3, 'Jnana Yoga', 3000, 5999, 3)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (4, 'Dhyana Yoga', 6000, 8999, 4)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (5, 'Raja Yoga', 9000, 99999, 5)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (2, 'Bhakti Yoga', 1000, 2999, 1.5)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (3, 'Jnana Yoga', 3000, 5999, 2)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (4, 'Dhyana Yoga', 6000, 8999, 2.5)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (5, 'Raja Yoga', 9000, 99999, 3)" });
     }
 
     await db.execute({
@@ -311,7 +312,16 @@ async function initTables() {
 }
 
 /** Bump when adding migrations/indexes so cold starts re-run init once. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
+
+/** Softened yoga coin multipliers: L1=1, L2=1.5, L3=2, L4=2.5, L5=3 (was 1–5). */
+async function ensureYogaMultipliers() {
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 1 WHERE level = 1` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 1.5 WHERE level = 2` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 2 WHERE level = 3` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 2.5 WHERE level = 4` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 3 WHERE level = 5` }).catch(() => {});
+}
 
 /** Hot-path indexes for coin history / quizzes / sessions (idempotent). */
 async function ensureHotPathIndexes() {
@@ -339,6 +349,7 @@ async function ensureHotPathIndexes() {
   await db.execute({
     sql: `CREATE INDEX IF NOT EXISTS idx_level_history_user ON level_history(user_id)`,
   }).catch(() => {});
+  await ensureYogaMultipliers();
 }
 
 /**
@@ -1364,8 +1375,11 @@ app.post("/coins/award", requireAuth, async (c) => {
     sql: `SELECT yl.multiplier FROM user_stats us JOIN yoga_levels yl ON yl.level = us.yoga_level WHERE us.user_id = ?`,
     args: [user_id],
   });
-  const multiplier = userStats.rows.length ? (userStats.rows[0].multiplier as number) : 1;
+  const multiplier = userStats.rows.length
+    ? Number(userStats.rows[0].multiplier) || 1
+    : 1;
   const coinsBeforeYoga = coins;
+  // Softened ladder supports 1.5 / 2.5 — floor after multiply
   coins = Math.floor(coins * multiplier);
 
   // Human-readable description for app + admin dashboard (not raw JSON metadata)

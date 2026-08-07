@@ -126,16 +126,30 @@ object YogaLevelManager {
     }
 
     /**
-     * Get coin earnings multiplier based on level
-     * Level 1: 1.0x
-     * Level 2: 1.0x (no bonus)
-     * Level 3: 3.0x
-     * Level 4: 4.0x
-     * Level 5: 5.0x
+     * Softened coin multiplier ladder (matches server yoga_levels):
+     * L1 Karma 1× · L2 Bhakti 1.5× · L3 Jnana 2× · L4 Dhyana 2.5× · L5 Raja 3×
+     * Prefer coins from [UserStats] when available (same thresholds as server).
      */
     fun getCoinMultiplier(stats: UserStats?): Float {
-        val level = levelFor(stats)
-        return if (level == 2) 1.0f else level.toFloat()
+        val coins = stats?.krishnaCoins ?: 0
+        return multiplierForCoins(coins)
+    }
+
+    fun multiplierForCoins(coins: Int): Float = when {
+        coins >= 9000 -> 3.0f
+        coins >= 6000 -> 2.5f
+        coins >= 3000 -> 2.0f
+        coins >= 1000 -> 1.5f
+        else -> 1.0f
+    }
+
+    fun multiplierForYogaLevel(level: Int): Float = when (level.coerceIn(1, 5)) {
+        1 -> 1.0f
+        2 -> 1.5f
+        3 -> 2.0f
+        4 -> 2.5f
+        5 -> 3.0f
+        else -> 1.0f
     }
 
     // Progress within current level 0..1
