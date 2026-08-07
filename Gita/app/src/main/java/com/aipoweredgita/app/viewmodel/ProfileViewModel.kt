@@ -320,8 +320,10 @@ class ProfileViewModel @Inject constructor(
             }
 
             if (isGuest) {
-                // Guests: no coin transaction history UI (local-only earns still update balance)
-                _coinHistory.value = emptyList()
+                // Guests: local-only history under this guest id (no server, no other accounts)
+                _coinHistory.value = buildLocalHistory(effectiveUid)
+                lastHistoryFetchMs = System.currentTimeMillis()
+                lastHistoryUid = effectiveUid
                 return@launch
             }
 

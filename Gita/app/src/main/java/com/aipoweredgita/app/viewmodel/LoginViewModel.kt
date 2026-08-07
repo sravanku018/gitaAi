@@ -37,7 +37,7 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             val guestId = "guest_${java.util.UUID.randomUUID()}"
             val authPrefs = AuthPreferences.getInstance(appContext)
-            // Clear any previous account coin history so it never appears in guest mode
+            // Clear prior signed-in history so guest never sees another account's txs
             authPrefs.userId?.let { prev ->
                 com.aipoweredgita.app.coin.CoinTransactionLogger.clear(appContext, prev)
             }
@@ -45,10 +45,17 @@ class LoginViewModel @Inject constructor(
             com.aipoweredgita.app.coin.CoinTransactionLogger.clear(appContext, guestId)
             userStatsDao.updateUserId(guestId)
             userStatsDao.updateProfile(name = "Guest User", dob = "")
-            // Welcome coins on balance only — do not write coin history for guests
+            // Fresh guest: welcome coins + one local history line under this guestId only
             if (!authPrefs.guestWelcomeAwarded) {
                 userStatsDao.updateKrishnaCoins(50)
                 authPrefs.guestWelcomeAwarded = true
+                com.aipoweredgita.app.coin.CoinTransactionLogger.log(
+                    appContext,
+                    50,
+                    "Welcome bonus (guest)",
+                    source = "signup",
+                    userId = guestId
+                )
             }
         }
     }

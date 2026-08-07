@@ -249,9 +249,17 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         val coins = if (isGuest) {
-            // Guest: balance only — no coin history rows
+            // Guest: local balance + local history only (same coin math as signed-in base×yoga)
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
+                val guestUid = resolvedUserId() ?: userId()
+                CoinTransactionLogger.log(
+                    appContext,
+                    result.totalCoins,
+                    result.breakdown,
+                    source = "quiz_completion",
+                    userId = guestUid
+                )
             }
             result.totalCoins
         } else {
@@ -344,6 +352,14 @@ class StatsRepository(
         if (isGuest) {
             if (serverMatchedCoins > 0) {
                 userStatsDao.addKrishnaCoins(serverMatchedCoins)
+                val guestUid = resolvedUserId() ?: userId()
+                CoinTransactionLogger.log(
+                    appContext,
+                    serverMatchedCoins,
+                    "Battle quiz: $score correct (+$serverMatchedCoins)",
+                    source = "battle_quiz",
+                    userId = guestUid
+                )
             }
         } else {
             if (serverMatchedCoins > 0 || score > 0) {
@@ -606,6 +622,14 @@ class StatsRepository(
 
         if (isGuest) {
             userStatsDao.addKrishnaCoins(chapterCoins)
+            val guestUid = resolvedUserId() ?: userId()
+            CoinTransactionLogger.log(
+                appContext,
+                chapterCoins,
+                "Chapter $chapterNo Completion",
+                source = "chapter_completion",
+                userId = guestUid
+            )
         } else {
             ensureUserSynced()
 
