@@ -116,11 +116,26 @@ fun WelcomeDialog(
                         .padding(horizontal = 18.dp, vertical = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    SectionTitle("🎁 Welcome gift")
+                    SectionTitle("🎁 Welcome gift & sign-up")
                     RewardNoteCard(
-                        emoji = "🪙",
-                        title = "+50 Krishna Coins",
-                        body = "New seekers (including guests) receive 50 coins as a welcome bonus. Check Coin History anytime to see +earns and spends."
+                        emoji = "👋",
+                        title = "Guest · +50 coins",
+                        body = "Continue as Guest starts you with +50 Krishna Coins (welcome bonus). History shows “Welcome bonus (guest)”."
+                    )
+                    RewardNoteCard(
+                        emoji = "📝",
+                        title = "Register · +200 coins",
+                        body = "Create a new account (sign up) and the server credits +200 coins — “Welcome bonus — new seeker”. This is the full signup gift."
+                    )
+                    RewardNoteCard(
+                        emoji = "🔄",
+                        title = "Guest → new account · +150",
+                        body = "If you convert guest progress into a brand-new account, the server adds +150 welcome coins and keeps your guest balance transferred over."
+                    )
+                    RewardNoteCard(
+                        emoji = "🔐",
+                        title = "Login (existing)",
+                        body = "Signing in to an account you already have does not add another signup bonus — you keep that balance only."
                     )
 
                     SectionTitle("✨ How you earn coins")

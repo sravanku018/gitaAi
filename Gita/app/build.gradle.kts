@@ -19,8 +19,8 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 37
-        versionName = "2.11.6"
+        versionCode = 38
+        versionName = "2.11.7"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

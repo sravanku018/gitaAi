@@ -164,11 +164,15 @@ async function initTables() {
 
     const count = await db.execute({ sql: "SELECT COUNT(*) as cnt FROM voice_chat_rules" });
     if ((count.rows[0].cnt as number) === 0) {
-      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (1, 0, 50, 2, 'Short')" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (2, 51, 150, 3, 'Medium')" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (3, 151, NULL, 5, 'Long')" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (1, 0, 50, 4, 'Short')" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (2, 51, 150, 6, 'Medium')" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO voice_chat_rules (id, min_chars, max_chars, coins, label) VALUES (3, 151, NULL, 10, 'Long')" });
       console.log("Initialized voice_chat_rules with default values");
     }
+    // App VoiceCoinPricing parity: Short 4 / Medium 6 / Long 10
+    await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 4 WHERE id = 1 OR (min_chars = 0 AND max_chars = 50)" }).catch(() => {});
+    await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 6 WHERE id = 2 OR (min_chars = 51 AND max_chars = 150)" }).catch(() => {});
+    await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 10 WHERE id = 3 OR min_chars = 151" }).catch(() => {});
 
     // Ensure coin_rules table exists
     await db.execute({
@@ -312,7 +316,14 @@ async function initTables() {
 }
 
 /** Bump when adding migrations/indexes so cold starts re-run init once. */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
+
+/** App VoiceCoinPricing: Short 4 / Medium 6 / Long 10. */
+async function ensureVoicePricing() {
+  await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 4 WHERE id = 1 OR (min_chars = 0 AND max_chars = 50)" }).catch(() => {});
+  await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 6 WHERE id = 2 OR (min_chars = 51 AND max_chars = 150)" }).catch(() => {});
+  await db.execute({ sql: "UPDATE voice_chat_rules SET coins = 10 WHERE id = 3 OR min_chars = 151" }).catch(() => {});
+}
 
 /** Integer-only yoga multipliers: L1=1, L2=2, L3=2, L4=3, L5=3 (no 1.5/2.5). */
 async function ensureYogaMultipliers() {
@@ -350,6 +361,7 @@ async function ensureHotPathIndexes() {
     sql: `CREATE INDEX IF NOT EXISTS idx_level_history_user ON level_history(user_id)`,
   }).catch(() => {});
   await ensureYogaMultipliers();
+  await ensureVoicePricing();
 }
 
 /**
@@ -373,6 +385,7 @@ async function ensureSchema() {
 
     if (current >= SCHEMA_VERSION) {
       console.log(`Schema v${current} up to date — skip initTables`);
+      await ensureVoicePricing();
       return;
     }
 
@@ -1393,9 +1406,8 @@ app.post("/coins/award", requireAuth, async (c) => {
       : `Quiz (${quizType}): ${scoreQ} correct`;
   } else if (source === "battle_quiz" && metadata) {
     const scoreQ = Math.max(0, Math.floor(Number(metadata?.score ?? 0)));
-    description = multiplier > 1
-      ? `Battle quiz: ${scoreQ} correct (+${coinsBeforeYoga}×${multiplier}=${coins})`
-      : `Battle quiz: ${scoreQ} correct (+${coins})`;
+    // No coin amount in description — UI amount column already shows +N (avoids "+2 2 correct")
+    description = `Battle quiz: ${scoreQ} correct`;
   } else if (source === "chapter_completion") {
     description = "Chapter completed";
   }
@@ -1493,7 +1505,7 @@ app.post("/coins/spend", requireAuth, async (c) => {
   const length = question.length;
   const rule   = await db.execute({ sql: `SELECT coins, label FROM voice_chat_rules WHERE min_chars <= ? AND (max_chars IS NULL OR max_chars >= ?)`, args: [length, length] });
 
-  const cost = rule.rows.length > 0 ? (rule.rows[0].coins as number) : 2;
+  const cost = rule.rows.length > 0 ? (rule.rows[0].coins as number) : 4;
   const label = rule.rows.length > 0 ? (rule.rows[0].label as string) : "Short";
 
   const stats  = await db.execute({ sql: "SELECT krishna_coins FROM user_stats WHERE user_id = ?", args: [user_id] });
@@ -1763,7 +1775,7 @@ app.get("/coins/voice-cost", async (c) => {
   });
 
   if (!rule.rows.length) {
-    return c.json({ cost: 2, label: "Short", error: "No rule found, using default" });
+    return c.json({ cost: 4, label: "Short", error: "No rule found, using default" });
   }
 
   return c.json({

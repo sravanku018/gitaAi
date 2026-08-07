@@ -64,6 +64,28 @@ private fun parseDateRobust(dateStr: String?): Date? {
 }
 
 /**
+ * Remove yoga-multiplier formulas from history labels so users never see
+ * "×1.5", "1*1.5", "(+5×1.5=8)", "5base + 6acc = 11 ×1.5 = 17", etc.
+ */
+private fun stripYogaMultiplierNoise(desc: String): String {
+    var s = desc
+    // "(+5×1.5=8)" or "(+5x1.5=8)" or "(+5*1.5=8)" → drop; amount column shows coins
+    s = s.replace(Regex("""\(\s*\+?\s*\d+\s*[×xX*]\s*[\d.]+\s*=\s*\d+\s*\)"""), "")
+    // " = 11 ×1.5 = 17" → " = 17"
+    s = s.replace(Regex("""\s*=\s*\d+\s*[×xX*]\s*[\d.]+\s*=\s*(\d+)"""), " = $1")
+    s = s.replace(Regex("""\s*[×xX*]\s*[\d.]+\s*=\s*(\d+)"""), " = $1")
+    s = s.replace(Regex("""\s*[×xX]\s*[\d.]+"""), "")
+    s = s.replace(Regex("""\b\d+\s*\*\s*[\d.]+"""), "")
+    // "Battle quiz: 2 correct (+2)" → "Battle quiz: 2 correct" (amount column already has +2)
+    s = s.replace(Regex("""\s*\(\s*\+\s*\d+\s*\)"""), "")
+    // "5base + 6acc = 11" is verbose for history — shorten to quiz-style when present
+    s = s.replace(Regex("""^\d+base\s*\+\s*\d+acc\s*=\s*\d+$"""), "Quiz reward")
+    s = s.replace(Regex("""\s{2,}"""), " ").trim()
+    s = s.replace(Regex("""\(\s*\)"""), "").trim()
+    return s
+}
+
+/**
  * Convert JSON metadata stored in coin_transactions.description (from /coins/award)
  * into a short human-readable label for the history UI.
  */
@@ -84,8 +106,7 @@ private fun humanizeJsonDescription(raw: String, source: String): String {
             source.contains("battle", ignoreCase = true) || obj.has("battleCoins") -> {
                 val coins = obj.optInt("battleCoins", -1)
                 val score = obj.optInt("score", -1)
-                if (coins >= 0 && score >= 0) "Battle quiz: $score correct (+$coins)"
-                else if (score >= 0) "Battle quiz: $score correct"
+                if (score >= 0) "Battle quiz: $score correct"
                 else "Battle quiz"
             }
             else -> source.replace('_', ' ').replaceFirstChar { it.uppercase() }.ifBlank { "Earned coins" }
@@ -269,10 +290,11 @@ fun CoinTransactionItem(
     val src = entry.source.lowercase()
     val rawDesc = entry.description.trim()
     // Prefer server/admin description. JSON blobs (quiz metadata) → human summary.
+    // Strip yoga mult formulas like "×1.5", "x1.5", "1*1.5", "(+5×1.5=8)" — amount column is enough.
     val cleanDesc = when {
         rawDesc.isEmpty() -> ""
         rawDesc.startsWith("{") -> humanizeJsonDescription(rawDesc, entry.source)
-        else -> rawDesc
+        else -> stripYogaMultiplierNoise(rawDesc)
     }
 
     val isVoiceSource = src == "voice_chat" || src == "voice" ||

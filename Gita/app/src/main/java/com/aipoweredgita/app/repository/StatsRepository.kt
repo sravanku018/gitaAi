@@ -5,6 +5,7 @@ import android.util.Log
 import com.aipoweredgita.app.coin.CoinRewardEngine
 import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.coin.CoinTransactionLogger
+import com.aipoweredgita.app.coin.VoiceCoinPricing
 import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.database.DailyActivityDao
 import com.aipoweredgita.app.database.GitaDatabase
@@ -356,7 +357,7 @@ class StatsRepository(
                 CoinTransactionLogger.log(
                     appContext,
                     serverMatchedCoins,
-                    "Battle quiz: $score correct (+$serverMatchedCoins)",
+                    "Battle quiz: $score correct",
                     source = "battle_quiz",
                     userId = guestUid
                 )
@@ -996,12 +997,8 @@ class StatsRepository(
         val idempotencyKey = "spend_${resolvedUserId() ?: userId() ?: "guest"}_${question.hashCode()}"
 
         if (isGuest) {
-            // Dynamic pricing based on question length (min 4, max 10 coins)
-            val cost = when {
-                question.length <= 50 -> 4   // Short (min 4)
-                question.length <= 150 -> 6  // Medium
-                else -> 10                   // Long (max 10)
-            }
+            // Dynamic pricing: Short 4 / Medium 6 / Long 10
+            val cost = VoiceCoinPricing.costFor(question)
             
             if (coinBalance.value < cost) {
                 Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
@@ -1017,11 +1014,7 @@ class StatsRepository(
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return false
         
-        val offlineCost = when {
-            question.length <= 50  -> 4   // Short (min 4)
-            question.length <= 150 -> 6   // Medium
-            else                   -> 10  // Long (max 10)
-        }
+        val offlineCost = VoiceCoinPricing.costFor(question)
 
         if (coinBalance.value < offlineCost) {
             Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $offlineCost")

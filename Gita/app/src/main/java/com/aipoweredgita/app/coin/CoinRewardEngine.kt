@@ -132,11 +132,8 @@ object CoinRewardEngine {
             }.filterValues { it > 0 }
         } else emptyMap()
 
-        val breakdown = if (safe.yogaMultiplier > 1f) {
-            "${base}base + ${accuracyBonus}acc = ${beforeYoga} ×${safe.yogaMultiplier} = $total"
-        } else {
-            "${base}base + ${accuracyBonus}acc = $total"
-        }
+        // Human-readable; coin amount lives in the history amount column, not in this string
+        val breakdown = "Quiz: ${safe.score}/${safe.totalQuestions}"
 
         return Result(
             baseCoins = base,
