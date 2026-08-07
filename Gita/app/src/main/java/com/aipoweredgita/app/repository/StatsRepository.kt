@@ -262,8 +262,8 @@ class StatsRepository(
             // Always award + log for a signed-in user. Don't gate on the local
             // DB's cached userId — it can be stale right after login.
             val fallback = result.totalCoins
+            // Optimistic balance only — history is server-only for signed-in (avoids double logs)
             userStatsDao.addKrishnaCoins(fallback)
-            CoinTransactionLogger.log(appContext, fallback, result.breakdown, source = "quiz_completion")
 
             // Resolve the real uid for the sync queue only — prefer the auth
             // session over the local cached row, which may not be populated yet.
@@ -352,8 +352,8 @@ class StatsRepository(
         } else {
             // Always award + log for a signed-in user regardless of local cached uid.
             if (battleCoins > 0) {
+                // Optimistic base coins only (no history log). Server recomputes fib(score)×yoga and sets total_coins.
                 userStatsDao.addKrishnaCoins(battleCoins)
-                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}", source = "battle_quiz")
 
                 val uid = resolvedUserId() ?: userId()
                 if (uid != null) {
@@ -612,9 +612,8 @@ class StatsRepository(
         } else {
             ensureUserSynced()
 
-            // Always award + log for a signed-in user regardless of local cached uid.
+            // Optimistic balance only — server award is history source of truth
             userStatsDao.addKrishnaCoins(15)
-            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion", source = "chapter_completion")
 
             val uid = resolvedUserId() ?: userId()
             if (uid != null) {

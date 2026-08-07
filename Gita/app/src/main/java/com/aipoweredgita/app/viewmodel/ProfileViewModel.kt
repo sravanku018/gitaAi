@@ -340,20 +340,14 @@ class ProfileViewModel @Inject constructor(
                     val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
                         effectiveUid, "Bearer $token", limit = HISTORY_LIMIT
                     )
-                    if (serverHistory.isNotEmpty()) {
-                        com.aipoweredgita.app.coin.CoinTransactionLogger.syncFromServer(
-                            appContext, serverHistory, effectiveUid
-                        )
-                    }
-                    // Per-user local cache after sync (server + this user's offline-only rows).
-                    val merged = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
-                    _coinHistory.value = if (merged.isNotEmpty()) {
-                        merged
-                    } else {
-                        serverHistory
-                            .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
-                            .filterNot(::isGuestSignupNoise)
-                    }
+                    // Signed-in: server is the only history source of truth (no local+server double lines).
+                    // Still cache server rows locally for offline display.
+                    com.aipoweredgita.app.coin.CoinTransactionLogger.replaceWithServerHistory(
+                        appContext, serverHistory, effectiveUid
+                    )
+                    _coinHistory.value = serverHistory
+                        .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
+                        .filterNot(::isGuestSignupNoise)
                     lastHistoryFetchMs = now
                     lastHistoryUid = effectiveUid
                     return@launch
@@ -362,6 +356,7 @@ class ProfileViewModel @Inject constructor(
                 }
             }
 
+            // Offline fallback for signed-in: last cached server snapshot only
             _coinHistory.value = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
         }
     }

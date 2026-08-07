@@ -172,7 +172,7 @@ class SyncWorker(
                         }
 
                         userStatsDao.updateKrishnaCoins(response.total_coins)
-                        Log.d(TAG, "Quiz sync success. New server balance: ${response.total_coins}")
+                        Log.d(TAG, "Quiz sync success. awarded=${response.awarded} total=${response.total_coins}")
                     }
                     "CHAPTER" -> {
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
@@ -226,7 +226,7 @@ class SyncWorker(
                             bearer
                         )
                         userStatsDao.updateKrishnaCoins(response.total_coins)
-                        Log.d(TAG, "Battle sync success. New server balance: ${response.total_coins}")
+                        Log.d(TAG, "Battle sync success. awarded=${response.awarded} total=${response.total_coins}")
                     }
                     "SPEND" -> {
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)

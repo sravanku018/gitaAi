@@ -249,8 +249,7 @@ object CoinTransactionLogger {
                 }
             }
 
-            // Keep local-only (UUID) rows only if not already covered by server history.
-            // Fixes double quiz lines: local "5base+6acc" + server "Quiz (general): x/y".
+            // Prefer dropping covered local previews, then store merge (legacy path).
             val existingArr = readJson(prefs, key)
             val localOnly = mutableListOf<JSONObject>()
             for (i in 0 until existingArr.length()) {
@@ -259,12 +258,9 @@ object CoinTransactionLogger {
                     val objUser = obj.optString("user_id", uid)
                     if (objUser != uid && objUser.isNotEmpty()) continue
                     val id = obj.optString("id", "")
-                    val isLocalOnly = isLocalUuidId(id)
-                    if (isLocalOnly) {
+                    if (isLocalUuidId(id) && !isLocalRowCoveredByServer(obj, serverJsonEntries)) {
                         obj.put("user_id", uid)
-                        if (!isLocalRowCoveredByServer(obj, serverJsonEntries)) {
-                            localOnly.add(obj)
-                        }
+                        localOnly.add(obj)
                     }
                 } catch (_: Exception) { }
             }
@@ -272,6 +268,50 @@ object CoinTransactionLogger {
             val merged = deduplicateJsonEntries(localOnly + serverJsonEntries)
             val finalArr = JSONArray()
             merged.takeLast(MAX).forEach { finalArr.put(it) }
+            prefs.edit().putString(key, finalArr.toString()).commit()
+        }
+    }
+
+    /**
+     * Signed-in source of truth: replace local cache with server history only.
+     * Prevents double lines (local optimistic + server award) for one quiz/battle.
+     */
+    fun replaceWithServerHistory(
+        context: Context,
+        serverHistory: List<com.aipoweredgita.app.network.CoinHistoryEntry>,
+        userId: String? = null
+    ) {
+        synchronized(this) {
+            val uid = resolveUserId(context, userId)
+            val prefs = prefs(context)
+            dropLegacySharedHistory(prefs)
+            val key = keyFor(uid)
+            val finalArr = JSONArray()
+            serverHistory
+                .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
+                .reversed()
+                .takeLast(MAX)
+                .forEach { entry ->
+                    val isSpendEntry = entry.type.equals("SPEND", ignoreCase = true) || entry.amount < 0
+                    val signedAmt = if (isSpendEntry) -kotlin.math.abs(entry.amount) else kotlin.math.abs(entry.amount)
+                    finalArr.put(JSONObject().apply {
+                        put("id", entry.id.toString())
+                        put("user_id", uid)
+                        put("amount", signedAmt)
+                        put("description", entry.description.take(120))
+                        put(
+                            "timestamp",
+                            try {
+                                com.aipoweredgita.app.ui.screens.coinhistory.parseDateRobust(entry.created_at)?.time
+                                    ?: System.currentTimeMillis()
+                            } catch (_: Exception) {
+                                System.currentTimeMillis()
+                            }
+                        )
+                        put("type", if (isSpendEntry) CoinTxType.SPEND.name else CoinTxType.EARN.name)
+                        put("source", entry.source.ifEmpty { "server_sync" })
+                    })
+                }
             prefs.edit().putString(key, finalArr.toString()).commit()
         }
     }

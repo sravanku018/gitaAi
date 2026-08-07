@@ -1320,6 +1320,20 @@ app.get("/coins/balance", requireAuth, async (c) => {
   return c.json(result.rows[0]);
 });
 
+/** Battle reward: same Fibonacci as app BattleState.battleCoins(correctAnswers). */
+function battleFibCoins(correctAnswers: number): number {
+  const n = Math.max(0, Math.floor(correctAnswers));
+  if (n <= 0) return 0;
+  let a = 1;
+  let b = 1;
+  for (let i = 3; i <= n; i++) {
+    const temp = a + b;
+    a = b;
+    b = temp;
+  }
+  return n === 1 ? a : b;
+}
+
 // ─── COINS AWARD ──────────────────────────────────────────────
 app.post("/coins/award", requireAuth, async (c) => {
   const user_id = c.get("userId" as any) as string;
@@ -1340,8 +1354,10 @@ app.post("/coins/award", requireAuth, async (c) => {
     if (maxCoins != null) coins = Math.min(coins, maxCoins);
   }
 
-  if (source === "battle_quiz" && metadata?.battleCoins != null) {
-    coins = Math.min(metadata.battleCoins, maxCoins ?? 1000);
+  // Battle: server recomputes Fibonacci from correct count (metadata.score), not client sum
+  if (source === "battle_quiz") {
+    const correct = Math.max(0, Math.floor(Number(metadata?.score ?? 0)));
+    coins = Math.min(battleFibCoins(correct), maxCoins ?? 1000);
   }
 
   const userStats = await db.execute({
@@ -1349,6 +1365,7 @@ app.post("/coins/award", requireAuth, async (c) => {
     args: [user_id],
   });
   const multiplier = userStats.rows.length ? (userStats.rows[0].multiplier as number) : 1;
+  const coinsBeforeYoga = coins;
   coins = Math.floor(coins * multiplier);
 
   // Human-readable description for app + admin dashboard (not raw JSON metadata)
@@ -1361,9 +1378,10 @@ app.post("/coins/award", requireAuth, async (c) => {
       ? `Quiz (${quizType}): ${scoreQ}/${totalQ}`
       : `Quiz (${quizType}): ${scoreQ} correct`;
   } else if (source === "battle_quiz" && metadata) {
-    const scoreQ = metadata.score ?? 0;
-    const battleCoins = metadata.battleCoins ?? coins;
-    description = `Battle quiz: ${scoreQ} correct (+${battleCoins})`;
+    const scoreQ = Math.max(0, Math.floor(Number(metadata?.score ?? 0)));
+    description = multiplier > 1
+      ? `Battle quiz: ${scoreQ} correct (+${coinsBeforeYoga}×${multiplier}=${coins})`
+      : `Battle quiz: ${scoreQ} correct (+${coins})`;
   } else if (source === "chapter_completion") {
     description = "Chapter completed";
   }
