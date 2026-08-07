@@ -353,7 +353,7 @@ data class CoinHistoryEntry(
 }
 
 data class VoiceCostResponse(
-    val cost: Int = 2,
+    val cost: Int = 4,
     val label: String = "Short",
     val length: Int = 0
 )

@@ -23,6 +23,7 @@ import com.aipoweredgita.app.network.CoinApi
 import com.aipoweredgita.app.network.GitaApi
 import com.aipoweredgita.app.repository.ModeType
 import com.aipoweredgita.app.repository.StatsRepository
+import com.aipoweredgita.app.coin.VoiceCoinPricing
 import com.aipoweredgita.app.prompt.GitaPromptEngine
 import com.aipoweredgita.app.prompt.VerseContext
 
@@ -99,7 +100,8 @@ class VoiceChatViewModel @Inject constructor(
     private val voiceChatEngine = LiteRtLmVoiceChatEngine.getInstance(application)
 
     companion object {
-        const val QUESTION_COST = 1
+        /** Minimum coins to ask (short question). Actual cost is 4 / 6 / 10 by length. */
+        const val QUESTION_COST = VoiceCoinPricing.MIN_COST
     }
 
     private var lastFailedMessage: String? = null
@@ -669,13 +671,14 @@ class VoiceChatViewModel @Inject constructor(
                 return@launch
             }
 
-            if (balance < QUESTION_COST) {
+            val quote = VoiceCoinPricing.quote(messageText)
+            if (balance < quote.cost) {
                 withContext(Dispatchers.Main) {
                     _uiState.update {
                         it.copy(
                             isThinking = false,
                             coinError = CoinError.NETWORK_ERROR,
-                            error = "Insufficient coins to ask a question (Requires $QUESTION_COST coin)",
+                            error = "Insufficient coins (need ${quote.cost} for ${quote.label.lowercase()} question; you have $balance)",
                             errorType = VoiceChatErrorType.LLM_INFERENCE
                         )
                     }
@@ -907,7 +910,7 @@ class VoiceChatViewModel @Inject constructor(
     }
 
     fun dismissCoinConfirmation() {
-        _uiState.update { it.copy(showCoinConfirmation = false, pendingMessage = null) }
+        _uiState.update { it.copy(showCoinConfirmation = false, pendingMessage = null, pendingCost = 0) }
     }
 
     fun confirmAndSendMessage() {

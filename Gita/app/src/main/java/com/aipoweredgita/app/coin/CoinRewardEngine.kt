@@ -132,8 +132,12 @@ object CoinRewardEngine {
             }.filterValues { it > 0 }
         } else emptyMap()
 
-        // Human-readable; coin amount lives in the history amount column, not in this string
-        val breakdown = "Quiz: ${safe.score}/${safe.totalQuestions}"
+        // Short label for history; amount column shows coins
+        val breakdown = if (safe.totalQuestions > 0) {
+            "Quiz: ${safe.score}/${safe.totalQuestions}"
+        } else {
+            "Quiz completed"
+        }
 
         return Result(
             baseCoins = base,
