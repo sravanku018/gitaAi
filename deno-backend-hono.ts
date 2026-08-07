@@ -312,14 +312,14 @@ async function initTables() {
 }
 
 /** Bump when adding migrations/indexes so cold starts re-run init once. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
-/** Softened yoga coin multipliers: L1=1, L2=1.5, L3=2, L4=2.5, L5=3 (was 1–5). */
+/** Integer-only yoga multipliers: L1=1, L2=2, L3=2, L4=3, L5=3 (no 1.5/2.5). */
 async function ensureYogaMultipliers() {
   await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 1 WHERE level = 1` }).catch(() => {});
-  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 1.5 WHERE level = 2` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 2 WHERE level = 2` }).catch(() => {});
   await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 2 WHERE level = 3` }).catch(() => {});
-  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 2.5 WHERE level = 4` }).catch(() => {});
+  await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 3 WHERE level = 4` }).catch(() => {});
   await db.execute({ sql: `UPDATE yoga_levels SET multiplier = 3 WHERE level = 5` }).catch(() => {});
 }
 
@@ -1379,8 +1379,8 @@ app.post("/coins/award", requireAuth, async (c) => {
     ? Number(userStats.rows[0].multiplier) || 1
     : 1;
   const coinsBeforeYoga = coins;
-  // Softened ladder (1.5 / 2.5): round to nearest coin (1×1.5 → 2, not 1)
-  coins = Math.max(0, Math.round(coins * multiplier));
+  // Integer multipliers only (1/2/2/3/3) — whole coins always
+  coins = Math.max(0, Math.round(Number(coins) * Number(multiplier)));
 
   // Human-readable description for app + admin dashboard (not raw JSON metadata)
   let description = source.replace(/_/g, " ");
