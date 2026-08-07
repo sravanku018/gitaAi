@@ -25,7 +25,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "COIN_API_BASE_URL", "\"https://prime-gorilla-49.sravanku018.deno.net/\"")
+        buildConfigField("String", "COIN_API_BASE_URL", "\"https://flaky-kestrel-5072.sravanku018.deno.net/\"")
         buildConfigField("String", "VOICE_PROXY_URL", "\"https://noisy-sheep-76.sravanku018.deno.net/\"")
 
         javaCompileOptions {
