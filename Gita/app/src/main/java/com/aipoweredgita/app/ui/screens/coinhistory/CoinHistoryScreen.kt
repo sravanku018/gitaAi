@@ -97,8 +97,9 @@ fun CoinHistoryScreen(
         isRefreshing = true
         try {
             viewModel.refreshCoinBalance()
-            // First open may use 10‑min cache; pull-to-refresh (trigger > 0) forces network
-            viewModel.loadCoinHistory(forceRefresh = refreshTrigger > 0)
+            // Always force history load so guest local cache and signed-in server stay fresh
+            // (guest path is local-only; force still re-reads SharedPreferences + self-heal)
+            viewModel.loadCoinHistory(forceRefresh = true)
         } finally {
             isRefreshing = false
         }

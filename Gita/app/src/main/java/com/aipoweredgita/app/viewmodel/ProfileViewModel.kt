@@ -320,8 +320,43 @@ class ProfileViewModel @Inject constructor(
             }
 
             if (isGuest) {
-                // Guests: local-only history under this guest id (no server, no other accounts)
-                _coinHistory.value = buildLocalHistory(effectiveUid)
+                // Guests: local-only history under this guest id (never hit server)
+                var local = buildLocalHistory(effectiveUid)
+                // Self-heal empty list (race at guest login, old APK that hid history, id mismatch)
+                if (local.isEmpty()) {
+                    // getBalance may already seed welcome when flag/history are out of sync
+                    val roomCoins = try {
+                        statsRepository.getBalance(force = false)
+                    } catch (_: Exception) {
+                        try {
+                            statsRepository.coinBalance.value
+                        } catch (_: Exception) {
+                            0
+                        }
+                    }
+                    local = buildLocalHistory(effectiveUid)
+                    if (local.isEmpty()) {
+                        val welcomeAmt = when {
+                            roomCoins <= 0 -> 50
+                            roomCoins < 50 -> roomCoins
+                            else -> 50
+                        }
+                        com.aipoweredgita.app.coin.CoinTransactionLogger.log(
+                            appContext,
+                            welcomeAmt,
+                            "Welcome bonus (guest)",
+                            source = "signup",
+                            userId = effectiveUid
+                        )
+                        authPrefs.guestWelcomeAwarded = true
+                        local = buildLocalHistory(effectiveUid)
+                        android.util.Log.i(
+                            "ProfileViewModel",
+                            "Guest history self-heal: uid=$effectiveUid welcome=$welcomeAmt roomCoins=$roomCoins size=${local.size}"
+                        )
+                    }
+                }
+                _coinHistory.value = local
                 lastHistoryFetchMs = System.currentTimeMillis()
                 lastHistoryUid = effectiveUid
                 return@launch

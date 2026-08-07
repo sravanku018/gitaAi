@@ -252,7 +252,7 @@ class StatsRepository(
             // Guest: local balance + local history only (same coin math as signed-in base×yoga)
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
-                val guestUid = resolvedUserId() ?: userId()
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
                 CoinTransactionLogger.log(
                     appContext,
                     result.totalCoins,
@@ -352,7 +352,7 @@ class StatsRepository(
         if (isGuest) {
             if (serverMatchedCoins > 0) {
                 userStatsDao.addKrishnaCoins(serverMatchedCoins)
-                val guestUid = resolvedUserId() ?: userId()
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
                 CoinTransactionLogger.log(
                     appContext,
                     serverMatchedCoins,
@@ -545,11 +545,12 @@ class StatsRepository(
 
         val coinsAwarded = if (isGuest) {
             userStatsDao.addKrishnaCoins(fallbackCoins)
+            val guestUid = resolvedUserId() ?: authPrefs.userId
             if (isWeeklyBonus) {
-                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share (guest)", source = "share_daily")
-                CoinTransactionLogger.log(appContext, 10, "7-day share bonus (guest)", source = "share_day7_bonus")
+                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share (guest)", source = "share_daily", userId = guestUid)
+                CoinTransactionLogger.log(appContext, 10, "7-day share bonus (guest)", source = "share_day7_bonus", userId = guestUid)
             } else {
-                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily")
+                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily", userId = guestUid)
             }
             fallbackCoins
         } else {
@@ -622,7 +623,7 @@ class StatsRepository(
 
         if (isGuest) {
             userStatsDao.addKrishnaCoins(chapterCoins)
-            val guestUid = resolvedUserId() ?: userId()
+            val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
             CoinTransactionLogger.log(
                 appContext,
                 chapterCoins,
@@ -673,16 +674,9 @@ class StatsRepository(
 
         try {
             if (authPrefs.isGuestUser) {
-                try {
-                    val response = CoinApi.retrofitService.createGuest()
-                    val guestId = response.guest_id
-                    if (guestId.isNotEmpty()) {
-                        authPrefs.saveGuestState(guestId)
-                    }
-                    Log.d("StatsRepository", "Guest synced: $guestId with ${response.coins} coins")
-                } catch (guestError: Exception) {
-                    Log.w("StatsRepository", "Guest creation failed (will sync on login): ${guestError.message}")
-                }
+                // Do NOT replace local guest_* id with a server guest id — that orphans
+                // SharedPreferences history under tx_<oldId> and empties Coin History UI.
+                Log.d("StatsRepository", "Guest local-only; skip createGuest id swap (uid=$uid)")
             } else {
                 val response = CoinApi.retrofitService.createUser(CreateUserRequest(uid, stats.userName.ifEmpty { "Gita Seeker" }, ""))
                 if (response.token != null && authPrefs.token == null) {
@@ -835,10 +829,35 @@ class StatsRepository(
 
     suspend fun getBalance(force: Boolean = false): Int {
         if (authPrefs.isGuestUser) {
-            // Award 50 coin welcome bonus to new guests (once only) — balance only, no history
+            // Welcome bonus once — balance + local guest history line
             if (!authPrefs.guestWelcomeAwarded) {
                 userStatsDao.updateKrishnaCoins(50)
                 authPrefs.guestWelcomeAwarded = true
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
+                if (!guestUid.isNullOrEmpty()) {
+                    CoinTransactionLogger.log(
+                        appContext,
+                        50,
+                        "Welcome bonus (guest)",
+                        source = "signup",
+                        userId = guestUid
+                    )
+                }
+            } else {
+                // Flag set but log empty (re-entry / race) — keep history usable
+                val guestUid = resolvedUserId() ?: authPrefs.userId
+                if (!guestUid.isNullOrEmpty() &&
+                    CoinTransactionLogger.getHistory(appContext, guestUid).isEmpty()
+                ) {
+                    val bal = coinBalance.value.coerceAtLeast(50)
+                    CoinTransactionLogger.log(
+                        appContext,
+                        50.coerceAtMost(bal),
+                        "Welcome bonus (guest)",
+                        source = "signup",
+                        userId = guestUid
+                    )
+                }
             }
             return coinBalance.value
         }

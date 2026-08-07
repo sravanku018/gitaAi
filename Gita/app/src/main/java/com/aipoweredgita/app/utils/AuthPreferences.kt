@@ -173,6 +173,8 @@ class AuthPreferences(context: Context) {
             putString(KEY_USER_ID, guestId)
             putString(KEY_LOGIN_METHOD, "guest")
             putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
+            // Notify MainScreen / UI that auth identity changed (guest entered)
+            putLong("auth_version", System.currentTimeMillis())
             commit()
         }
         // Remove any old auth token so guest requests are not authenticated as previous user
