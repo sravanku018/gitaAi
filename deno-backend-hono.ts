@@ -1379,8 +1379,8 @@ app.post("/coins/award", requireAuth, async (c) => {
     ? Number(userStats.rows[0].multiplier) || 1
     : 1;
   const coinsBeforeYoga = coins;
-  // Softened ladder supports 1.5 / 2.5 — floor after multiply
-  coins = Math.floor(coins * multiplier);
+  // Softened ladder (1.5 / 2.5): round to nearest coin (1×1.5 → 2, not 1)
+  coins = Math.max(0, Math.round(coins * multiplier));
 
   // Human-readable description for app + admin dashboard (not raw JSON metadata)
   let description = source.replace(/_/g, " ");
