@@ -210,8 +210,12 @@ if (response.success) {
                 Log.e(TAG, "Logout API error: ${e.message}")
             }
         }
+        val prevUid = authPrefs.userId
         authPrefs.clearLoginState()
         try {
+            // Drop coin history cache so next guest session never shows prior user txs
+            prevUid?.let { com.aipoweredgita.app.coin.CoinTransactionLogger.clear(context, it) }
+            com.aipoweredgita.app.coin.CoinTransactionLogger.clear(context, "")
             val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
             db.userStatsDao().updateUserId("")
             db.userStatsDao().updateProfile("", "")

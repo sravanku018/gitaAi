@@ -54,8 +54,8 @@ private val TilakRed     = Color(0xFFCC3311)   // danger / exit accent
 private val StarDust     = Color(0xFF6B5F8A)   // muted decorative
 
 /**
- * Brand logo for splash/exit: circular mask with soft edge.
- * [splash_logo] is square with light corners — Crop + slight zoom hides the square edge.
+ * Krishna brand mark for splash/exit: circular soft edge.
+ * Uses [R.drawable.krishna_icon] (requested Krishna image).
  */
 @Composable
 private fun BrandLogoMark(
@@ -70,34 +70,29 @@ private fun BrandLogoMark(
             .scale(scale)
             .shadow(elevation = 12.dp, shape = CircleShape, clip = false, ambientColor = GoldFlame.copy(alpha = 0.35f))
     ) {
-        // Soft outer halo (hides hard clip)
         Box(
             Modifier
                 .matchParentSize()
                 .background(GoldFlame.copy(alpha = 0.10f), CircleShape)
         )
-        // Dark disc under the art so white PNG corners never show
         Box(
             Modifier
-                .size(size * 0.92f)
+                .size(size * 0.94f)
                 .background(MidnightVeil, CircleShape)
-                .border(1.2.dp, GoldFlame.copy(alpha = 0.40f), CircleShape)
+                .border(1.5.dp, GoldFlame.copy(alpha = 0.45f), CircleShape)
         )
         Image(
-            painter = painterResource(id = R.drawable.splash_logo),
+            painter = painterResource(id = R.drawable.krishna_icon),
             contentDescription = stringResource(id = R.string.app_name),
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(size * 0.88f)
+                .size(size * 0.90f)
                 .clip(CircleShape)
-                // Zoom past light/white margins of the square asset
-                .scale(1.14f)
         )
-        // Thin inner highlight ring for a clean edge
         Box(
             Modifier
-                .size(size * 0.88f)
-                .border(0.8.dp, GoldGlow.copy(alpha = 0.22f), CircleShape)
+                .size(size * 0.90f)
+                .border(0.8.dp, GoldGlow.copy(alpha = 0.25f), CircleShape)
         )
     }
 }

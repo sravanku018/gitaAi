@@ -320,7 +320,8 @@ class ProfileViewModel @Inject constructor(
             }
 
             if (isGuest) {
-                _coinHistory.value = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
+                // Guests: no coin transaction history UI (local-only earns still update balance)
+                _coinHistory.value = emptyList()
                 return@launch
             }
 

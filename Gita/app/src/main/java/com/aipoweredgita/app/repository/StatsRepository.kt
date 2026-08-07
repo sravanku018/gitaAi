@@ -249,9 +249,9 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         val coins = if (isGuest) {
+            // Guest: balance only — no coin history rows
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
-                CoinTransactionLogger.log(appContext, result.totalCoins, "${result.breakdown} (guest)", source = "quiz_completion")
             }
             result.totalCoins
         } else {
@@ -344,7 +344,6 @@ class StatsRepository(
         if (isGuest) {
             if (serverMatchedCoins > 0) {
                 userStatsDao.addKrishnaCoins(serverMatchedCoins)
-                CoinTransactionLogger.log(appContext, serverMatchedCoins, "battle_quiz (guest)", source = "battle_quiz")
             }
         } else {
             if (serverMatchedCoins > 0 || score > 0) {
@@ -607,7 +606,6 @@ class StatsRepository(
 
         if (isGuest) {
             userStatsDao.addKrishnaCoins(chapterCoins)
-            CoinTransactionLogger.log(appContext, chapterCoins, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
         } else {
             ensureUserSynced()
 
@@ -813,11 +811,10 @@ class StatsRepository(
 
     suspend fun getBalance(force: Boolean = false): Int {
         if (authPrefs.isGuestUser) {
-            // Award 50 coin welcome bonus to new guests (once only)
+            // Award 50 coin welcome bonus to new guests (once only) — balance only, no history
             if (!authPrefs.guestWelcomeAwarded) {
                 userStatsDao.updateKrishnaCoins(50)
                 authPrefs.guestWelcomeAwarded = true
-                CoinTransactionLogger.log(appContext, 50, "Welcome bonus (guest)")
             }
             return coinBalance.value
         }
