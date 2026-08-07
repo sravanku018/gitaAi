@@ -1406,8 +1406,8 @@ app.post("/coins/award", requireAuth, async (c) => {
       : `Quiz (${quizType}): ${scoreQ} correct`;
   } else if (source === "battle_quiz" && metadata) {
     const scoreQ = Math.max(0, Math.floor(Number(metadata?.score ?? 0)));
-    // No coin amount in description — UI amount column already shows +N (avoids "+2 2 correct")
-    description = `Battle quiz: ${scoreQ} correct`;
+    // Short label only — amount column shows coins (no "1 correct")
+    description = `BQ`;
   } else if (source === "chapter_completion") {
     description = "Chapter completed";
   }

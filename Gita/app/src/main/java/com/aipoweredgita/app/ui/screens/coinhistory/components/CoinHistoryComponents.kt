@@ -76,13 +76,19 @@ private fun stripYogaMultiplierNoise(desc: String): String {
     s = s.replace(Regex("""\s*[×xX*]\s*[\d.]+\s*=\s*(\d+)"""), " = $1")
     s = s.replace(Regex("""\s*[×xX]\s*[\d.]+"""), "")
     s = s.replace(Regex("""\b\d+\s*\*\s*[\d.]+"""), "")
-    // "Battle quiz: 2 correct (+2)" → "Battle quiz: 2 correct" (amount column already has +2)
+    // Drop coin amounts in parens — amount column already shows +N
     s = s.replace(Regex("""\s*\(\s*\+\s*\d+\s*\)"""), "")
-    // "5base + 6acc = 11" is verbose for history — shorten to quiz-style when present
-    s = s.replace(Regex("""^\d+base\s*\+\s*\d+acc\s*=\s*\d+$"""), "Quiz reward")
+    // "Battle quiz: 1 correct" / "Quiz: 3 correct" → short title only (no "N correct")
+    s = s.replace(Regex("""(?i)\bbattle\s*quiz\s*:\s*\d+\s*correct\b.*"""), "BQ")
+    s = s.replace(Regex("""(?i)\bbattle\s*quiz\b"""), "BQ")
+    s = s.replace(Regex("""(?i)\bquiz\s*:\s*\d+\s*correct\b.*"""), "Quiz completed")
+    s = s.replace(Regex("""(?i):\s*\d+\s*correct\b"""), "")
+    // "5base + 6acc = 11" → short
+    s = s.replace(Regex("""^\d+base\s*\+\s*\d+acc\s*=\s*\d+$"""), "Quiz completed")
     s = s.replace(Regex("""\s{2,}"""), " ").trim()
     s = s.replace(Regex("""\(\s*\)"""), "").trim()
-    return s
+    s = s.trimEnd(':', ' ', '-')
+    return s.ifBlank { "Activity" }
 }
 
 /**
@@ -93,21 +99,16 @@ private fun humanizeJsonDescription(raw: String, source: String): String {
     return try {
         val obj = org.json.JSONObject(raw)
         when {
+            // Check battle before "quiz" — source "battle_quiz" contains "quiz"
+            source.contains("battle", ignoreCase = true) || obj.has("battleCoins") -> "BQ"
             source.contains("quiz", ignoreCase = true) || obj.has("score") -> {
                 val score = obj.optInt("score", -1)
                 val total = obj.optInt("totalQuestions", obj.optInt("questionsAnswered", -1))
                 val type = obj.optString("quizType", "").ifBlank { "quiz" }
                 when {
                     score >= 0 && total > 0 -> "Quiz ($type): $score/$total"
-                    score >= 0 -> "Quiz: $score correct"
                     else -> "Quiz completed"
                 }
-            }
-            source.contains("battle", ignoreCase = true) || obj.has("battleCoins") -> {
-                val coins = obj.optInt("battleCoins", -1)
-                val score = obj.optInt("score", -1)
-                if (score >= 0) "Battle quiz: $score correct"
-                else "Battle quiz"
             }
             else -> source.replace('_', ' ').replaceFirstChar { it.uppercase() }.ifBlank { "Earned coins" }
         }
@@ -310,7 +311,7 @@ fun CoinTransactionItem(
         src == "signup" && cleanDesc.contains("Guest", ignoreCase = true) -> "Guest welcome bonus"
         src == "signup" || src.contains("welcome") -> "Welcome bonus"
         src == "quiz_completion" || src == "quiz" -> "Quiz completed"
-        src == "battle_quiz" || src.contains("battle") -> "Battle Quiz"
+        src == "battle_quiz" || src.contains("battle") -> "BQ"
         src == "chapter_completion" || src.contains("chapter") -> "Chapter completed"
         isCheckinSource -> "Daily check-in"
         isShareSource -> "Daily share"
@@ -321,8 +322,12 @@ fun CoinTransactionItem(
         else -> if (isEarn) "Earned coins" else "Spent coins"
     }
 
-    // Admin/dashboard edits write description in Turso — always show it in the app.
-    val label = if (cleanDesc.isNotBlank()) cleanDesc else fallbackLabel
+    // Prefer short labels for battle; strip leftover "N correct" noise
+    val label = when {
+        src.contains("battle") -> "BQ"
+        cleanDesc.isNotBlank() -> cleanDesc
+        else -> fallbackLabel
+    }
     
     val icon = when {
         src == "signup" || src.contains("welcome") -> "🎉"

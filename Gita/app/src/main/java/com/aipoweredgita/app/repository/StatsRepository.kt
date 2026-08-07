@@ -363,7 +363,7 @@ class StatsRepository(
                 CoinTransactionLogger.log(
                     appContext,
                     serverMatchedCoins,
-                    "Battle quiz: $score correct",
+                    "BQ",
                     source = "battle_quiz",
                     userId = guestUid
                 )
