@@ -251,7 +251,9 @@ fun CoinTransactionItem(
     entry: CoinHistoryEntry,
     index: Int
 ) {
-    val isEarn = entry.isEarn
+    // Prefer amount sign if type is missing/wrong from older rows
+    val isEarn = entry.isEarn || (entry.amount > 0 && !entry.type.equals("SPEND", ignoreCase = true))
+    val displayAmount = kotlin.math.abs(if (entry.signedAmount != 0) entry.signedAmount else entry.amount)
     val alpha by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(300, delayMillis = (minOf(index, 25) * 40)),
@@ -375,9 +377,9 @@ fun CoinTransactionItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (isEarn) "+${kotlin.math.abs(entry.signedAmount)}" else "-${kotlin.math.abs(entry.signedAmount)}",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    if (isEarn) "+$displayAmount" else "-$displayAmount",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     color = amountColor
                 )
                 Text(dateStr, fontSize = 11.sp, color = subTextColor)

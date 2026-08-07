@@ -19,6 +19,8 @@ import org.json.JSONObject
 object CoinTransactionLogger {
     private const val PREFS_NAME = "coin_tracker"
     private const val KEY_LEGACY = "transactions"
+    /** Stable store for all guest sessions — guest UUIDs change, history must not vanish. */
+    private const val GUEST_STORE_UID = "GUEST_SESSION"
     private const val MAX = 200
     private const val TAG = "CoinTxLogger"
 
@@ -30,6 +32,23 @@ object CoinTransactionLogger {
         } catch (_: Exception) {
             ""
         }.ifEmpty { "anonymous" }
+    }
+
+    private fun isGuestContext(context: Context): Boolean {
+        return try {
+            AuthPreferences.getInstance(context).isGuestUser
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Map guest UUIDs / guest sessions onto one stable SharedPreferences key. */
+    private fun storageUid(context: Context, explicitUserId: String? = null): String {
+        val uid = resolveUserId(context, explicitUserId)
+        if (uid == GUEST_STORE_UID) return GUEST_STORE_UID
+        if (uid.startsWith("guest_")) return GUEST_STORE_UID
+        if (isGuestContext(context)) return GUEST_STORE_UID
+        return uid
     }
 
     private fun keyFor(userId: String): String = "tx_$userId"
@@ -58,10 +77,12 @@ object CoinTransactionLogger {
         val normSrc = normalizeSource(source, safeDesc)
         if (amount == 0 && normSrc != "checkin_daily" && normSrc != "share_daily") return
         synchronized(this) {
-            val uid = resolveUserId(context, userId)
+            val logicalUid = resolveUserId(context, userId)
+            val uid = storageUid(context, userId)
             val prefs = prefs(context)
             dropLegacySharedHistory(prefs)
             val key = keyFor(uid)
+            Log.d(TAG, "log amount=$amount src=$normSrc logical=$logicalUid store=$uid")
             val arr = readJson(prefs, key)
             val nowMs = System.currentTimeMillis()
             val dateStr = getEntryDateStr(nowMs)
@@ -75,8 +96,8 @@ object CoinTransactionLogger {
                         val objTs = obj.optLong("timestamp", 0L)
                         val objDateStr = getEntryDateStr(objTs)
                         val objNormSrc = normalizeSource(objSrc, objDesc)
-                        val objUser = obj.optString("user_id", uid)
-                        if (objUser == uid && objNormSrc == normSrc && objDateStr == dateStr) {
+                        // Same-day source dedupe within this storage bucket (guest uses stable key)
+                        if (objNormSrc == normSrc && objDateStr == dateStr) {
                             return
                         }
                     } catch (_: Exception) { }
@@ -85,7 +106,7 @@ object CoinTransactionLogger {
 
             val entry = JSONObject().apply {
                 put("id", id)
-                put("user_id", uid)
+                put("user_id", logicalUid)
                 if (!eventKey.isNullOrEmpty()) put("eventKey", eventKey)
                 put("amount", amount)
                 put("description", safeDesc)
@@ -209,7 +230,9 @@ object CoinTransactionLogger {
         userId: String? = null
     ) {
         synchronized(this) {
-            val uid = resolveUserId(context, userId)
+            val uid = storageUid(context, userId)
+            // Never pull server history into the guest bucket
+            if (uid == GUEST_STORE_UID) return
             val prefs = prefs(context)
             dropLegacySharedHistory(prefs)
             val key = keyFor(uid)
@@ -282,7 +305,8 @@ object CoinTransactionLogger {
         userId: String? = null
     ) {
         synchronized(this) {
-            val uid = resolveUserId(context, userId)
+            val uid = storageUid(context, userId)
+            if (uid == GUEST_STORE_UID) return
             val prefs = prefs(context)
             dropLegacySharedHistory(prefs)
             val key = keyFor(uid)
@@ -317,7 +341,8 @@ object CoinTransactionLogger {
     }
 
     fun getHistory(context: Context, userId: String? = null): List<CoinEntry> {
-        val uid = resolveUserId(context, userId)
+        val logicalUid = resolveUserId(context, userId)
+        val uid = storageUid(context, userId)
         val prefs = prefs(context)
         dropLegacySharedHistory(prefs)
         val rawArr = readJson(prefs, keyFor(uid))
@@ -325,11 +350,35 @@ object CoinTransactionLogger {
         for (i in 0 until rawArr.length()) {
             try {
                 val obj = rawArr.getJSONObject(i)
-                val objUser = obj.optString("user_id", uid)
-                // Strict filter: drop rows tagged for another user
-                if (objUser.isNotEmpty() && objUser != uid) continue
                 rawList.add(obj)
             } catch (_: JSONException) { }
+        }
+        // Recover orphaned guest UUID buckets (older builds wrote tx_guest_<uuid>)
+        if (uid == GUEST_STORE_UID) {
+            for (storedKey in prefs.all.keys) {
+                if (!storedKey.startsWith("tx_guest_")) continue
+                val orphan = readJson(prefs, storedKey)
+                for (i in 0 until orphan.length()) {
+                    try { rawList.add(orphan.getJSONObject(i)) } catch (_: JSONException) { }
+                }
+            }
+            // Also migrate into stable key if we found orphans and stable was empty
+            if (rawArr.length() == 0 && rawList.isNotEmpty()) {
+                synchronized(this) {
+                    val merged = JSONArray()
+                    rawList.forEach { merged.put(it) }
+                    prefs.edit().putString(keyFor(GUEST_STORE_UID), merged.toString()).commit()
+                    Log.i(TAG, "Migrated ${rawList.size} orphan guest txs → $GUEST_STORE_UID")
+                }
+            }
+        } else {
+            // Strict filter for signed-in: drop rows tagged for another user
+            val filtered = rawList.filter { obj ->
+                val objUser = obj.optString("user_id", logicalUid)
+                objUser.isEmpty() || objUser == logicalUid || objUser == uid
+            }
+            rawList.clear()
+            rawList.addAll(filtered)
         }
 
         val cleanList = deduplicateJsonEntries(rawList)
@@ -372,11 +421,42 @@ object CoinTransactionLogger {
 
     fun clear(context: Context, userId: String? = null) {
         synchronized(this) {
-            val uid = resolveUserId(context, userId)
+            val logical = resolveUserId(context, userId)
+            val uid = storageUid(context, userId)
             val prefs = prefs(context)
             dropLegacySharedHistory(prefs)
-            prefs.edit().remove(keyFor(uid)).commit()
+            val ed = prefs.edit().remove(keyFor(uid))
+            // Clearing a guest also wipes stable bucket + any orphan guest_* keys
+            if (uid == GUEST_STORE_UID || logical.startsWith("guest_") || isGuestContext(context)) {
+                ed.remove(keyFor(GUEST_STORE_UID))
+                for (storedKey in prefs.all.keys.toList()) {
+                    if (storedKey.startsWith("tx_guest_")) ed.remove(storedKey)
+                }
+            }
+            if (logical.isNotEmpty() && logical != uid) {
+                ed.remove(keyFor(logical))
+            }
+            ed.commit()
+            Log.d(TAG, "clear store=$uid logical=$logical")
         }
+    }
+
+    /** Ensure guest has at least a welcome line; returns true if anything was written. */
+    fun ensureGuestWelcome(context: Context, amount: Int = 50, userId: String? = null): Boolean {
+        val store = storageUid(context, userId)
+        if (store != GUEST_STORE_UID && !resolveUserId(context, userId).startsWith("guest_")) {
+            // Force guest store if caller knows this is guest
+            if (!isGuestContext(context)) return false
+        }
+        if (getHistory(context, userId).isNotEmpty()) return false
+        log(
+            context,
+            amount.coerceAtLeast(1),
+            "Welcome bonus (guest)",
+            source = "signup",
+            userId = userId ?: GUEST_STORE_UID
+        )
+        return true
     }
 
     private fun readJson(prefs: android.content.SharedPreferences, key: String): JSONArray {

@@ -314,58 +314,69 @@ class ProfileViewModel @Inject constructor(
             fun isGuestSignupNoise(entry: com.aipoweredgita.app.network.CoinHistoryEntry): Boolean =
                 entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true)
 
-            if (effectiveUid == null) {
+            // Guest without userId (corrupt prefs) — recover identity then continue
+            val uid = if (isGuest && effectiveUid == null) {
+                val gid = authPrefs.guestId?.takeIf { it.isNotEmpty() }
+                    ?: "guest_${java.util.UUID.randomUUID()}"
+                authPrefs.saveGuestState(gid)
+                gid
+            } else {
+                effectiveUid
+            }
+
+            if (uid == null) {
                 _coinHistory.value = emptyList()
                 return@launch
             }
 
             if (isGuest) {
-                // Guests: local-only history under this guest id (never hit server)
-                var local = buildLocalHistory(effectiveUid)
-                // Self-heal empty list (race at guest login, old APK that hid history, id mismatch)
+                // Guests: stable local bucket (GUEST_SESSION) — never hit server
+                try {
+                    statsRepository.getBalance(force = false)
+                } catch (_: Exception) { /* ignore */ }
+
+                com.aipoweredgita.app.coin.CoinTransactionLogger.ensureGuestWelcome(
+                    appContext,
+                    amount = 50,
+                    userId = uid
+                )
+                authPrefs.guestWelcomeAwarded = true
+
+                var local = buildLocalHistory(uid)
                 if (local.isEmpty()) {
-                    // getBalance may already seed welcome when flag/history are out of sync
-                    val roomCoins = try {
-                        statsRepository.getBalance(force = false)
-                    } catch (_: Exception) {
-                        try {
-                            statsRepository.coinBalance.value
-                        } catch (_: Exception) {
-                            0
-                        }
-                    }
-                    local = buildLocalHistory(effectiveUid)
-                    if (local.isEmpty()) {
-                        val welcomeAmt = when {
-                            roomCoins <= 0 -> 50
-                            roomCoins < 50 -> roomCoins
-                            else -> 50
-                        }
-                        com.aipoweredgita.app.coin.CoinTransactionLogger.log(
-                            appContext,
-                            welcomeAmt,
-                            "Welcome bonus (guest)",
+                    // Absolute fallback so UI never shows empty for an active guest
+                    val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.format(java.util.Date())
+                    local = listOf(
+                        com.aipoweredgita.app.network.CoinHistoryEntry(
+                            amount = 50,
+                            type = "EARN",
                             source = "signup",
-                            userId = effectiveUid
+                            description = "Welcome bonus (guest)",
+                            created_at = now
                         )
-                        authPrefs.guestWelcomeAwarded = true
-                        local = buildLocalHistory(effectiveUid)
-                        android.util.Log.i(
-                            "ProfileViewModel",
-                            "Guest history self-heal: uid=$effectiveUid welcome=$welcomeAmt roomCoins=$roomCoins size=${local.size}"
-                        )
-                    }
+                    )
+                    com.aipoweredgita.app.coin.CoinTransactionLogger.log(
+                        appContext,
+                        50,
+                        "Welcome bonus (guest)",
+                        source = "signup",
+                        userId = uid
+                    )
+                    android.util.Log.w("ProfileViewModel", "Guest history synthetic fallback uid=$uid")
                 }
+                android.util.Log.i("ProfileViewModel", "Guest history size=${local.size} uid=$uid")
                 _coinHistory.value = local
                 lastHistoryFetchMs = System.currentTimeMillis()
-                lastHistoryUid = effectiveUid
+                lastHistoryUid = uid
                 return@launch
             }
 
             // TTL: reuse last server-backed list when reopening history quickly
             val now = System.currentTimeMillis()
             if (!forceRefresh &&
-                effectiveUid == lastHistoryUid &&
+                uid == lastHistoryUid &&
                 _coinHistory.value.isNotEmpty() &&
                 now - lastHistoryFetchMs < HISTORY_TTL_MS
             ) {
@@ -376,18 +387,18 @@ class ProfileViewModel @Inject constructor(
             if (!token.isNullOrEmpty()) {
                 try {
                     val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
-                        effectiveUid, "Bearer $token", limit = HISTORY_LIMIT
+                        uid, "Bearer $token", limit = HISTORY_LIMIT
                     )
                     // Signed-in: server is the only history source of truth (no local+server double lines).
                     // Still cache server rows locally for offline display.
                     com.aipoweredgita.app.coin.CoinTransactionLogger.replaceWithServerHistory(
-                        appContext, serverHistory, effectiveUid
+                        appContext, serverHistory, uid
                     )
                     _coinHistory.value = serverHistory
                         .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
                         .filterNot(::isGuestSignupNoise)
                     lastHistoryFetchMs = now
-                    lastHistoryUid = effectiveUid
+                    lastHistoryUid = uid
                     return@launch
                 } catch (e: Exception) {
                     android.util.Log.e("ProfileViewModel", "Failed to fetch server coin history: ${e.message}")
@@ -395,7 +406,7 @@ class ProfileViewModel @Inject constructor(
             }
 
             // Offline fallback for signed-in: last cached server snapshot only
-            _coinHistory.value = buildLocalHistory(effectiveUid).filterNot(::isGuestSignupNoise)
+            _coinHistory.value = buildLocalHistory(uid).filterNot(::isGuestSignupNoise)
         }
     }
 

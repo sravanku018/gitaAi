@@ -50,11 +50,10 @@ class LoginViewModel @Inject constructor(
         }
 
         authPrefs.saveGuestState(guestId)
-        // Fresh empty bucket for this guest id
+        // Wipe stable guest bucket + any orphan tx_guest_* keys, then re-seed
         com.aipoweredgita.app.coin.CoinTransactionLogger.clear(appContext, guestId)
 
-        // Always seed welcome for this session (do not gate on guestWelcomeAwarded —
-        // that flag survived re-entry and left history empty after clear).
+        // Always seed welcome into stable GUEST_SESSION store (UUID no longer matters)
         authPrefs.guestWelcomeAwarded = true
         com.aipoweredgita.app.coin.CoinTransactionLogger.log(
             appContext,
@@ -62,6 +61,10 @@ class LoginViewModel @Inject constructor(
             "Welcome bonus (guest)",
             source = "signup",
             userId = guestId
+        )
+        // Verify write landed (defensive)
+        com.aipoweredgita.app.coin.CoinTransactionLogger.ensureGuestWelcome(
+            appContext, amount = 50, userId = guestId
         )
 
         // Room balance / profile can be async; history is already on disk under guestId
