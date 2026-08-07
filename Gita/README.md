@@ -168,7 +168,8 @@ Test stack: JUnit, MockK, Robolectric, OkHttp MockWebServer
 
 | Version | Code | Highlights |
 |---------|------|------------|
-| 2.10.0 | 30 | Current release — Turso-friendly balance TTL, history limits, server schema gate |
+| 2.11.0 | 31 | Current release — aligned rewards, server-only history, yoga 1/2/2/3/3
+| 2.10.0 | 30 | Turso TTL/history limits — Turso-friendly balance TTL, history limits, server schema gate |
 | 1.8.0 | 6 | Earlier release |
 | 1.7.x | 5 | Voice Studio improvements |
 | 1.6.x | 4 | Quiz enhancements |

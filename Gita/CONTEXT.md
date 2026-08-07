@@ -1,12 +1,12 @@
 # Project Context & Session Status
 
-- **Current Task**: Version bump to v2.10.0 (versionCode 30); Turso cost cuts (schema gate, history limits, balance/history TTL).
+- **Current Task**: Version bump to v2.11.0 (versionCode 31); reward parity, server-only coin history, yoga mult 1/2/2/3/3.
 
 - **Key Decisions**:
-  - Server: schema_meta gate skips full initTables on cold start; coin history default 100.
-  - App: 10 min balance TTL; history limit 100 with force refresh on pull-to-refresh.
-  - Keep server-truth coins; no pure local coin DB.
+  - Server + app share quiz/battle/chapter formulas; yoga multipliers 1/2/2/3/3 integers.
+  - Signed-in coin history is server-only (no double local+server logs).
+  - Turso: schema gate, admin verify (not clean-duplicates on unlock).
 
 - **Next Steps**:
-  - Confirm Deno deploy has SCHEMA_VERSION / history default 100 (raja21 no-limit ≤100).
-  - Ship 2.10.0 APK; admin secrets / batch SQL later.
+  - Redeploy deno-backend-hono.ts; ship 2.11.0 APK.
+  - Optional: push gitaAi main to origin.
