@@ -101,16 +101,16 @@ async function initTables() {
         name TEXT NOT NULL,
         min_coins INTEGER NOT NULL,
         max_coins INTEGER NOT NULL,
-        multiplier REAL DEFAULT 1
+        multiplier INTEGER DEFAULT 1
       )`
     }).catch(() => {});
     const yogaCount = await db.execute({ sql: "SELECT COUNT(*) as cnt FROM yoga_levels" });
     if ((yogaCount.rows[0].cnt as number) === 0) {
-      // Softened ladder: 1 / 1.5 / 2 / 2.5 / 3 (was 1–5 integer)
+      // Integer ladder only (no 1.5/2.5): 1 / 2 / 2 / 3 / 3
       await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (1, 'Karma Yoga', 0, 999, 1)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (2, 'Bhakti Yoga', 1000, 2999, 1.5)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (2, 'Bhakti Yoga', 1000, 2999, 2)" });
       await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (3, 'Jnana Yoga', 3000, 5999, 2)" });
-      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (4, 'Dhyana Yoga', 6000, 8999, 2.5)" });
+      await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (4, 'Dhyana Yoga', 6000, 8999, 3)" });
       await db.execute({ sql: "INSERT OR IGNORE INTO yoga_levels (level, name, min_coins, max_coins, multiplier) VALUES (5, 'Raja Yoga', 9000, 99999, 3)" });
     }
 
