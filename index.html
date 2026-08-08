@@ -1186,7 +1186,7 @@
           SELECT COALESCE(u.user_id, us.user_id) as user_id,
                  COALESCE(u.name, 'Guest') as name,
                  COALESCE(u.email, COALESCE(us.user_id, 'guest') || '@gita.com') as email,
-                 COALESCE(u.is_guest, 1) as is_guest,
+                 CASE WHEN u.is_guest IS NULL THEN 1 WHEN u.is_guest::text IN ('1','true','t','yes') THEN 1 ELSE 0 END as is_guest,
                  COALESCE(to_char(u.created_at, 'YYYY-MM-DD'), us.last_activity_date) as created_at,
                  us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
                  cs.current_day as checkin_day, cs.current_week as checkin_week,
