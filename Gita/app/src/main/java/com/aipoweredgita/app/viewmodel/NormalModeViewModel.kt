@@ -111,7 +111,10 @@ class NormalModeViewModel @Inject constructor(
                     }
                 }
         }
-        loadVerse(1, 1)
+        val prefs = application.getSharedPreferences("reading_prefs", android.content.Context.MODE_PRIVATE)
+        val savedChapter = prefs.getInt("last_read_chapter", 1)
+        val savedVerse = prefs.getInt("last_read_verse", 1)
+        loadVerse(savedChapter, savedVerse)
     }
 
     private fun computeChapterCombinedGroups(chapter: Int) {
@@ -145,6 +148,18 @@ class NormalModeViewModel @Inject constructor(
         viewModelScope.launch {
             lastRequestedChapter = chapter
             lastRequestedVerse = verse
+
+            // Save last read position for auto-resuming across app restarts
+            try {
+                val prefs = application.getSharedPreferences("reading_prefs", android.content.Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putInt("last_read_chapter", chapter)
+                    .putInt("last_read_verse", verse)
+                    .apply()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to save last read position: ${e.message}")
+            }
+
             _uiState.update {
                 it.copy(
                     isLoading = true,
