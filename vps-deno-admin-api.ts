@@ -308,7 +308,7 @@ app.get("/admin/users", async (c) => {
         FROM users u
         LEFT JOIN user_stats us ON us.user_id = u.user_id
         LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
-        ORDER BY u.created_at DESC NULLS LAST, u.user_id DESC NULLS LAST
+        ORDER BY u.created_at DESC NULLS LAST, us.last_activity_date DESC NULLS LAST, u.user_id DESC
         LIMIT ?
       `,
       args: [limit],
