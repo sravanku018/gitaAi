@@ -120,7 +120,7 @@ object YogaLevelManager {
             2 -> Triple("Bhakti Yoga", "Path of Devotion", "🔥")
             3 -> Triple("Jnana Yoga", "Path of Knowledge", "🧠")
             4 -> Triple("Dhyana Yoga", "Path of Meditation", "🌬️")
-            5 -> Triple("Moksha Yoga", "Ultimate Liberation", "🌺")
+            5 -> Triple("Raja Yoga", "Ultimate Mastery", "🌺")
             else -> Triple("Yoga Path", "Spiritual Journey", "✨")
         }
     }
