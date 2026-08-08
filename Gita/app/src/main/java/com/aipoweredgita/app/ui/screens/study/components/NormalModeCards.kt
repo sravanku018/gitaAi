@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,7 +35,9 @@ fun ChapterVerseHeroCard(
     verse: Int,
     combinedNos: List<Int>,
     selectedLanguage: String = "TE",
+    isSpeaking: Boolean = false,
     onLanguageToggle: (String) -> Unit = {},
+    onTtsToggle: () -> Unit = {},
     onChapterTap: () -> Unit,
     onVerseTap: () -> Unit
 ) {
@@ -88,46 +92,76 @@ fun ChapterVerseHeroCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Language Toggle Pill: [ TEL | ENG ]
                 Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFFFF3E0))
-                        .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFFFB74D), CircleShape)
-                        .padding(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val isTe = selectedLanguage == "TE"
-                    Box(
+                    // Audio TTS Button
+                    Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
-                            .clickable { onLanguageToggle("TE") }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
+                            .background(if (isSpeaking) (if (isDark) Color(0xFFFF9800) else Color(0xFFE65100)) else (if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFFFF3E0)))
+                            .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFFFB74D), CircleShape)
+                            .clickable(onClick = onTtsToggle)
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        Icon(
+                            imageVector = if (isSpeaking) Icons.Filled.Pause else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Read Aloud",
+                            tint = if (isSpeaking) Color.White else (if (isDark) GoldSpark else Color(0xFFD84315)),
+                            modifier = Modifier.size(14.dp)
+                        )
                         Text(
-                            text = "TEL",
+                            text = if (isSpeaking) "Pause" else "Listen",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
+                            color = if (isSpeaking) Color.White else (if (isDark) Color.White.copy(0.9f) else Color(0xFF5D4037))
                         )
                     }
 
-                    Box(
+                    // Language Toggle Pill: [ TEL | ENG ]
+                    Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (!isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
-                            .clickable { onLanguageToggle("EN") }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
+                            .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFFFFF3E0))
+                            .border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFFFB74D), CircleShape)
+                            .padding(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "ENG",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (!isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
-                        )
+                        val isTe = selectedLanguage == "TE"
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(if (isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
+                                .clickable { onLanguageToggle("TE") }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "TEL",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(if (!isTe) (if (isDark) GoldSpark else Color(0xFFD84315)) else Color.Transparent)
+                                .clickable { onLanguageToggle("EN") }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "ENG",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (!isTe) (if (isDark) Color.Black else Color.White) else (if (isDark) Color.White.copy(0.7f) else Color(0xFF5D4037))
+                            )
+                        }
                     }
                 }
             }

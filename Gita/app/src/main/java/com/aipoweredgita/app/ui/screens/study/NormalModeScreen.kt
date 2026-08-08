@@ -37,6 +37,45 @@ fun NormalModeScreen(
     var showVerseDialog   by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    val voiceManager = remember(context) { com.aipoweredgita.app.utils.VoiceManager(context) }
+    var isSpeaking by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceManager.stopSpeaking()
+        }
+    }
+
+    LaunchedEffect(state.currentChapter, state.currentVerse) {
+        voiceManager.stopSpeaking()
+        isSpeaking = false
+    }
+
+    fun toggleTts(verse: com.aipoweredgita.app.data.GitaVerse) {
+        if (isSpeaking) {
+            voiceManager.stopSpeaking()
+            isSpeaking = false
+        } else {
+            val locale = if (state.selectedLanguage == "TE") java.util.Locale.forLanguageTag("te-IN") else java.util.Locale.US
+            voiceManager.setPreferredLocale(locale)
+
+            val fullText = buildString {
+                append("Chapter ${verse.chapterNo}, Verse ${verse.verseNo}. ")
+                val cleanSloka = sanitizeText(verse.verse)
+                if (cleanSloka.isNotBlank()) append("$cleanSloka. ")
+                val cleanMeaning = sanitizeText(verse.meaning)
+                if (cleanMeaning.isNotBlank()) append("Meaning: $cleanMeaning. ")
+                val cleanExplanation = sanitizeText(verse.explanation)
+                if (cleanExplanation.isNotBlank()) append("Commentary: $cleanExplanation.")
+            }
+
+            isSpeaking = true
+            voiceManager.speak(fullText) {
+                isSpeaking = false
+            }
+        }
+    }
+
     LaunchedEffect(viewModel.sideEffect) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
@@ -124,7 +163,13 @@ fun NormalModeScreen(
                             verse            = verse.verseNo,
                             combinedNos      = state.combinedVerseNos,
                             selectedLanguage = state.selectedLanguage,
-                            onLanguageToggle = { lang -> viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang)) },
+                            isSpeaking       = isSpeaking,
+                            onLanguageToggle = { lang ->
+                                voiceManager.stopSpeaking()
+                                isSpeaking = false
+                                viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang))
+                            },
+                            onTtsToggle      = { toggleTts(verse) },
                             onChapterTap     = { showChapterDialog = true },
                             onVerseTap       = { showVerseDialog = true }
                         )
