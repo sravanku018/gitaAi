@@ -1163,15 +1163,15 @@
     async function fetchAllUsers() {
       try {
         const users = await queryTurso(`
-          SELECT u.user_id, u.name, u.email, u.is_guest,
+          SELECT u.user_id, u.name, u.email, u.is_guest, u.created_at,
                  us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
                  cs.current_day as checkin_day, cs.current_week as checkin_week,
                  cs.share_day, cs.share_week
           FROM users u
           LEFT JOIN user_stats us ON us.user_id = u.user_id
           LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
-          ORDER BY us.days_active DESC, us.current_streak DESC, us.krishna_coins DESC
-          LIMIT 100
+          ORDER BY u.created_at DESC NULLS LAST, u.id DESC NULLS LAST
+          LIMIT 500
         `);
 
         if (Array.isArray(users)) {
