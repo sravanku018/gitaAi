@@ -286,8 +286,8 @@
               <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
             </div>
             <div class="active-filter-row">
-              <span class="filter-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
-              <span class="filter-chip active-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
+              <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
+              <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
               <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
               <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
               <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
@@ -783,7 +783,7 @@
 
     let currentView = "roster";
     let allUsersCache = [];
-    let rosterFilter = 'active';
+    let rosterFilter = 'all';
     const dirtySet = new Set();
     const newSet   = new Set();
     let activeDossierUser = null;
