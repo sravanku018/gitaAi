@@ -1187,14 +1187,14 @@
                  COALESCE(u.name, 'Guest') as name,
                  COALESCE(u.email, COALESCE(us.user_id, 'guest') || '@gita.com') as email,
                  COALESCE(u.is_guest, 1) as is_guest,
-                 COALESCE(u.created_at, us.created_at) as created_at,
+                 COALESCE(u.created_at, us.last_activity_date) as created_at,
                  us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
                  cs.current_day as checkin_day, cs.current_week as checkin_week,
                  cs.share_day, cs.share_week
           FROM users u
           FULL OUTER JOIN user_stats us ON us.user_id = u.user_id
           LEFT JOIN checkin_streaks cs ON cs.user_id = COALESCE(u.user_id, us.user_id)
-          ORDER BY COALESCE(u.created_at, us.created_at) DESC NULLS LAST, us.last_activity_date DESC NULLS LAST, user_id DESC
+          ORDER BY COALESCE(u.created_at, us.last_activity_date) DESC NULLS LAST, us.last_activity_date DESC NULLS LAST, user_id DESC
           LIMIT 500
         `);
 
