@@ -947,7 +947,7 @@
       return String(v);
     }
 
-    function isActiveProfile(u) { return Number(u.days_active || 0) >= 2; }
+    function isActiveProfile(u) { return Number(u.days_active || 0) >= 1; }
     function isNewProfile(u)    { return newSet.has(u.user_id); }
     function isEditedProfile(u) { return dirtySet.has(u.user_id); }
 
