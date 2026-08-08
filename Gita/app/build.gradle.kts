@@ -19,13 +19,13 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 29
-        versionName = "2.9.0"
+        versionCode = 43
+        versionName = "2.12.2"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "COIN_API_BASE_URL", "\"https://prime-gorilla-49.sravanku018.deno.net/\"")
+        buildConfigField("String", "COIN_API_BASE_URL", "\"https://flaky-kestrel-5072.sravanku018.deno.net/\"")
         buildConfigField("String", "VOICE_PROXY_URL", "\"https://noisy-sheep-76.sravanku018.deno.net/\"")
 
         javaCompileOptions {

@@ -46,13 +46,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
-import com.aipoweredgita.app.utils.AuthPreferences
-import com.aipoweredgita.app.viewmodel.LoginViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 
-// Sacred color palette
+// Sacred color palette (dark baseline; light mode overrides via LoginPalette)
 private val DeepBrown = Color(0xFF1A0F00)
 private val GoldPrimary = Color(0xFFD4A017)
 private val GoldLight = Color(0xFFF5C842)
@@ -62,20 +59,89 @@ private val GoldSubtle = Color(0xFF7A5A20)
 private val GoldDim = Color(0xFF5A3E10)
 private val GoldAccent = Color(0xFFA07840)
 
+/** Theme-aware login colors — follows app light/dark (rememberThemeIsDark). */
+data class LoginPalette(
+    val isDark: Boolean,
+    val background: Color,
+    val title: Color,
+    val muted: Color,
+    val accent: Color,
+    val gold: Color,
+    val goldBright: Color,
+    val fieldBg: Color,
+    val fieldText: Color,
+    val fieldPlaceholder: Color,
+    val iconTint: Color,
+    val cardBg: Color,
+    val cardBorder: Color,
+    val toggleBg: Color,
+    val onGold: Color,
+    val subtle: Color,
+    val dim: Color,
+)
+
+@Composable
+fun rememberLoginPalette(): LoginPalette {
+    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
+    val scheme = MaterialTheme.colorScheme
+    return if (isDark) {
+        LoginPalette(
+            isDark = true,
+            background = DeepBrown,
+            title = GoldLight,
+            muted = GoldMuted,
+            accent = GoldAccent,
+            gold = GoldPrimary,
+            goldBright = GoldLight,
+            fieldBg = GoldPrimary.copy(alpha = 0.07f),
+            fieldText = GoldLight,
+            fieldPlaceholder = GoldDim,
+            iconTint = GoldSubtle,
+            cardBg = Color.White.copy(alpha = 0.04f),
+            cardBorder = GoldPrimary.copy(alpha = 0.3f),
+            toggleBg = Color.White.copy(alpha = 0.03f),
+            onGold = DeepBrown,
+            subtle = GoldSubtle,
+            dim = GoldDim,
+        )
+    } else {
+        LoginPalette(
+            isDark = false,
+            background = scheme.background,
+            title = Color(0xFF5D4037),
+            muted = scheme.onSurfaceVariant,
+            accent = Saffron,
+            gold = Saffron,
+            goldBright = Color(0xFFD84315),
+            fieldBg = scheme.surfaceVariant.copy(alpha = 0.65f),
+            fieldText = scheme.onSurface,
+            fieldPlaceholder = scheme.onSurfaceVariant,
+            iconTint = scheme.onSurfaceVariant,
+            cardBg = scheme.surface,
+            cardBorder = Saffron.copy(alpha = 0.35f),
+            toggleBg = scheme.surfaceVariant.copy(alpha = 0.4f),
+            onGold = Color.White,
+            subtle = scheme.onSurfaceVariant,
+            dim = scheme.onSurfaceVariant.copy(alpha = 0.75f),
+        )
+    }
+}
+
 @Composable
 fun TabButton(
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    palette: LoginPalette = rememberLoginPalette(),
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) GoldPrimary.copy(alpha = 0.15f) else Color.Transparent,
+        targetValue = if (isSelected) palette.gold.copy(alpha = 0.15f) else Color.Transparent,
         animationSpec = tween(200),
         label = "tab_bg"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) GoldLight else GoldSubtle,
+        targetValue = if (isSelected) palette.goldBright else palette.subtle,
         animationSpec = tween(200),
         label = "tab_text"
     )
@@ -103,7 +169,8 @@ fun SacredInput(
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false,
-    leadingIcon: @Composable (() -> Unit)? = null
+    leadingIcon: @Composable (() -> Unit)? = null,
+    palette: LoginPalette = rememberLoginPalette(),
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -111,8 +178,8 @@ fun SacredInput(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(GoldPrimary.copy(alpha = 0.07f))
-            .border(0.5.dp, GoldPrimary.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+            .background(palette.fieldBg)
+            .border(0.5.dp, palette.gold.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
@@ -128,10 +195,10 @@ fun SacredInput(
                 onValueChange = onValueChange,
                 modifier = Modifier.weight(1f),
                 textStyle = TextStyle(
-                    color = GoldLight,
+                    color = palette.fieldText,
                     fontSize = 14.sp
                 ),
-                cursorBrush = SolidColor(GoldLight),
+                cursorBrush = SolidColor(palette.goldBright),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = keyboardType,
                     imeAction = ImeAction.Done
@@ -149,7 +216,7 @@ fun SacredInput(
                         if (value.isEmpty()) {
                             Text(
                                 text = placeholder,
-                                color = GoldDim,
+                                color = palette.fieldPlaceholder,
                                 fontSize = 14.sp
                             )
                         }
@@ -167,7 +234,7 @@ fun SacredInput(
                         imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         contentDescription = if (passwordVisible) "Hide password" else "Show password",
                         modifier = Modifier.size(16.dp),
-                        tint = GoldSubtle
+                        tint = palette.iconTint
                     )
                 }
             }

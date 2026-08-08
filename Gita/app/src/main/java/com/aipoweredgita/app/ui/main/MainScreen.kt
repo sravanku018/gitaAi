@@ -206,7 +206,7 @@ fun MainScreen(
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                             Text(
-                                text = "Śrīmad Bhagavad Gītā",
+                                text = "Bhagavad Gita AI",
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,

@@ -2,10 +2,13 @@ package com.aipoweredgita.app.ui.screens.auth
 
 import androidx.compose.animation.core.*
 import com.aipoweredgita.app.ui.LocalUiConfig
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.AbsoluteCutCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -19,16 +22,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.R
@@ -47,6 +53,62 @@ private val GoldGlow     = Color(0xFFFFE99A)   // near-white gold — accent hig
 private val SaffronAura  = Color(0xFFFF7B1C)   // lotus / aura orange
 private val TilakRed     = Color(0xFFCC3311)   // danger / exit accent
 private val StarDust     = Color(0xFF6B5F8A)   // muted decorative
+
+/**
+ * Krishna brand mark for splash/exit: cut-corner frame (not circle).
+ * Uses [R.drawable.krishna_icon] with AbsoluteCutCornerShape soft edges.
+ */
+@Composable
+private fun BrandLogoMark(
+    size: Dp,
+    scale: Float = 1f,
+    modifier: Modifier = Modifier,
+) {
+    // Diagonal cut corners — cleaner than a hard square, not a full circle
+    val cut = AbsoluteCutCornerShape(percent = 18)
+    val outerCut = AbsoluteCutCornerShape(percent = 16)
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(size)
+            .scale(scale)
+            .shadow(
+                elevation = 14.dp,
+                shape = outerCut,
+                clip = false,
+                ambientColor = GoldFlame.copy(alpha = 0.40f),
+                spotColor = GoldFlame.copy(alpha = 0.25f),
+            )
+    ) {
+        // Soft outer halo
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(GoldFlame.copy(alpha = 0.12f), outerCut)
+        )
+        // Dark underlay so light pixels at image edges are masked by the cut frame
+        Box(
+            Modifier
+                .size(size * 0.94f)
+                .background(MidnightVeil, cut)
+                .border(1.6.dp, GoldFlame.copy(alpha = 0.50f), cut)
+        )
+        Image(
+            painter = painterResource(id = R.drawable.krishna_icon),
+            contentDescription = stringResource(id = R.string.app_name),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(size * 0.90f)
+                .clip(cut)
+        )
+        // Inner highlight along the cut edges
+        Box(
+            Modifier
+                .size(size * 0.90f)
+                .border(1.dp, GoldGlow.copy(alpha = 0.28f), cut)
+        )
+    }
+}
 
 // ─── Gita Quote Pool ──────────────────────────────────────────────────────────
 private val gitaQuotes = listOf(
@@ -271,7 +333,7 @@ fun SplashScreen(
     val versionText = remember(context) {
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val name = packageInfo.versionName ?: "2.2.0"
+            val name = packageInfo.versionName ?: "2.12.2"
             val code = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode
             } else {
@@ -280,7 +342,7 @@ fun SplashScreen(
             }
             "v$name · Build $code"
         } catch (e: java.lang.Exception) {
-            "v2.7.0 · Build 27"
+            "v2.12.2 · Build 43"
         }
     }
 
@@ -360,35 +422,11 @@ fun SplashScreen(
             verticalArrangement    = Arrangement.Center
         ) {
 
-            // Logo in glassy circle
-            Box(contentAlignment = Alignment.Center) {
-                // Outer frosted ring
-                Surface(
-                    modifier = Modifier.size(148.dp),
-                    shape    = CircleShape,
-                    color    = GoldFlame.copy(alpha = 0.06f),
-                    border   = androidx.compose.foundation.BorderStroke(
-                        0.8.dp, GoldFlame.copy(alpha = 0.30f)
-                    )
-                ) {}
-                // Inner glassy disc
-                Surface(
-                    modifier = Modifier.size(120.dp),
-                    shape    = CircleShape,
-                    color    = GoldFlame.copy(alpha = 0.04f),
-                    border   = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, GoldGlow.copy(alpha = 0.20f)
-                    )
-                ) {}
-                // Logo image
-                Image(
-                    painter            = painterResource(id = R.drawable.krishna_icon),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    modifier           = Modifier
-                        .size(88.dp)
-                        .scale(logoScale)
-                )
-            }
+            // Logo — soft circular edge (no square/white PNG corners)
+            BrandLogoMark(
+                size = 128.dp,
+                scale = logoScale,
+            )
 
             Spacer(modifier = Modifier.height(36.dp))
 
@@ -404,15 +442,23 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // App title
+            // App title — Bhagavad Gita AI (from strings.xml)
             Text(
                 text          = stringResource(id = R.string.app_name),
-                style         = MaterialTheme.typography.headlineLarge.copy(
+                style         = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 3.sp
+                    letterSpacing = 1.5.sp
                 ),
                 color         = GoldFlame,
                 textAlign     = TextAlign.Center
+            )
+            Text(
+                text          = "Learn · Quiz · AI Insights",
+                style         = MaterialTheme.typography.labelMedium,
+                color         = GoldAsh,
+                letterSpacing = 1.2.sp,
+                textAlign     = TextAlign.Center,
+                modifier      = Modifier.padding(top = 6.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -537,14 +583,7 @@ fun ExitScreen(
                 horizontalAlignment    = Alignment.CenterHorizontally,
                 verticalArrangement    = Arrangement.spacedBy(0.dp)
             ) {
-                // Logo
-                Image(
-                    painter            = painterResource(id = R.drawable.krishna_icon),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    modifier           = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                )
+                BrandLogoMark(size = 76.dp)
 
                 Spacer(modifier = Modifier.height(20.dp))
 

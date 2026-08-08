@@ -98,6 +98,13 @@ class SyncWorker(
             return Result.success()
         }
 
+        val authToken = authPrefs.token
+        if (authToken.isNullOrEmpty()) {
+            Log.e(TAG, "No auth token — cannot sync protected coin endpoints; will retry later")
+            return Result.retry()
+        }
+        val bearer = "Bearer $authToken"
+
         Log.d(TAG, "Found ${events.size} pending sync events for user")
         val gson = Gson()
 
@@ -138,7 +145,8 @@ class SyncWorker(
                                 client_date = clientDate,
                                 country_code = countryCode,
                                 timezone = userTz
-                            )
+                            ),
+                            bearer
                         )
                         
                         try {
@@ -155,7 +163,8 @@ class SyncWorker(
                                     country_code = countryCode,
                                     attempt_id = attemptId,
                                     language = language
-                                )
+                                ),
+                                bearer
                             )
                             Log.d(TAG, "Quiz attempt recorded to server successfully")
                         } catch (e: Exception) {
@@ -163,7 +172,7 @@ class SyncWorker(
                         }
 
                         userStatsDao.updateKrishnaCoins(response.total_coins)
-                        Log.d(TAG, "Quiz sync success. New server balance: ${response.total_coins}")
+                        Log.d(TAG, "Quiz sync success. awarded=${response.awarded} total=${response.total_coins}")
                     }
                     "CHAPTER" -> {
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
@@ -179,7 +188,8 @@ class SyncWorker(
                                 client_date = clientDate,
                                 country_code = countryCode,
                                 timezone = userTz
-                            )
+                            ),
+                            bearer
                         )
                         userStatsDao.updateKrishnaCoins(response.total_coins)
                         Log.d(TAG, "Chapter sync success. New server balance: ${response.total_coins}")
@@ -212,10 +222,11 @@ class SyncWorker(
                                 client_date = clientDate,
                                 country_code = countryCode,
                                 timezone = userTz
-                            )
+                            ),
+                            bearer
                         )
                         userStatsDao.updateKrishnaCoins(response.total_coins)
-                        Log.d(TAG, "Battle sync success. New server balance: ${response.total_coins}")
+                        Log.d(TAG, "Battle sync success. awarded=${response.awarded} total=${response.total_coins}")
                     }
                     "SPEND" -> {
                         val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
@@ -233,7 +244,8 @@ class SyncWorker(
                                 client_date = clientDate,
                                 country_code = countryCode,
                                 timezone = userTz
-                            )
+                            ),
+                            bearer
                         )
                         
                         if (response.duplicate == true) {
@@ -258,7 +270,7 @@ class SyncWorker(
                             requestMap["client_date"] = clientDate
                         }
                         
-                        val response = CoinApi.retrofitService.checkin(requestMap)
+                        val response = CoinApi.retrofitService.checkin(requestMap, bearer)
                         if (response.duplicate == true) {
                             Log.w(TAG, "Checkin sync: Duplicate detected on server")
                         } else {
@@ -295,7 +307,8 @@ class SyncWorker(
                                 country_code = countryCode,
                                 timezone = userTz,
                                 idempotency_key = event.idempotencyKey
-                            )
+                            ),
+                            bearer
                         )
                         if (response.duplicate == true) {
                             Log.w(TAG, "Share sync: Duplicate detected on server")
@@ -415,7 +428,7 @@ class SyncWorker(
         
         // TOP-TO-BOTTOM SYNC: Fetch authoritative state from server after all offline events are processed
         Log.d(TAG, "Fetching latest authoritative state from server")
-        statsRepository.refreshUserState(currentUserId)
+        statsRepository.refreshUserState(currentUserId, force = true)
         
         return Result.success()
     }

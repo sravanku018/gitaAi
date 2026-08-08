@@ -5,6 +5,7 @@ import android.util.Log
 import com.aipoweredgita.app.coin.CoinRewardEngine
 import com.aipoweredgita.app.ui.components.YogaLevelManager
 import com.aipoweredgita.app.coin.CoinTransactionLogger
+import com.aipoweredgita.app.coin.VoiceCoinPricing
 import com.aipoweredgita.app.coin.DailyRewardsTracker
 import com.aipoweredgita.app.database.DailyActivityDao
 import com.aipoweredgita.app.database.GitaDatabase
@@ -50,9 +51,23 @@ class StatsRepository(
     private val authPrefs by lazy { AuthPreferences.getInstance(appContext) }
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /** Balance network TTL — skip resume/MainScreen spam within window. */
+    @Volatile private var lastBalanceFetchMs: Long = 0L
+    @Volatile private var lastBalanceUid: String? = null
+
+    companion object {
+        private const val BALANCE_TTL_MS = 10 * 60 * 1000L // 10 minutes
+    }
+
     val coinBalance: StateFlow<Int> = userStatsDao.getUserStats()
         .map { it?.krishnaCoins ?: 0 }
         .stateIn(coroutineScope, SharingStarted.Eagerly, 0)
+
+    /** Call after earn/spend/login so next pull is not TTL-skipped. */
+    fun invalidateBalanceCache() {
+        lastBalanceFetchMs = 0L
+        lastBalanceUid = null
+    }
 
     fun cancel() {
         coroutineScope.cancel()
@@ -93,9 +108,19 @@ class StatsRepository(
     /**
      * Unified sync function that acts as the single source of truth for pulling state from the server.
      * Uses a staleness guard (serverUpdatedAt) to prevent slow background syncs from clobbering fresh optimistic updates.
+     * @param force when false, skips network if a successful pull ran within [BALANCE_TTL_MS] for same user.
      */
-    suspend fun refreshUserState(uid: String) {
+    suspend fun refreshUserState(uid: String, force: Boolean = false) {
         val token = authPrefs.token ?: return
+        val now = System.currentTimeMillis()
+        if (!force &&
+            uid == lastBalanceUid &&
+            lastBalanceFetchMs > 0L &&
+            now - lastBalanceFetchMs < BALANCE_TTL_MS
+        ) {
+            Log.d("Sync", "refreshUserState skipped (TTL ${now - lastBalanceFetchMs}ms)")
+            return
+        }
         try {
             val balance = CoinApi.retrofitService.getBalance(uid, "Bearer $token")
             var currentStats = userStatsDao.getUserStatsOnce() ?: com.aipoweredgita.app.database.UserStats(id = 1, userId = uid)
@@ -119,15 +144,23 @@ class StatsRepository(
             val updatedStats = balance.updateEntity(currentStats, uid)
             userStatsDao.insertStats(updatedStats) // Upsert
 
-            // Sync daily UI trackers from server balance
+            // Sync daily UI trackers from server (day 0 = never checked in → day 1 clickable)
             val tracker = DailyRewardsTracker.getInstance(appContext)
-            if (balance.checkin_day > 0) {
-                tracker.syncWithServer(balance.checkin_day, balance.checkin_week, balance.last_checkin)
-            }
-            if (balance.share_day > 0) {
-                tracker.syncShareWithServer(balance.share_day, balance.share_week, balance.last_share)
-            }
-            
+            tracker.syncWithServer(
+                balance.checkin_day,
+                balance.checkin_week,
+                balance.last_checkin,
+                force = force
+            )
+            tracker.syncShareWithServer(
+                balance.share_day,
+                balance.share_week,
+                balance.last_share,
+                force = force
+            )
+
+            lastBalanceFetchMs = System.currentTimeMillis()
+            lastBalanceUid = uid
             _networkState.value = NetworkState.Success
         } catch (e: Exception) {
             Log.e("Sync", "Failed refreshUserState: ${e.message}")
@@ -141,7 +174,7 @@ class StatsRepository(
         if (authPrefs.isGuestUser) {
             return
         }
-        refreshUserState(uid)
+        refreshUserState(uid, force = true)
         syncUserWithCloud()
     }
 
@@ -206,11 +239,7 @@ class StatsRepository(
             1
         }
 
-        // Use CoinRewardEngine for calculation with pre-sync multiplier
-        // NOTE: We intentionally do NOT apply the yoga multiplier locally.
-        // The server applies the real multiplier when syncing.
-        // Using local DB level for multiplier causes incorrect display because
-        // the DB accumulates server quiz history which inflates the level calculation.
+        // Same rules as server: base 5 + accuracy, cap 15, then × yoga (1/2/2/3/3), round
         val result = CoinRewardEngine.calculate(
             CoinRewardEngine.Input(
                 score = score,
@@ -218,7 +247,7 @@ class StatsRepository(
                 segmentCorrectMap = segmentCorrectMap,
                 currentStreakDays = currentStreak,
                 dailyCheckinDay = checkinDay,
-                yogaMultiplier = 1.0f   // multiplier applied server-side
+                yogaMultiplier = multiplier
             )
         )
 
@@ -227,17 +256,23 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         val coins = if (isGuest) {
+            // Guest: local balance + local history only (same coin math as signed-in base×yoga)
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
-                CoinTransactionLogger.log(appContext, result.totalCoins, "${result.breakdown} (guest)", source = "quiz_completion")
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
+                CoinTransactionLogger.log(
+                    appContext,
+                    result.totalCoins,
+                    result.breakdown,
+                    source = "quiz_completion",
+                    userId = guestUid
+                )
             }
             result.totalCoins
         } else {
-            // Always award + log for a signed-in user. Don't gate on the local
-            // DB's cached userId — it can be stale right after login.
+            // Optimistic amount matches server formula; SyncWorker still sets total_coins from server
             val fallback = result.totalCoins
             userStatsDao.addKrishnaCoins(fallback)
-            CoinTransactionLogger.log(appContext, fallback, result.breakdown, source = "quiz_completion")
 
             // Resolve the real uid for the sync queue only — prefer the auth
             // session over the local cached row, which may not be populated yet.
@@ -288,8 +323,12 @@ class StatsRepository(
         
         userStatsDao.addQuizModeTime(60)
 
-        val stats = userStatsDao.getUserStatsOnce()
-        stats?.let {
+        val preStats = userStatsDao.getUserStatsOnce()
+        val yogaMult = YogaLevelManager.getCoinMultiplier(preStats)
+        // Same as server: fib(correct) × yoga (ignore client battleCoins for final amount)
+        val serverMatchedCoins = CoinRewardEngine.battleTotal(score, yogaMult)
+
+        preStats?.let {
             val currentBestPercentage = if (it.bestScoreOutOf > 0)
                 (it.bestScore.toFloat() / it.bestScoreOutOf) * 100
             else 0f
@@ -298,12 +337,11 @@ class StatsRepository(
                 userStatsDao.updateBestScore(score, questionsAnswered)
         }
 
-        // Record the battle attempt in the history
         val db = GitaDatabase.getDatabase(appContext)
         val battleAttempt = com.aipoweredgita.app.database.QuizAttempt(
             score = score,
             totalQuestions = questionsAnswered,
-            coinsEarned = battleCoins,
+            coinsEarned = serverMatchedCoins,
             quizType = "battle_quiz",
             timeSpentSeconds = 60,
             language = language
@@ -319,26 +357,33 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         if (isGuest) {
-            if (battleCoins > 0) {
-                userStatsDao.addKrishnaCoins(battleCoins)
-                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz (guest)", source = "battle_quiz")
+            if (serverMatchedCoins > 0) {
+                userStatsDao.addKrishnaCoins(serverMatchedCoins)
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
+                CoinTransactionLogger.log(
+                    appContext,
+                    serverMatchedCoins,
+                    "BQ",
+                    source = "battle_quiz",
+                    userId = guestUid
+                )
             }
         } else {
-            // Always award + log for a signed-in user regardless of local cached uid.
-            if (battleCoins > 0) {
-                userStatsDao.addKrishnaCoins(battleCoins)
-                CoinTransactionLogger.log(appContext, battleCoins, "battle_quiz: +${battleCoins}", source = "battle_quiz")
-
+            if (serverMatchedCoins > 0 || score > 0) {
+                if (serverMatchedCoins > 0) {
+                    userStatsDao.addKrishnaCoins(serverMatchedCoins)
+                }
                 val uid = resolvedUserId() ?: userId()
                 if (uid != null) {
                     try {
+                        val fibBase = CoinRewardEngine.battleFibCoins(score)
                         val db2 = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
                         db2.pendingSyncEventDao().insert(
                             com.aipoweredgita.app.database.PendingSyncEvent(
                                 userId = uid,
                                 eventType = "BATTLE",
-                                payload = """{"battleCoins":$battleCoins,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
-                                coinsToAdjust = battleCoins,
+                                payload = """{"battleCoins":$fibBase,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
+                                coinsToAdjust = serverMatchedCoins,
                                 idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
                             )
                         )
@@ -507,11 +552,12 @@ class StatsRepository(
 
         val coinsAwarded = if (isGuest) {
             userStatsDao.addKrishnaCoins(fallbackCoins)
+            val guestUid = resolvedUserId() ?: authPrefs.userId
             if (isWeeklyBonus) {
-                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share (guest)", source = "share_daily")
-                CoinTransactionLogger.log(appContext, 10, "7-day share bonus (guest)", source = "share_day7_bonus")
+                CoinTransactionLogger.log(appContext, fallbackCoins - 10, "Daily sloka share (guest)", source = "share_daily", userId = guestUid)
+                CoinTransactionLogger.log(appContext, 10, "7-day share bonus (guest)", source = "share_day7_bonus", userId = guestUid)
             } else {
-                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily")
+                CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily", userId = guestUid)
             }
             fallbackCoins
         } else {
@@ -579,16 +625,24 @@ class StatsRepository(
         userStatsDao.incrementChaptersCompleted()
 
         val isGuest = authPrefs.isGuestUser
+        val yogaMult = YogaLevelManager.getCoinMultiplier(userStatsDao.getUserStatsOnce())
+        val chapterCoins = CoinRewardEngine.chapterTotal(yogaMult)
 
         if (isGuest) {
-            userStatsDao.addKrishnaCoins(15)
-            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion (guest)", source = "chapter_completion")
+            userStatsDao.addKrishnaCoins(chapterCoins)
+            val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
+            CoinTransactionLogger.log(
+                appContext,
+                chapterCoins,
+                "Chapter $chapterNo Completion",
+                source = "chapter_completion",
+                userId = guestUid
+            )
         } else {
             ensureUserSynced()
 
-            // Always award + log for a signed-in user regardless of local cached uid.
-            userStatsDao.addKrishnaCoins(15)
-            CoinTransactionLogger.log(appContext, 15, "Chapter $chapterNo Completion", source = "chapter_completion")
+            // Same as server: 15 × yoga
+            userStatsDao.addKrishnaCoins(chapterCoins)
 
             val uid = resolvedUserId() ?: userId()
             if (uid != null) {
@@ -604,7 +658,7 @@ class StatsRepository(
                             userId = uid,
                             eventType = "CHAPTER",
                             payload = payloadString,
-                            coinsToAdjust = 15,
+                            coinsToAdjust = chapterCoins,
                             idempotencyKey = "chapter_${chapterNo}_${uid}_${System.currentTimeMillis()}"
                         )
                     )
@@ -627,16 +681,9 @@ class StatsRepository(
 
         try {
             if (authPrefs.isGuestUser) {
-                try {
-                    val response = CoinApi.retrofitService.createGuest()
-                    val guestId = response.guest_id
-                    if (guestId.isNotEmpty()) {
-                        authPrefs.saveGuestState(guestId)
-                    }
-                    Log.d("StatsRepository", "Guest synced: $guestId with ${response.coins} coins")
-                } catch (guestError: Exception) {
-                    Log.w("StatsRepository", "Guest creation failed (will sync on login): ${guestError.message}")
-                }
+                // Do NOT replace local guest_* id with a server guest id — that orphans
+                // SharedPreferences history under tx_<oldId> and empties Coin History UI.
+                Log.d("StatsRepository", "Guest local-only; skip createGuest id swap (uid=$uid)")
             } else {
                 val response = CoinApi.retrofitService.createUser(CreateUserRequest(uid, stats.userName.ifEmpty { "Gita Seeker" }, ""))
                 if (response.token != null && authPrefs.token == null) {
@@ -654,21 +701,36 @@ class StatsRepository(
     suspend fun syncCheckinToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return
+        val token = authPrefs.token
+        if (token.isNullOrEmpty()) {
+            Log.w("StatsRepository", "Checkin sync skipped — no auth token; queueing")
+            queueCheckinSync(uid, coinsToAdjust)
+            return
+        }
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
-            val response = CoinApi.retrofitService.checkin(mapOf(
-                "user_id" to uid,
-                "client_date" to localDate,
-                "timezone" to java.util.TimeZone.getDefault().id
-            ))
+            val response = CoinApi.retrofitService.checkin(
+                mapOf(
+                    "user_id" to uid,
+                    "client_date" to localDate,
+                    "timezone" to java.util.TimeZone.getDefault().id
+                ),
+                "Bearer $token"
+            )
             if (response.day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncWithServer(response.day, response.week, localDate)
             }
-            refreshUserState(uid)
+            refreshUserState(uid, force = true)
             DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
         } catch (e: retrofit2.HttpException) {
-            Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
-            DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
+            // 401/403 means the server never recorded this check-in — do NOT mark synced.
+            if (e.code() == 401 || e.code() == 403) {
+                Log.e("StatsRepository", "Checkin sync unauthorized (HTTP ${e.code()}) — will retry")
+                queueCheckinSync(uid, coinsToAdjust)
+            } else {
+                Log.d("StatsRepository", "Checkin sync: HTTP ${e.code()} - marking as synced")
+                DailyRewardsTracker.getInstance(appContext).isCheckinSynced = true
+            }
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to sync checkin: ${e.message}")
             queueCheckinSync(uid, coinsToAdjust)
@@ -701,17 +763,31 @@ class StatsRepository(
     suspend fun syncShareToCloud(coinsToAdjust: Int = 0) {
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return
+        val token = authPrefs.token
+        if (token.isNullOrEmpty()) {
+            Log.w("StatsRepository", "Share sync skipped — no auth token; queueing")
+            queueShareSync(uid, coinsToAdjust)
+            return
+        }
         try {
             val localDate = DailyRewardsTracker.getInstance(appContext).nowLocal()
-            val response = CoinApi.retrofitService.share(ShareSlokaRequest(uid, "local_sync", client_date = localDate))
+            val response = CoinApi.retrofitService.share(
+                ShareSlokaRequest(uid, "local_sync", client_date = localDate),
+                "Bearer $token"
+            )
             if (response.share_day > 0) {
                 DailyRewardsTracker.getInstance(appContext).syncShareWithServer(response.share_day, response.share_week, localDate)
             }
-            refreshUserState(uid)
+            refreshUserState(uid, force = true)
             DailyRewardsTracker.getInstance(appContext).isShareSynced = true
         } catch (e: retrofit2.HttpException) {
-            Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
-            DailyRewardsTracker.getInstance(appContext).isShareSynced = true
+            if (e.code() == 401 || e.code() == 403) {
+                Log.e("StatsRepository", "Share sync unauthorized (HTTP ${e.code()}) — will retry")
+                queueShareSync(uid, coinsToAdjust)
+            } else {
+                Log.d("StatsRepository", "Share sync: HTTP ${e.code()} - marking as synced")
+                DailyRewardsTracker.getInstance(appContext).isShareSynced = true
+            }
         } catch (e: Exception) {
             Log.e("StatsRepository", "Failed to sync share: ${e.message}")
             queueShareSync(uid, coinsToAdjust)
@@ -758,13 +834,37 @@ class StatsRepository(
         }
     }
 
-    suspend fun getBalance(): Int {
+    suspend fun getBalance(force: Boolean = false): Int {
         if (authPrefs.isGuestUser) {
-            // Award 50 coin welcome bonus to new guests (once only)
+            // Welcome bonus once — balance + local guest history line
             if (!authPrefs.guestWelcomeAwarded) {
                 userStatsDao.updateKrishnaCoins(50)
                 authPrefs.guestWelcomeAwarded = true
-                CoinTransactionLogger.log(appContext, 50, "Welcome bonus (guest)")
+                val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
+                if (!guestUid.isNullOrEmpty()) {
+                    CoinTransactionLogger.log(
+                        appContext,
+                        50,
+                        "Welcome bonus (guest)",
+                        source = "signup",
+                        userId = guestUid
+                    )
+                }
+            } else {
+                // Flag set but log empty (re-entry / race) — keep history usable
+                val guestUid = resolvedUserId() ?: authPrefs.userId
+                if (!guestUid.isNullOrEmpty() &&
+                    CoinTransactionLogger.getHistory(appContext, guestUid).isEmpty()
+                ) {
+                    val bal = coinBalance.value.coerceAtLeast(50)
+                    CoinTransactionLogger.log(
+                        appContext,
+                        50.coerceAtMost(bal),
+                        "Welcome bonus (guest)",
+                        source = "signup",
+                        userId = guestUid
+                    )
+                }
             }
             return coinBalance.value
         }
@@ -772,6 +872,16 @@ class StatsRepository(
         val uid = resolvedUserId() ?: userId() ?: return coinBalance.value
         val token = authPrefs.token ?: run {
             Log.w("StatsRepository", "No auth token — returning local balance")
+            return coinBalance.value
+        }
+
+        val now = System.currentTimeMillis()
+        if (!force &&
+            uid == lastBalanceUid &&
+            lastBalanceFetchMs > 0L &&
+            now - lastBalanceFetchMs < BALANCE_TTL_MS
+        ) {
+            Log.d("StatsRepository", "getBalance skipped (TTL ${now - lastBalanceFetchMs}ms)")
             return coinBalance.value
         }
 
@@ -804,14 +914,23 @@ class StatsRepository(
             val updatedStats = balanceResponse.updateEntity(currentStats, uid).copy(krishnaCoins = adjustedBalance)
             userStatsDao.insertStats(updatedStats)
 
-            // Sync daily UI trackers from server (server is source of truth)
-            if (balanceResponse.checkin_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncWithServer(balanceResponse.checkin_day, balanceResponse.checkin_week, balanceResponse.last_checkin)
-            }
-            if (balanceResponse.share_day > 0) {
-                DailyRewardsTracker.getInstance(appContext).syncShareWithServer(balanceResponse.share_day, balanceResponse.share_week, balanceResponse.last_share)
-            }
-            
+            // Sync daily UI trackers (include day 0 so old accounts still get a claimable day 1)
+            val tracker = DailyRewardsTracker.getInstance(appContext)
+            tracker.syncWithServer(
+                balanceResponse.checkin_day,
+                balanceResponse.checkin_week,
+                balanceResponse.last_checkin,
+                force = force
+            )
+            tracker.syncShareWithServer(
+                balanceResponse.share_day,
+                balanceResponse.share_week,
+                balanceResponse.last_share,
+                force = force
+            )
+
+            lastBalanceFetchMs = System.currentTimeMillis()
+            lastBalanceUid = uid
             _networkState.value = NetworkState.Success
             adjustedBalance
         } catch (e: Exception) {
@@ -891,12 +1010,8 @@ class StatsRepository(
         val idempotencyKey = "spend_${resolvedUserId() ?: userId() ?: "guest"}_${question.hashCode()}"
 
         if (isGuest) {
-            // Dynamic pricing based on question length (min 4, max 10 coins)
-            val cost = when {
-                question.length <= 50 -> 4   // Short (min 4)
-                question.length <= 150 -> 6  // Medium
-                else -> 10                   // Long (max 10)
-            }
+            // Dynamic pricing: Short 4 / Medium 6 / Long 10
+            val cost = VoiceCoinPricing.costFor(question)
             
             if (coinBalance.value < cost) {
                 Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
@@ -912,11 +1027,7 @@ class StatsRepository(
         ensureUserSynced()
         val uid = resolvedUserId() ?: userId() ?: return false
         
-        val offlineCost = when {
-            question.length <= 50  -> 4   // Short (min 4)
-            question.length <= 150 -> 6   // Medium
-            else                   -> 10  // Long (max 10)
-        }
+        val offlineCost = VoiceCoinPricing.costFor(question)
 
         if (coinBalance.value < offlineCost) {
             Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $offlineCost")

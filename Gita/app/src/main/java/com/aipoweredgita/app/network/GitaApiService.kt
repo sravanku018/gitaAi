@@ -169,7 +169,7 @@ data class CoinBalanceResponse(
     val last_activity_date: String? = null,
     val updated_at: String? = null,
     val yoga_name: String? = null,
-    val multiplier: Int = 1,
+    val multiplier: Double = 1.0,
     val is_max: Int = 0,
     val checkin_day: Int = 0,
     val checkin_week: Int = 0,
@@ -353,7 +353,7 @@ data class CoinHistoryEntry(
 }
 
 data class VoiceCostResponse(
-    val cost: Int = 2,
+    val cost: Int = 4,
     val label: String = "Short",
     val length: Int = 0
 )
@@ -370,7 +370,7 @@ data class YogaLevel(
     val name: String = "",
     val min_coins: Int = 0,
     val max_coins: Int = 0,
-    val multiplier: Int = 1,
+    val multiplier: Double = 1.0,
     val description: String = ""
 )
 
@@ -486,7 +486,7 @@ interface CoinApiService {
     suspend fun getHistory(
         @Query("user_id") userId: String,
         @Header("Authorization") token: String? = null,
-        @Query("limit") limit: Int = 500,
+        @Query("limit") limit: Int = 100,
         @Query("offset") offset: Int = 0
     ): List<CoinHistoryEntry>
 
@@ -521,7 +521,7 @@ interface CoinApiService {
     suspend fun getQuizHistory(
         @Query("user_id") userId: String,
         @Header("Authorization") token: String? = null,
-        @Query("limit") limit: Int = 100
+        @Query("limit") limit: Int = 50
     ): List<QuizAttemptDto>
 
     @GET("activity/history")

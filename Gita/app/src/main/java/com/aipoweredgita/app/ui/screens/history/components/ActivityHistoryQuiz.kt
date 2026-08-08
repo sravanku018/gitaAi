@@ -370,7 +370,7 @@ fun AHQuizAttemptCard(attempt: QuizAttempt, isBattle: Boolean = false) {
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = if (isBattle) "Battle Quiz" else attempt.performanceLevel,
+                        text = if (isBattle) "BQ" else attempt.performanceLevel,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = statusColor,

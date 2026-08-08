@@ -52,15 +52,10 @@ import com.aipoweredgita.app.utils.AuthPreferences
 import com.aipoweredgita.app.viewmodel.LoginViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 
-// Sacred color palette
-private val DeepBrown = Color(0xFF1A0F00)
+// Sacred gold accents (shared); surfaces come from LoginPalette for light/dark
 private val GoldPrimary = Color(0xFFD4A017)
 private val GoldLight = Color(0xFFF5C842)
 private val GoldDark = Color(0xFF8B4513)
-private val GoldMuted = Color(0xFFC4922A)
-private val GoldSubtle = Color(0xFF7A5A20)
-private val GoldDim = Color(0xFF5A3E10)
-private val GoldAccent = Color(0xFFA07840)
 
 @Composable
 fun LoginScreen(
@@ -74,6 +69,7 @@ fun LoginScreen(
     val authManager = remember { com.aipoweredgita.app.repository.AuthManager.getInstance(context) }
     val scope = rememberCoroutineScope()
     val loginViewModel: LoginViewModel = hiltViewModel()
+    val palette = rememberLoginPalette()
     
     // Load saved credentials
     val (savedPhone, savedEmail, savedPassword) = remember { authPrefs.getSavedCredentials() }
@@ -167,13 +163,13 @@ fun LoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DeepBrown)
+            .background(palette.background)
     ) {
         // Back button
         Text(
             text = "✕",
             fontSize = 22.sp,
-            color = GoldPrimary,
+            color = palette.gold,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(16.dp)
@@ -197,7 +193,7 @@ fun LoginScreen(
                     .height(4.dp)
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(GoldDark, GoldPrimary, GoldLight, GoldPrimary, GoldDark)
+                            colors = listOf(GoldDark, palette.gold, GoldLight, palette.gold, GoldDark)
                         )
                     )
             )
@@ -207,7 +203,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .size(180.dp)
                     .offset(y = (-20).dp)
-                    .alpha(0.07f)
+                    .alpha(if (palette.isDark) 0.07f else 0.12f)
             )
 
             // Lamp row
@@ -223,20 +219,28 @@ fun LoginScreen(
 
             // App title
             Text(
-                text = "Śrīmad Bhagavad Gītā",
-                fontSize = 20.sp,
+                text = "Bhagavad Gita AI",
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = GoldLight,
+                color = palette.title,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp)
             )
 
             // Sanskrit subtitle
             Text(
-                text = "॥ ज्ञान · भक्ति · मोक्ष ॥",
+                text = "॥ श्रीमद्भगवद्गीता ॥",
+                fontSize = 11.sp,
+                color = palette.muted,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = "Learn · Quiz · AI Insights",
                 fontSize = 10.sp,
-                color = GoldMuted,
-                letterSpacing = 2.5.sp,
+                color = palette.subtle,
+                letterSpacing = 1.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -249,7 +253,7 @@ fun LoginScreen(
                 Text(
                     text = "\"योगस्थः कुरु कर्माणि\"",
                     fontSize = 11.sp,
-                    color = GoldAccent,
+                    color = palette.accent,
                     textAlign = TextAlign.Center,
                     fontStyle = FontStyle.Italic,
                     lineHeight = 16.sp
@@ -257,7 +261,7 @@ fun LoginScreen(
                 Text(
                     text = "Perform your actions, established in yoga",
                     fontSize = 9.sp,
-                    color = GoldAccent,
+                    color = palette.accent,
                     textAlign = TextAlign.Center,
                     letterSpacing = 0.5.sp
                 )
@@ -270,11 +274,11 @@ fun LoginScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.04f)
+                    containerColor = palette.cardBg
                 ),
                 border = CardDefaults.outlinedCardBorder().copy(
                     brush = Brush.linearGradient(
-                        colors = listOf(GoldPrimary.copy(alpha = 0.3f), GoldPrimary.copy(alpha = 0.3f))
+                        colors = listOf(palette.cardBorder, palette.cardBorder)
                     )
                 )
             ) {
@@ -286,7 +290,7 @@ fun LoginScreen(
                     Text(
                         text = "— BEGIN YOUR JOURNEY —",
                         fontSize = 10.sp,
-                        color = GoldMuted,
+                        color = palette.muted,
                         letterSpacing = 2.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(bottom = 10.dp)
@@ -297,21 +301,23 @@ fun LoginScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color.White.copy(alpha = 0.03f))
-                            .border(0.5.dp, GoldPrimary.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
+                            .background(palette.toggleBg)
+                            .border(0.5.dp, palette.gold.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
                         horizontalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
                         TabButton(
                             text = "✦ Login",
                             isSelected = !isRegisterMode,
                             onClick = { isRegisterMode = false },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            palette = palette,
                         )
                         TabButton(
                             text = "✦ Register",
                             isSelected = isRegisterMode,
                             onClick = { isRegisterMode = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            palette = palette,
                         )
                     }
 
@@ -337,12 +343,13 @@ fun LoginScreen(
                             onValueChange = { name = it },
                             placeholder = "Your Name",
                             keyboardType = KeyboardType.Text,
+                            palette = palette,
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = GoldSubtle
+                                    tint = palette.iconTint
                                 )
                             }
                         )
@@ -355,12 +362,13 @@ fun LoginScreen(
                         onValueChange = { userId = it },
                         placeholder = "User ID or Email",
                         keyboardType = KeyboardType.Email,
+                        palette = palette,
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = GoldSubtle
+                                tint = palette.iconTint
                             )
                         }
                     )
@@ -374,12 +382,13 @@ fun LoginScreen(
                         placeholder = "Password",
                         keyboardType = KeyboardType.Password,
                         isPassword = true,
+                        palette = palette,
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = GoldSubtle
+                                tint = palette.iconTint
                             )
                         }
                     )
@@ -392,15 +401,15 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = GoldPrimary,
-                            contentColor = DeepBrown
+                            containerColor = palette.gold,
+                            contentColor = palette.onGold
                         ),
                         enabled = !isLoading
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = DeepBrown,
+                                color = palette.onGold,
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -427,15 +436,15 @@ fun LoginScreen(
                                 authPrefs.rememberMe = it
                             },
                             colors = CheckboxDefaults.colors(
-                                checkedColor = GoldPrimary,
-                                uncheckedColor = GoldSubtle,
-                                checkmarkColor = DeepBrown
+                                checkedColor = palette.gold,
+                                uncheckedColor = palette.subtle,
+                                checkmarkColor = palette.onGold
                             )
                         )
                         Text(
                             text = "Remember me",
                             fontSize = 12.sp,
-                            color = GoldSubtle,
+                            color = palette.subtle,
                             modifier = Modifier.clickable { 
                                 rememberMe = !rememberMe
                                 authPrefs.rememberMe = rememberMe
@@ -455,19 +464,19 @@ fun LoginScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(0.5.dp)
-                                .background(GoldPrimary.copy(alpha = 0.2f))
+                                .background(palette.gold.copy(alpha = 0.2f))
                         )
                         Text(
                             text = "OR",
                             fontSize = 10.sp,
-                            color = GoldSubtle,
+                            color = palette.subtle,
                             letterSpacing = 2.sp
                         )
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(0.5.dp)
-                                .background(GoldPrimary.copy(alpha = 0.2f))
+                                .background(palette.gold.copy(alpha = 0.2f))
                         )
                     }
 
@@ -485,11 +494,11 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = GoldAccent
+                            contentColor = palette.accent
                         ),
                         border = ButtonDefaults.outlinedButtonBorder.copy(
                             brush = Brush.linearGradient(
-                                colors = listOf(GoldPrimary.copy(alpha = 0.35f), GoldPrimary.copy(alpha = 0.35f))
+                                colors = listOf(palette.gold.copy(alpha = 0.35f), palette.gold.copy(alpha = 0.35f))
                             )
                         )
                     ) {
@@ -497,7 +506,7 @@ fun LoginScreen(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = GoldAccent
+                            tint = palette.accent
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -517,7 +526,7 @@ fun LoginScreen(
                 Text(
                     text = "By continuing, you accept our",
                     fontSize = 10.sp,
-                    color = GoldDim,
+                    color = palette.dim,
                     textAlign = TextAlign.Center,
                     lineHeight = 17.sp
                 )
@@ -527,18 +536,18 @@ fun LoginScreen(
                     Text(
                         text = "Terms of Dharma",
                         fontSize = 10.sp,
-                        color = GoldAccent,
+                        color = palette.accent,
                         modifier = Modifier.clickable { }
                     )
                     Text(
                         text = "·",
                         fontSize = 10.sp,
-                        color = GoldDim
+                        color = palette.dim
                     )
                     Text(
                         text = "Privacy Vow",
                         fontSize = 10.sp,
-                        color = GoldAccent,
+                        color = palette.accent,
                         modifier = Modifier.clickable { }
                     )
                 }
@@ -551,7 +560,7 @@ fun LoginScreen(
                     .height(3.dp)
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, GoldPrimary, Color.Transparent)
+                            colors = listOf(Color.Transparent, palette.gold, Color.Transparent)
                         )
                     )
                     .clip(RoundedCornerShape(2.dp))

@@ -152,7 +152,7 @@ fun VoiceStudioScreen(
         // FIX 3: Guard order — balance must be loaded first, then check amount
         if (!state.isBalanceLoaded) {
             BalanceLoadingOverlay(colors = colors)
-        } else if (state.coinBalance < 1) {
+        } else if (state.coinBalance < com.aipoweredgita.app.coin.VoiceCoinPricing.MIN_COST) {
             InsufficientCoinsOverlay(
                 coinBalance = state.coinBalance,
                 onExit = onExit,
@@ -480,7 +480,7 @@ private fun VoiceChatContent(
 
                     // FIX 4: Replaced broken glyph with standard bullet •
                     Text(
-                        text = "Speak or write your question \u2022 each inquiry costs 1 Krishna Coin. The Gita holds answers to every struggle of the human soul.",
+                        text = "Speak or write your question \u2022 costs 4 / 6 / 10 coins (short / medium / long). The Gita holds answers to every struggle of the human soul.",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = colors.TextSecondary,
                             lineHeight = 22.sp

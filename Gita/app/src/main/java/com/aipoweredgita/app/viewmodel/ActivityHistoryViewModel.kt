@@ -45,6 +45,18 @@ class ActivityHistoryViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ActivityHistoryUiState())
     val uiState: StateFlow<ActivityHistoryUiState> = _uiState.asStateFlow()
 
+    /** Per-endpoint TTL so parallel init loads still only hit network once each. */
+    private var lastActivityPullMs: Long = 0L
+    private var lastQuizPullMs: Long = 0L
+    private var lastCoinHistoryPullMs: Long = 0L
+    private var lastServerPullUid: String? = null
+
+    private companion object {
+        private const val SERVER_PULL_TTL_MS = 10 * 60 * 1000L // 10 minutes
+        private const val QUIZ_HISTORY_LIMIT = 50
+        private const val COIN_HISTORY_LIMIT = 100
+    }
+
     init {
         loadUserStats()
         loadDailyActivity()
@@ -52,6 +64,12 @@ class ActivityHistoryViewModel @Inject constructor(
         loadGroupedQuizStats()
         loadSpiritualPathStats()
         loadMeditationStats()
+    }
+
+    private fun withinTtl(lastMs: Long, uid: String): Boolean {
+        return uid == lastServerPullUid &&
+            lastMs > 0L &&
+            System.currentTimeMillis() - lastMs < SERVER_PULL_TTL_MS
     }
 
     fun onEvent(event: ActivityHistoryEvent) {
@@ -84,10 +102,12 @@ class ActivityHistoryViewModel @Inject constructor(
                 val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
                 val uid = authPrefs.userId
                 val token = authPrefs.token
-                if (uid != null && token != null) {
+                if (uid != null && token != null && !withinTtl(lastActivityPullMs, uid)) {
                     val serverActivity = com.aipoweredgita.app.network.CoinApi.retrofitService.getActivityHistory(
                         uid, "Bearer $token"
                     )
+                    lastServerPullUid = uid
+                    lastActivityPullMs = System.currentTimeMillis()
                     val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                     val dao = db.dailyActivityDao()
                     for (day in serverActivity) {
@@ -123,10 +143,12 @@ class ActivityHistoryViewModel @Inject constructor(
                 val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
                 val uid = authPrefs.userId
                 val token = authPrefs.token
-                if (uid != null && token != null) {
+                if (uid != null && token != null && !withinTtl(lastQuizPullMs, uid)) {
                     val serverAttempts = com.aipoweredgita.app.network.CoinApi.retrofitService.getQuizHistory(
-                        uid, "Bearer $token", limit = 500
+                        uid, "Bearer $token", limit = QUIZ_HISTORY_LIMIT
                     )
+                    lastServerPullUid = uid
+                    lastQuizPullMs = System.currentTimeMillis()
                     val quizDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).quizAttemptDao()
                     
                     // Cleanup any glitched battle_quiz records from before the fix
@@ -311,9 +333,11 @@ class ActivityHistoryViewModel @Inject constructor(
                 val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
                 val uid = authPrefs.userId
                 val token = authPrefs.token
-                if (uid != null && token != null) {
+                if (uid != null && token != null && !withinTtl(lastCoinHistoryPullMs, uid)) {
                     val history = com.aipoweredgita.app.network.CoinApi.retrofitService
-                        .getHistory(uid, "Bearer $token", limit = 500)
+                        .getHistory(uid, "Bearer $token", limit = COIN_HISTORY_LIMIT)
+                    lastServerPullUid = uid
+                    lastCoinHistoryPullMs = System.currentTimeMillis()
                     // Filter meditation earn transactions
                     val meditationEntries = history.filter {
                         it.source.contains("meditation", ignoreCase = true) && it.isEarn

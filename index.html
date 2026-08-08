@@ -733,7 +733,7 @@
   </div>
 
   <script>
-    // ── Secure Admin API (secrets live on Deno only) ──────────
+    // ── Secure Admin API (Deno → VPS Postgres; secrets on Deno only) ──
     const ADMIN_API = "https://lofty-crocodile-6332.sravanku018.deno.net";
 
     function getAdminKey() {
@@ -1191,7 +1191,7 @@
         console.error("fetchAllUsers:", err);
         const msg = String(err.message || err);
         const hint = msg.includes("404") || msg.includes("SERVER_ERROR")
-          ? "\n\nTurso config on Deno is wrong/missing.\nSet TURSO_URL=libsql://YOUR-DB.aws-ap-south-1.turso.io\n(not https://.../v2/pipeline) and a valid TURSO_TOKEN, then redeploy."
+          ? "\n\nDatabase config on Deno is wrong/missing.\nSet DATABASE_URL=postgres://…@VPS:5432/coin_db on lofty-crocodile (same as flaky-kestrel), then redeploy."
           : "";
         alert(`Failed to load users: ${msg}${hint}`);
       }
