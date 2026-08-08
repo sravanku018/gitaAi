@@ -240,7 +240,7 @@
       <header>
         <div class="header-title">
           <h1 id="page-title">Users</h1>
-          <p id="page-subtitle">Inspect & Edit Every User Profile Live in Turso DB</p>
+          <p id="page-subtitle">Inspect & Edit Every User Profile Live on VPS PostgreSQL</p>
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
           <select id="global-profile-select" class="form-input" style="width: 220px; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--card-border);" onchange="onGlobalProfileChange(this.value)">
@@ -266,13 +266,13 @@
         </div>
         <div class="kpi-card glass warning">
           <span class="kpi-title">Top Ecosystem Streak</span>
-          <span class="kpi-value" id="kpi-top-streak">22 Days 🔥</span>
-          <span class="kpi-subtext">User: <strong id="kpi-top-user">raja21</strong></span>
+          <span class="kpi-value" id="kpi-top-streak">0 Days 🔥</span>
+          <span class="kpi-subtext">User: <strong id="kpi-top-user">N/A</strong></span>
         </div>
         <div class="kpi-card glass danger">
           <span class="kpi-title">DB Space Efficiency</span>
           <span class="kpi-value" style="color: #34d399;">0.05% Used</span>
-          <span class="kpi-subtext">Turso Storage Clean ✅</span>
+          <span class="kpi-subtext">VPS PostgreSQL Clean ✅</span>
         </div>
       </div>
 
@@ -286,6 +286,7 @@
               <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
             </div>
             <div class="active-filter-row">
+              <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
               <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
               <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
               <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
@@ -1061,6 +1062,25 @@
       document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-chip'));
       chip.classList.add('active-chip');
       renderRoster(allUsersCache);
+    }
+
+    function searchRoster(query) {
+      const q = (query || "").trim().toLowerCase();
+      if (!q) {
+        renderRoster(allUsersCache);
+        return;
+      }
+      const filtered = allUsersCache.filter(u => 
+        (u.user_id && u.user_id.toLowerCase().includes(q)) || 
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q))
+      );
+      const body = document.getElementById('master-roster-body');
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">No profiles matching "${escHtml(q)}".</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(renderRosterRow).join('');
     }
 
     // ── Smart Refresh: only re-fetches dirty + new user rows, zero full scan ──
