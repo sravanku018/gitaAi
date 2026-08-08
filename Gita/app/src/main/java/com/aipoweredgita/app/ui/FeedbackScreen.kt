@@ -90,8 +90,10 @@ fun FeedbackScreen(
                         }
                         isSubmitting = true
                         coroutineScope.launch(Dispatchers.IO) {
-                            val userId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId ?: "guest"
-                            val nowStr = java.text.SimpleDateFormat("yyyy-MM-DD HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                            val authPrefs = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context)
+                            val userId = authPrefs.userId ?: authPrefs.guestId ?: "guest"
+                            val token = authPrefs.token
+                            val nowStr = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
                             val json = JSONObject().apply {
                                 put("user_id", userId)
                                 put("type", feedbackType.lowercase())
@@ -100,11 +102,17 @@ fun FeedbackScreen(
                                 put("client_timestamp", nowStr)
                             }
 
+                            val baseUrl = GitaConstants.COIN_API_BASE_URL.trimEnd('/')
                             val client = OkHttpClient()
-                            val req = Request.Builder()
-                                .url("${GitaConstants.COIN_API_BASE_URL}feedback")
+                            val reqBuilder = Request.Builder()
+                                .url("$baseUrl/feedback")
                                 .post(json.toString().toRequestBody("application/json".toMediaType()))
-                                .build()
+
+                            if (!token.isNullOrEmpty()) {
+                                reqBuilder.header("Authorization", "Bearer $token")
+                            }
+
+                            val req = reqBuilder.build()
 
                             try {
                                 val resp = client.newCall(req).execute()
@@ -116,7 +124,7 @@ fun FeedbackScreen(
                                         message = ""
                                         onNavigateBack()
                                     } else {
-                                        Toast.makeText(context, "Failed to submit. Please try again.", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Failed to submit (HTTP ${resp.code}). Please try again.", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             } catch (e: Exception) {
