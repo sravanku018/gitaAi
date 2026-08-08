@@ -373,7 +373,7 @@ fun YogaMargStage(
                 }
             }
 
-            if (!locked && subs.isNotEmpty()) {
+            if (subs.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 Spacer(Modifier.height(8.dp))
@@ -433,7 +433,7 @@ fun YogaMargStage(
                             
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = sub.sub_name,
+                                    text = "Step ${sub.level}.${sub.sub_level} · ${sub.sub_name}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = if (subActive) FontWeight.Bold else FontWeight.Normal,
                                     color = when {
@@ -441,6 +441,11 @@ fun YogaMargStage(
                                         subActive -> gold
                                         else -> MaterialTheme.colorScheme.onSurface
                                     }
+                                )
+                                Text(
+                                    text = "${sub.min_coins} – ${sub.max_coins} 🪙",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (subLocked) 0.3f else 0.6f)
                                 )
                             }
                         }
