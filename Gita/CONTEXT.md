@@ -1,12 +1,12 @@
 # Project Context & Session Status
 
-- **Current Task**: Version bump to v2.11.0 (versionCode 31); reward parity, server-only coin history, yoga mult 1/2/2/3/3.
+- **Current Task**: Ship v2.12.2 (versionCode 43) with flaky-kestrel Postgres coin API.
 
 - **Key Decisions**:
-  - Server + app share quiz/battle/chapter formulas; yoga multipliers 1/2/2/3/3 integers.
-  - Signed-in coin history is server-only (no double local+server logs).
-  - Turso: schema gate, admin verify (not clean-duplicates on unlock).
+  - Coin API: `https://flaky-kestrel-5072.sravanku018.deno.net/` (Oracle PG), not prime-gorilla Turso.
+  - App version fallbacks in Splash/Settings match BuildConfig 2.12.2 / 43.
+  - Signed-in coin history server-only; yoga mult 1/2/2/3/3; voice costs 4/6/10.
 
 - **Next Steps**:
-  - Redeploy deno-backend-hono.ts; ship 2.11.0 APK.
-  - Optional: push gitaAi main to origin.
+  - Install 2.12.2 APK on device; verify auth/coins against flaky-kestrel.
+  - Afternoon: scrub GitHub Pages secrets; rotate Turso/TOTP if still exposed.
