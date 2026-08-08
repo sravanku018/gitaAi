@@ -33,7 +33,7 @@
 
     /* LOCK SCREEN */
     .lock-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(11, 13, 20, 0.96); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
-    .lock-card { width: 100%; max-width: 400px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+    .lock-card { max-height: 92vh; overflow-y: auto; width: 100%; max-width: 400px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
     .lock-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--primary); }
     .pin-input { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); border-radius: 10px; color: #fff; font-size: 18px; text-align: center; letter-spacing: 4px; outline: none; }
     .pin-input:focus { border-color: var(--primary); }
@@ -84,6 +84,24 @@
     .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .badge-guest { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-active { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.5); animation: pulse-active 2s infinite; }
+    .badge-new    { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.5); animation: pulse-active 2s infinite; }
+    .badge-edited { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid rgba(245,158,11,0.45); }
+    @keyframes pulse-active { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4);} 50%{box-shadow:0 0 0 5px rgba(16,185,129,0);} }
+    .refresh-btn { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: all 0.2s; }
+    .refresh-btn:hover { background: rgba(16,185,129,0.25); transform: translateY(-1px); }
+    .refresh-btn.spinning i,
+    .btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+    .active-filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .filter-chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--card-border); background: rgba(255,255,255,0.05); color: var(--text-muted); transition: all 0.2s; }
+    .filter-chip.active-chip { background: rgba(16,185,129,0.2); color: #34d399; border-color: rgba(16,185,129,0.4); }
+    .activity-bar { display: flex; gap: 3px; align-items: center; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--card-border); }
+    .activity-dot.filled { background: #34d399; }
+    .last-seen-fresh { color: #34d399; font-weight: 600; }
+    .last-seen-old { color: var(--text-muted); }
+    .smart-refresh-info { font-size: 11px; color: var(--text-muted); padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); }
 
     .table-responsive { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
@@ -96,6 +114,8 @@
 
     /* MODALS */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+    /* Coin editor must sit above the user dossier modal */
+    #coin-modal { z-index: 1100; }
     .modal { width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; }
     .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
@@ -120,19 +140,55 @@
 </head>
 <body>
 
-  <!-- ADMIN PASSCODE LOCK SCREEN -->
+  <!-- ADMIN LOCK — secrets verified on Deno API (not in this page) -->
   <div class="lock-screen" id="lock-screen">
     <div class="lock-card glass">
       <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
       <div>
         <h2 style="font-size: 20px; font-weight: 800;">Protected Admin Portal</h2>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Private Access — Enter Admin Security PIN</p>
+        <p id="lock-subtitle" style="font-size: 13px; color: #34d399; font-weight: 600; margin-top: 4px;">
+          <i class="fa-solid fa-shield-halved"></i> Register Authenticator first (Settings → scan QR), then unlock
+        </p>
       </div>
-      <input type="password" id="admin-pin" class="pin-input" placeholder="••••" maxlength="6" onkeyup="checkPin(event)">
+      <!-- ALWAYS visible: scan BEFORE unlock (no login needed) -->
+      <div style="width:100%; text-align:center; margin: 4px 0 14px; padding: 14px; border: 1px solid rgba(52,211,153,0.35); border-radius: 12px; background: rgba(16,185,129,0.08);">
+        <div style="font-size: 13px; font-weight: 800; color: #34d399; margin-bottom: 8px;">
+          Step 1 — Scan this QR first (no unlock needed)
+        </div>
+        <div style="background:#fff; padding:10px; border-radius:10px; display:inline-block; margin-bottom:10px;">
+          <img id="lock-totp-qr"
+               src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30"
+               alt="Scan with Google Authenticator before unlock"
+               width="180" height="180" style="display:block;">
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.45;">
+          Or type secret into Authenticator:<br>
+          <code id="lock-totp-secret" style="color:#fbbf24; letter-spacing:1px; word-break:break-all;">TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px; padding:4px 10px; font-size:11px;"
+                  onclick="navigator.clipboard.writeText('TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB'); alert('Secret copied — paste into Google Authenticator');">
+            Copy secret
+          </button>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; font-weight: 800; color: #fbbf24; width:100%; text-align:left; margin-bottom: 6px;">
+        Step 2 — Then unlock
+      </div>
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match Deno env ADMIN_SECRET_KEY exactly)</label>
+      <input type="password" id="admin-secret-key" class="pin-input" placeholder="Paste full key — not the TOTP secret" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); width:100%; margin-top:4px; cursor:pointer;">
+        <input type="checkbox" id="show-admin-key" onchange="document.getElementById('admin-secret-key').type=this.checked?'text':'password'">
+        Show admin key (check for typos)
+      </label>
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%; margin-top: 8px;">6-digit code from Authenticator (after scanning above)</label>
+      <input type="text" id="admin-pin" class="pin-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeyup="checkPin(event)">
       <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="unlockDashboard()">
         <i class="fa-solid fa-key"></i> Unlock Dashboard
       </button>
-      <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;">Invalid PIN Code. Default PIN is 108</p>
+      <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
+      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+        API: lofty-crocodile-6332.sravanku018.deno.net
+      </p>
     </div>
   </div>
 
@@ -143,16 +199,13 @@
       <div class="sidebar-brand">
         <i class="fa-solid fa-shield-halved"></i>
         <h2>Gita AI Admin</h2>
+        <span class="badge badge-warning" style="font-size: 10px; margin-left: auto;">v2.9.0</span>
       </div>
 
       <ul class="sidebar-menu">
         <li class="nav-item active" onclick="switchView('roster', this)">
           <i class="fa-solid fa-users"></i>
           <span>Users</span>
-        </li>
-        <li class="nav-item" onclick="switchView('studyplans', this)">
-          <i class="fa-solid fa-graduation-cap"></i>
-          <span>Study Plans</span>
         </li>
         <li class="nav-item" onclick="switchView('history', this)">
           <i class="fa-solid fa-coins"></i>
@@ -170,6 +223,10 @@
           <i class="fa-solid fa-book-bookmark"></i>
           <span>Verse Notes</span>
         </li>
+        <li class="nav-item" onclick="switchView('settings', this)">
+          <i class="fa-solid fa-gear"></i>
+          <span>Settings</span>
+        </li>
       </ul>
 
       <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--card-border);">
@@ -183,10 +240,13 @@
       <header>
         <div class="header-title">
           <h1 id="page-title">Users</h1>
-          <p id="page-subtitle">Inspect & Edit Every User Profile Live in Turso DB</p>
+          <p id="page-subtitle">Inspect & Edit Every User Profile Live on VPS PostgreSQL</p>
         </div>
-        <div>
-          <button class="btn btn-secondary" onclick="fetchCurrentViewData()">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <select id="global-profile-select" class="form-input" style="width: 220px; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--card-border);" onchange="onGlobalProfileChange(this.value)">
+            <option value="">👤 All Seeker Profiles</option>
+          </select>
+          <button class="btn btn-secondary" onclick="fetchCurrentViewData(true)">
             <i class="fa-solid fa-rotate-right"></i> Refresh Data
           </button>
         </div>
@@ -206,13 +266,13 @@
         </div>
         <div class="kpi-card glass warning">
           <span class="kpi-title">Top Ecosystem Streak</span>
-          <span class="kpi-value" id="kpi-top-streak">22 Days 🔥</span>
-          <span class="kpi-subtext">User: <strong id="kpi-top-user">raja21</strong></span>
+          <span class="kpi-value" id="kpi-top-streak">0 Days 🔥</span>
+          <span class="kpi-subtext">User: <strong id="kpi-top-user">N/A</strong></span>
         </div>
         <div class="kpi-card glass danger">
           <span class="kpi-title">DB Space Efficiency</span>
           <span class="kpi-value" style="color: #34d399;">0.05% Used</span>
-          <span class="kpi-subtext">Turso Storage Clean ✅</span>
+          <span class="kpi-subtext">VPS PostgreSQL Clean ✅</span>
         </div>
       </div>
 
@@ -223,8 +283,20 @@
             <div class="section-title">
               <i class="fa-solid fa-users" style="color: var(--primary);"></i>
               <span>All Seekers & User Profiles</span>
+              <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
             </div>
-            <span class="badge badge-success" id="user-count-badge">Loading...</span>
+            <div class="active-filter-row">
+              <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
+              <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
+              <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
+              <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
+              <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
+              <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
+              <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
+                <i class="fa-solid fa-bolt"></i> Smart Refresh
+              </button>
+              <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
+            </div>
           </div>
 
           <div class="table-responsive">
@@ -232,19 +304,18 @@
               <thead>
                 <tr>
                   <th>User ID & Account</th>
+                  <th>Status</th>
                   <th>Type</th>
-                  <th>Current Streak</th>
-                  <th>Longest Streak</th>
-                  <th>Check-in Streak</th>
-                  <th>Share Streak</th>
-                  <th>Coins</th>
+                  <th>Activity</th>
+                  <th>Streak 🔥</th>
+                  <th>Coins 🪙</th>
                   <th>Yoga Level</th>
                   <th>Last Active</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="master-roster-body">
-                <tr><td colspan="10" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading...</td></tr>
+                <tr><td colspan="9" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -291,7 +362,15 @@
               <i class="fa-solid fa-coins" style="color: var(--primary);"></i>
               <span>Live Coin History & Transaction Audit Log</span>
             </div>
-            <span class="badge badge-success">Auto-Logged to Turso DB</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-coin-history" onclick="refreshCoinHistoryView(this)" style="padding: 6px 12px; font-size: 12px;" title="Reload latest coin transactions from Turso">
+                <i class="fa-solid fa-rotate-right"></i> Refresh
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="openAddCoinModal()" style="padding: 6px 12px; font-size: 12px;">
+                <i class="fa-solid fa-plus"></i> Add Transaction
+              </button>
+              <span class="badge badge-success">Auto-Logged to Turso DB</span>
+            </div>
           </div>
 
           <div class="table-responsive">
@@ -305,10 +384,11 @@
                   <th>Source</th>
                   <th>Description</th>
                   <th>Date & Time</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="coin-history-body">
-                <tr><td colspan="7" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>
               </tbody>
             </table>
           </div>
@@ -409,6 +489,85 @@
         </div>
       </div>
 
+      <!-- VIEW 7: SETTINGS (Admin Password Management) -->
+      <div class="view-section" id="view-settings">
+        <div class="glass section-card">
+          <div class="section-header">
+            <h3 class="section-title"><i class="fa-solid fa-key" style="color: var(--primary);"></i> Admin Security Settings</h3>
+          </div>
+          <div style="max-width: 480px; display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
+            <p style="font-size: 13px; color: var(--text-muted);">Create or update your admin password for this GitHub Pages dashboard.</p>
+            <div class="form-group">
+              <label>Current Password</label>
+              <input type="password" id="settings-current-pass" class="form-input" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="settings-new-pass" class="form-input" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+              <label>Confirm New Password</label>
+              <input type="password" id="settings-confirm-pass" class="form-input" placeholder="Confirm new password">
+            </div>
+            <button class="btn btn-primary" style="align-self: flex-start;" onclick="updateAdminPassword()">
+              <i class="fa-solid fa-floppy-disk"></i> Save New Password
+            </button>
+            <p id="settings-msg" style="font-size: 13px; font-weight: 600; display: none;"></p>
+          </div>
+
+          <div style="margin-top: 32px; border-top: 1px solid var(--card-border); padding-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+              <h4 style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Google Authenticator (2FA) Status
+              </h4>
+              <span class="badge badge-success" style="font-size: 12px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-circle-check"></i> 2FA ACTIVE & PROTECTED
+              </span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              <strong>Order matters:</strong> ① put the same secret in Deno <code>TOTP_SECRET</code>
+              → ② register it in Google Authenticator (scan QR or manual key)
+              → ③ only then can you unlock with the 6-digit code.
+            </p>
+
+            <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+              <div style="background: #fff; padding: 12px; border-radius: 12px; display: inline-block;">
+                <img id="totp-qr-img"
+                     src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=otpauth://totp/GitaAI:admin?secret=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB&issuer=GitaAI&algorithm=SHA1&digits=6&period=30"
+                     alt="Google Authenticator QR — scan to register first"
+                     style="width: 160px; height: 160px; display: block;">
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; max-width: 380px;">
+                <div class="form-group">
+                  <label>Step 1 — 2FA Secret (must match Deno TOTP_SECRET)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="totp-secret-input" class="form-input"
+                           value="TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB" readonly
+                           style="font-family: monospace; letter-spacing: 2px;">
+                    <button class="btn btn-secondary" onclick="copyTotpSecret()" title="Copy secret">
+                      <i class="fa-solid fa-copy"></i>
+                    </button>
+                  </div>
+                  <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                    Deno Deploy → Environment: <code>TOTP_SECRET=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+                  </p>
+                </div>
+
+                <div class="form-group">
+                  <label>Step 2 — After scanning, test a 6-digit code</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="totp-test-code" class="form-input" placeholder="e.g. 123456" maxlength="6" inputmode="numeric">
+                    <button class="btn btn-primary" onclick="testTotpCode()">Verify</button>
+                  </div>
+                  <p id="totp-test-msg" style="font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -468,12 +627,17 @@
 
       <!-- DOSSIER TAB 3: USER COIN HISTORY -->
       <div class="dossier-view" id="dossier-view-coins" style="display: none;">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <button class="btn btn-primary btn-sm" onclick="openAddCoinModal(activeDossierUser?.user_id)" style="padding: 6px 12px; font-size: 12px;">
+            <i class="fa-solid fa-plus"></i> Add Transaction
+          </button>
+        </div>
         <div class="table-responsive">
           <table>
             <thead>
-              <tr><th>ID</th><th>Type</th><th>Amount</th><th>Source</th><th>Description</th><th>Date</th></tr>
+              <tr><th>ID</th><th>Type</th><th>Amount</th><th>Source</th><th>Description</th><th>Date</th><th>Actions</th></tr>
             </thead>
-            <tbody id="user-coins-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+            <tbody id="user-coins-body"><tr><td colspan="7" style="text-align:center;">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -517,53 +681,441 @@
     </div>
   </div>
 
+  <!-- EDIT / ADD COIN TRANSACTION MODAL -->
+  <div class="modal-overlay" id="coin-modal">
+    <div class="modal glass" style="max-width: 500px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 18px; font-weight: 700;" id="coin-modal-title">Edit Coin Transaction</h3>
+          <p style="font-size: 12px; color: var(--text-muted);" id="coin-modal-sub">Modify transaction entry live in Turso DB</p>
+        </div>
+        <button class="modal-close" onclick="closeCoinModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="form-grid" style="margin-top: 10px;">
+        <input type="hidden" id="edit-coin-id">
+        <div class="form-group full-width">
+          <label>User ID</label>
+          <input type="text" id="edit-coin-user-id" class="form-input" placeholder="User ID string">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="edit-coin-type" class="form-input">
+            <option value="EARN">EARN 🟢</option>
+            <option value="SPEND">SPEND 🔴</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (Coins)</label>
+          <input type="number" id="edit-coin-amount" class="form-input" min="1" value="10">
+        </div>
+        <div class="form-group full-width">
+          <label>Source</label>
+          <input type="text" id="edit-coin-source" class="form-input" placeholder="e.g. quiz_reward, meditation, admin_adjustment">
+        </div>
+        <div class="form-group full-width">
+          <label>Description</label>
+          <input type="text" id="edit-coin-description" class="form-input" placeholder="Transaction description or note">
+        </div>
+        <div class="form-group full-width">
+          <label>Date & Time (YYYY-MM-DD HH:MM:SS)</label>
+          <input type="text" id="edit-coin-date" class="form-input" placeholder="Leave empty for current timestamp">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: space-between; margin-top: 20px; align-items: center;">
+        <button class="btn btn-danger" id="btn-delete-coin" onclick="deleteCoinTransaction()"><i class="fa-solid fa-trash"></i> Delete</button>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary" onclick="closeCoinModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveCoinTransaction()"><i class="fa-solid fa-floppy-disk"></i> Save Transaction</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    const ADMIN_QUERY_URL = "https://lofty-crocodile-6332.sravanku018.deno.net/admin/query";
-    const ADMIN_KEY = "PUT_YOUR_ADMIN_SECRET_KEY_HERE"; // same value as ADMIN_SECRET_KEY env var on Deno Deploy
-    const ADMIN_PIN = "108";
+    // ── Secure Admin API (Deno → VPS Postgres; secrets on Deno only) ──
+    const ADMIN_API = "https://lofty-crocodile-6332.sravanku018.deno.net";
+
+    function getAdminKey() {
+      return sessionStorage.getItem("gita_admin_key") || "";
+    }
+    function setAdminKey(key) {
+      if (key) sessionStorage.setItem("gita_admin_key", key);
+      else sessionStorage.removeItem("gita_admin_key");
+    }
+
+    function copyTotpSecret() {
+      const input = document.getElementById("totp-secret-input");
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value);
+        alert("Secret copied. 1) Confirm same value is TOTP_SECRET on Deno. 2) Add to Google Authenticator. 3) Then unlock with 6-digit code.");
+      }
+    }
+
+
+    async function testTotpCode() {
+      const code = document.getElementById("totp-test-code")?.value.trim();
+      const msgEl = document.getElementById("totp-test-msg");
+      if (!msgEl) return;
+      if (!code || code.length !== 6) {
+        msgEl.textContent = "Enter 6-digit code";
+        msgEl.style.color = "#ef4444";
+        msgEl.style.display = "block";
+        return;
+      }
+      try {
+        const key = getAdminKey() || document.getElementById("admin-secret-key")?.value.trim();
+        const res = await fetch(ADMIN_API + "/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_key: key, totp: code }),
+        });
+        const data = await res.json();
+        msgEl.textContent = (res.ok && data.success) ? "TOTP valid on server" : ("Error: " + (data.error || "Invalid"));
+        msgEl.style.color = (res.ok && data.success) ? "#10b981" : "#ef4444";
+        msgEl.style.display = "block";
+      } catch (e) {
+        msgEl.textContent = "Error: " + e.message;
+        msgEl.style.color = "#ef4444";
+        msgEl.style.display = "block";
+      }
+    }
 
     let currentView = "roster";
-    let allUsersList = [];
+    let allUsersCache = [];
+    let rosterFilter = 'all';
+    const dirtySet = new Set();
+    const newSet   = new Set();
     let activeDossierUser = null;
+    let currentCoinLogs = [];
+    let currentDossierCoins = [];
+    let isUsersLoaded = false;
+    let isCoinHistoryLoaded = false;
+    let isMeditationLoaded = false;
+    let isFeedbackLoaded = false;
+    let isNotesLoaded = false;
 
     function checkPin(e) { if (e.key === "Enter") unlockDashboard(); }
 
-    function unlockDashboard() {
-      const input = document.getElementById("admin-pin").value;
-      if (input === ADMIN_PIN || input === "108") {
+    async function unlockDashboard() {
+      const errEl = document.getElementById("pin-error");
+      const adminKey = (document.getElementById("admin-secret-key")?.value || getAdminKey() || "").trim();
+      const totp = document.getElementById("admin-pin").value.trim();
+      if (!adminKey) {
+        errEl.textContent = "Enter ADMIN_SECRET_KEY (from Deno env / password manager).";
+        errEl.style.display = "block";
+        return;
+      }
+      if (!totp || totp.length !== 6) {
+        errEl.textContent = "Enter current 6-digit Google Authenticator code.";
+        errEl.style.display = "block";
+        return;
+      }
+      errEl.style.display = "none";
+      try {
+        const res = await fetch(ADMIN_API + "/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ admin_key: adminKey, totp: totp }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          const msg = data.error || "Login failed";
+          const hint = data.hint ? "<br><small>" + data.hint + "</small>" : "";
+          // "Unauthorized" always meant wrong admin key (TOTP has its own message)
+          errEl.innerHTML = msg.includes("Unauthorized") || msg.includes("Admin Secret")
+            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from Deno env. TOTP is only checked after the key matches.</small>"
+            : ("❌ " + msg + hint);
+          errEl.style.display = "block";
+          return;
+        }
+        setAdminKey(data.admin_key || adminKey);
+        sessionStorage.setItem("gita_admin_unlocked", "true");
         document.getElementById("lock-screen").style.display = "none";
         document.getElementById("app-layout").style.display = "flex";
-        localStorage.setItem("gita_admin_unlocked", "true");
-        fetchCurrentViewData();
-      } else {
-        document.getElementById("pin-error").style.display = "block";
+        fetchCurrentViewData(true);
+      } catch (e) {
+        errEl.innerHTML =
+          "Cannot reach Admin API: " + (e.message || e) +
+          "<br><small>Usually CORS. On Deno set env <code>ALLOWED_ORIGINS</code> value to only " +
+          "<code>https://sravanku018.github.io</code> (not ALLOWED_ORIGINS=...).</small>";
+        errEl.style.display = "block";
       }
     }
 
     function lockDashboard() {
-      localStorage.removeItem("gita_admin_unlocked");
+      sessionStorage.removeItem("gita_admin_unlocked");
+      setAdminKey("");
       document.getElementById("app-layout").style.display = "none";
       document.getElementById("lock-screen").style.display = "flex";
       document.getElementById("admin-pin").value = "";
     }
 
-    if (localStorage.getItem("gita_admin_unlocked") === "true") {
+    if (sessionStorage.getItem("gita_admin_unlocked") === "true" && getAdminKey()) {
       document.getElementById("lock-screen").style.display = "none";
       document.getElementById("app-layout").style.display = "flex";
       fetchCurrentViewData();
     }
 
+    function escHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function sqlStr(s) {
+      return String(s ?? "").replace(/'/g, "''");
+    }
+
+    /** Normalize admin date inputs for SQLite text timestamps. */
+    function normalizeAdminDate(raw) {
+      const s = String(raw || "").trim();
+      if (!s) return null;
+      // Accept ISO "2026-08-06T08:54:48.276Z" → "2026-08-06 08:54:48"
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+      if (m) return `${m[1]} ${m[2]}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s} 12:00:00`;
+      return s;
+    }
+
+    /**
+     * Run SQL against Turso. Throws on HTTP/SQL errors so callers can alert.
+     * SELECT → array of row objects. WRITE → { success, affected_rows, last_insert_rowid }.
+     */
     async function queryTurso(sql) {
-      try {
-        const res = await fetch(ADMIN_QUERY_URL, {
-          method: "POST",
-          headers: { "x-admin-key": ADMIN_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ sql })
+      const key = getAdminKey();
+      if (!key) throw new Error("Not logged in — unlock with ADMIN_SECRET_KEY + TOTP first");
+      const res = await fetch(ADMIN_API + "/admin/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Key": key },
+        body: JSON.stringify({ sql: sql }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || ("Admin API HTTP " + res.status));
+      if (data && data.success === true && Array.isArray(data.rows)) {
+        const rows = data.rows.map(normalizeAdminRow);
+        const affected = Number(data.affected_rows || 0);
+        if (rows.length === 0 && /^\s*(insert|update|delete)\b/i.test(sql)) {
+          return { success: true, affected_rows: affected };
+        }
+        return rows;
+      }
+      if (Array.isArray(data)) return data.map(normalizeAdminRow);
+      return { success: true, affected_rows: 0 };
+    }
+
+    function normalizeAdminRow(row) {
+      if (!row || typeof row !== "object") return row;
+      const o = {};
+      for (const [k, v] of Object.entries(row)) o[k] = tursoCellValue(v);
+      return o;
+    }
+
+    function tursoCellValue(cell) {
+      if (cell == null) return null;
+      if (typeof cell !== "object") return cell;
+      if (cell.type === "null" || cell.value === null) return null;
+      if ("value" in cell) return cell.value;
+      return null;
+    }
+
+    function fieldText(v) {
+      if (v == null) return "";
+      if (typeof v === "object") return "";
+      return String(v);
+    }
+
+    /** Normalize Turso cell shapes: {type,value} | primitive | null */
+    function tursoCellValue(cell) {
+      if (cell == null) return null;
+      if (typeof cell !== "object") return cell;
+      if (cell.type === "null" || cell.value === null) return null;
+      if ("value" in cell) {
+        // Integers/floats often come back as strings — keep as-is for text fields
+        return cell.value;
+      }
+      // Never put raw objects into form fields
+      return null;
+    }
+
+    function fieldText(v) {
+      if (v == null) return "";
+      if (typeof v === "object") return "";
+      return String(v);
+    }
+
+    function isActiveProfile(u) { return Number(u.days_active || 0) >= 1; }
+    function isNewProfile(u)    { return newSet.has(u.user_id); }
+    function isEditedProfile(u) { return dirtySet.has(u.user_id); }
+
+    function activityDots(u) {
+      const acts = Math.min(Number(u.days_active || 0), 5);
+      return Array.from({length: 5}, (_, i) =>
+        `<div class="activity-dot ${i < acts ? 'filled' : ''}"></div>`
+      ).join('');
+    }
+
+    function formatLastSeen(dateStr) {
+      if (!dateStr) return '<span class="last-seen-old">Never</span>';
+      const d = new Date(dateStr), now = new Date();
+      const diffDays = Math.floor((now - d) / 86400000);
+      if (diffDays === 0) return '<span class="last-seen-fresh">Today 🟢</span>';
+      if (diffDays === 1) return '<span class="last-seen-fresh">Yesterday</span>';
+      if (diffDays <= 3)  return `<span class="last-seen-fresh">${diffDays}d ago</span>`;
+      return `<span class="last-seen-old">${diffDays}d ago</span>`;
+    }
+
+    function getStatusBadge(u) {
+      if (isEditedProfile(u)) return `<span class="badge badge-edited">✏️ EDITED</span>`;
+      if (isNewProfile(u))    return `<span class="badge badge-new">🔵 NEW</span>`;
+      if (isActiveProfile(u)) return `<span class="badge badge-active">🟢 ACTIVE</span>`;
+      return `<span class="badge" style="background:rgba(156,163,175,0.1);color:#6b7280;border:1px solid rgba(156,163,175,0.2);">INACTIVE</span>`;
+    }
+
+    function getBorderStyle(u) {
+      if (isEditedProfile(u)) return 'border-left:3px solid #f59e0b;';
+      if (isNewProfile(u))    return 'border-left:3px solid #6366f1;';
+      if (isActiveProfile(u)) return 'border-left:3px solid #10b981;';
+      return '';
+    }
+
+    function renderRosterRow(u) {
+      const isGuest = Number(u.is_guest) === 1;
+      const acts = Number(u.days_active || 0);
+      const active = isActiveProfile(u);
+      const avatarBorder = isEditedProfile(u) ? 'border:2px solid #f59e0b;' : isNewProfile(u) ? 'border:2px solid #6366f1;' : active ? 'border:2px solid #10b981;' : '';
+      return `
+        <tr id="row-${u.user_id}" style="${getBorderStyle(u)}">
+          <td><div class="user-pill">
+            <div class="avatar" style="${avatarBorder}${isGuest?'background:linear-gradient(135deg,#4b5563,#6b7280);':''}"> ${u.user_id.substring(0,2).toUpperCase()}</div>
+            <div><strong>${u.user_id}</strong><br><span style="font-size:11px;color:var(--text-muted);">${u.name||'Seeker'}</span></div>
+          </div></td>
+          <td>${getStatusBadge(u)}</td>
+          <td><span class="badge ${isGuest?'badge-guest':'badge-success'}">${isGuest?'GUEST':'SEEKER'}</span></td>
+          <td><div style="display:flex;flex-direction:column;gap:3px;"><div class="activity-bar">${activityDots(u)}</div><span style="font-size:10px;color:var(--text-muted);">${acts} act${acts!==1?'s':''}</span></div></td>
+          <td><strong style="color:var(--primary);">${u.current_streak||0} 🔥</strong></td>
+          <td>
+            <span onclick="quickEditCoins('${u.user_id}', ${u.krishna_coins||0})" title="Click to edit coin balance" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:6px; transition:background 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='transparent'">
+              <strong style="color:var(--success);">${u.krishna_coins||0} 🪙</strong>
+              <i class="fa-solid fa-pen" style="font-size:10px; opacity:0.5; color:#f59e0b;"></i>
+            </span>
+          </td>
+          <td>Lvl ${u.yoga_level||1}</td>
+          <td>${formatLastSeen(u.last_activity_date)}</td>
+          <td><button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="openDossierFor('${u.user_id}')">
+            <i class="fa-solid fa-address-card"></i> Dossier</button></td>
+        </tr>`;
+    }
+
+    function updateGlobalProfileDropdown(users) {
+      const select = document.getElementById('global-profile-select');
+      if (!select) return;
+      const current = select.value;
+      let html = '<option value="">👤 All Seeker Profiles</option>';
+      users.forEach(u => {
+        const name = u.name ? ` (${u.name})` : '';
+        html += `<option value="${u.user_id}" ${u.user_id === current ? 'selected' : ''}>👤 ${u.user_id}${name}</option>`;
+      });
+      select.innerHTML = html;
+    }
+
+    function onGlobalProfileChange(userId) {
+      if (!userId) {
+        renderRoster(allUsersCache);
+        return;
+      }
+      openDossierFor(userId);
+    }
+
+    function renderRoster(users) {
+      updateGlobalProfileDropdown(users);
+      let filtered;
+      if      (rosterFilter === 'active') filtered = users.filter(isActiveProfile);
+      else if (rosterFilter === 'edited') filtered = users.filter(isEditedProfile);
+      else if (rosterFilter === 'new')    filtered = users.filter(isNewProfile);
+      else                                 filtered = users;
+
+      const activeCount  = users.filter(isActiveProfile).length;
+      const editedCount  = dirtySet.size;
+      const newCount     = newSet.size;
+      document.getElementById('active-count-badge').innerText = `${activeCount} Active 🟢`;
+      document.getElementById('user-count-badge').innerText   = `${users.length} Total`;
+      document.getElementById('smart-refresh-info').innerText =
+        (editedCount + newCount) > 0
+          ? `⚡ ${editedCount} edited · ${newCount} new — click Smart Refresh`
+          : 'No pending updates';
+
+      const body = document.getElementById('master-roster-body');
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">No ${rosterFilter} profiles found.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(renderRosterRow).join('');
+    }
+
+    function filterRoster(mode, chip) {
+      rosterFilter = mode;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-chip'));
+      chip.classList.add('active-chip');
+      renderRoster(allUsersCache);
+    }
+
+    function searchRoster(query) {
+      const q = (query || "").trim().toLowerCase();
+      if (!q) {
+        renderRoster(allUsersCache);
+        return;
+      }
+      const filtered = allUsersCache.filter(u => 
+        (u.user_id && u.user_id.toLowerCase().includes(q)) || 
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q))
+      );
+      const body = document.getElementById('master-roster-body');
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">No profiles matching "${escHtml(q)}".</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(renderRosterRow).join('');
+    }
+
+    // ── Smart Refresh: only re-fetches dirty + new user rows, zero full scan ──
+    async function smartRefresh(btn) {
+      const targets = [...new Set([...dirtySet, ...newSet])];
+      if (!targets.length) {
+        document.getElementById('smart-refresh-info').innerText = '✅ Nothing to refresh';
+        return;
+      }
+      btn.classList.add('spinning');
+      document.getElementById('smart-refresh-info').innerText = `⚡ Refreshing ${targets.length} profile(s)...`;
+
+      const inClause = targets.map(id => `'${id}'`).join(',');
+      const fresh = await queryTurso(`
+        SELECT u.user_id, u.name, u.email, u.is_guest,
+               us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level
+        FROM users u
+        LEFT JOIN user_stats us ON us.user_id = u.user_id
+        WHERE u.user_id IN (${inClause})
+      `);
+
+      if (fresh) {
+        fresh.forEach(fu => {
+          const idx = allUsersCache.findIndex(u => u.user_id === fu.user_id);
+          if (idx !== -1) allUsersCache[idx] = { ...allUsersCache[idx], ...fu };
+          // Re-render just this row in-place
+          const row = document.getElementById(`row-${fu.user_id}`);
+          if (row) row.outerHTML = renderRosterRow(fu);
         });
-        const data = await res.json();
-        if (data.error) { console.error("Query error:", data.error); return null; }
-        return data.rows || [];
-      } catch (e) { console.error("Query error:", e); return null; }
+      }
+
+      dirtySet.clear();
+      newSet.clear();
+      btn.classList.remove('spinning');
+      document.getElementById('smart-refresh-info').innerText = `✅ Refreshed ${targets.length} row(s)`;
     }
 
     function switchView(viewName, navElem) {
@@ -580,73 +1132,96 @@
         history: ["Coin History", "Live Stream of All Earned & Spent Krishna Coins"],
         meditation: ["Meditation", "Track 5-20 Min Daily/Monthly Meditation Rewards"],
         feedback: ["Feedback & Complaints", "Review Seeker Feedback, Ideas & Support Complaints"],
-        notes: ["Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"]
+        notes: ["Verse Notes", "Review All Verse Notes Saved by Seekers (Max 200 Chars)"],
+        settings: ["Settings & 2FA", "Manage Admin Security Password & Google Authenticator 2FA"]
       };
 
-      document.getElementById("page-title").innerText = titles[viewName][0];
-      document.getElementById("page-subtitle").innerText = titles[viewName][1];
+      document.getElementById("page-title").innerText = titles[viewName]?.[0] || "Settings";
+      document.getElementById("page-subtitle").innerText = titles[viewName]?.[1] || "Security Settings";
 
       fetchCurrentViewData();
     }
 
-    function fetchCurrentViewData() {
-      if (currentView === "roster") fetchAllUsers();
+    function fetchCurrentViewData(force = false) {
+      if (currentView === "settings") return;
+      if (currentView === "roster") {
+        if (!isUsersLoaded || force) fetchAllUsers();
+        else renderRoster(allUsersCache);
+      }
       else if (currentView === "studyplans") fetchStudyPlansList();
-      else if (currentView === "history") fetchCoinHistoryLog();
-      else if (currentView === "meditation") fetchMeditationLogs();
-      else if (currentView === "feedback") fetchFeedbackList();
-      else if (currentView === "notes") fetchVerseNotes();
+      else if (currentView === "history") {
+        // Must pass force through — otherwise fetchCoinHistoryLog() no-ops after first load
+        if (!isCoinHistoryLoaded || force) fetchCoinHistoryLog(force);
+      }
+      else if (currentView === "meditation") {
+        if (!isMeditationLoaded || force) fetchMeditationLogs();
+      }
+      else if (currentView === "feedback") {
+        if (!isFeedbackLoaded || force) fetchFeedbackList();
+      }
+      else if (currentView === "notes") {
+        if (!isNotesLoaded || force) fetchVerseNotes();
+      }
+    }
+
+    async function refreshCoinHistoryView(btn) {
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.classList.add("spinning");
+        }
+        isCoinHistoryLoaded = false;
+        await fetchCoinHistoryLog(true);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove("spinning");
+        }
+      }
     }
 
     async function fetchAllUsers() {
-      const users = await queryTurso(`
-        SELECT u.user_id, u.name, u.email, u.is_guest,
-               us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
-               cs.current_day as checkin_day, cs.current_week as checkin_week,
-               cs.share_day, cs.share_week
-        FROM users u
-        LEFT JOIN user_stats us ON us.user_id = u.user_id
-        LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
-        ORDER BY us.current_streak DESC, us.krishna_coins DESC
-      `);
+      try {
+        const users = await queryTurso(`
+          SELECT COALESCE(u.user_id, us.user_id) as user_id,
+                 COALESCE(u.name, 'Guest') as name,
+                 COALESCE(u.email, COALESCE(us.user_id, 'guest') || '@gita.com') as email,
+                 COALESCE(u.is_guest, 1) as is_guest,
+                 COALESCE(u.created_at, us.last_activity_date) as created_at,
+                 us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
+                 cs.current_day as checkin_day, cs.current_week as checkin_week,
+                 cs.share_day, cs.share_week
+          FROM users u
+          FULL OUTER JOIN user_stats us ON us.user_id = u.user_id
+          LEFT JOIN checkin_streaks cs ON cs.user_id = COALESCE(u.user_id, us.user_id)
+          ORDER BY COALESCE(u.created_at, us.last_activity_date) DESC NULLS LAST, us.last_activity_date DESC NULLS LAST, user_id DESC
+          LIMIT 500
+        `);
 
-      if (users) {
-        allUsersList = users;
-        document.getElementById("kpi-total-users").innerText = users.length;
-        const top = users[0] || {};
-        document.getElementById("kpi-top-streak").innerText = `${top.current_streak || 0} Days 🔥`;
-        document.getElementById("kpi-top-user").innerText = top.user_id || "N/A";
-
-        document.getElementById("user-count-badge").innerText = `${users.length} Users`;
-        const body = document.getElementById("master-roster-body");
-        body.innerHTML = users.map(u => {
-          const isGuest = Number(u.is_guest) === 1;
-          return `
-            <tr>
-              <td>
-                <div class="user-pill">
-                  <div class="avatar" style="${isGuest ? 'background:linear-gradient(135deg, #4b5563, #6b7280);':''}">${u.user_id.substring(0, 2).toUpperCase()}</div>
-                  <div><strong>${u.user_id}</strong><br><span style="font-size:11px; color:var(--text-muted);">${u.name || 'Seeker'}</span></div>
-                </div>
-              </td>
-              <td><span class="badge ${isGuest ? 'badge-guest' : 'badge-success'}">${isGuest ? 'GUEST' : 'SEEKER'}</span></td>
-              <td><strong style="color:var(--primary);">${u.current_streak || 0} Days 🔥</strong></td>
-              <td>${u.longest_streak || 0} Days</td>
-              <td>Day ${u.checkin_day || 1} (W${u.checkin_week || 1})</td>
-              <td>Day ${u.share_day || 1} (W${u.share_week || 1})</td>
-              <td><strong style="color:var(--success);">${u.krishna_coins || 0} 🪙</strong></td>
-              <td>Level ${u.yoga_level || 1}</td>
-              <td>${u.last_activity_date || 'N/A'}</td>
-              <td>
-                <button class="btn btn-primary" style="padding:6px 12px; font-size:12px;" onclick="openDossierFor('${u.user_id}')">
-                  <i class="fa-solid fa-address-card"></i> View Dossier
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join("");
+        if (Array.isArray(users)) {
+          allUsersCache = users;
+          isUsersLoaded = true;
+          // Flag first-login users (days_active === 1) as new
+          newSet.clear();
+          users.forEach(u => { if (Number(u.days_active || 0) === 1) newSet.add(u.user_id); });
+          document.getElementById('kpi-total-users').innerText = users.length;
+          const activeOnes = users.filter(isActiveProfile);
+          const top = activeOnes[0] || users[0] || {};
+          document.getElementById('kpi-top-streak').innerText = `${top.current_streak || 0} Days 🔥`;
+          document.getElementById('kpi-top-user').innerText = top.user_id || 'N/A';
+          renderRoster(users);
+        }
+      } catch (err) {
+        console.error("fetchAllUsers:", err);
+        const msg = String(err.message || err);
+        const hint = msg.includes("404") || msg.includes("SERVER_ERROR")
+          ? "\n\nDatabase config on Deno is wrong/missing.\nSet DATABASE_URL=postgres://…@VPS:5432/coin_db on lofty-crocodile (same as flaky-kestrel), then redeploy."
+          : "";
+        alert(`Failed to load users: ${msg}${hint}`);
       }
     }
+
+    // No auto-refresh — use Smart Refresh button for targeted delta updates
 
     async function fetchStudyPlansList() {
       const plans = await queryTurso(`SELECT * FROM study_plans ORDER BY id DESC LIMIT 50`);
@@ -680,6 +1255,7 @@
 
     async function fetchFeedbackList() {
       const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
+      isFeedbackLoaded = true;
       const body = document.getElementById("feedback-body");
       document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
 
@@ -704,7 +1280,7 @@
     }
 
     async function openDossierFor(userId) {
-      const user = allUsersList.find(u => u.user_id === userId);
+      const user = allUsersCache.find(u => u.user_id === userId);
       if (!user) return;
       activeDossierUser = user;
 
@@ -724,7 +1300,11 @@
       document.getElementById("edit-days-active").value = user.days_active || 1;
       document.getElementById("edit-yoga-level").value = user.yoga_level || 1;
 
-      loadUserIsolatedData(userId);
+      // Reset tabs to profile
+      document.querySelectorAll(".dossier-tab").forEach(t => t.classList.remove("active"));
+      document.querySelector(".dossier-tab").classList.add("active");
+      document.querySelectorAll(".dossier-view").forEach(v => v.style.display = "none");
+      document.getElementById("dossier-view-profile").style.display = "block";
 
       document.getElementById("dossier-modal").style.display = "flex";
     }
@@ -739,57 +1319,104 @@
 
       document.querySelectorAll(".dossier-view").forEach(v => v.style.display = "none");
       document.getElementById(`dossier-view-${tabName}`).style.display = "block";
+
+      if (activeDossierUser && tabName !== 'profile') {
+        loadUserIsolatedTab(activeDossierUser.user_id, tabName);
+      }
     }
 
-    async function loadUserIsolatedData(userId) {
-      // 1. User Study Plans
-      const plans = await queryTurso(`SELECT * FROM study_plans WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-studyplans-body").innerHTML = (plans && plans.length > 0) ? plans.map(p => {
-        const curDay = Number(p.current_day || 1);
-        const totalDays = Number(p.duration_days || 14);
-        const percent = Math.min(100, Math.round((curDay / totalDays) * 100));
-        return `
-          <tr><td>#${p.id}</td><td><strong>${p.title}</strong></td><td>Day ${curDay}</td><td>${totalDays} Days</td><td><div class="progress-bar-bg" style="width:100px;"><div class="progress-bar-fill" style="width:${percent}%;"></div></div> ${percent}%</td></tr>
-        `;
-      }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
-
-      // 2. User Coins History
-      const coins = await queryTurso(`SELECT id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-coins-body").innerHTML = (coins && coins.length > 0) ? coins.map(c => `
-        <tr><td>#${c.id}</td><td><span class="badge ${c.type==='EARN'?'badge-success':'badge-danger'}">${c.type}</span></td><td><strong>${c.amount} 🪙</strong></td><td><code>${c.source}</code></td><td>${c.description}</td><td>${c.created_at}</td></tr>
-      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
-
-      // 3. User Meditation Sessions
-      const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-meditation-body").innerHTML = (meditations && meditations.length > 0) ? meditations.map(m => `
-        <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
-      `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
-
-      // 4. User Feedback & Complaints
-      const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
-      document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
-        <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
-      `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
-
-      // 5. User Verse Notes
-      const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
-      document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
-        <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
-      `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
+    async function loadUserIsolatedTab(userId, tabName) {
+      if (tabName === 'studyplans') {
+        const plans = await queryTurso(`SELECT * FROM study_plans WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-studyplans-body").innerHTML = (plans && plans.length > 0) ? plans.map(p => {
+          const curDay = Number(p.current_day || 1);
+          const totalDays = Number(p.duration_days || 14);
+          const percent = Math.min(100, Math.round((curDay / totalDays) * 100));
+          return `<tr><td>#${p.id}</td><td><strong>${p.title}</strong></td><td>Day ${curDay}</td><td>${totalDays} Days</td><td><div class="progress-bar-bg" style="width:100px;"><div class="progress-bar-fill" style="width:${percent}%;"></div></div> ${percent}%</td></tr>`;
+        }).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No study plans created by this user.</td></tr>`;
+      }
+      else if (tabName === 'coins') {
+        try {
+          const coins = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE user_id = '${sqlStr(userId)}' ORDER BY id DESC LIMIT 50`);
+          currentDossierCoins = Array.isArray(coins) ? coins : [];
+          document.getElementById("user-coins-body").innerHTML = currentDossierCoins.length > 0 ? currentDossierCoins.map(c => `
+            <tr>
+              <td>#${escHtml(c.id)}</td>
+              <td><span class="badge ${String(c.type).toUpperCase()==='EARN'?'badge-success':'badge-danger'}">${escHtml(c.type)}</span></td>
+              <td><strong>${escHtml(c.amount)} 🪙</strong></td>
+              <td><code>${escHtml(c.source)}</code></td>
+              <td>${escHtml(c.description || '')}</td>
+              <td>${escHtml(c.created_at || '')}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(c.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+              </td>
+            </tr>
+          `).join("") : `<tr><td colspan="7" style="text-align:center; padding:20px;">No coin history for this user.</td></tr>`;
+        } catch (err) {
+          console.error(err);
+          document.getElementById("user-coins-body").innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;">Failed to load: ${escHtml(err.message)}</td></tr>`;
+        }
+      }
+      else if (tabName === 'meditation') {
+        const meditations = await queryTurso(`SELECT id, minutes, coins_earned, session_date FROM meditation_sessions WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-meditation-body").innerHTML = (meditations && meditations.length > 0) ? meditations.map(m => `
+          <tr><td>#${m.id}</td><td><span class="badge badge-success">${m.minutes} Mins</span></td><td>+${m.coins_earned} 🪙</td><td>${m.session_date}</td></tr>
+        `).join("") : `<tr><td colspan="4" style="text-align:center; padding:20px;">No meditation sessions logged for this user.</td></tr>`;
+      }
+      else if (tabName === 'feedback') {
+        const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
+        document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
+          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+        `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
+      }
+      else if (tabName === 'notes') {
+        const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
+        document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
+          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+        `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
+      }
     }
 
-    async function fetchCoinHistoryLog() {
-      const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+    async function fetchCoinHistoryLog(force = false) {
+      if (isCoinHistoryLoaded && !force) return;
       const body = document.getElementById("coin-history-body");
-      if (logs && logs.length > 0) {
-        body.innerHTML = logs.map(l => `
-          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge ${l.type==='EARN'?'badge-success':'badge-danger'}">${l.type}</span></td><td><strong>${l.amount} 🪙</strong></td><td><code>${l.source}</code></td><td>${l.description}</td><td>${l.created_at}</td></tr>
-        `).join("");
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>`;
+      try {
+        const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
+        currentCoinLogs = Array.isArray(logs) ? logs : [];
+        isCoinHistoryLoaded = true;
+        if (currentCoinLogs.length > 0) {
+          body.innerHTML = currentCoinLogs.map(l => `
+            <tr>
+              <td>#${escHtml(l.id)}</td>
+              <td><strong>${escHtml(l.user_id)}</strong></td>
+              <td><span class="badge ${String(l.type).toUpperCase()==='EARN'?'badge-success':'badge-danger'}">${escHtml(l.type)}</span></td>
+              <td><strong>${escHtml(l.amount)} 🪙</strong></td>
+              <td><code>${escHtml(l.source)}</code></td>
+              <td>${escHtml(l.description || '')}</td>
+              <td>${escHtml(l.created_at || '')}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(l.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+              </td>
+            </tr>
+          `).join("");
+        } else {
+          body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;">No coin history found.</td></tr>`;
+        }
+      } catch (err) {
+        console.error("fetchCoinHistoryLog:", err);
+        isCoinHistoryLoaded = false;
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">Failed to load coin history: ${escHtml(err.message)}</td></tr>`;
       }
     }
 
     async function fetchMeditationLogs() {
       const logs = await queryTurso(`SELECT * FROM meditation_sessions ORDER BY id DESC LIMIT 50`);
+      isMeditationLoaded = true;
       const body = document.getElementById("meditation-body");
       let totalMins = 0;
       if (logs && logs.length > 0) {
@@ -803,6 +1430,7 @@
 
     async function fetchVerseNotes() {
       const notes = await queryTurso(`SELECT * FROM verse_notes ORDER BY id DESC LIMIT 50`);
+      isNotesLoaded = true;
       const body = document.getElementById("notes-body");
       if (notes && notes.length > 0) {
         body.innerHTML = notes.map(n => `
@@ -812,35 +1440,338 @@
     }
 
     async function saveUserProfile() {
-      const uid = document.getElementById("edit-user-id").value.trim();
-      const name = document.getElementById("edit-name").value.trim();
-      const email = document.getElementById("edit-email").value.trim();
-      const curStreak = Number(document.getElementById("edit-current-streak").value);
-      const maxStreak = Number(document.getElementById("edit-longest-streak").value);
-      const checkinDay = Number(document.getElementById("edit-checkin-day").value);
-      const checkinWeek = Number(document.getElementById("edit-checkin-week").value);
-      const shareDay = Number(document.getElementById("edit-share-day").value);
-      const shareWeek = Number(document.getElementById("edit-share-week").value);
-      const coins = Number(document.getElementById("edit-coins").value);
-      const daysActive = Number(document.getElementById("edit-days-active").value);
-      const yogaLevel = Number(document.getElementById("edit-yoga-level").value);
+      try {
+        const uid = document.getElementById("edit-user-id").value.trim();
+        const rawName = document.getElementById("edit-name").value.trim();
+        const rawEmail = document.getElementById("edit-email").value.trim();
+        const name = rawName.replace(/'/g, "''");
+        const email = rawEmail.replace(/'/g, "''");
+        const curStreak = Number(document.getElementById("edit-current-streak").value) || 0;
+        const maxStreak = Number(document.getElementById("edit-longest-streak").value) || 0;
+        const checkinDay = Number(document.getElementById("edit-checkin-day").value) || 1;
+        const checkinWeek = Number(document.getElementById("edit-checkin-week").value) || 1;
+        const shareDay = Number(document.getElementById("edit-share-day").value) || 1;
+        const shareWeek = Number(document.getElementById("edit-share-week").value) || 1;
+        const coins = Number(document.getElementById("edit-coins").value) || 0;
+        const daysActive = Number(document.getElementById("edit-days-active").value) || 1;
+        const yogaLevel = Number(document.getElementById("edit-yoga-level").value) || 1;
 
-      const targetUser = allUsersList.find(u => u.user_id === uid) || {};
-      const oldCoins = Number(targetUser.krishna_coins || 0);
-      const coinDiff = coins - oldCoins;
-      const today = new Date().toISOString().split("T")[0];
+        const targetUser = allUsersCache.find(u => u.user_id === uid) || {};
+        const oldCoins = Number(targetUser.krishna_coins || 0);
+        const coinDiff = coins - oldCoins;
+        const today = new Date().toISOString().split("T")[0];
 
-      await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
-      await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
-      await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
+        await queryTurso(`UPDATE users SET name = '${name}', email = '${email}' WHERE user_id = '${uid}'`);
+        await queryTurso(`UPDATE user_stats SET krishna_coins = ${coins}, current_streak = ${curStreak}, longest_streak = ${maxStreak}, days_active = ${daysActive}, yoga_level = ${yogaLevel}, last_activity_date = '${today}', updated_at = datetime('now') WHERE user_id = '${uid}'`);
+        await queryTurso(`INSERT INTO checkin_streaks (user_id, current_day, current_week, share_day, share_week, last_checkin, last_share) VALUES ('${uid}', ${checkinDay}, ${checkinWeek}, ${shareDay}, ${shareWeek}, '${today}', '${today}') ON CONFLICT(user_id) DO UPDATE SET current_day = ${checkinDay}, current_week = ${checkinWeek}, share_day = ${shareDay}, share_week = ${shareWeek}, last_checkin = '${today}', last_share = '${today}'`);
 
-      if (coinDiff !== 0) {
-        await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
+        if (coinDiff !== 0) {
+          await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${uid}', ${coinDiff}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_adjustment', 'Admin updated coin balance from ${oldCoins} to ${coins}', datetime('now'))`);
+        }
+
+        // Mark this user as edited — smart refresh will re-fetch only this row
+        dirtySet.add(uid);
+
+        // Post-submit read: re-fetch exact row live from Turso DB to confirm update
+        const fresh = await queryTurso(`
+          SELECT u.user_id, u.name, u.email, u.is_guest,
+                 us.current_streak, us.longest_streak, us.days_active, us.last_activity_date, us.krishna_coins, us.yoga_level,
+                 cs.current_day as checkin_day, cs.current_week as checkin_week,
+                 cs.share_day, cs.share_week
+          FROM users u
+          LEFT JOIN user_stats us ON us.user_id = u.user_id
+          LEFT JOIN checkin_streaks cs ON cs.user_id = u.user_id
+          WHERE u.user_id = '${uid}'
+        `);
+
+        if (fresh && fresh.length > 0) {
+          const fu = fresh[0];
+          const idx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (idx !== -1) allUsersCache[idx] = { ...allUsersCache[idx], ...fu };
+        } else {
+          const idx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (idx !== -1) {
+            allUsersCache[idx] = { ...allUsersCache[idx], name: rawName, email: rawEmail,
+              current_streak: curStreak, longest_streak: maxStreak,
+              krishna_coins: coins, days_active: daysActive, yoga_level: yogaLevel,
+              checkin_day: checkinDay, checkin_week: checkinWeek, share_day: shareDay, share_week: shareWeek };
+          }
+        }
+
+        renderRoster(allUsersCache);
+        alert(`✅ Profile saved & verified live from DB! Row flagged ✏️ EDITED.`);
+        closeDossierModal();
+      } catch (err) {
+        console.error("Save profile error:", err);
+        alert(`❌ Failed to save profile: ${err.message || err}`);
       }
+    }
 
-      alert(`User profile updated for ${uid}!`);
-      closeDossierModal();
-      fetchCurrentViewData();
+    // ── COIN TRANSACTION EDIT / ADD / DELETE FUNCTIONS ──
+    async function openEditCoinModal(id) {
+      try {
+        const txId = String(id ?? "").trim();
+        if (!txId || !/^\d+$/.test(txId)) {
+          alert("Invalid transaction id");
+          return;
+        }
+
+        // Always re-fetch from DB so edits work even if cache is stale/empty
+        let tx = null;
+        const res = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions WHERE id = ${Number(txId)}`);
+        if (Array.isArray(res) && res.length > 0) tx = res[0];
+        if (!tx) {
+          tx = [...currentCoinLogs, ...currentDossierCoins].find(c => String(c.id) === txId) || null;
+        }
+        if (!tx) {
+          alert(`Transaction #${txId} not found in database.`);
+          return;
+        }
+
+        const rawType = String(tx.type || "EARN").toUpperCase();
+        const type = rawType === "SPEND" ? "SPEND" : "EARN";
+        const amount = Math.abs(Number(tx.amount) || 0);
+
+        // Description: prefer DB description; if JSON metadata, show readable form
+        let descText = fieldText(tx.description);
+        if (descText.trim().startsWith("{")) {
+          try {
+            const meta = JSON.parse(descText);
+            if (meta.score != null && (meta.totalQuestions != null || meta.questionsAnswered != null)) {
+              const total = meta.totalQuestions ?? meta.questionsAnswered;
+              descText = `Quiz (${meta.quizType || "general"}): ${meta.score}/${total}`;
+            } else if (meta.battleCoins != null) {
+              descText = `Battle quiz: ${meta.score ?? "?"} correct (+${meta.battleCoins})`;
+            }
+          } catch (_) { /* keep raw */ }
+        }
+
+        document.getElementById("coin-modal-title").innerText = `Edit Transaction #${txId}`;
+        document.getElementById("edit-coin-id").value = fieldText(tx.id);
+        document.getElementById("edit-coin-user-id").value = fieldText(tx.user_id);
+        document.getElementById("edit-coin-type").value = type;
+        document.getElementById("edit-coin-amount").value = amount;
+        document.getElementById("edit-coin-source").value = fieldText(tx.source);
+        document.getElementById("edit-coin-description").value = descText;
+        document.getElementById("edit-coin-date").value = normalizeAdminDate(fieldText(tx.created_at)) || fieldText(tx.created_at);
+        document.getElementById("btn-delete-coin").style.display = "inline-block";
+
+        console.log("openEditCoinModal loaded", { id: txId, source: tx.source, description: descText, raw: tx });
+        document.getElementById("coin-modal").style.display = "flex";
+      } catch (err) {
+        console.error("openEditCoinModal:", err);
+        alert(`❌ Could not open editor: ${err.message || err}`);
+      }
+    }
+
+    function openAddCoinModal(presetUserId = "") {
+      document.getElementById("coin-modal-title").innerText = "Add New Coin Transaction";
+      document.getElementById("edit-coin-id").value = "";
+      document.getElementById("edit-coin-user-id").value = presetUserId || (activeDossierUser ? activeDossierUser.user_id : "");
+      document.getElementById("edit-coin-type").value = "EARN";
+      document.getElementById("edit-coin-amount").value = 10;
+      document.getElementById("edit-coin-source").value = "admin_adjustment";
+      document.getElementById("edit-coin-description").value = "Manual coin grant by admin";
+      const nowFormatted = new Date().toISOString().replace("T", " ").substring(0, 19);
+      document.getElementById("edit-coin-date").value = nowFormatted;
+      document.getElementById("btn-delete-coin").style.display = "none";
+
+      document.getElementById("coin-modal").style.display = "flex";
+    }
+
+    function closeCoinModal() {
+      document.getElementById("coin-modal").style.display = "none";
+    }
+
+    async function saveCoinTransaction() {
+      try {
+        const id = document.getElementById("edit-coin-id").value.trim();
+        const uid = document.getElementById("edit-coin-user-id").value.trim();
+        const typeRaw = document.getElementById("edit-coin-type").value;
+        const type = String(typeRaw).toUpperCase() === "SPEND" ? "SPEND" : "EARN";
+        const amount = Math.abs(Number(document.getElementById("edit-coin-amount").value) || 0);
+        const source = sqlStr(document.getElementById("edit-coin-source").value.trim() || "admin_adjustment");
+        const desc = sqlStr(document.getElementById("edit-coin-description").value.trim());
+        const dateStr = normalizeAdminDate(document.getElementById("edit-coin-date").value);
+
+        if (!uid) {
+          alert("Please enter a User ID");
+          return;
+        }
+        if (!amount || amount < 1) {
+          alert("Amount must be at least 1");
+          return;
+        }
+
+        let delta = 0;
+        const newNet = (type === "EARN" ? amount : -amount);
+
+        if (id) {
+          if (!/^\d+$/.test(id)) {
+            alert("Invalid transaction id");
+            return;
+          }
+          let tx = null;
+          const res = await queryTurso(`SELECT id, amount, type FROM coin_transactions WHERE id = ${Number(id)}`);
+          if (Array.isArray(res) && res.length > 0) tx = res[0];
+          if (!tx) {
+            alert(`Transaction #${id} no longer exists.`);
+            return;
+          }
+          const oldType = String(tx.type || "EARN").toUpperCase();
+          const oldAmt = Math.abs(Number(tx.amount) || 0);
+          const oldNet = oldType === "SPEND" ? -oldAmt : oldAmt;
+          delta = newNet - oldNet;
+
+          const dateUpdateSql = dateStr ? `, created_at = '${sqlStr(dateStr)}'` : "";
+          const write = await queryTurso(
+            `UPDATE coin_transactions SET user_id = '${sqlStr(uid)}', type = '${type}', amount = ${amount}, source = '${source}', description = '${desc}'${dateUpdateSql} WHERE id = ${Number(id)}`
+          );
+          if (!write || write.success !== true) {
+            throw new Error("UPDATE did not return success");
+          }
+          if (Number(write.affected_rows || 0) < 1) {
+            throw new Error(`No row updated for id=${id} (affected_rows=0)`);
+          }
+          alert(`✅ Transaction #${id} updated! Balance delta: ${delta > 0 ? "+" : ""}${delta}.`);
+        } else {
+          delta = newNet;
+          const dateInsertSql = dateStr ? `'${sqlStr(dateStr)}'` : "datetime('now')";
+          const write = await queryTurso(
+            `INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${sqlStr(uid)}', ${amount}, '${type}', '${source}', '${desc}', ${dateInsertSql})`
+          );
+          if (!write || write.success !== true) {
+            throw new Error("INSERT did not return success");
+          }
+          alert(`✅ New coin transaction added! Balance delta: ${delta > 0 ? "+" : ""}${delta}.`);
+        }
+
+        // Keep user_stats.krishna_coins in sync with the edit
+        if (delta !== 0) {
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${sqlStr(uid)}'`);
+          if (Array.isArray(checkUser) && checkUser.length > 0) {
+            const currentCoins = Number(checkUser[0].krishna_coins || 0);
+            const newCoins = Math.max(0, currentCoins + delta);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${sqlStr(uid)}'`);
+          } else {
+            await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${sqlStr(uid)}', ${Math.max(0, delta)}, datetime('now'))`);
+          }
+          dirtySet.add(uid);
+
+          const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (userIdx !== -1) {
+            allUsersCache[userIdx].krishna_coins = Math.max(0, Number(allUsersCache[userIdx].krishna_coins || 0) + delta);
+          }
+          if (activeDossierUser && activeDossierUser.user_id === uid) {
+            activeDossierUser.krishna_coins = Math.max(0, Number(activeDossierUser.krishna_coins || 0) + delta);
+            const editCoinsInput = document.getElementById("edit-coins");
+            if (editCoinsInput) editCoinsInput.value = activeDossierUser.krishna_coins;
+          }
+          renderRoster(allUsersCache);
+        }
+
+        closeCoinModal();
+        isCoinHistoryLoaded = false;
+        await fetchCoinHistoryLog(true);
+        if (uid && activeDossierUser && activeDossierUser.user_id === uid) {
+          await loadUserIsolatedTab(uid, "coins");
+        }
+      } catch (err) {
+        console.error("Save transaction error:", err);
+        alert(`❌ Failed to save transaction: ${err.message || err}`);
+      }
+    }
+
+    async function deleteCoinTransaction() {
+      const id = document.getElementById("edit-coin-id").value.trim();
+      if (!id || !/^\d+$/.test(id)) return;
+      if (!confirm(`Are you sure you want to delete Coin Transaction #${id}? This cannot be undone.`)) return;
+
+      try {
+        const uid = document.getElementById("edit-coin-user-id").value.trim();
+        let tx = null;
+        const res = await queryTurso(`SELECT id, amount, type FROM coin_transactions WHERE id = ${Number(id)}`);
+        if (Array.isArray(res) && res.length > 0) tx = res[0];
+        const oldType = String(tx?.type || "EARN").toUpperCase();
+        const oldAmt = Math.abs(Number(tx?.amount) || 0);
+        const oldNet = oldType === "SPEND" ? -oldAmt : oldAmt;
+        const delta = -oldNet;
+
+        const write = await queryTurso(`DELETE FROM coin_transactions WHERE id = ${Number(id)}`);
+        if (!write || write.success !== true) throw new Error("DELETE failed");
+        if (Number(write.affected_rows || 0) < 1) throw new Error(`No row deleted for id=${id}`);
+
+        if (delta !== 0 && uid) {
+          const checkUser = await queryTurso(`SELECT krishna_coins FROM user_stats WHERE user_id = '${sqlStr(uid)}'`);
+          if (Array.isArray(checkUser) && checkUser.length > 0) {
+            const currentCoins = Number(checkUser[0].krishna_coins || 0);
+            const newCoins = Math.max(0, currentCoins + delta);
+            await queryTurso(`UPDATE user_stats SET krishna_coins = ${newCoins}, updated_at = datetime('now') WHERE user_id = '${sqlStr(uid)}'`);
+          }
+          dirtySet.add(uid);
+
+          const userIdx = allUsersCache.findIndex(u => u.user_id === uid);
+          if (userIdx !== -1) {
+            allUsersCache[userIdx].krishna_coins = Math.max(0, Number(allUsersCache[userIdx].krishna_coins || 0) + delta);
+          }
+          if (activeDossierUser && activeDossierUser.user_id === uid) {
+            activeDossierUser.krishna_coins = Math.max(0, Number(activeDossierUser.krishna_coins || 0) + delta);
+            const editCoinsInput = document.getElementById("edit-coins");
+            if (editCoinsInput) editCoinsInput.value = activeDossierUser.krishna_coins;
+          }
+          renderRoster(allUsersCache);
+        }
+
+        alert(`✅ Transaction #${id} deleted!`);
+        closeCoinModal();
+        isCoinHistoryLoaded = false;
+        await fetchCoinHistoryLog(true);
+        if (uid && activeDossierUser && activeDossierUser.user_id === uid) {
+          await loadUserIsolatedTab(uid, "coins");
+        }
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        alert(`❌ Failed to delete transaction: ${err.message || err}`);
+      }
+    }
+
+    async function quickEditCoins(userId, currentCoins) {
+      const input = prompt(`Edit total Krishna Coins balance for user "${userId}":`, currentCoins);
+      if (input === null) return;
+      const newCoins = Number(input.trim());
+      if (isNaN(newCoins) || newCoins < 0) {
+        alert("Please enter a valid positive number for coin balance.");
+        return;
+      }
+      if (newCoins === currentCoins) return;
+
+      const coinDiff = newCoins - currentCoins;
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        await queryTurso(`INSERT INTO user_stats (user_id, krishna_coins, updated_at) VALUES ('${userId}', ${newCoins}, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET krishna_coins = ${newCoins}, updated_at = datetime('now')`);
+        await queryTurso(`INSERT INTO coin_transactions (user_id, amount, type, source, description, created_at) VALUES ('${userId}', ${Math.abs(coinDiff)}, '${coinDiff > 0 ? 'EARN' : 'SPEND'}', 'admin_quick_edit', 'Admin quick-edited total balance from ${currentCoins} to ${newCoins}', datetime('now'))`);
+
+        dirtySet.add(userId);
+
+        // Re-read single updated user row live from Turso DB to confirm
+        const fresh = await queryTurso(`SELECT * FROM user_stats WHERE user_id = '${userId}'`);
+        const readCoins = (fresh && fresh.length > 0) ? Number(fresh[0].krishna_coins) : newCoins;
+
+        const userIdx = allUsersCache.findIndex(u => u.user_id === userId);
+        if (userIdx !== -1) {
+          allUsersCache[userIdx].krishna_coins = readCoins;
+        }
+        if (activeDossierUser && activeDossierUser.user_id === userId) {
+          activeDossierUser.krishna_coins = readCoins;
+          const editCoinsInput = document.getElementById("edit-coins");
+          if (editCoinsInput) editCoinsInput.value = readCoins;
+        }
+        renderRoster(allUsersCache);
+        alert(`✅ Krishna Coins for ${userId} updated & verified live from DB: ${readCoins} 🪙!`);
+      } catch (err) {
+        console.error("Quick edit coins error:", err);
+        alert(`❌ Failed to update total coins: ${err.message || err}`);
+      }
     }
   </script>
 </body>
