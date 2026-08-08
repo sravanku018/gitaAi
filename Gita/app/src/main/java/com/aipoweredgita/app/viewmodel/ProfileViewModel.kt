@@ -228,7 +228,7 @@ class ProfileViewModel @Inject constructor(
         com.aipoweredgita.app.network.YogaSubStage(4, 1, 4, "Karma Master", 750, 999),
         com.aipoweredgita.app.network.YogaSubStage(5, 2, 1, "Bhakti Novice", 1000, 1499),
         com.aipoweredgita.app.network.YogaSubStage(6, 2, 2, "Bhakti Devotee", 1500, 1999),
-        com.aipoweredgita.app.network.YogaSubStage(7, 2, 3, "Bhakti Scholar", 2000, 2499),
+        com.aipoweredgita.app.network.YogaSubStage(7, 2, 3, "Bhakti Sadhaka", 2000, 2499),
         com.aipoweredgita.app.network.YogaSubStage(8, 2, 4, "Bhakti Master", 2500, 2999),
         com.aipoweredgita.app.network.YogaSubStage(9, 3, 1, "Jnana Seeker", 3000, 3749),
         com.aipoweredgita.app.network.YogaSubStage(10, 3, 2, "Jnana Scholar", 3750, 4499),
@@ -240,7 +240,7 @@ class ProfileViewModel @Inject constructor(
         com.aipoweredgita.app.network.YogaSubStage(16, 4, 4, "Dhyana Master", 8250, 8999),
         com.aipoweredgita.app.network.YogaSubStage(17, 5, 1, "Raja Aspirant", 9000, 9332),
         com.aipoweredgita.app.network.YogaSubStage(18, 5, 2, "Raja Master", 9333, 9665),
-        com.aipoweredgita.app.network.YogaSubStage(19, 5, 3, "Moksha Liberated", 9666, 9999)
+        com.aipoweredgita.app.network.YogaSubStage(19, 5, 3, "Kaivalya Liberated", 9666, 9999)
     )
 
     private fun updateServerLevel(balance: Int) {
