@@ -202,14 +202,46 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val res = com.aipoweredgita.app.network.CoinApi.retrofitService.getYogaStages()
-                yogaLevels = res.levels
-                yogaSubStages = res.sub_stages
-                updateServerLevel(_coinBalance.value)
+                if (res.levels.isNotEmpty()) yogaLevels = res.levels
+                if (res.sub_stages.isNotEmpty()) yogaSubStages = res.sub_stages
             } catch (e: Exception) {
-                // Ignore failure
+                // Ignore failure and use defaults
             }
+            if (yogaLevels.isEmpty()) yogaLevels = defaultYogaLevels()
+            if (yogaSubStages.isEmpty()) yogaSubStages = defaultYogaSubStages()
+            updateServerLevel(_coinBalance.value)
         }
     }
+
+    private fun defaultYogaLevels() = listOf(
+        com.aipoweredgita.app.network.YogaLevel(1, "Karma Yoga", 0, 999, 1.0, "Foundational Action"),
+        com.aipoweredgita.app.network.YogaLevel(2, "Bhakti Yoga", 1000, 2999, 2.0, "Path of Devotion"),
+        com.aipoweredgita.app.network.YogaLevel(3, "Jnana Yoga", 3000, 5999, 2.0, "Path of Knowledge"),
+        com.aipoweredgita.app.network.YogaLevel(4, "Dhyana Yoga", 6000, 8999, 3.0, "Path of Meditation"),
+        com.aipoweredgita.app.network.YogaLevel(5, "Raja Yoga", 9000, 999999, 3.0, "Ultimate Mastery")
+    )
+
+    private fun defaultYogaSubStages() = listOf(
+        com.aipoweredgita.app.network.YogaSubStage(1, 1, 1, "Karma Novice", 0, 249),
+        com.aipoweredgita.app.network.YogaSubStage(2, 1, 2, "Karma Practitioner", 250, 499),
+        com.aipoweredgita.app.network.YogaSubStage(3, 1, 3, "Karma Adept", 500, 749),
+        com.aipoweredgita.app.network.YogaSubStage(4, 1, 4, "Karma Master", 750, 999),
+        com.aipoweredgita.app.network.YogaSubStage(5, 2, 1, "Bhakti Novice", 1000, 1499),
+        com.aipoweredgita.app.network.YogaSubStage(6, 2, 2, "Bhakti Devotee", 1500, 1999),
+        com.aipoweredgita.app.network.YogaSubStage(7, 2, 3, "Bhakti Scholar", 2000, 2499),
+        com.aipoweredgita.app.network.YogaSubStage(8, 2, 4, "Bhakti Master", 2500, 2999),
+        com.aipoweredgita.app.network.YogaSubStage(9, 3, 1, "Jnana Seeker", 3000, 3749),
+        com.aipoweredgita.app.network.YogaSubStage(10, 3, 2, "Jnana Scholar", 3750, 4499),
+        com.aipoweredgita.app.network.YogaSubStage(11, 3, 3, "Jnana Philosopher", 4500, 5249),
+        com.aipoweredgita.app.network.YogaSubStage(12, 3, 4, "Jnana Sage", 5250, 5999),
+        com.aipoweredgita.app.network.YogaSubStage(13, 4, 1, "Dhyana Practitioner", 6000, 6749),
+        com.aipoweredgita.app.network.YogaSubStage(14, 4, 2, "Dhyana Meditator", 6750, 7499),
+        com.aipoweredgita.app.network.YogaSubStage(15, 4, 3, "Dhyana Contemplative", 7500, 8249),
+        com.aipoweredgita.app.network.YogaSubStage(16, 4, 4, "Dhyana Master", 8250, 8999),
+        com.aipoweredgita.app.network.YogaSubStage(17, 5, 1, "Raja Aspirant", 9000, 14999),
+        com.aipoweredgita.app.network.YogaSubStage(18, 5, 2, "Raja Master", 15000, 29999),
+        com.aipoweredgita.app.network.YogaSubStage(19, 5, 3, "Moksha Liberated", 30000, 999999)
+    )
 
     private fun updateServerLevel(balance: Int) {
         if (yogaLevels.isEmpty()) return
