@@ -218,7 +218,7 @@ class ProfileViewModel @Inject constructor(
         com.aipoweredgita.app.network.YogaLevel(2, "Bhakti Yoga", 1000, 2999, 2.0, "Path of Devotion"),
         com.aipoweredgita.app.network.YogaLevel(3, "Jnana Yoga", 3000, 5999, 2.0, "Path of Knowledge"),
         com.aipoweredgita.app.network.YogaLevel(4, "Dhyana Yoga", 6000, 8999, 3.0, "Path of Meditation"),
-        com.aipoweredgita.app.network.YogaLevel(5, "Raja Yoga", 9000, 999999, 3.0, "Ultimate Mastery")
+        com.aipoweredgita.app.network.YogaLevel(5, "Raja Yoga", 9000, 9999, 3.0, "Ultimate Mastery")
     )
 
     private fun defaultYogaSubStages() = listOf(
@@ -238,9 +238,9 @@ class ProfileViewModel @Inject constructor(
         com.aipoweredgita.app.network.YogaSubStage(14, 4, 2, "Dhyana Meditator", 6750, 7499),
         com.aipoweredgita.app.network.YogaSubStage(15, 4, 3, "Dhyana Contemplative", 7500, 8249),
         com.aipoweredgita.app.network.YogaSubStage(16, 4, 4, "Dhyana Master", 8250, 8999),
-        com.aipoweredgita.app.network.YogaSubStage(17, 5, 1, "Raja Aspirant", 9000, 14999),
-        com.aipoweredgita.app.network.YogaSubStage(18, 5, 2, "Raja Master", 15000, 29999),
-        com.aipoweredgita.app.network.YogaSubStage(19, 5, 3, "Moksha Liberated", 30000, 999999)
+        com.aipoweredgita.app.network.YogaSubStage(17, 5, 1, "Raja Aspirant", 9000, 9332),
+        com.aipoweredgita.app.network.YogaSubStage(18, 5, 2, "Raja Master", 9333, 9665),
+        com.aipoweredgita.app.network.YogaSubStage(19, 5, 3, "Moksha Liberated", 9666, 9999)
     )
 
     private fun updateServerLevel(balance: Int) {
