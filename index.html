@@ -959,6 +959,26 @@
       ).join('');
     }
 
+    // Convert UTC timestamp to IST (UTC+5:30)
+    function toIST(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        // IST is UTC+5:30 = 330 minutes
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istDate = new Date(d.getTime() + istOffset);
+        const year = istDate.getUTCFullYear();
+        const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(istDate.getUTCDate()).padStart(2, '0');
+        const hours = String(istDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes} IST`;
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
     function formatLastSeen(dateStr) {
       if (!dateStr) return '<span class="last-seen-old">Never</span>';
       const d = new Date(dateStr), now = new Date();
@@ -1270,7 +1290,7 @@
               <td><strong>${f.subject || 'General'}</strong></td>
               <td><span style="${isComplaint ? 'color:#f87171;' : ''}">${f.message}</span></td>
               <td><span class="badge badge-success">${f.status || 'Open'}</span></td>
-              <td>${f.created_at}</td>
+              <td>${toIST(f.created_at)}</td>
             </tr>
           `;
         }).join("");
@@ -1346,7 +1366,7 @@
               <td><strong>${escHtml(c.amount)} 🪙</strong></td>
               <td><code>${escHtml(c.source)}</code></td>
               <td>${escHtml(c.description || '')}</td>
-              <td>${escHtml(c.created_at || '')}</td>
+              <td>${escHtml(toIST(c.created_at) || '')}</td>
               <td>
                 <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(c.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
                   <i class="fa-solid fa-pen"></i> Edit
@@ -1368,13 +1388,13 @@
       else if (tabName === 'feedback') {
         const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
         document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
-          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${toIST(f.created_at)}</td></tr>
         `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
       }
       else if (tabName === 'notes') {
         const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
         document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
-          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${toIST(n.created_at)||''}</td></tr>
         `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
       }
     }
@@ -1396,7 +1416,7 @@
               <td><strong>${escHtml(l.amount)} 🪙</strong></td>
               <td><code>${escHtml(l.source)}</code></td>
               <td>${escHtml(l.description || '')}</td>
-              <td>${escHtml(l.created_at || '')}</td>
+              <td>${escHtml(toIST(l.created_at) || '')}</td>
               <td>
                 <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(l.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
                   <i class="fa-solid fa-pen"></i> Edit
@@ -1423,7 +1443,7 @@
         logs.forEach(l => totalMins += Number(l.minutes || 0));
         document.getElementById("kpi-meditation-mins").innerText = `${totalMins} Mins`;
         body.innerHTML = logs.map(l => `
-          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge badge-success">${l.minutes} Mins</span></td><td>+${l.coins_earned} 🪙</td><td>${l.session_date}</td><td>${l.created_at}</td></tr>
+          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge badge-success">${l.minutes} Mins</span></td><td>+${l.coins_earned} 🪙</td><td>${l.session_date}</td><td>${toIST(l.created_at)}</td></tr>
         `).join("");
       }
     }
@@ -1434,7 +1454,7 @@
       const body = document.getElementById("notes-body");
       if (notes && notes.length > 0) {
         body.innerHTML = notes.map(n => `
-          <tr><td>#${n.id}</td><td><strong>${n.user_id}</strong></td><td>Chapter ${n.chapter_no}</td><td>Verse ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+          <tr><td>#${n.id}</td><td><strong>${n.user_id}</strong></td><td>Chapter ${n.chapter_no}</td><td>Verse ${n.verse_no}</td><td>${n.note}</td><td>${toIST(n.created_at)||''}</td></tr>
         `).join("");
       }
     }
