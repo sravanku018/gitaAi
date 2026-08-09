@@ -1,5 +1,8 @@
-# Ignore everything except index.html and PRIVACY_POLICY.md
+# Ignore everything except specific files
 *
 !.gitignore
 !index.html
 !PRIVACY_POLICY.md
+!Gita/
+!.github/
+!.github/**
