@@ -1,8 +1,33 @@
-# Ignore everything except specific files
+# Root level ignores
 *
 !.gitignore
 !index.html
 !PRIVACY_POLICY.md
-!Gita/
 !.github/
 !.github/**
+
+# Allow Gita directory
+!Gita/
+Gita/**
+
+# But track essential Android project files
+!Gita/.gitignore
+!Gita/build.gradle.kts
+!Gita/settings.gradle.kts
+!Gita/gradle.properties
+!Gita/gradlew
+!Gita/gradlew.bat
+!Gita/proguard-rules.pro
+!Gita/README.md
+
+# Track app source code
+!Gita/app/
+Gita/app/build/
+Gita/app/release/
+Gita/app/schemas/
+Gita/app/proguard-rules.pro
+
+# Track Android manifest and source files
+!Gita/app/build.gradle.kts
+!Gita/app/src/
+!Gita/app/src/**

@@ -1,0 +1,38 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.dual-graph/
+
+# Kotlin & KSP
+.kotlin/
+*.log
+
+# Build artifacts
+build_log.txt
+build_error.txt
+ksp_error.log
+**/build/
+**/outputs/
+
+# Test results
+**/test-results/
+**/androidTest-results/
+
+# Signing
+*.jks
+*.keystore
+keystore.properties
+opencode.json

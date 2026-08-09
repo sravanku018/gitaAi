@@ -1,0 +1,55 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background circle -->
+    <path
+        android:pathData="M100,100 m-90,0 a90,90 0,1,1 180,0 a90,90 0,1,1 -180,0"
+        android:fillColor="#E8F5E9"/>
+
+    <!-- Panchajanya Conch Shell -->
+    <path
+        android:pathData="M100,60 Q120,70 125,90 Q125,110 115,125 Q105,135 95,130 Q85,125 80,110 Q75,90 85,75 Q90,65 100,60 Z"
+        android:fillColor="#FFE0B2"/>
+
+    <!-- Conch spiral -->
+    <path
+        android:pathData="M95,80 Q100,85 100,95 Q98,105 90,108"
+        android:strokeColor="#D84315"
+        android:strokeWidth="2"/>
+
+    <!-- Conch opening -->
+    <path
+        android:pathData="M100,60 Q105,62 108,68"
+        android:strokeColor="#BF360C"
+        android:strokeWidth="3"/>
+
+    <!-- Decorative lotus petals around -->
+    <path
+        android:pathData="M100,45 L105,55 L100,50 L95,55 Z"
+        android:fillColor="#E91E63"/>
+    <path
+        android:pathData="M130,70 L135,80 L128,77 L125,85 Z"
+        android:fillColor="#E91E63"/>
+    <path
+        android:pathData="M145,110 L148,120 L142,115 L135,120 Z"
+        android:fillColor="#E91E63"/>
+    <path
+        android:pathData="M70,70 L65,80 L72,77 L75,85 Z"
+        android:fillColor="#E91E63"/>
+    <path
+        android:pathData="M55,110 L52,120 L58,115 L65,120 Z"
+        android:fillColor="#E91E63"/>
+
+    <!-- Sacred symbol -->
+    <path
+        android:pathData="M100,150 m-10,0 a10,10 0,1,1 20,0 a10,10 0,1,1 -20,0"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2.5"/>
+    <path
+        android:pathData="M90,150 L110,150 M100,140 L100,160"
+        android:strokeColor="#FF6B35"
+        android:strokeWidth="2"/>
+</vector>
