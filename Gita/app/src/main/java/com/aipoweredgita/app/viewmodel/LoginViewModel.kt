@@ -1,10 +1,13 @@
 package com.aipoweredgita.app.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.database.DailyActivityDao
 import com.aipoweredgita.app.database.UserStats
 import com.aipoweredgita.app.database.UserStatsDao
+import com.aipoweredgita.app.network.CoinApi
+import com.aipoweredgita.app.network.CreateGuestRequest
 import com.aipoweredgita.app.repository.StatsRepository
 import com.aipoweredgita.app.utils.AuthPreferences
 import kotlinx.coroutines.launch
@@ -86,6 +89,26 @@ class LoginViewModel @Inject constructor(
                 userStatsDao.updateUserId(guestId)
                 userStatsDao.updateProfile(name = "Guest User", dob = "")
                 userStatsDao.updateKrishnaCoins(50)
+            }
+        }
+
+        // Register this guest on the server (best-effort) so guest accounts appear on the
+        // dashboard. The SAME guest_id is sent so the local session and the server row stay
+        // identical — no id migration needed. If offline, the guest keeps working locally.
+        viewModelScope.launch {
+            try {
+                val res = CoinApi.retrofitService.createGuest(CreateGuestRequest(guestId))
+                // Only adopt the token if this is still the active guest session (the user may
+                // have started a new guest session while the request was in flight).
+                if (res.guest_id.isNotEmpty() && authPrefs.guestId == guestId) {
+                    if (res.token.isNotEmpty()) {
+                        authPrefs.token = res.token
+                        authPrefs.guestToken = res.token
+                    }
+                    Log.d("LoginViewModel", "Guest registered on server: ${res.guest_id}")
+                }
+            } catch (e: Exception) {
+                Log.w("LoginViewModel", "Guest server registration skipped (offline?): ${e.message}")
             }
         }
     }

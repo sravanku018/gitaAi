@@ -1,0 +1,14 @@
+[0m[31mEIO[0m[2m:[0m [1mi/o error, write[0m
+      fd[0m[2m:[0m [0m[33m12[0m[0m[2m,[0m
+ syscall[0m[2m:[0m [0m[32m"write"[0m[0m[2m,[0m
+   errno[0m[2m:[0m [0m[33m-5[0m[0m[2m,[0m
+    code[0m[2m:[0m [32m"EIO"[0m
+
+[0m      [2mat [0mwrite[2m ([0m[0m[36munknown[0m[2m:[0m[33m1[0m[2m:[33m1[0m[2m)[0m
+[0m      [2mat [0mwriteFast[2m ([0m[0m[36minternal:fs/streams[0m[2m:[0m[33m345[0m[2m:[33m38[0m[2m)[0m
+[0m      [2mat [0m[0m[36m/$bunfs/root/chunk-ssrcg0qa.js[0m[2m:[0m[33m92[0m[2m:[33m38[0m
+[0m      [2mat [0m~effect/Effect/evaluate[2m ([0m[0m[36m/$bunfs/root/chunk-bvz6kqb1.js[0m[2m:[0m[33m25[0m[2m:[33m4492[0m[2m)[0m
+[0m      [2mat [0mrunLoop[2m ([0m[0m[36m/$bunfs/root/chunk-bvz6kqb1.js[0m[2m:[0m[33m25[0m[2m:[33m2045[0m[2m)[0m
+[0m      [2mat [0mevaluate[2m ([0m[0m[36m/$bunfs/root/chunk-bvz6kqb1.js[0m[2m:[0m[33m25[0m[2m:[33m1435[0m[2m)[0m
+[0m      [2mat [0m[0m[36m/$bunfs/root/chunk-bvz6kqb1.js[0m[2m:[0m[33m25[0m[2m:[33m5664[0m
+[0m      [2mat [0mprocessTicksAndRejections[2m ([0m[0m[36mnative[0m[2m:[0m[33m7[0m[2m:[33m39[0m[2m)[0m

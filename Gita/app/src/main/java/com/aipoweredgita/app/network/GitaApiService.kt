@@ -296,9 +296,14 @@ data class CreateUserResponse(
     val token: String? = null
 )
 
+data class CreateGuestRequest(
+    val guest_id: String? = null
+)
+
 data class CreateGuestResponse(
     val guest_id: String = "",
-    val coins: Int = 50
+    val coins: Int = 50,
+    val token: String = ""
 )
 
 data class ClaimGuestResponse(
@@ -534,7 +539,7 @@ interface CoinApiService {
     suspend fun createUser(@Body request: CreateUserRequest): CreateUserResponse
 
     @POST("guest/create")
-    suspend fun createGuest(): CreateGuestResponse
+    suspend fun createGuest(@Body request: CreateGuestRequest): CreateGuestResponse
 
     @POST("guest/claim")
     suspend fun claimGuest(

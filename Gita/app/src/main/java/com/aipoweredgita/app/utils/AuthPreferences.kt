@@ -43,6 +43,7 @@ class AuthPreferences(context: Context) {
         private const val KEY_REMEMBER_ME = "remember_me"
         private const val KEY_LAST_LOGIN = "last_login"
         private const val KEY_TOKEN = "auth_token"
+        private const val KEY_GUEST_TOKEN = "guest_auth_token"
 
         @Volatile
         private var INSTANCE: AuthPreferences? = null
@@ -71,6 +72,11 @@ class AuthPreferences(context: Context) {
     var guestId: String?
         get() = prefs.getString(KEY_GUEST_ID, null)
         set(value) = prefs.edit().putString(KEY_GUEST_ID, value).apply()
+
+    /** Token for the current guest session — used to claim guest progress on the server after sign-up. */
+    var guestToken: String?
+        get() = securePrefs.getString(KEY_GUEST_TOKEN, null)
+        set(value) = securePrefs.edit().putString(KEY_GUEST_TOKEN, value).apply()
 
     // ── Credentials ────────────────────────────────────────────────────
 
@@ -155,6 +161,7 @@ class AuthPreferences(context: Context) {
         val authTokenToSave = token
         securePrefs.edit().apply {
             remove(KEY_TOKEN)
+            remove(KEY_GUEST_TOKEN) // guest session ends when a real account logs in
             if (!authTokenToSave.isNullOrEmpty()) {
                 putString(KEY_TOKEN, authTokenToSave)
             }
@@ -165,7 +172,7 @@ class AuthPreferences(context: Context) {
     /**
      * Save guest state
      */
-    fun saveGuestState(guestId: String) {
+    fun saveGuestState(guestId: String, guestToken: String? = null) {
         prefs.edit().apply {
             putString(KEY_GUEST_ID, guestId)
             putBoolean(KEY_IS_LOGGED_IN, true)
@@ -177,8 +184,15 @@ class AuthPreferences(context: Context) {
             putLong("auth_version", System.currentTimeMillis())
             commit()
         }
-        // Remove any old auth token so guest requests are not authenticated as previous user
-        securePrefs.edit().remove(KEY_TOKEN).commit()
+        // Remove any old auth token so guest requests are not authenticated as previous user,
+        // then store the guest's own session token (if available) for the later guest → account claim.
+        val guestSecureEdit = securePrefs.edit().remove(KEY_TOKEN)
+        if (!guestToken.isNullOrEmpty()) {
+            guestSecureEdit.putString(KEY_GUEST_TOKEN, guestToken)
+        } else {
+            guestSecureEdit.remove(KEY_GUEST_TOKEN)
+        }
+        guestSecureEdit.commit()
     }
 
     /**

@@ -46,6 +46,11 @@ class AuthManager(private val context: Context) {
 
             if (response.success) {
                 val wasGuest = authPrefs.isGuest || !authPrefs.isLoggedIn
+                // Claim any prior guest session on the server BEFORE saveLoginState wipes guest state.
+                // This transfers the guest's server-side coins/progress to the new account.
+                if (guestSyncManager.hasGuestDataToSync()) {
+                    guestSyncManager.syncGuestData(response.user_id, name, email)
+                }
                 val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
@@ -68,11 +73,6 @@ class AuthManager(private val context: Context) {
                     com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, response.coins, "Guest to User conversion bonus")
                 } else {
                     db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
-                }
-
-                // Sync guest data if exists
-                if (guestSyncManager.hasGuestDataToSync()) {
-                    guestSyncManager.syncGuestData(response.user_id, name, email)
                 }
 
                 try {
@@ -120,6 +120,10 @@ class AuthManager(private val context: Context) {
 
 if (response.success) {
                 val wasGuest = authPrefs.hasGuestSession()
+                // Claim any prior guest session on the server BEFORE saveLoginState wipes guest state.
+                if (guestSyncManager.hasGuestDataToSync()) {
+                    guestSyncManager.syncGuestData(response.user_id)
+                }
                 val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
@@ -155,11 +159,6 @@ if (response.success) {
                     com.aipoweredgita.app.coin.CoinTransactionLogger.log(context, response.coins, "Guest to User conversion bonus")
                 } else {
                     db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
-                }
-
-                // Sync guest data if exists
-                if (guestSyncManager.hasGuestDataToSync()) {
-                    guestSyncManager.syncGuestData(response.user_id)
                 }
 
                 // Run auto-reconciliation after login to detect any discrepancies
