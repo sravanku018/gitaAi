@@ -114,6 +114,8 @@ class NormalModeViewModel @Inject constructor(
         val prefs = application.getSharedPreferences("reading_prefs", android.content.Context.MODE_PRIVATE)
         val savedChapter = prefs.getInt("last_read_chapter", 1)
         val savedVerse = prefs.getInt("last_read_verse", 1)
+        val savedLang = prefs.getString("selected_language", "TE") ?: "TE"
+        _uiState.update { it.copy(selectedLanguage = savedLang) }
         loadVerse(savedChapter, savedVerse)
     }
 
@@ -138,6 +140,8 @@ class NormalModeViewModel @Inject constructor(
             is NormalModeEvent.TrackShare -> trackShare()
             is NormalModeEvent.ToggleLanguage -> {
                 val newLang = event.language
+                val prefs = application.getSharedPreferences("reading_prefs", android.content.Context.MODE_PRIVATE)
+                prefs.edit().putString("selected_language", newLang).apply()
                 _uiState.update { it.copy(selectedLanguage = newLang) }
                 loadVerse(lastRequestedChapter, lastRequestedVerse)
             }

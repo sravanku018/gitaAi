@@ -63,9 +63,15 @@ fun NavGraph(
     onAuthChanged: () -> Unit = {},
     sharedProfileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel? = null
 ) {
+    val context = LocalContext.current
+    val authPrefs = androidx.compose.runtime.remember { com.aipoweredgita.app.utils.AuthPreferences.getInstance(context) }
+    val startDest = androidx.compose.runtime.remember { 
+        if (authPrefs.isLoggedIn) Screen.Home.route else Screen.Login.route 
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = startDest,
         modifier = modifier,
         enterTransition = {
             fadeIn(animationSpec = tween(300)) + slideIntoContainer(

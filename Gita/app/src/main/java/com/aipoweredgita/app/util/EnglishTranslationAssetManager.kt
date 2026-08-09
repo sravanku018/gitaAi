@@ -64,10 +64,10 @@ class EnglishTranslationAssetManager private constructor(context: Context) {
             val obj = jsonArray.getJSONObject(i)
             val chapter = obj.optInt("chapter_no")
             val verse = obj.optInt("verse_no")
-            val chapterName = obj.optString("chapter_name_english", "")
-            val translation = obj.optString("translation_english", "")
-            val explanation = obj.optString("explanation_english", "")
-            val meaning = obj.optString("word_by_word_meaning_english", "")
+            val chapterName = obj.optString("chapter_name_english", obj.optString("chapter_name_en", ""))
+            val translation = obj.optString("translation_english", obj.optString("translation_en", ""))
+            val explanation = obj.optString("explanation_english", obj.optString("explanation_en", ""))
+            val meaning = obj.optString("word_by_word_meaning_english", obj.optString("word_by_word_meaning_en", ""))
             val audio = obj.optString("audio_link", "")
 
             if (chapter > 0 && verse > 0) {
