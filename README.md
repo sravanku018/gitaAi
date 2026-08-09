@@ -6,7 +6,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green?logo=android)
 ![Language](https://img.shields.io/badge/Language-Kotlin-blue?logo=kotlin)
 ![AI](https://img.shields.io/badge/AI-NVIDIA%20NIM%20%7C%20Groq%20%7C%20LiteRT-orange)
-![Version](https://img.shields.io/badge/Version-2.12.2-purple)
+![Version](https://img.shields.io/badge/Version-2.14.0-purple)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 ---
@@ -245,7 +245,7 @@ sdk.dir=/path/to/android/sdk
 
 | Version | Code | Highlights |
 |---------|------|------------|
-| 2.12.2 | 43 | Unified guest/user flows, onboarding → login navigation |
+| 2.14.0 | 45 | Unified guest/user flows, onboarding → login navigation |
 | 2.12.1 | 42 | BQ history labels, voice pricing 4/6/10 |
 | 2.11.0 | 31 | Aligned rewards, server-only history, yoga 1/2/2/3/3 |
 | 2.10.0 | 30 | Turso TTL/history limits, server schema gate |
