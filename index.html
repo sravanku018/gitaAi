@@ -279,23 +279,24 @@
       <!-- VIEW 1: MASTER USER ROSTER -->
       <div class="view-section active" id="view-roster">
         <div class="section-card glass">
+          <div class="active-filter-row" style="margin-bottom:16px; padding:12px; background:rgba(0,0,0,0.2); border-radius:10px;">
+            <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
+            <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
+            <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
+            <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
+            <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
+            <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
+            <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
+              <i class="fa-solid fa-bolt"></i> Smart Refresh
+            </button>
+            <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
+          </div>
+
           <div class="section-header">
             <div class="section-title">
               <i class="fa-solid fa-users" style="color: var(--primary);"></i>
               <span>All Seekers & User Profiles</span>
               <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
-            </div>
-            <div class="active-filter-row">
-              <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
-              <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
-              <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
-              <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
-              <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
-              <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
-              <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
-                <i class="fa-solid fa-bolt"></i> Smart Refresh
-              </button>
-              <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
             </div>
           </div>
 
@@ -1009,15 +1010,7 @@
       try {
         const d = new Date(dateStr);
         if (isNaN(d.getTime())) return dateStr;
-        // IST is UTC+5:30 = 330 minutes
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const istDate = new Date(d.getTime() + istOffset);
-        const year = istDate.getUTCFullYear();
-        const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(istDate.getUTCDate()).padStart(2, '0');
-        const hours = String(istDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}:${minutes} IST`;
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\//g, '-') + ' IST';
       } catch (e) {
         return dateStr;
       }
