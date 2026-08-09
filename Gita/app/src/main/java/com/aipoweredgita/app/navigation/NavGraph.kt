@@ -4,7 +4,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -30,7 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
 sealed class Screen(val route: String) {
-    object Onboarding : Screen("onboarding")
     object Home : Screen("home")
     object NormalMode : Screen("normal_mode?chapter={chapter}&verse={verse}")
     object ChapterSelection : Screen("chapter_selection")
@@ -65,13 +63,9 @@ fun NavGraph(
     onAuthChanged: () -> Unit = {},
     sharedProfileViewModel: com.aipoweredgita.app.viewmodel.ProfileViewModel? = null
 ) {
-    val context = LocalContext.current
-    val authPrefs = remember { com.aipoweredgita.app.utils.AuthPreferences.getInstance(context) }
-    val startDest = if (authPrefs.onboardingCompleted) Screen.Home.route else Screen.Onboarding.route
-
     NavHost(
         navController = navController,
-        startDestination = startDest,
+        startDestination = Screen.Login.route,
         modifier = modifier,
         enterTransition = {
             fadeIn(animationSpec = tween(300)) + slideIntoContainer(
@@ -94,17 +88,6 @@ fun NavGraph(
             )
         }
     ) {
-        composable(Screen.Onboarding.route) {
-            com.aipoweredgita.app.ui.OnboardingScreen(
-                onFinished = {
-                    authPrefs.onboardingCompleted = true
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
         composable(Screen.Home.route) {
             val vm = sharedProfileViewModel ?: hiltViewModel()
             DashboardScreen(

@@ -1310,14 +1310,14 @@
 
       // Filter by chapter
       if (chapterFilter) {
-        filtered = filtered.filter(n => String(n.chapter) === chapterFilter);
+        filtered = filtered.filter(n => String(n.chapter_no || n.chapter) === chapterFilter);
       }
 
       // Filter by search query
       if (searchQ) {
         filtered = filtered.filter(n => 
           (n.user_id && n.user_id.toLowerCase().includes(searchQ)) ||
-          (n.note_content && n.note_content.toLowerCase().includes(searchQ))
+          ((n.note || n.note_content || '').toLowerCase().includes(searchQ))
         );
       }
 
@@ -1333,10 +1333,10 @@
         <tr>
           <td><strong>#${n.id}</strong></td>
           <td><div class="user-pill"><div class="avatar">${(n.user_id || 'U').charAt(0).toUpperCase()}</div>${escHtml(n.user_id || 'N/A')}</div></td>
-          <td>${n.chapter}</td>
-          <td>${n.verse}</td>
-          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.note_content || '')}</td>
-          <td>${toIST(n.saved_at)}</td>
+          <td>${n.chapter_no || n.chapter}</td>
+          <td>${n.verse_no || n.verse}</td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.note || n.note_content || '')}</td>
+          <td>${toIST(n.created_at || n.saved_at)}</td>
         </tr>
       `).join('');
     }

@@ -62,6 +62,7 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isLoginScreen = currentRoute == Screen.Login.route
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val stats by profileViewModel.stats.collectAsState()
     val authPrefs = remember { AuthPreferences.getInstance(navController.context) }
@@ -87,6 +88,7 @@ fun MainScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = !isLoginScreen,
         drawerContent = {
             ModalDrawerSheet(
                 drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
@@ -194,7 +196,8 @@ fun MainScreen(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
+                if (!isLoginScreen) {
+                    TopAppBar(
                     title = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -241,9 +244,11 @@ fun MainScreen(
                     ),
                     modifier = Modifier.height(64.dp)
                 )
+                }
             },
             bottomBar = {
-                Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                if (!isLoginScreen) {
+                    Box(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     BottomNavigationBar(
                         currentRoute = currentRoute,
                         isDarkTheme = isDarkTheme,
@@ -261,6 +266,7 @@ fun MainScreen(
                             }
                         }
                     )
+                }
                 }
             }
         ) { innerPadding ->
