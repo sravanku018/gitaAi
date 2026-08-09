@@ -1,53 +1,5 @@
-# Gradle & Android
-.gradle/
-build/
-app/build/
-*.apk
-*.aab
-*.keystore
-*.jks
-local.properties
-
-# Databases & Local Dumps
-*.db
-*.sqlite
-*.sql
-
-# Temp & Scratch Scripts
-check_*.ts
-check_*.js
-test_*.ts
-test_*.js
-fix_*.ts
-fix_*.js
-inspect_*.ts
-query_*.ts
-query_*.js
-delete_*.ts
-get_*.ts
-get_*.js
-
-# Node & Deno
-node_modules/
-npm-debug.log
-deno.lock
-
-# OS & IDE
-.DS_Store
-.idea/
-*.iws
-*.out
-
-# Deno Backend Code
-deno-backend-hono.ts
-deno-backend-*.ts
-deno-backend-*.md
-deno.json
-deno.lock
-
-# Local-only admin API (deploy from machine; do not commit)
-deno-admin-api.ts
-deno-admin*.ts
-.env.admin
-.env.admin.*
-.env.admin.local
+# Ignore everything except index.html and PRIVACY_POLICY.md
+*
+!.gitignore
+!index.html
+!PRIVACY_POLICY.md
