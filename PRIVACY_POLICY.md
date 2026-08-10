@@ -12,6 +12,7 @@
 
 - **Local Quiz & Progress Data**: Your quiz scores, daily streaks, and progress stages are stored locally on your device using Room database.
 - **Account Information**: If you register or log in with a username, it is used solely for account identification and progress synchronization.
+- **Guest Accounts**: When you use Guest Mode, we generate a random guest identifier on your device. This identifier, along with associated app activity (such as coin transactions and progress), is sent to our servers to sync your session and enable features like the leaderboard. No personal information is required or collected for guest accounts.
 - **Microphone Access (Optional)**: Audio permissions (`RECORD_AUDIO`) are used only when you choose to interact with voice features or AI audio guidance. Audio data is not sold or shared with third parties.
 
 ---
