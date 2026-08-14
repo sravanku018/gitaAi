@@ -19,8 +19,8 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 47
-        versionName = "2.16.0"
+        versionCode = 48
+        versionName = "2.16.1"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -213,9 +213,8 @@ dependencies {
     // OkHttp for resume-capable model downloads
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // TensorFlow Lite runtime for on-device ML inference
-    // 2.17.0+ ships with 16 KB page-aligned .so files
-    implementation("org.tensorflow:tensorflow-lite:2.17.0")
+    // LiteRT (formerly TensorFlow Lite) — Google Play 16 KB page size
+    implementation("com.google.ai.edge.litert:litert:1.4.0")
     // LiteRT-LM for chat-style Gemma inference
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
     // Compose LiveData runtime for observeAsState on LiveData
