@@ -44,7 +44,7 @@ fun OfflineBanner(onReadOfflineClick: () -> Unit) {
             fontWeight = FontWeight.Medium,
             color      = Color(0xFFFFCDD2)
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         TextButton(
             onClick = onReadOfflineClick,
             modifier = Modifier
@@ -213,7 +213,7 @@ fun BottomActionBar(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -267,7 +267,7 @@ fun NavArrowButton(
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
                 modifier = Modifier.size(15.dp)
             )
-            Spacer(Modifier.width(5.dp))
+            Spacer(modifier = Modifier.width(5.dp))
         }
         Text(
             text = label,
@@ -276,7 +276,7 @@ fun NavArrowButton(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
         )
         if (isForward) {
-            Spacer(Modifier.width(5.dp))
+            Spacer(modifier = Modifier.width(5.dp))
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,

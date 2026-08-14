@@ -166,7 +166,7 @@ fun ChapterVerseHeroCard(
                 }
             }
 
-            Spacer(modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Compact cute pill chips for chapter + verse (not giant boxes)
             Row(
@@ -207,7 +207,7 @@ fun ChapterVerseHeroCard(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Box(
                 modifier = Modifier
@@ -220,7 +220,7 @@ fun ChapterVerseHeroCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🕉", fontSize = 12.sp, color = numberColor)
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text      = "Tap chapter or verse to navigate",
                         fontSize  = 11.sp,
@@ -334,7 +334,7 @@ fun IlluminatedVerseCard(text: String) {
                         color      = gold
                     )
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -345,11 +345,11 @@ fun IlluminatedVerseCard(text: String) {
                             )
                         )
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("✦", fontSize = 10.sp, color = gold.copy(0.6f))
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text       = text,
@@ -395,7 +395,7 @@ fun MeaningCard(text: String) {
                     tint               = greenAccent,
                     modifier           = Modifier.size(14.dp)
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text       = "MEANING",
                     fontSize   = 10.sp,
@@ -404,7 +404,7 @@ fun MeaningCard(text: String) {
                     color      = greenAccent
                 )
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text      = text,
                 fontSize  = 14.sp,
@@ -441,9 +441,9 @@ fun ExplanationCard(text: String) {
                         .clip(RoundedCornerShape(1.dp))
                         .background(gold.copy(0.7f))
                 )
-                if (it < 2) Spacer(Modifier.width(4.dp))
+                if (it < 2) Spacer(modifier = Modifier.width(4.dp))
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text       = "COMMENTARY",
                 fontSize   = 10.sp,
@@ -453,7 +453,7 @@ fun ExplanationCard(text: String) {
             )
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Box(
             modifier = Modifier
@@ -464,7 +464,7 @@ fun ExplanationCard(text: String) {
                 )
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text      = text,
@@ -494,7 +494,7 @@ fun VerseNoteCard(note: String) {
         verticalAlignment = Alignment.Top
     ) {
         Text("◆", fontSize = 12.sp, color = gold, modifier = Modifier.padding(top = 2.dp))
-        Spacer(Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text      = note,
             fontSize  = 12.sp,
