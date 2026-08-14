@@ -116,10 +116,9 @@ android {
     
     packaging {
         jniLibs {
+            // Uncompressed + page-aligned native libs (required for 16 KB devices)
             useLegacyPackaging = false
-            // Enable 16 KB page size alignment for Android 15 compatibility
         }
-        // 16 KB ELF segment alignment — required for Android 15 devices
         jniLibs.keepDebugSymbols.add("**/*.so")
     }
 }
@@ -213,7 +212,9 @@ dependencies {
     // OkHttp for resume-capable model downloads
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // LiteRT (formerly TensorFlow Lite) — Google Play 16 KB page size
+    // LiteRT (formerly TensorFlow Lite) — required for Google Play 16 KB page size.
+    // org.tensorflow:tensorflow-lite:2.17.x ships x86_64 .so with 4 KB alignment and fails Play checks.
+    // LiteRT keeps the same org.tensorflow.lite.Interpreter API.
     implementation("com.google.ai.edge.litert:litert:1.4.0")
     // LiteRT-LM for chat-style Gemma inference
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
