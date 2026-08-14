@@ -168,7 +168,9 @@ Test stack: JUnit, MockK, Robolectric, OkHttp MockWebServer
 
 | Version | Code | Highlights |
 |---------|------|------------|
-| 2.12.2 | 43 | Current release — coin API on flaky-kestrel Postgres Deploy |
+| 2.16.0 | 47 | Current release — pill UI, drawer cleanup, streak server fix |
+| 2.15.0 | 46 | Prior release |
+| 2.12.2 | 43 | Coin API on flaky-kestrel Postgres Deploy |
 | 2.12.1 | 42 | BQ history labels, voice pricing 4/6/10 |
 | 2.11.0 | 31 | Aligned rewards, server-only history, yoga 1/2/2/3/3 |
 | 2.10.0 | 30 | Turso TTL/history limits, server schema gate |

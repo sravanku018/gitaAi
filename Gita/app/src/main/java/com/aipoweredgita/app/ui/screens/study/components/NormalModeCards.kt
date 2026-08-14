@@ -77,7 +77,7 @@ fun ChapterVerseHeroCard(
                 }
             }
     ) {
-        Column(modifier = Modifier.padding(22.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -166,74 +166,45 @@ fun ChapterVerseHeroCard(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(modifier.height(14.dp))
 
+            // Compact cute pill chips for chapter + verse (not giant boxes)
             Row(
-                modifier            = Modifier.fillMaxWidth(),
-                verticalAlignment   = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.large)
-                        .background(innerBoxBg)
-                        .border(1.dp, innerBoxBorder, MaterialTheme.shapes.large)
-                        .clickable(onClick = onChapterTap)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text  = "CHAPTER",
-                        fontSize = 9.sp,
-                        letterSpacing = 2.sp,
-                        color = textTertiary,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text  = chapter.toString(),
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = numberColor,
-                        lineHeight = 52.sp
-                    )
-                }
+                ChapterVersePill(
+                    label = "Ch",
+                    value = chapter.toString(),
+                    numberColor = numberColor,
+                    boxBg = innerBoxBg,
+                    boxBorder = innerBoxBorder,
+                    onClick = onChapterTap,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    repeat(5) { i ->
+                // Soft separator dots
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(3) { i ->
                         Box(
                             modifier = Modifier
-                                .size(if (i == 2) 6.dp else 3.dp)
+                                .size(if (i == 1) 5.dp else 3.dp)
                                 .clip(CircleShape)
-                                .background(numberColor.copy(alpha = if (i == 2) 0.8f else 0.3f))
+                                .background(numberColor.copy(alpha = if (i == 1) 0.75f else 0.28f))
                         )
-                        if (i < 4) Spacer(Modifier.height(4.dp))
                     }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.large)
-                        .background(innerBoxBg)
-                        .border(1.dp, innerBoxBorder, MaterialTheme.shapes.large)
-                        .clickable(onClick = onVerseTap)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text  = "VERSE",
-                        fontSize = 9.sp,
-                        letterSpacing = 2.sp,
-                        color = textTertiary,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text  = verseDisplay,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = numberColor,
-                        lineHeight = 52.sp
-                    )
-                }
+                ChapterVersePill(
+                    label = "Vs",
+                    value = verseDisplay,
+                    numberColor = numberColor,
+                    boxBg = innerBoxBg,
+                    boxBorder = innerBoxBorder,
+                    onClick = onVerseTap,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -259,6 +230,50 @@ fun ChapterVerseHeroCard(
                 }
             }
         }
+    }
+}
+
+/** Compact horizontal pill: "Ch · 1" / "Vs · 1" — cute, not a tall box. */
+@Composable
+private fun ChapterVersePill(
+    label: String,
+    value: String,
+    numberColor: Color,
+    boxBg: Color,
+    boxBorder: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(40.dp)
+            .clip(CircleShape)
+            .background(boxBg)
+            .border(1.dp, boxBorder, CircleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.6.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+        )
+        Text(
+            text = " · ",
+            fontSize = 13.sp,
+            color = numberColor.copy(alpha = 0.5f)
+        )
+        Text(
+            text = value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = numberColor,
+            maxLines = 1
+        )
     }
 }
 
@@ -307,15 +322,15 @@ fun IlluminatedVerseCard(text: String) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
+                        .clip(CircleShape)
                         .background(gold.copy(alpha = 0.15f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
                 ) {
                     Text(
                         text       = "SHLOKA",
                         fontSize   = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
+                        letterSpacing = 1.5.sp,
                         color      = gold
                     )
                 }

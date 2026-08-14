@@ -96,43 +96,46 @@ fun QuizStartLanding(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(modifier.height(28.dp))
 
         val buttonGradient = Brush.horizontalGradient(
             colors = listOf(Color(0xFFFF9800), GoldSpark)
         )
+        val pill = CircleShape
 
+        // Compact centered pill — not a full-width bar
         Button(
             onClick = onStart,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(6.dp, androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
-                .background(
-                    brush = buttonGradient,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
-                ),
+                .widthIn(min = 160.dp, max = 220.dp)
+                .height(44.dp)
+                .shadow(4.dp, pill)
+                .background(brush = buttonGradient, shape = pill),
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-            contentPadding = PaddingValues(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
+            shape = pill
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxSize()
+                horizontalArrangement = Arrangement.Center
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
                     translateLandingText("Start Quiz", language),
-                    fontSize = 18.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.Black
                 )
             }
         }
-        
-        Spacer(Modifier.height(16.dp))
+
+        Spacer(modifier.height(14.dp))
         
         Text(
             text = translateLandingText("Every question is a step closer to self-realization.", language),

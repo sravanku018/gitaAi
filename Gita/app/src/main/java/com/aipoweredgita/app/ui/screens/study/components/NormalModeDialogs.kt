@@ -46,10 +46,10 @@ fun ChapterSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.small)
-                            .background(if (isActive) Gold.copy(0.12f) else Color.Transparent)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (isActive) Gold.copy(0.14f) else Color.Transparent)
                             .clickable { onChapterSelected(ch) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -139,10 +139,10 @@ fun VerseSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.small)
-                            .background(if (isActive) Gold.copy(0.12f) else Color.Transparent)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (isActive) Gold.copy(0.14f) else Color.Transparent)
                             .clickable { onVerseSelected(target) }
-                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                            .padding(horizontal = 16.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {

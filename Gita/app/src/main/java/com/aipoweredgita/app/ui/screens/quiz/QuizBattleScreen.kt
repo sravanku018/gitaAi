@@ -236,15 +236,16 @@ fun QuizBattleScreen(
                     Button(
                         onClick = { isTimerRunning = true },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828))
+                            .widthIn(min = 140.dp, max = 200.dp)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
                     ) {
                         Text(
                             "⚔️ FIGHT!",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
+                            fontSize = 15.sp,
                             color = Color.White
                         )
                     }

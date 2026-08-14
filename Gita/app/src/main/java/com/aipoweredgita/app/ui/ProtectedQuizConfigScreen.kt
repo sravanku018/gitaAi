@@ -166,26 +166,18 @@ fun SacredQuizConfigScreen(
 
             Spacer(Modifier.height(40.dp))
 
-            // ── Start button ────────────────────────────────────────────────
+            // ── Start button (compact pill, not full-width) ────────────────
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(min = 160.dp, max = 240.dp)
                     .scale(btnScale)
-                    .clip(MaterialTheme.shapes.large)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
                     .background(
                         Brush.horizontalGradient(listOf(GoldSpark, Saffron, GoldSpark))
                     )
-                    .drawBehind {
-                        // Outer glow ring
-                        drawCircle(
-                            color  = Saffron.copy(alpha = glowAlpha * 0.3f),
-                            radius = size.minDimension * 0.65f,
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            style  = Stroke(width = 24f)
-                        )
-                    }
                     .clickable { onStartQuiz(questionCount) }
-                    .padding(vertical = 18.dp),
+                    .padding(horizontal = 22.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -195,14 +187,14 @@ fun SacredQuizConfigScreen(
                             "hin" -> "प्रारंभ करें"
                             else -> "START"
                         },
-                        fontSize   = 13.sp,
+                        fontSize   = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color      = Color.White.copy(alpha = 0.7f),
-                        letterSpacing = 2.sp
+                        color      = Color.White.copy(alpha = 0.75f),
+                        letterSpacing = 1.5.sp
                     )
                     Text(
                         text       = if (language == "tel") "క్విజ్ ప్రారంభించండి" else "Begin Quiz",
-                        fontSize   = 22.sp,
+                        fontSize   = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color      = Color.White
                     )
