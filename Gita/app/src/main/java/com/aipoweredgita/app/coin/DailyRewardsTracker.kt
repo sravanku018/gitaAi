@@ -1,10 +1,12 @@
 package com.aipoweredgita.app.coin
 
 import android.content.Context
+import android.util.Log
 import com.aipoweredgita.app.database.GitaDatabase
 import com.aipoweredgita.app.database.RewardState
 import com.aipoweredgita.app.database.RewardStateDao
 import java.time.LocalDate
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Daily check-in, weekly bonus, and share reward tracking.
@@ -16,6 +18,8 @@ import java.time.LocalDate
 class DailyRewardsTracker(private val dao: RewardStateDao) {
 
     companion object {
+        private const val TAG = "DailyRewardsTracker"
+
         @Volatile
         private var instance: DailyRewardsTracker? = null
 
@@ -28,9 +32,16 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         }
     }
 
+    /** Bumped on every save so Compose can re-read after async server sync. */
+    private val revisionCounter = AtomicInteger(0)
+    val revision: Int get() = revisionCounter.get()
+
     private fun getState(): RewardState = dao.getRewardStateSync() ?: RewardState()
-    
-    private fun saveState(state: RewardState) = dao.insertOrUpdate(state)
+
+    private fun saveState(state: RewardState) {
+        dao.insertOrUpdate(state)
+        revisionCounter.incrementAndGet()
+    }
 
     var isCheckinSynced: Boolean
         get() {
@@ -115,14 +126,17 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val effectiveServerDay = if (serverDay <= 0) 1 else serverDay.coerceIn(1, 7)
             val (mappedDay, mappedWeek) = mapServerDayWeek(effectiveServerDay, serverWeek.coerceIn(1, 4))
 
-            var newDate = if (force) "" else state.lastCheckinDate
-            val cleanDate = lastCheckin?.trim()?.take(10)?.takeIf {
-                it.length == 10 && it[4] == '-' && it[7] == '-'
+            // Accept ISO "2026-08-14" or "2026-08-14T12:00:00.000Z"
+            val cleanDate = lastCheckin?.trim()?.let { raw ->
+                val d = raw.take(10)
+                if (d.length == 10 && d[4] == '-' && d[7] == '-') d else null
             }
+
+            var newDate = if (force) (cleanDate ?: "") else state.lastCheckinDate
             if (cleanDate != null && (force || newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
-            // No last_checkin on server + day 0/1 → ensure empty so UI shows day 1 claimable
+            // No last_checkin on server + day 0 → ensure empty so UI shows day 1 claimable
             if (serverDay <= 0 && cleanDate == null) {
                 newDate = ""
             }
@@ -137,12 +151,33 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
                 else -> state.checkinDay to state.checkinWeek
             }
 
+            val today = now()
+            // If server has progress (day/week) but no date, assume claimed today when force-syncing
+            // only when last_checkin is today OR date missing but day indicates an active streak row.
+            val resolvedDate = when {
+                !newDate.isNullOrEmpty() -> newDate
+                force && serverDay > 0 && cleanDate == null -> {
+                    // Server row exists (current_day >= 1) without date — keep empty so user can claim
+                    // unless last_checkin was cleaned away incorrectly; prefer empty over fake today.
+                    ""
+                }
+                else -> newDate
+            }
+            val claimedToday = resolvedDate.isNotEmpty() && resolvedDate == today
+
+            Log.d(
+                TAG,
+                "syncWithServer force=$force serverDay=$serverDay serverWeek=$serverWeek " +
+                    "cleanDate=$cleanDate finalDay=$finalDay finalWeek=$finalWeek " +
+                    "resolvedDate=$resolvedDate claimedToday=$claimedToday today=$today"
+            )
+
             saveState(
                 state.copy(
                     checkinDay = finalDay,
                     checkinWeek = finalWeek.coerceIn(1, 4),
-                    lastCheckinDate = if (force) (cleanDate ?: "") else newDate,
-                    isCheckinSynced = force && !cleanDate.isNullOrEmpty()
+                    lastCheckinDate = resolvedDate,
+                    isCheckinSynced = claimedToday || (force && resolvedDate.isNotEmpty())
                 )
             )
         }
@@ -159,8 +194,9 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val effectiveServerDay = if (serverDay <= 0) 1 else serverDay.coerceIn(1, 7)
             val (mappedDay, mappedWeek) = mapServerDayWeek(effectiveServerDay, serverWeek.coerceIn(1, 4))
 
-            val cleanDate = lastShare?.trim()?.take(10)?.takeIf {
-                it.length == 10 && it[4] == '-' && it[7] == '-'
+            val cleanDate = lastShare?.trim()?.let { raw ->
+                val d = raw.take(10)
+                if (d.length == 10 && d[4] == '-' && d[7] == '-') d else null
             }
             var newDate = if (force) (cleanDate ?: "") else state.lastShareDate
             if (cleanDate != null && (force || newDate.isEmpty() || cleanDate > newDate)) {
@@ -179,12 +215,15 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
                 else -> state.shareDay to state.shareWeek
             }
 
+            val today = now()
+            val claimedToday = !newDate.isNullOrEmpty() && newDate == today
+
             saveState(
                 state.copy(
                     shareDay = finalDay,
                     shareWeek = finalWeek.coerceIn(1, 4),
                     lastShareDate = newDate,
-                    isShareSynced = force && !cleanDate.isNullOrEmpty()
+                    isShareSynced = claimedToday || (force && !cleanDate.isNullOrEmpty())
                 )
             )
         }

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aipoweredgita.app.database.VerseNote
 import com.aipoweredgita.app.database.VerseNoteDao
-import com.aipoweredgita.app.network.CoinApi
+import com.aipoweredgita.app.repository.NotesServerSync
 import com.aipoweredgita.app.utils.AuthPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,25 +26,13 @@ class NotesViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        syncNotesFromServer()
+        refreshFromServer()
     }
 
-    private fun syncNotesFromServer() {
+    /** Re-pull notes from server (call after login or when opening Notes). */
+    fun refreshFromServer() {
         viewModelScope.launch {
-            val uid = authPrefs.userId
-            if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
-                try {
-                    val serverNotes = CoinApi.retrofitService.getNotes(uid)
-                    for (sn in serverNotes) {
-                        val existing = noteDao.getNote(sn.chapter_no, sn.verse_no)
-                        if (existing == null) {
-                            noteDao.insertNote(VerseNote(chapterNo = sn.chapter_no, verseNo = sn.verse_no, note = sn.note))
-                        } else if (existing.note != sn.note) {
-                            noteDao.updateNote(existing.copy(note = sn.note, updatedAt = System.currentTimeMillis()))
-                        }
-                    }
-                } catch (_: Exception) {}
-            }
+            NotesServerSync.pullFromServer(context)
         }
     }
 
@@ -52,7 +40,7 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch {
             noteDao.insertNote(VerseNote(chapterNo = chapter, verseNo = verse, note = text, colorHex = colorHex))
             val uid = authPrefs.userId
-            if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
+            if (!uid.isNullOrEmpty()) {
                 try {
                     val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
                     val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapter, "verse" to verse, "note" to text))
@@ -75,7 +63,7 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch {
             noteDao.insertNote(VerseNote(id = noteId, chapterNo = chapter, verseNo = verse, note = text, colorHex = colorHex, updatedAt = System.currentTimeMillis()))
             val uid = authPrefs.userId
-            if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
+            if (!uid.isNullOrEmpty()) {
                 try {
                     val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
                     val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapter, "verse" to verse, "note" to text))
@@ -98,7 +86,7 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch {
             noteDao.deleteNote(noteId)
             val uid = authPrefs.userId
-            if (!authPrefs.isGuestUser && !uid.isNullOrEmpty()) {
+            if (!uid.isNullOrEmpty()) {
                 try {
                     val pendingDao = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context).pendingSyncEventDao()
                     val payloadStr = com.google.gson.Gson().toJson(mapOf("chapter" to chapterNo, "verse" to verseNo))

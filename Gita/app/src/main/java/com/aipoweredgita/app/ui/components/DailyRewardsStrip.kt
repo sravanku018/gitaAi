@@ -39,22 +39,26 @@ fun DailyRewardsStrip(
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
     onNavigateToShare: () -> Unit = {}
 ) {
-    var dailyState by remember { mutableStateOf(tracker.getDailyState()) }
-    var weeklyState by remember { mutableStateOf(tracker.getWeeklyState()) }
-    var claimedDay by remember { mutableStateOf(dailyState.todayClaimed) }
+    // Read every recomposition so re-login gets the new user id (not a frozen remember)
+    val authUserId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId
+    // Re-read when user id changes (re-login) — remember{} alone freezes pre-sync empty state
+    var dailyState by remember(authUserId) { mutableStateOf(tracker.getDailyState()) }
+    var weeklyState by remember(authUserId) { mutableStateOf(tracker.getWeeklyState()) }
+    var claimedDay by remember(authUserId) { mutableStateOf(dailyState.todayClaimed) }
     // Days 1..claimedCount claimed; next slot is claimable when !claimedDay
-    var claimedCount by remember {
+    var claimedCount by remember(authUserId) {
         mutableIntStateOf(
             if (dailyState.todayClaimed) dailyState.day.coerceIn(1, 7)
             else (dailyState.day - 1).coerceAtLeast(0)
         )
     }
-    var weekCompleted by remember { mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed) }
+    var weekCompleted by remember(authUserId) {
+        mutableStateOf(dailyState.day >= 7 && dailyState.todayClaimed)
+    }
     var dayBonusMessage by remember { mutableStateOf<String?>(null) }
     var claimedDayIndex by remember { mutableIntStateOf(-1) }
 
-    // Re-read after login / balance sync so old accounts get a visible day-1 slot
-    LaunchedEffect(coinBalance) {
+    fun reloadStripFromTracker() {
         val ds = tracker.getDailyState()
         val ws = tracker.getWeeklyState()
         dailyState = ds
@@ -62,6 +66,21 @@ fun DailyRewardsStrip(
         claimedDay = ds.todayClaimed
         claimedCount = if (ds.todayClaimed) ds.day.coerceIn(1, 7) else (ds.day - 1).coerceAtLeast(0)
         weekCompleted = ds.day >= 7 && ds.todayClaimed
+    }
+
+    // Re-read when balance/user changes OR when tracker.revision bumps after server syncWithServer
+    LaunchedEffect(coinBalance, authUserId) {
+        var lastRev = -1
+        // Poll briefly so async login force-sync lands on the strip
+        repeat(20) {
+            val rev = tracker.revision
+            if (rev != lastRev) {
+                lastRev = rev
+                reloadStripFromTracker()
+            }
+            delay(250)
+        }
+        reloadStripFromTracker()
     }
 
     // Reset claimed highlight after animation completes
@@ -184,9 +203,9 @@ fun DailyRewardsStrip(
         }
 
         // ─── Share Rewards ──────────────────────────────────────────────
-        var shareState by remember { mutableStateOf(tracker.getShareState()) }
-        var claimedShare by remember { mutableStateOf(shareState.todayClaimed) }
-        LaunchedEffect(coinBalance) {
+        var shareState by remember(authUserId) { mutableStateOf(tracker.getShareState()) }
+        var claimedShare by remember(authUserId) { mutableStateOf(shareState.todayClaimed) }
+        LaunchedEffect(coinBalance, authUserId, dailyState.todayClaimed, dailyState.day) {
             shareState = tracker.getShareState()
             claimedShare = shareState.todayClaimed
         }

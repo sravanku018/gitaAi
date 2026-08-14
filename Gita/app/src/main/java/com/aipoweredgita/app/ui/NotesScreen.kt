@@ -38,6 +38,11 @@ fun NotesScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var noteToEdit by remember { mutableStateOf<VerseNote?>(null) }
 
+    // Always re-pull server notes when opening this screen (post sign-in)
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.refreshFromServer()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -113,10 +118,6 @@ fun NotesScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                                Spacer(Modifier.weight(1f))
-                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                                    Text("${chapterNotes.size} Note${if (chapterNotes.size > 1) "s" else ""}")
-                                }
                             }
                         }
                     }

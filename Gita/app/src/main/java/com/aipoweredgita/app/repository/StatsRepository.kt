@@ -131,9 +131,15 @@ class StatsRepository(
                 currentStats = currentStats.copy(userId = uid, serverUpdatedAt = "")
             }
 
-            // Server timestamp guard against stale overwrites
+            // Server timestamp guard against stale overwrites of coin stats.
+            // NEVER skip when force=true (login/relogin): we just wiped RewardState and must
+            // re-apply check-in / share strip from the server or the UI shows "unclicked".
             val serverUpdated = balance.updated_at
-            if (serverUpdated != null && serverUpdated.isNotEmpty() && currentStats.serverUpdatedAt.isNotEmpty()) {
+            if (!force &&
+                serverUpdated != null &&
+                serverUpdated.isNotEmpty() &&
+                currentStats.serverUpdatedAt.isNotEmpty()
+            ) {
                 if (serverUpdated < currentStats.serverUpdatedAt) {
                     Log.w("Sync", "Skipping stale server data: ${serverUpdated} < ${currentStats.serverUpdatedAt}")
                     return
@@ -146,16 +152,23 @@ class StatsRepository(
 
             // Sync daily UI trackers from server (day 0 = never checked in → day 1 clickable)
             val tracker = DailyRewardsTracker.getInstance(appContext)
+            val lastCheckin = balance.last_checkin
+            val lastShare = balance.last_share
+            Log.d(
+                "Sync",
+                "checkin sync force=$force day=${balance.checkin_day} week=${balance.checkin_week} " +
+                    "last_checkin=$lastCheckin last_share=$lastShare"
+            )
             tracker.syncWithServer(
                 balance.checkin_day,
                 balance.checkin_week,
-                balance.last_checkin,
+                lastCheckin,
                 force = force
             )
             tracker.syncShareWithServer(
                 balance.share_day,
                 balance.share_week,
-                balance.last_share,
+                lastShare,
                 force = force
             )
 
@@ -256,7 +269,7 @@ class StatsRepository(
         val isGuest = authPrefs.isGuestUser
 
         val coins = if (isGuest) {
-            // Guest: local balance + local history only (same coin math as signed-in base×yoga)
+            // Guest: local balance + local history + queue for server sync
             if (result.totalCoins > 0) {
                 userStatsDao.addKrishnaCoins(result.totalCoins)
                 val guestUid = resolvedUserId() ?: userId() ?: authPrefs.userId
@@ -267,6 +280,37 @@ class StatsRepository(
                     source = "quiz_completion",
                     userId = guestUid
                 )
+                // Queue sync event so SyncWorker sends to server
+                if (guestUid != null) {
+                    try {
+                        val payloadMap = mapOf(
+                            "score" to score,
+                            "totalQuestions" to totalQuestions,
+                            "accuracy" to accuracy,
+                            "streakDays" to currentStreak,
+                            "checkinDay" to checkinDay,
+                            "quizType" to quizType,
+                            "timeSpentSeconds" to timeSpentSeconds,
+                            "clientDate" to java.time.OffsetDateTime.now().toString(),
+                            "countryCode" to java.util.Locale.getDefault().country,
+                            "attemptId" to attemptId,
+                            "language" to language
+                        )
+                        val payloadString = Gson().toJson(payloadMap)
+                        pendingSyncEventDao.insert(
+                            PendingSyncEvent(
+                                userId = guestUid,
+                                eventType = "QUIZ",
+                                payload = payloadString,
+                                coinsToAdjust = result.totalCoins,
+                                idempotencyKey = "quiz_${guestUid}_${System.currentTimeMillis()}"
+                            )
+                        )
+                        SyncWorker.schedule(appContext)
+                    } catch (dbEx: Exception) {
+                        Log.e("StatsRepository", "Failed to queue guest quiz sync: ${dbEx.message}")
+                    }
+                }
             }
             result.totalCoins
         } else {
@@ -367,6 +411,25 @@ class StatsRepository(
                     source = "battle_quiz",
                     userId = guestUid
                 )
+                // Queue sync event for guest battle
+                if (guestUid != null) {
+                    try {
+                        val fibBase = CoinRewardEngine.battleFibCoins(score)
+                        val db2 = com.aipoweredgita.app.database.GitaDatabase.getDatabase(appContext)
+                        db2.pendingSyncEventDao().insert(
+                            com.aipoweredgita.app.database.PendingSyncEvent(
+                                userId = guestUid,
+                                eventType = "BATTLE",
+                                payload = """{"battleCoins":$fibBase,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
+                                coinsToAdjust = serverMatchedCoins,
+                                idempotencyKey = "battle_${guestUid}_${System.currentTimeMillis()}"
+                            )
+                        )
+                        SyncWorker.schedule(appContext)
+                    } catch (dbEx: Exception) {
+                        Log.e("StatsRepository", "Failed to queue guest battle sync: ${dbEx.message}")
+                    }
+                }
             }
         } else {
             if (serverMatchedCoins > 0 || score > 0) {
@@ -559,6 +622,33 @@ class StatsRepository(
             } else {
                 CoinTransactionLogger.log(appContext, fallbackCoins, "Daily sloka share (guest)", source = "share_daily", userId = guestUid)
             }
+            // Queue sync event for guest share
+            if (guestUid != null) {
+                try {
+                    val slokaId = if (chapter != null && verse != null) "ch${chapter}v${verse}" else null
+                    val payloadMap = mapOf(
+                        "chapter" to chapter,
+                        "verse" to verse,
+                        "slokaId" to slokaId,
+                        "clientDate" to tracker.nowLocal(),
+                        "countryCode" to java.util.Locale.getDefault().country,
+                        "isWeeklyBonus" to isWeeklyBonus
+                    )
+                    val payloadString = Gson().toJson(payloadMap)
+                    pendingSyncEventDao.insert(
+                        PendingSyncEvent(
+                            userId = guestUid,
+                            eventType = "SHARE",
+                            payload = payloadString,
+                            coinsToAdjust = fallbackCoins,
+                            idempotencyKey = "share_${guestUid}_${System.currentTimeMillis()}"
+                        )
+                    )
+                    SyncWorker.schedule(appContext)
+                } catch (dbEx: Exception) {
+                    Log.e("StatsRepository", "Failed to queue guest share sync: ${dbEx.message}")
+                }
+            }
             fallbackCoins
         } else {
             ensureUserSynced()
@@ -638,6 +728,29 @@ class StatsRepository(
                 source = "chapter_completion",
                 userId = guestUid
             )
+            // Queue sync event for guest chapter completion
+            if (guestUid != null) {
+                try {
+                    val payloadMap = mapOf(
+                        "chapterNo" to chapterNo,
+                        "clientDate" to java.time.OffsetDateTime.now().toString(),
+                        "countryCode" to java.util.Locale.getDefault().country
+                    )
+                    val payloadString = Gson().toJson(payloadMap)
+                    pendingSyncEventDao.insert(
+                        PendingSyncEvent(
+                            userId = guestUid,
+                            eventType = "CHAPTER",
+                            payload = payloadString,
+                            coinsToAdjust = chapterCoins,
+                            idempotencyKey = "chapter_${guestUid}_${System.currentTimeMillis()}"
+                        )
+                    )
+                    SyncWorker.schedule(appContext)
+                } catch (dbEx: Exception) {
+                    Log.e("StatsRepository", "Failed to queue guest chapter sync: ${dbEx.message}")
+                }
+            }
         } else {
             ensureUserSynced()
 
@@ -820,18 +933,51 @@ class StatsRepository(
 
     suspend fun claimDailyReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description, source = "checkin_daily")
-        if (!authPrefs.isGuestUser) {
-            syncCheckinToCloud(coins)
+        val guestUid = if (authPrefs.isGuestUser) resolvedUserId() ?: userId() ?: authPrefs.userId else null
+        val uid = guestUid ?: resolvedUserId() ?: userId()
+        CoinTransactionLogger.log(appContext, coins, description, source = "checkin_daily", userId = uid)
+        // Both guest and signed-in queue for sync
+        queueCheckinSync(uid ?: return, coins)
+    }
+
+    /** Log a completed meditation session to the server. */
+    suspend fun logMeditationSession(minutes: Int) {
+        val uid = resolvedUserId() ?: userId() ?: return
+        val token = authPrefs.token
+        // Update local balance immediately (server formula: floor(min/5)*10, capped at 40)
+        val localCoins = minOf(40, (minutes / 5) * 10)
+        if (localCoins > 0) userStatsDao.addKrishnaCoins(localCoins)
+        CoinTransactionLogger.log(
+            appContext, localCoins,
+            "Meditation $minutes mins",
+            source = "meditation",
+            userId = uid
+        )
+        // Queue for server sync
+        try {
+            val payloadStr = com.google.gson.Gson().toJson(mapOf("minutes" to minutes))
+            pendingSyncEventDao.insert(
+                PendingSyncEvent(
+                    userId = uid,
+                    eventType = "MEDITATION",
+                    payload = payloadStr,
+                    coinsToAdjust = localCoins,
+                    idempotencyKey = "meditation_${uid}_${System.currentTimeMillis()}"
+                )
+            )
+            SyncWorker.schedule(appContext)
+        } catch (e: Exception) {
+            android.util.Log.e("StatsRepository", "Failed to queue meditation sync: ${e.message}")
         }
     }
 
     suspend fun claimShareReward(coins: Int, description: String) {
         userStatsDao.addKrishnaCoins(coins)
-        CoinTransactionLogger.log(appContext, coins, description, source = "share_daily")
-        if (!authPrefs.isGuestUser) {
-            syncShareToCloud(coins)
-        }
+        val guestUid = if (authPrefs.isGuestUser) resolvedUserId() ?: userId() ?: authPrefs.userId else null
+        val uid = guestUid ?: resolvedUserId() ?: userId()
+        CoinTransactionLogger.log(appContext, coins, description, source = "share_daily", userId = uid)
+        // Both guest and signed-in queue for sync
+        queueShareSync(uid ?: return, coins)
     }
 
     suspend fun getBalance(force: Boolean = false): Int {
@@ -941,7 +1087,6 @@ class StatsRepository(
     }
 
     suspend fun syncStatsToServer() {
-        if (authPrefs.isGuestUser) return
         val uid = resolvedUserId() ?: userId() ?: return
         val token = authPrefs.token ?: return
         
@@ -958,6 +1103,8 @@ class StatsRepository(
                     total_correct_answers = localStats.totalCorrectAnswers,
                     verses_read = localStats.versesRead,
                     chapters_completed = localStats.chaptersCompleted,
+                    krishna_coins = localStats.krishnaCoins,
+                    yoga_level = YogaLevelManager.levelFor(localStats),
                     last_activity_date = localStats.lastActiveDate
                 )
             )
@@ -1009,51 +1156,40 @@ class StatsRepository(
         // Use question hash as idempotency key to prevent duplicate spends
         val idempotencyKey = "spend_${resolvedUserId() ?: userId() ?: "guest"}_${question.hashCode()}"
 
-        if (isGuest) {
-            // Dynamic pricing: Short 4 / Medium 6 / Long 10
-            val cost = VoiceCoinPricing.costFor(question)
-            
-            if (coinBalance.value < cost) {
-                Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
-                return false
-            }
+        // Guest and signed-in: both queue for server sync
+        val guestUid = if (isGuest) {
+            authPrefs.userId?.ifEmpty { authPrefs.guestId } ?: authPrefs.guestId
+        } else null
+        val uid = guestUid ?: (resolvedUserId() ?: userId() ?: return false)
 
-            userStatsDao.addKrishnaCoins(-cost)
-            CoinTransactionLogger.log(appContext, -cost, "Asked question: $question")
-            Log.d("StatsRepository", "Guest spend: -$cost coins (${question.length} chars)")
-            return true
-        }
-
-        ensureUserSynced()
-        val uid = resolvedUserId() ?: userId() ?: return false
+        // Dynamic pricing: Short 4 / Medium 6 / Long 10
+        val cost = VoiceCoinPricing.costFor(question)
         
-        val offlineCost = VoiceCoinPricing.costFor(question)
-
-        if (coinBalance.value < offlineCost) {
-            Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $offlineCost")
+        if (coinBalance.value < cost) {
+            Log.w("StatsRepository", "Insufficient coins: ${coinBalance.value} < $cost")
             return false
         }
 
-        userStatsDao.addKrishnaCoins(-offlineCost)
-        CoinTransactionLogger.log(appContext, -offlineCost, "Asked question: $question")
-        Log.d("StatsRepository", "Deducted $offlineCost coins locally (offline-first), queuing for sync")
+        userStatsDao.addKrishnaCoins(-cost)
+        CoinTransactionLogger.log(appContext, -cost, "Voice chat", source = "voice_chat", userId = uid)
+        Log.d("StatsRepository", "Spend -$cost coins (${question.length} chars)")
 
+        // Queue for server sync (works for both guest and signed-in)
         try {
-            val payloadMap   = mapOf(
+            val payloadMap = mapOf(
                 "question" to question,
                 "clientDate" to java.time.OffsetDateTime.now().toString(),
                 "countryCode" to java.util.Locale.getDefault().country
             )
             val payloadString = Gson().toJson(payloadMap)
             val event = PendingSyncEvent(
-                userId           = uid,
-                eventType        = "SPEND",
-                payload          = payloadString,
-                coinsToAdjust    = -offlineCost,
-                idempotencyKey   = idempotencyKey
+                userId         = uid,
+                eventType      = "SPEND",
+                payload        = payloadString,
+                coinsToAdjust  = -cost,
+                idempotencyKey = idempotencyKey
             )
             pendingSyncEventDao.insert(event)
-            userStatsDao.addKrishnaCoins(-offlineCost)
             SyncWorker.schedule(appContext)
         } catch (dbEx: Exception) {
             Log.e("StatsRepository", "Failed to queue spend sync event: ${dbEx.message}", dbEx)

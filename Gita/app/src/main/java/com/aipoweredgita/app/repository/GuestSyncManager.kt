@@ -59,8 +59,7 @@ class GuestSyncManager(private val context: Context) {
                     real_user_id = realUserId,
                     name = name,
                     email = email
-                ),
-                authPrefs.guestToken?.let { "Bearer $it" }
+                )
             )
 
             if (response.success) {
@@ -68,7 +67,12 @@ class GuestSyncManager(private val context: Context) {
                 // Clear guest state after successful sync
                 authPrefs.guestId = null
                 authPrefs.isGuest = false
-                authPrefs.guestToken = null
+                // Server may have migrated guest verse_notes → real user; pull into Room
+                try {
+                    NotesServerSync.pullFromServer(context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Notes pull after guest claim failed: ${e.message}")
+                }
                 return@withContext true
             } else {
                 Log.e(TAG, "Guest sync failed: ${response.error}")

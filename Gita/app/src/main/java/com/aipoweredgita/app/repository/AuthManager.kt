@@ -46,11 +46,7 @@ class AuthManager(private val context: Context) {
 
             if (response.success) {
                 val wasGuest = authPrefs.isGuest || !authPrefs.isLoggedIn
-                // Claim any prior guest session on the server BEFORE saveLoginState wipes guest state.
-                // This transfers the guest's server-side coins/progress to the new account.
-                if (guestSyncManager.hasGuestDataToSync()) {
-                    guestSyncManager.syncGuestData(response.user_id, name, email)
-                }
+                val previousUserId = authPrefs.userId
                 val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
@@ -75,8 +71,19 @@ class AuthManager(private val context: Context) {
                     db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
                 }
 
+                // Sync guest data if exists
+                if (guestSyncManager.hasGuestDataToSync()) {
+                    guestSyncManager.syncGuestData(response.user_id, name, email)
+                }
+
                 try {
-                    com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context).resetForAccountSwitch()
+                    val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context)
+                    val switchedUser = previousUserId != null &&
+                        previousUserId.isNotEmpty() &&
+                        previousUserId != response.user_id
+                    if (switchedUser || wasGuest) {
+                        tracker.resetForAccountSwitch()
+                    }
                     val dbInstance = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                     val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
                         dbInstance.userStatsDao(),
@@ -84,8 +91,9 @@ class AuthManager(private val context: Context) {
                         context
                     )
                     statsRepo.refreshUserState(response.user_id, force = true)
+                    NotesServerSync.pullFromServer(context)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Streak/balance refresh failed after register", e)
+                    Log.e(TAG, "Streak/balance/notes refresh failed after register", e)
                 }
 
                 Log.d(TAG, "Registration successful")
@@ -107,6 +115,61 @@ class AuthManager(private val context: Context) {
     }
 
     /**
+     * Create a guest account on VPS server & save auth state (matching login/register pattern)
+     */
+    suspend fun createGuest(): Result<AuthResult> = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "=== CREATE GUEST START ===")
+            val response = CoinApi.retrofitService.createGuest()
+            Log.d(TAG, "Server response: guest_id=${response.guest_id}, token=${response.token.take(8)}..., coins=${response.coins}")
+            val guestId = response.guest_id
+            val token = response.token.ifEmpty { guestId }
+            Log.d(TAG, "Resolved guestId=$guestId, token=$token")
+
+            if (guestId.isNotEmpty()) {
+                // Save as regular user (not guest) — use same code path as signed-in users
+                Log.d(TAG, "Saving guest as regular user: guestId=$guestId")
+                authPrefs.saveLoginState(
+                    userId = guestId,
+                    name = "Guest",
+                    loginMethod = "guest",
+                    token = token,
+                    email = "${guestId}@gita.com"
+                )
+                Log.d(TAG, "After save: authPrefs.userId=${authPrefs.userId}, isGuest=${authPrefs.isGuestUser}")
+
+                // Update Room DB
+                val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
+                db.userStatsDao().updateUserId(guestId)
+                db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(50))
+
+                com.aipoweredgita.app.coin.CoinTransactionLogger.log(
+                    context,
+                    response.coins.coerceAtLeast(50),
+                    "Welcome bonus",
+                    source = "signup",
+                    userId = guestId
+                )
+
+                Log.d(TAG, "=== CREATE GUEST SUCCESS: $guestId ===")
+                return@withContext Result.success(
+                    AuthResult(
+                        userId = guestId,
+                        token = token,
+                        coins = response.coins
+                    )
+                )
+            } else {
+                Log.e(TAG, "Guest creation failed: empty guest_id")
+                return@withContext Result.failure(Exception("Failed to create guest user on server"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "=== CREATE GUEST FAILED: ${e.message} ===", e)
+            return@withContext Result.failure(Exception("Network error creating guest: ${e.message}"))
+        }
+    }
+
+    /**
      * Login with existing credentials
      */
     suspend fun login(
@@ -120,10 +183,7 @@ class AuthManager(private val context: Context) {
 
 if (response.success) {
                 val wasGuest = authPrefs.hasGuestSession()
-                // Claim any prior guest session on the server BEFORE saveLoginState wipes guest state.
-                if (guestSyncManager.hasGuestDataToSync()) {
-                    guestSyncManager.syncGuestData(response.user_id)
-                }
+                val previousUserId = authPrefs.userId
                 val db = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                 val previousCoins = db.userStatsDao().getUserStatsOnce()?.krishnaCoins ?: 0
 
@@ -161,6 +221,11 @@ if (response.success) {
                     db.userStatsDao().updateKrishnaCoins(response.coins.coerceAtLeast(0))
                 }
 
+                // Sync guest data if exists
+                if (guestSyncManager.hasGuestDataToSync()) {
+                    guestSyncManager.syncGuestData(response.user_id)
+                }
+
                 // Run auto-reconciliation after login to detect any discrepancies
                 try {
                     val reconciliationManager = CoinReconciliationManager(context)
@@ -178,19 +243,30 @@ if (response.success) {
                     Log.e(TAG, "Auto-reconciliation failed during login", e)
                 }
 
-                // Clear guest/local streak UI, then pull server check-in (old accounts often day 0)
+                // Streak strip: only wipe local UI when switching to a *different* account.
+                // Same-user re-login keeps local claimed state; force refresh still re-applies server.
                 try {
-                    com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context).resetForAccountSwitch()
+                    val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(context)
+                    val switchedUser = previousUserId != null &&
+                        previousUserId.isNotEmpty() &&
+                        previousUserId != response.user_id
+                    if (switchedUser || wasGuest) {
+                        Log.d(TAG, "resetForAccountSwitch (prev=$previousUserId new=${response.user_id} guest=$wasGuest)")
+                        tracker.resetForAccountSwitch()
+                    }
                     val dbInstance = com.aipoweredgita.app.database.GitaDatabase.getDatabase(context)
                     val statsRepo = com.aipoweredgita.app.repository.StatsRepository(
                         dbInstance.userStatsDao(),
                         dbInstance.dailyActivityDao(),
                         context
                     )
+                    // Always force-pull balance + check-in/share so strip enables after sync
                     statsRepo.refreshUserState(response.user_id, force = true)
                     statsRepo.syncStatsToServer()
+                    NotesServerSync.pullFromServer(context)
+                    Log.d(TAG, "post-login streak revision=${tracker.revision}")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Stats sync failed during login", e)
+                    Log.e(TAG, "Stats/notes/streak sync failed during login", e)
                 }
 
                 Log.d(TAG, "Login successful")
