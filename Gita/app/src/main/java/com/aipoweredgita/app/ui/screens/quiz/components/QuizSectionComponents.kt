@@ -74,7 +74,7 @@ fun QuizStartLanding(
             )
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = translateLandingText(title, language),
@@ -85,7 +85,7 @@ fun QuizStartLanding(
             )
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
             text = translateLandingText(description, language),
@@ -96,7 +96,7 @@ fun QuizStartLanding(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         val buttonGradient = Brush.horizontalGradient(
             colors = listOf(Color(0xFFFF9800), GoldSpark)
@@ -125,7 +125,7 @@ fun QuizStartLanding(
                     tint = Color.Black,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     translateLandingText("Start Quiz", language),
                     fontSize = 15.sp,
@@ -135,7 +135,7 @@ fun QuizStartLanding(
             }
         }
 
-        Spacer(modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         
         Text(
             text = translateLandingText("Every question is a step closer to self-realization.", language),
