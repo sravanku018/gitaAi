@@ -23,9 +23,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.ui.theme.GoldSpark
 import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.utils.AuthPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,17 +93,41 @@ fun DrawerContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Display Name
+            val context = LocalContext.current
+            val authPrefs = remember { AuthPreferences.getInstance(context) }
+            val displayName = run {
+                val uid = authPrefs.userId
+                android.util.Log.d("DrawerContent", "authPrefs.userId=$uid")
+                if (uid != null && uid.startsWith("guest_")) {
+                    // Guest user — show unique ID
+                    val shortId = uid.removePrefix("guest_").take(6).uppercase()
+                    android.util.Log.d("DrawerContent", "Guest uid=$uid, shortId=$shortId")
+                    "Guest $shortId"
+                } else {
+                    // Regular signed-in user
+                    stats?.userName?.takeIf { it.isNotEmpty() } ?: "Gita Seeker"
+                }
+            }
             Text(
-                text = if (isGuest) "Guest Seeker" else (stats?.userName?.takeIf { it.isNotEmpty() } ?: "Gita Seeker"),
+                text = displayName,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = textColor,
                 fontSize = 20.sp
             )
 
-            // Handle / Username
+            // Handle / Username - show @guest_uniqueid for guests
+            val handleText = run {
+                val uid = authPrefs.userId
+                if (uid != null && uid.startsWith("guest_")) {
+                    val shortId = uid.removePrefix("guest_").take(6).uppercase()
+                    "@guest_$shortId"
+                } else {
+                    "@${(stats?.userName ?: "seeker").lowercase().replace(" ", "")}"
+                }
+            }
             Text(
-                text = if (isGuest) "@guest_seeker" else "@${(stats?.userName ?: "seeker").lowercase().replace(" ", "")}",
+                text = handleText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = subtextColor,
                 fontSize = 14.sp
