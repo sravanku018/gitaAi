@@ -205,7 +205,23 @@ fun DailyRewardsStrip(
         // ─── Share Rewards ──────────────────────────────────────────────
         var shareState by remember(authUserId) { mutableStateOf(tracker.getShareState()) }
         var claimedShare by remember(authUserId) { mutableStateOf(shareState.todayClaimed) }
-        LaunchedEffect(coinBalance, authUserId, dailyState.todayClaimed, dailyState.day) {
+        // Keyed on tracker.revision (bumped by claimShare()/syncShareWithServer()) instead
+        // of coinBalance/dailyState — those don't reliably change from a share claim made
+        // on a different screen (Random Sloka), so this strip could keep showing
+        // "unclaimed" after navigating back until something unrelated happened to bump
+        // coinBalance. revision changes unconditionally on every local claim, so this
+        // always catches it, the same pattern the check-in poll above already relies on.
+        LaunchedEffect(authUserId) {
+            var lastRev = -1
+            repeat(20) {
+                val rev = tracker.revision
+                if (rev != lastRev) {
+                    lastRev = rev
+                    shareState = tracker.getShareState()
+                    claimedShare = shareState.todayClaimed
+                }
+                delay(250)
+            }
             shareState = tracker.getShareState()
             claimedShare = shareState.todayClaimed
         }
