@@ -7,7 +7,7 @@ import kotlin.math.roundToInt
  * Coin reward rules — must match server `deno-backend-hono.ts` award path.
  *
  * Quiz: base 5 + accuracy tier 1–6, cap 15, then × yoga (1/2/2/3/3), round, cap 10_000.
- * Battle: Fibonacci(correct) then × yoga, round, cap 10_000.
+ * Battle: Fibonacci(correct) then × yoga, round, cap 1000 * yoga, then cap 10_000.
  * Chapter: 15 × yoga, round, cap 10_000.
  *
  * Pure calculation — no side effects.
@@ -18,6 +18,7 @@ object CoinRewardEngine {
     const val QUIZ_MAX_BEFORE_YOGA = 15
     const val CHAPTER_BASE = 15
     const val COIN_HARD_CAP = 10_000
+    const val BATTLE_MAX_BEFORE_YOGA = 1000
 
     data class Input(
         val score: Int,
@@ -154,7 +155,13 @@ object CoinRewardEngine {
 
     fun battleTotal(correctAnswers: Int, yogaMultiplier: Float): Int {
         val fib = battleFibCoins(correctAnswers)
-        return applyYogaMultiplier(fib, yogaMultiplier)
+        val mult = yogaMultiplier.coerceAtLeast(0f)
+        val multipliedCoins = max(0, (fib * mult).roundToInt())
+        
+        // FIX: Apply the server's battle_quiz max_coins (1000) * multiplier cap
+        val battleMaxCap = (BATTLE_MAX_BEFORE_YOGA * mult).toInt()
+        
+        return multipliedCoins.coerceAtMost(battleMaxCap).coerceAtMost(COIN_HARD_CAP)
     }
 
     fun chapterTotal(yogaMultiplier: Float): Int =

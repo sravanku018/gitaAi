@@ -42,12 +42,20 @@ object CoinTransactionLogger {
         }
     }
 
-    /** Map guest UUIDs / guest sessions onto one stable SharedPreferences key. */
+    /** Use the actual guest ID for storage (not shared bucket). */
     private fun storageUid(context: Context, explicitUserId: String? = null): String {
         val uid = resolveUserId(context, explicitUserId)
         if (uid == GUEST_STORE_UID) return GUEST_STORE_UID
-        if (uid.startsWith("guest_")) return GUEST_STORE_UID
-        if (isGuestContext(context)) return GUEST_STORE_UID
+        // Use actual guest ID for per-guest history
+        if (uid.startsWith("guest_")) return uid
+        if (isGuestContext(context)) {
+            // Try to get the actual guest ID from preferences
+            val authPrefs = AuthPreferences.getInstance(context)
+            val actualGuestId = authPrefs.userId?.takeIf { it.startsWith("guest_") }
+                ?: authPrefs.guestId?.takeIf { it.startsWith("guest_") }
+                ?: GUEST_STORE_UID
+            return actualGuestId
+        }
         return uid
     }
 
@@ -343,9 +351,11 @@ object CoinTransactionLogger {
     fun getHistory(context: Context, userId: String? = null): List<CoinEntry> {
         val logicalUid = resolveUserId(context, userId)
         val uid = storageUid(context, userId)
+        Log.d(TAG, "getHistory: userId=$userId, logicalUid=$logicalUid, storageUid=$uid")
         val prefs = prefs(context)
         dropLegacySharedHistory(prefs)
         val rawArr = readJson(prefs, keyFor(uid))
+        Log.d(TAG, "getHistory: rawArr.length()=${rawArr.length()}, key=${keyFor(uid)}")
         val rawList = mutableListOf<JSONObject>()
         for (i in 0 until rawArr.length()) {
             try {

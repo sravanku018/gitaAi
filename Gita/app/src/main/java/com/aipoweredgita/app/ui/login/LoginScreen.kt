@@ -160,6 +160,28 @@ fun LoginScreen(
         }
     }
 
+    val handleGuestLogin = {
+        isLoading = true
+        errorMessage = null
+        scope.launch {
+            android.util.Log.d("LoginScreen", "=== handleGuestLogin START ===")
+            val result = authManager.createGuest()
+            result.fold(
+                onSuccess = { authResult ->
+                    android.util.Log.d("LoginScreen", "Guest login SUCCESS: userId=${authResult.userId}")
+                    loginViewModel.handleLoginSuccess(authResult.userId)
+                    android.util.Log.d("LoginScreen", "After handleLoginSuccess, calling onGuestLogin")
+                    onGuestLogin()
+                },
+                onFailure = { error ->
+                    android.util.Log.e("LoginScreen", "Guest login FAILED: ${error.message}")
+                    errorMessage = formatAuthError(error, false)
+                }
+            )
+            isLoading = false
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -484,13 +506,8 @@ fun LoginScreen(
 
                     // Guest button
                     OutlinedButton(
-                        onClick = {
-                            isLoading = true
-                            errorMessage = null
-                            loginViewModel.handleGuestLogin()
-                            isLoading = false
-                            onGuestLogin()
-                        },
+                        onClick = { handleGuestLogin() },
+                        enabled = !isLoading,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(

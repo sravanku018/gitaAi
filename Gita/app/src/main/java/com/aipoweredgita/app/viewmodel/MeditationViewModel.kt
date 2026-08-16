@@ -133,9 +133,8 @@ class MeditationViewModel @Inject constructor(
     private fun finishMeditation() {
         _uiState.update { it.copy(isRunning = false, isCompleted = true) }
         val minutes = _uiState.value.selectedDuration.minutes
-        val coins = minutes * 2
         viewModelScope.launch {
-            statsRepository.claimDailyReward(coins, "Meditation practice - $minutes mins")
+            statsRepository.logMeditationSession(minutes)
         }
     }
 

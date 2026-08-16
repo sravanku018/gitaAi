@@ -29,6 +29,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Generate a short 6-char alphanumeric guest ID like guest_A3B7K2 */
+private fun generateShortGuestId(): String {
+    val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Removed I,O,0,1 to avoid confusion
+    val random = java.security.SecureRandom()
+    val id = (1..6).map { chars[random.nextInt(chars.length)] }.joinToString("")
+    return "guest_$id"
+}
+
 /**
  * Profile ViewModel with UDF pattern
  * Uses constructor injection via Hilt
@@ -338,72 +346,16 @@ class ProfileViewModel @Inject constructor(
     fun loadCoinHistory(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             val authPrefs = AuthPreferences.getInstance(appContext)
-            val isGuest = authPrefs.isGuestUser
             // Prefer session userId only — never fall back to stale Room stats.userId
-            // from a previous profile (that caused mixed coin history).
             val effectiveUid = authPrefs.userId?.takeIf { it.isNotEmpty() }
+            android.util.Log.d("ProfileViewModel", "loadCoinHistory: effectiveUid=$effectiveUid")
 
-            fun isGuestSignupNoise(entry: com.aipoweredgita.app.network.CoinHistoryEntry): Boolean =
-                entry.source == "signup" && entry.description.contains("Guest", ignoreCase = true)
-
-            // Guest without userId (corrupt prefs) — recover identity then continue
-            val uid = if (isGuest && effectiveUid == null) {
-                val gid = authPrefs.guestId?.takeIf { it.isNotEmpty() }
-                    ?: "guest_${java.util.UUID.randomUUID()}"
-                authPrefs.saveGuestState(gid)
-                gid
-            } else {
-                effectiveUid
-            }
-
-            if (uid == null) {
+            if (effectiveUid == null) {
+                android.util.Log.w("ProfileViewModel", "loadCoinHistory: uid is null, returning empty")
                 _coinHistory.value = emptyList()
                 return@launch
             }
-
-            if (isGuest) {
-                // Guests: stable local bucket (GUEST_SESSION) — never hit server
-                try {
-                    statsRepository.getBalance(force = false)
-                } catch (_: Exception) { /* ignore */ }
-
-                com.aipoweredgita.app.coin.CoinTransactionLogger.ensureGuestWelcome(
-                    appContext,
-                    amount = 50,
-                    userId = uid
-                )
-                authPrefs.guestWelcomeAwarded = true
-
-                var local = buildLocalHistory(uid)
-                if (local.isEmpty()) {
-                    // Absolute fallback so UI never shows empty for an active guest
-                    val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
-                        timeZone = java.util.TimeZone.getTimeZone("UTC")
-                    }.format(java.util.Date())
-                    local = listOf(
-                        com.aipoweredgita.app.network.CoinHistoryEntry(
-                            amount = 50,
-                            type = "EARN",
-                            source = "signup",
-                            description = "Welcome bonus (guest)",
-                            created_at = now
-                        )
-                    )
-                    com.aipoweredgita.app.coin.CoinTransactionLogger.log(
-                        appContext,
-                        50,
-                        "Welcome bonus (guest)",
-                        source = "signup",
-                        userId = uid
-                    )
-                    android.util.Log.w("ProfileViewModel", "Guest history synthetic fallback uid=$uid")
-                }
-                android.util.Log.i("ProfileViewModel", "Guest history size=${local.size} uid=$uid")
-                _coinHistory.value = local
-                lastHistoryFetchMs = System.currentTimeMillis()
-                lastHistoryUid = uid
-                return@launch
-            }
+            val uid = effectiveUid
 
             // TTL: reuse last server-backed list when reopening history quickly
             val now = System.currentTimeMillis()
@@ -421,14 +373,13 @@ class ProfileViewModel @Inject constructor(
                     val serverHistory = com.aipoweredgita.app.network.CoinApi.retrofitService.getHistory(
                         uid, "Bearer $token", limit = HISTORY_LIMIT
                     )
-                    // Signed-in: server is the only history source of truth (no local+server double lines).
+                    // Server is the only history source of truth.
                     // Still cache server rows locally for offline display.
                     com.aipoweredgita.app.coin.CoinTransactionLogger.replaceWithServerHistory(
                         appContext, serverHistory, uid
                     )
                     _coinHistory.value = serverHistory
                         .distinctBy { if (it.id != 0) it.id else "${it.created_at}_${it.amount}_${it.description}" }
-                        .filterNot(::isGuestSignupNoise)
                     lastHistoryFetchMs = now
                     lastHistoryUid = uid
                     return@launch
@@ -437,8 +388,8 @@ class ProfileViewModel @Inject constructor(
                 }
             }
 
-            // Offline fallback for signed-in: last cached server snapshot only
-            _coinHistory.value = buildLocalHistory(uid).filterNot(::isGuestSignupNoise)
+            // Offline fallback: last cached server snapshot only
+            _coinHistory.value = buildLocalHistory(uid)
         }
     }
 
