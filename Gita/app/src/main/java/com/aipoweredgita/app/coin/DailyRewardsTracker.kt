@@ -272,11 +272,11 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         var rawDay = st.checkinDay.coerceIn(0, 7)
         var newState = st
 
-        if (rawDay == 7 && lastDate == today && week > 1) {
+        // FIX: Only wrap the week if day 7 was claimed on a PREVIOUS day
+        if (rawDay == 7 && lastDate != today && lastDate.isNotEmpty()) {
             rawDay = 0
             week = if (week == 1) 4 else week - 1
-            newState = newState.copy(checkinDay = 0, checkinWeek = week, lastCheckinDate = yesterday)
-            lastDate = yesterday
+            newState = newState.copy(checkinDay = 0, checkinWeek = week, lastCheckinDate = lastDate)
         }
 
         if (lastDate == today) {
@@ -403,11 +403,11 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         var rawDay = st.shareDay.coerceIn(0, 7)
         var newState = st
 
-        if (rawDay == 7 && lastDate == today && week > 1) {
+        // FIX: Only wrap the week if day 7 was claimed on a PREVIOUS day
+        if (rawDay == 7 && lastDate != today && lastDate.isNotEmpty()) {
             rawDay = 0
             week = if (week == 1) 4 else week - 1
-            newState = newState.copy(shareDay = 0, shareWeek = week, lastShareDate = yesterday)
-            lastDate = yesterday
+            newState = newState.copy(shareDay = 0, shareWeek = week, lastShareDate = lastDate)
         }
 
         if (lastDate == today) {
