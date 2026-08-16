@@ -484,12 +484,10 @@ class NormalModeViewModel @Inject constructor(
     private fun trackShare() {
         viewModelScope.launch {
             val verse = _uiState.value.verse
-            Log.d(TAG, "[ShareLog] trackShare triggered in NormalModeViewModel for chapter=${verse?.chapterNo}, verse=${verse?.verseNo}")
-            val coins = statsRepository.trackSlokaShared(
+            statsRepository.trackSlokaShared(
                 chapter = verse?.chapterNo,
                 verse = verse?.verseNo
             )
-            Log.d(TAG, "[ShareLog] NormalModeViewModel trackShare completed: coins awarded=$coins")
         }
     }
 }

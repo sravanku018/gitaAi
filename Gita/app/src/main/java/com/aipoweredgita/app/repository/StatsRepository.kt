@@ -592,11 +592,9 @@ class StatsRepository(
     }
 
     suspend fun trackSlokaShared(chapter: Int? = null, verse: Int? = null): Int {
-        Log.d("StatsRepository", "[ShareLog] trackSlokaShared entered with chapter=$chapter, verse=$verse")
         updateStreak()
 
         val isGuest = authPrefs.isGuestUser
-        Log.d("StatsRepository", "[ShareLog] trackSlokaShared isGuest=$isGuest, resolvedUserId=${resolvedUserId()}, userId=${userId()}")
 
         if (!isGuest) {
             ensureUserSynced()
@@ -604,17 +602,14 @@ class StatsRepository(
 
         val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(appContext)
         val dailyState = tracker.getShareState()
-        Log.d("StatsRepository", "[ShareLog] trackSlokaShared dailyState: day=${dailyState.day}, todayClaimed=${dailyState.todayClaimed}, reward=${dailyState.reward}")
         
         // Prevent duplicate share processing if already shared today
         if (dailyState.todayClaimed) {
-            Log.w("StatsRepository", "[ShareLog] trackSlokaShared SKIPPED: dailyState.todayClaimed is true")
             return 0
         }
 
         // Claim locally first to mark as claimed today
         var fallbackCoins = tracker.claimShare()
-        Log.d("StatsRepository", "[ShareLog] tracker.claimShare() returned fallbackCoins=$fallbackCoins")
         if (fallbackCoins <= 0) return 0
 
         var isWeeklyBonus = false

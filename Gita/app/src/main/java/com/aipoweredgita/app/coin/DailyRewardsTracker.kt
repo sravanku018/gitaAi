@@ -237,11 +237,6 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
 
             val claimedToday = !newDate.isNullOrEmpty() && newDate == today
 
-            Log.d(
-                TAG,
-                "[ShareLog] syncShareWithServer: force=$force, serverDay=$serverDay, serverWeek=$serverWeek, lastShare=$lastShare, cleanDate=$cleanDate, mappedDay=$mappedDay, mappedWeek=$mappedWeek, finalDay=$finalDay, finalWeek=$finalWeek, newDate=$newDate, claimedToday=$claimedToday, today=$today"
-            )
-
             saveState(
                 state.copy(
                     shareDay = finalDay,
@@ -465,19 +460,11 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val (ds, newState) = getShareStateInternal(state)
             val today = now()
 
-            Log.d(
-                TAG,
-                "[ShareLog] claimShare called: today=$today, lastShareDate=${state.lastShareDate}, " +
-                    "ds.todayClaimed=${ds.todayClaimed}, ds.day=${ds.day}, ds.week=${ds.week}, ds.reward=${ds.reward}"
-            )
-
             if (ds.todayClaimed) {
-                Log.w(TAG, "[ShareLog] claimShare SKIPPED: todayClaimed is true (lastShareDate=${state.lastShareDate}, today=$today)")
                 if (state != newState) saveState(newState)
                 return 0
             }
             if (newState.lastShareDate == today) {
-                Log.w(TAG, "[ShareLog] claimShare SKIPPED: lastShareDate already equals today ($today)")
                 if (state != newState) saveState(newState)
                 return 0
             }
@@ -493,12 +480,6 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
                 isShareSynced = false
             )
             saveState(updatedState)
-
-            Log.d(
-                TAG,
-                "[ShareLog] claimShare SUCCESS: awarded ${ds.reward} coins for day ${ds.day} (week ${ds.week}), updated lastShareDate=$today"
-            )
-
             return ds.reward
         }
     }
@@ -509,7 +490,6 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
         val last = state.lastShareDate
         val today = now()
         
-        Log.d(TAG, "[ShareLog] claimShareDay7BonusIfEligible: day=$day, lastShareDate=$last, today=$today")
         if (day == 7 && last == today) {
             val calWeek = currentCalendarWeek()
             state = state.copy(
@@ -519,10 +499,8 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             )
             state = grantBothProtectionsIfNeeded(calWeek, state)
             saveState(state)
-            Log.d(TAG, "[ShareLog] claimShareDay7BonusIfEligible SUCCESS: Day 7 bonus awarded, calWeek=$calWeek")
             return 7
         }
-        Log.d(TAG, "[ShareLog] claimShareDay7BonusIfEligible SKIPPED: Not eligible")
         return 0
     }
 
