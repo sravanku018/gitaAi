@@ -333,7 +333,7 @@ fun SplashScreen(
     val versionText = remember(context) {
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val name = packageInfo.versionName ?: "2.16.1"
+            val name = packageInfo.versionName ?: "2.17.0"
             val code = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode
             } else {
@@ -342,7 +342,7 @@ fun SplashScreen(
             }
             "v$name · Build $code"
         } catch (e: java.lang.Exception) {
-            "v2.16.1 · Build 48"
+            "v2.17.0 · Build 49"
         }
     }
 
