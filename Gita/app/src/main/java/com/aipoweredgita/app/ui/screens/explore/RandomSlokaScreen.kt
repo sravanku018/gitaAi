@@ -67,6 +67,7 @@ fun RandomSlokaScreen(
     }
 
     fun shareSloka(verse: CachedVerse) {
+        android.util.Log.d("RandomSlokaScreen", "[ShareLog] User clicked shareSloka button for Chapter ${verse.chapterNo}, Verse ${verse.verseNo}")
         val shareText = "Bhagavad Gita Chapter ${verse.chapterNo}, Verse ${verse.verseNo}:\n\n${verse.verse}\n\nTranslation:\n${verse.translation}\n\nShared via AI Powered Gita App"
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -75,10 +76,13 @@ fun RandomSlokaScreen(
         }
         try {
             context.startActivity(Intent.createChooser(intent, "Share Sloka"))
+            android.util.Log.d("RandomSlokaScreen", "[ShareLog] Share intent launched; calling viewModel.trackSlokaShared()")
             viewModel.trackSlokaShared(verse.chapterNo, verse.verseNo) { message ->
+                android.util.Log.d("RandomSlokaScreen", "[ShareLog] trackSlokaShared callback message: $message")
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
+            android.util.Log.e("RandomSlokaScreen", "[ShareLog] Error launching share intent: ${e.message}", e)
             Toast.makeText(context, "Failed to share: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }

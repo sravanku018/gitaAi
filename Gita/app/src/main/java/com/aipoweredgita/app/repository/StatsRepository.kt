@@ -592,29 +592,29 @@ class StatsRepository(
     }
 
     suspend fun trackSlokaShared(chapter: Int? = null, verse: Int? = null): Int {
+        Log.d("StatsRepository", "[ShareLog] trackSlokaShared entered with chapter=$chapter, verse=$verse")
         updateStreak()
 
         val isGuest = authPrefs.isGuestUser
+        Log.d("StatsRepository", "[ShareLog] trackSlokaShared isGuest=$isGuest, resolvedUserId=${resolvedUserId()}, userId=${userId()}")
 
-        // Pull server state BEFORE the local claim, never after — ensureUserSynced()'s
-        // force=true refresh overwrites tracker.share* with server's last-known state,
-        // which is stale until the SyncWorker-queued event lands. Running it after
-        // claimShare() reverted a just-made claim back to "unclaimed", requiring a
-        // second share to actually register (and double-awarding coins in the process).
         if (!isGuest) {
             ensureUserSynced()
         }
 
         val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(appContext)
         val dailyState = tracker.getShareState()
+        Log.d("StatsRepository", "[ShareLog] trackSlokaShared dailyState: day=${dailyState.day}, todayClaimed=${dailyState.todayClaimed}, reward=${dailyState.reward}")
         
         // Prevent duplicate share processing if already shared today
         if (dailyState.todayClaimed) {
+            Log.w("StatsRepository", "[ShareLog] trackSlokaShared SKIPPED: dailyState.todayClaimed is true")
             return 0
         }
 
         // Claim locally first to mark as claimed today
         var fallbackCoins = tracker.claimShare()
+        Log.d("StatsRepository", "[ShareLog] tracker.claimShare() returned fallbackCoins=$fallbackCoins")
         if (fallbackCoins <= 0) return 0
 
         var isWeeklyBonus = false
