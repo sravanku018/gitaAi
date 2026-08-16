@@ -132,12 +132,22 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
                 if (d.length == 10 && d[4] == '-' && d[7] == '-') d else null
             }
 
+            val today = now()
+            // FIX: If we already claimed locally today, don't let a stale server wipe it
+            val localClaimedToday = state.lastCheckinDate == today
+
             var newDate = if (force) (cleanDate ?: "") else state.lastCheckinDate
             if (cleanDate != null && (force || newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
+
+            // Preserve local claim if server is behind
+            if (localClaimedToday && (cleanDate == null || cleanDate < today)) {
+                newDate = today
+            }
+
             // No last_checkin on server + day 0 → ensure empty so UI shows day 1 claimable
-            if (serverDay <= 0 && cleanDate == null) {
+            if (serverDay <= 0 && cleanDate == null && !localClaimedToday) {
                 newDate = ""
             }
 
@@ -145,20 +155,18 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val serverScore = progressScore(mappedDay, mappedWeek)
 
             val (finalDay, finalWeek) = when {
+                localClaimedToday -> state.checkinDay to state.checkinWeek
                 force -> mappedDay to mappedWeek
                 // Never downgrade local progress mid-session; only adopt server when ahead
                 serverScore > localScore -> mappedDay to mappedWeek
                 else -> state.checkinDay to state.checkinWeek
             }
 
-            val today = now()
             // If server has progress (day/week) but no date, assume claimed today when force-syncing
             // only when last_checkin is today OR date missing but day indicates an active streak row.
             val resolvedDate = when {
                 !newDate.isNullOrEmpty() -> newDate
-                force && serverDay > 0 && cleanDate == null -> {
-                    // Server row exists (current_day >= 1) without date — keep empty so user can claim
-                    // unless last_checkin was cleaned away incorrectly; prefer empty over fake today.
+                force && serverDay > 0 && cleanDate == null && !localClaimedToday -> {
                     ""
                 }
                 else -> newDate
@@ -198,11 +206,22 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
                 val d = raw.take(10)
                 if (d.length == 10 && d[4] == '-' && d[7] == '-') d else null
             }
+
+            val today = now()
+            // FIX: If we already claimed locally today, don't let a stale server wipe it
+            val localClaimedToday = state.lastShareDate == today
+
             var newDate = if (force) (cleanDate ?: "") else state.lastShareDate
             if (cleanDate != null && (force || newDate.isEmpty() || cleanDate > newDate)) {
                 newDate = cleanDate
             }
-            if (serverDay <= 0 && cleanDate == null) {
+            
+            // Preserve local claim if server is behind
+            if (localClaimedToday && (cleanDate == null || cleanDate < today)) {
+                newDate = today
+            }
+            
+            if (serverDay <= 0 && cleanDate == null && !localClaimedToday) {
                 newDate = ""
             }
 
@@ -210,19 +229,17 @@ class DailyRewardsTracker(private val dao: RewardStateDao) {
             val serverScore = progressScore(mappedDay, mappedWeek)
 
             val (finalDay, finalWeek) = when {
+                localClaimedToday -> state.shareDay to state.shareWeek
                 force -> mappedDay to mappedWeek
                 serverScore > localScore -> mappedDay to mappedWeek
                 else -> state.shareDay to state.shareWeek
             }
 
-            val today = now()
             val claimedToday = !newDate.isNullOrEmpty() && newDate == today
 
             Log.d(
                 TAG,
-                "[ShareLog] syncShareWithServer: force=$force, serverDay=$serverDay, serverWeek=$serverWeek, " +
-                    "lastShare=$lastShare, cleanDate=$cleanDate, mappedDay=$mappedDay, mappedWeek=$mappedWeek, " +
-                    "finalDay=$finalDay, finalWeek=$finalWeek, newDate=$newDate, claimedToday=$claimedToday, today=$today"
+                "[ShareLog] syncShareWithServer: force=$force, serverDay=$serverDay, serverWeek=$serverWeek, lastShare=$lastShare, cleanDate=$cleanDate, mappedDay=$mappedDay, mappedWeek=$mappedWeek, finalDay=$finalDay, finalWeek=$finalWeek, newDate=$newDate, claimedToday=$claimedToday, today=$today"
             )
 
             saveState(
