@@ -297,13 +297,14 @@ class StatsRepository(
                             "language" to language
                         )
                         val payloadString = Gson().toJson(payloadMap)
+                        val safeAttemptId = attemptId ?: java.util.UUID.randomUUID().toString()
                         pendingSyncEventDao.insert(
                             PendingSyncEvent(
                                 userId = guestUid,
                                 eventType = "QUIZ",
                                 payload = payloadString,
                                 coinsToAdjust = result.totalCoins,
-                                idempotencyKey = "quiz_${guestUid}_${System.currentTimeMillis()}"
+                                idempotencyKey = "quiz_${guestUid}_$safeAttemptId"
                             )
                         )
                         SyncWorker.schedule(appContext)
@@ -323,6 +324,7 @@ class StatsRepository(
             val uid = resolvedUserId() ?: userId()
             if (uid != null) {
                 try {
+                    val safeAttemptId = attemptId ?: java.util.UUID.randomUUID().toString()
                     val payloadMap = mapOf(
                         "score" to score,
                         "totalQuestions" to totalQuestions,
@@ -333,7 +335,7 @@ class StatsRepository(
                         "timeSpentSeconds" to timeSpentSeconds,
                         "clientDate" to java.time.OffsetDateTime.now().toString(),
                         "countryCode" to java.util.Locale.getDefault().country,
-                        "attemptId" to attemptId,
+                        "attemptId" to safeAttemptId,
                         "language" to language
                     )
                     val payloadString = Gson().toJson(payloadMap)
@@ -343,7 +345,7 @@ class StatsRepository(
                             eventType = "QUIZ",
                             payload = payloadString,
                             coinsToAdjust = fallback,
-                            idempotencyKey = "quiz_${uid}_${System.currentTimeMillis()}"
+                            idempotencyKey = "quiz_${uid}_$safeAttemptId"
                         )
                     )
                     SyncWorker.schedule(appContext)
@@ -422,7 +424,7 @@ class StatsRepository(
                                 eventType = "BATTLE",
                                 payload = """{"battleCoins":$fibBase,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
                                 coinsToAdjust = serverMatchedCoins,
-                                idempotencyKey = "battle_${guestUid}_${System.currentTimeMillis()}"
+                                idempotencyKey = "battle_${guestUid}_${battleAttempt.attemptId}"
                             )
                         )
                         SyncWorker.schedule(appContext)
@@ -447,7 +449,7 @@ class StatsRepository(
                                 eventType = "BATTLE",
                                 payload = """{"battleCoins":$fibBase,"score":$score,"questionsAnswered":$questionsAnswered,"clientDate":"${java.time.OffsetDateTime.now()}","countryCode":"${java.util.Locale.getDefault().country}","attemptId":"${battleAttempt.attemptId}","language":"${battleAttempt.language}"}""",
                                 coinsToAdjust = serverMatchedCoins,
-                                idempotencyKey = "battle_${uid}_${System.currentTimeMillis()}"
+                                idempotencyKey = "battle_${uid}_${battleAttempt.attemptId}"
                             )
                         )
                         SyncWorker.schedule(appContext)
@@ -593,6 +595,16 @@ class StatsRepository(
         updateStreak()
 
         val isGuest = authPrefs.isGuestUser
+
+        // Pull server state BEFORE the local claim, never after — ensureUserSynced()'s
+        // force=true refresh overwrites tracker.share* with server's last-known state,
+        // which is stale until the SyncWorker-queued event lands. Running it after
+        // claimShare() reverted a just-made claim back to "unclaimed", requiring a
+        // second share to actually register (and double-awarding coins in the process).
+        if (!isGuest) {
+            ensureUserSynced()
+        }
+
         val tracker = com.aipoweredgita.app.coin.DailyRewardsTracker.getInstance(appContext)
         val dailyState = tracker.getShareState()
         
@@ -641,7 +653,11 @@ class StatsRepository(
                             eventType = "SHARE",
                             payload = payloadString,
                             coinsToAdjust = fallbackCoins,
-                            idempotencyKey = "share_${guestUid}_${System.currentTimeMillis()}"
+                            // Date-based key, matching server's own fallback convention
+                            // (share_${user_id}_${today}) — lets the server's idempotency
+                            // check actually dedupe retried/duplicate sync events instead
+                            // of relying solely on the last_share date race-prone check.
+                            idempotencyKey = "share_${guestUid}_${tracker.nowLocal()}"
                         )
                     )
                     SyncWorker.schedule(appContext)
@@ -651,8 +667,6 @@ class StatsRepository(
             }
             fallbackCoins
         } else {
-            ensureUserSynced()
-
             // Always award + log for a signed-in user. Don't gate on the local
             // DB's cached userId — it can be stale right after login.
             userStatsDao.addKrishnaCoins(fallbackCoins)
@@ -685,7 +699,11 @@ class StatsRepository(
                             eventType = "SHARE",
                             payload = payloadString,
                             coinsToAdjust = fallbackCoins,
-                            idempotencyKey = "share_${uid}_${System.currentTimeMillis()}"
+                            // Date-based key, matching server's own fallback convention
+                            // (share_${user_id}_${today}) — lets the server's idempotency
+                            // check actually dedupe retried/duplicate sync events instead
+                            // of relying solely on the last_share date race-prone check.
+                            idempotencyKey = "share_${uid}_${tracker.nowLocal()}"
                         )
                     )
                     SyncWorker.schedule(appContext)
@@ -743,7 +761,7 @@ class StatsRepository(
                             eventType = "CHAPTER",
                             payload = payloadString,
                             coinsToAdjust = chapterCoins,
-                            idempotencyKey = "chapter_${guestUid}_${System.currentTimeMillis()}"
+                            idempotencyKey = "chapter_${guestUid}_${chapterNo}_${java.time.LocalDate.now()}"
                         )
                     )
                     SyncWorker.schedule(appContext)
@@ -772,7 +790,7 @@ class StatsRepository(
                             eventType = "CHAPTER",
                             payload = payloadString,
                             coinsToAdjust = chapterCoins,
-                            idempotencyKey = "chapter_${chapterNo}_${uid}_${System.currentTimeMillis()}"
+                            idempotencyKey = "chapter_${uid}_${chapterNo}_${java.time.LocalDate.now()}"
                         )
                     )
                     SyncWorker.schedule(appContext)
@@ -861,7 +879,9 @@ class StatsRepository(
                         eventType = "CHECKIN",
                         payload = "{}",
                         coinsToAdjust = finalCoins,
-                        idempotencyKey = "checkin_${uid}_${System.currentTimeMillis()}"
+                        // Date-based, same reasoning as the share sync events — matches
+                        // server's own checkin_${user_id}_${today} fallback convention.
+                        idempotencyKey = "checkin_${uid}_${DailyRewardsTracker.getInstance(appContext).nowLocal()}"
                     )
                 )
                 if (finalCoins != 0) userStatsDao.addKrishnaCoins(finalCoins)
@@ -920,7 +940,8 @@ class StatsRepository(
                         eventType = "SHARE",
                         payload = payloadString,
                         coinsToAdjust = finalCoins,
-                        idempotencyKey = "share_sync_${uid}_${System.currentTimeMillis()}"
+                        // Date-based, same reasoning as the direct-claim sync events above.
+                        idempotencyKey = "share_${uid}_${DailyRewardsTracker.getInstance(appContext).nowLocal()}"
                     )
                 )
                 if (finalCoins != 0) userStatsDao.addKrishnaCoins(finalCoins)
@@ -962,7 +983,7 @@ class StatsRepository(
                     eventType = "MEDITATION",
                     payload = payloadStr,
                     coinsToAdjust = localCoins,
-                    idempotencyKey = "meditation_${uid}_${System.currentTimeMillis()}"
+                    idempotencyKey = "meditation_${uid}_${minutes}_${java.time.LocalDate.now()}"
                 )
             )
             SyncWorker.schedule(appContext)

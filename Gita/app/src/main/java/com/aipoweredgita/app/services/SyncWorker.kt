@@ -75,12 +75,15 @@ class SyncWorker(
         val authPrefs = AuthPreferences.getInstance(applicationContext)
         val currentUserId = authPrefs.userId
 
-        Log.d(TAG, "doWork() called. isGuest: ${authPrefs.isGuestUser}")
+        Log.d(TAG, "=== SyncWorker doWork START ===")
+        Log.d(TAG, "isGuest: ${authPrefs.isGuestUser}, userId: $currentUserId, guestId: ${authPrefs.guestId}")
 
-        if (currentUserId.isNullOrEmpty() || authPrefs.isGuestUser) {
+        if (currentUserId.isNullOrEmpty()) {
             Log.d(TAG, "No logged-in user or guest active, skipping background sync")
             return Result.success()
         }
+
+        // Guest users now sync to server (coin_transactions filter removed on server)
 
         val database = GitaDatabase.getDatabase(applicationContext)
         val dao = database.pendingSyncEventDao()
@@ -94,7 +97,7 @@ class SyncWorker(
         val events = dao.getPendingEvents(currentUserId)
 
         if (events.isEmpty()) {
-            Log.d(TAG, "No pending sync events found for user")
+            Log.d(TAG, "No pending sync events found for user: $currentUserId")
             return Result.success()
         }
 
@@ -105,7 +108,7 @@ class SyncWorker(
         }
         val bearer = "Bearer $authToken"
 
-        Log.d(TAG, "Found ${events.size} pending sync events for user")
+        Log.d(TAG, "Found ${events.size} pending sync events for user: $currentUserId")
         val gson = Gson()
 
         for (event in events) {
@@ -144,7 +147,8 @@ class SyncWorker(
                                 },
                                 client_date = clientDate,
                                 country_code = countryCode,
-                                timezone = userTz
+                                timezone = userTz,
+                                idempotency_key = event.idempotencyKey
                             ),
                             bearer
                         )
@@ -187,7 +191,8 @@ class SyncWorker(
                                 source = "chapter_completion",
                                 client_date = clientDate,
                                 country_code = countryCode,
-                                timezone = userTz
+                                timezone = userTz,
+                                idempotency_key = event.idempotencyKey
                             ),
                             bearer
                         )
@@ -221,7 +226,8 @@ class SyncWorker(
                                 },
                                 client_date = clientDate,
                                 country_code = countryCode,
-                                timezone = userTz
+                                timezone = userTz,
+                                idempotency_key = event.idempotencyKey
                             ),
                             bearer
                         )
@@ -254,6 +260,22 @@ class SyncWorker(
                             Log.d(TAG, "Spend sync success. Spent: ${response.spent}, remaining: ${response.remaining_balance}")
                         }
                         userStatsDao.updateKrishnaCoins(response.remaining_balance)
+                    }
+                    "MEDITATION" -> {
+                        val jsonObject = gson.fromJson(event.payload, com.google.gson.JsonObject::class.java)
+                        val minutes = jsonObject.get("minutes")?.asInt ?: 5
+                        Log.d(TAG, "Syncing MEDITATION: $minutes minutes")
+                        val response = CoinApi.retrofitService.logMeditation(
+                            com.aipoweredgita.app.network.MeditationLogRequest(
+                                minutes = minutes,
+                                country_code = java.util.Locale.getDefault().country,
+                                timezone = java.util.TimeZone.getDefault().id,
+                                idempotency_key = event.idempotencyKey
+                            ),
+                            bearer
+                        )
+                        Log.d(TAG, "Meditation sync success. Coins earned: ${response.coins_earned}")
+                        userStatsDao.updateKrishnaCoins(response.total_coins)
                     }
                     "CHECKIN" -> {
                         Log.d(TAG, "Syncing CHECKIN")
@@ -371,7 +393,8 @@ class SyncWorker(
                         
                         Log.d(TAG, "Syncing ADD_NOTE: chapter=$chapter, verse=$verse")
                         CoinApi.retrofitService.syncNotes(
-                            com.aipoweredgita.app.network.NotesSyncRequest(event.userId, listOf(com.aipoweredgita.app.network.NoteSyncItem(chapter, verse, text)))
+                            com.aipoweredgita.app.network.NotesSyncRequest(event.userId, listOf(com.aipoweredgita.app.network.NoteSyncItem(chapter, verse, text))),
+                            bearer
                         )
                     }
                     "DELETE_NOTE" -> {
@@ -381,7 +404,8 @@ class SyncWorker(
                         
                         Log.d(TAG, "Syncing DELETE_NOTE: chapter=$chapter, verse=$verse")
                         CoinApi.retrofitService.deleteNote(
-                            com.aipoweredgita.app.network.NoteDeleteRequest(event.userId, chapter, verse)
+                            com.aipoweredgita.app.network.NoteDeleteRequest(event.userId, chapter, verse),
+                            bearer
                         )
                     }
                     else -> {
