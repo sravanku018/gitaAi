@@ -4,6 +4,7 @@ import com.aipoweredgita.app.data.GitaVerse
 import com.aipoweredgita.app.data.GitaVerseListAdapter
 import com.google.gson.GsonBuilder
 import com.google.gson.Strictness
+import kotlinx.serialization.Serializable
 import com.google.gson.reflect.TypeToken
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -89,17 +90,21 @@ private val coinRetrofit = Retrofit.Builder()
 data class CreateUserRequest(val user_id: String, val name: String = "", val email: String = "")
 
 data class CoinAwardRequest(
-    val user_id: String,
+    val user_id: String? = null,
     val source: String,
     val metadata: Map<String, Any>? = null,
     val client_date: String? = null,
     val country_code: String? = null,
-    val timezone: String? = null
+    val timezone: String? = null,
+    val idempotency_key: String? = null
 )
 
 data class CoinSpendRequest(
-    val user_id: String,
-    val question: String,
+    val user_id: String? = null,
+    val amount: Int? = null,
+    val source: String? = null,
+    val description: String? = null,
+    val question: String? = null,
     val idempotency_key: String? = null,
     val client_date: String? = null,
     val country_code: String? = null,
@@ -120,7 +125,8 @@ data class ShareSlokaRequest(
 data class MeditationLogRequest(
     val minutes: Int,
     val country_code: String? = null,
-    val timezone: String? = null
+    val timezone: String? = null,
+    val idempotency_key: String? = null
 )
 
 data class MeditationLogResponse(
@@ -188,6 +194,8 @@ data class UserStatsSyncRequest(
     val total_correct_answers: Int = 0,
     val verses_read: Int = 0,
     val chapters_completed: Int = 0,
+    val krishna_coins: Int = 0,
+    val yoga_level: Int = 1,
     val last_activity_date: String = "",
     val country_code: String? = null
 )
@@ -200,6 +208,8 @@ data class UserStatsSyncDto(
     val total_correct_answers: Int = 0,
     val verses_read: Int = 0,
     val chapters_completed: Int = 0,
+    val krishna_coins: Int = 0,
+    val yoga_level: Int = 1,
     val last_activity_date: String = "",
     val updated_at: String = ""
 )
@@ -296,14 +306,10 @@ data class CreateUserResponse(
     val token: String? = null
 )
 
-data class CreateGuestRequest(
-    val guest_id: String? = null
-)
-
 data class CreateGuestResponse(
     val guest_id: String = "",
-    val coins: Int = 50,
-    val token: String = ""
+    val token: String = "",
+    val coins: Int = 50
 )
 
 data class ClaimGuestResponse(
@@ -539,7 +545,7 @@ interface CoinApiService {
     suspend fun createUser(@Body request: CreateUserRequest): CreateUserResponse
 
     @POST("guest/create")
-    suspend fun createGuest(@Body request: CreateGuestRequest): CreateGuestResponse
+    suspend fun createGuest(): CreateGuestResponse
 
     @POST("guest/claim")
     suspend fun claimGuest(
