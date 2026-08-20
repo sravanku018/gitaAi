@@ -314,7 +314,7 @@ fun DownloadProgressCardContent(
                 Text(
                     text = mbLeftText,
                     fontSize   = 11.sp,
-                    color      = if (rememberThemeIsDark()) GoldPale else Saffron,
+                    color      = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -346,7 +346,7 @@ fun DownloadProgressCardContent(
                         Text(
                             text = "${p.percentage}%",
                             fontSize   = 12.sp,
-                            color      = if (rememberThemeIsDark()) GoldPale else Saffron,
+                            color      = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                     }

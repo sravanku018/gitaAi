@@ -283,41 +283,9 @@ fun SectionLabel(text: String, language: String = "tel") {
     }
 }
 
-// ── Gold ornament rule ──────────────────────────────────────────────────────
+// Single implementation lives in quiz.OrnamentRule — keep this alias for same-package call sites.
 @Composable
 fun OrnamentRule() {
-    Row(
-        verticalAlignment   = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(0.5.dp)
-                .background(
-                    Brush.horizontalGradient(listOf(Color.Transparent, GoldSpark.copy(0.45f)))
-                )
-        )
-        Spacer(Modifier.width(10.dp))
-        repeat(3) { i ->
-            Box(
-                modifier = Modifier
-                    .size(if (i == 1) 5.dp else 3.dp)
-                    .clip(CircleShape)
-                    .background(GoldSpark.copy(if (i == 1) 0.8f else 0.4f))
-            )
-            if (i < 2) Spacer(Modifier.width(5.dp))
-        }
-        Spacer(Modifier.width(10.dp))
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(0.5.dp)
-                .background(
-                    Brush.horizontalGradient(listOf(GoldSpark.copy(0.45f), Color.Transparent))
-                )
-        )
-    }
+    com.aipoweredgita.app.quiz.OrnamentRule()
 }
 

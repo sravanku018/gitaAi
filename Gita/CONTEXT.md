@@ -1,12 +1,13 @@
 # Project Context & Session Status
 
-- **Current Task**: Ship v2.16.0 (versionCode 47) — pill reading UI, compact quiz buttons, drawer without broken Karma, VPS streak fix.
+- **Current Task**: Ship v2.18.0 (versionCode 50) — verify release build after version bump.
 
 - **Key Decisions**:
-  - Coin API: flaky-kestrel → VPS Postgres; admin dashboard via lofty-crocodile + DATABASE_URL.
-  - Streak: server calculateStreak resets on gaps, no max(client)+1 double-count.
-  - Reading UI: chapter/verse pills + pill bottom bar; Start Quiz compact width.
+  - Version bumped 2.17.0 (49) → 2.18.0 (50) in gradle + splash/settings fallbacks.
+  - Quiz timer fix and Random Sloka theme/share work included in this tree.
+  - Coin API remains flaky-kestrel → VPS Postgres.
 
 - **Next Steps**:
-  - Redeploy vps-postrage-deno.ts / main.ts to flaky-kestrel for streak fix.
-  - Build & install 2.16.0 APK; verify drawer + reading + quiz buttons.
+  - Confirm `assembleRelease` succeeds with no errors.
+  - Install 2.18.0 APK and smoke-test splash version text + quiz/share flows.
+  - Redeploy streak fix to flaky-kestrel if not already live.

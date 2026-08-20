@@ -31,8 +31,8 @@ import com.aipoweredgita.app.ui.LocalUiConfig
 @Composable
 fun Pill(
     text: String,
-    color: Color = Color(0xFFFF6E00).copy(alpha = 0.25f),
-    textColor: Color = Color(0xFFFFB450).copy(alpha = 0.9f)
+    color: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+    textColor: Color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)
 ) {
     Box(
         modifier = Modifier
@@ -311,7 +311,9 @@ private fun DiamondStatCard(
 fun RecommendationRow(
     item: RecommendationItem,
     isDark: Boolean,
-    showDivider: Boolean
+    showDivider: Boolean,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    accentSoft: Color = MaterialTheme.colorScheme.secondary,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -342,15 +344,15 @@ fun RecommendationRow(
             Box(
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.medium)
-                    .background(Color(0xFFFF9628).copy(alpha = 0.1f))
-                    .border(1.dp, Color(0xFFFF9628).copy(alpha = 0.15f), MaterialTheme.shapes.medium)
+                    .background(accent.copy(alpha = 0.1f))
+                    .border(1.dp, accent.copy(alpha = 0.15f), MaterialTheme.shapes.medium)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = item.tag,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFFA532),
+                    color = accentSoft,
                     letterSpacing = 0.4.sp
                 )
             }

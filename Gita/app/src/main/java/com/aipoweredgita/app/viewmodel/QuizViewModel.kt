@@ -320,6 +320,8 @@ class QuizViewModel @Inject constructor(
                         selectedAnswerIndex = null,
                         showAnswer = false,
                         showCorrectAnswer = false,
+                        timedOut = false,
+                        extraTimeUsedThisQuestion = false,
                         totalQuestions = newTotal
                     )
                     startTimer()
@@ -432,11 +434,16 @@ class QuizViewModel @Inject constructor(
                 )
 
                 // End card shows total coins from CoinRewardEngine
+                val breakdown = buildString {
+                    append("Score ${currentState.score}/${currentState.totalQuestions}")
+                    if (result.coinsEarned > 0) append(" · +${result.coinsEarned} coins")
+                    if (timeSpentSeconds > 0) append(" · ${timeSpentSeconds}s")
+                }
                 _uiState.update { it.copy(isQuizCompleted = true, coinsEarned = result.coinsEarned) }
                 _quizState.value = _quizState.value.copy(
                     isQuizComplete = true,
                     coinsEarned = result.coinsEarned,
-                    coinBreakdown = "",
+                    coinBreakdown = breakdown,
                     totalTimeSeconds = timeSpentSeconds
                 )
 
@@ -496,17 +503,41 @@ class QuizViewModel @Inject constructor(
 
     fun submitOpenEndedAnswer(text: String) {
         val currentQuestion = _quizState.value.currentQuestion ?: return
+        stopTimer()
         _quizState.update { it.copy(openEndedAnswer = text) }
         val matched = currentQuestion.rubricKeywords.count { kw -> text.lowercase().contains(kw.lowercase()) }
         val passThreshold = if (currentQuestion.rubricKeywords.isEmpty()) 0 else maxOf(1, currentQuestion.rubricKeywords.size / 2)
         val isPass = text.isNotBlank() && matched >= passThreshold
         // We only set the local states for the UI dialog. 
         // confirmAnswerResult() will be called when user dismisses the dialog and proceeds.
-        _quizState.update { it.copy(showAnswer = true, showCorrectAnswer = isPass) }
+        _quizState.update { it.copy(showAnswer = true, showCorrectAnswer = isPass, timedOut = false) }
     }
 
     fun selectAnswer(index: Int) {
-        _quizState.value = _quizState.value.copy(selectedAnswerIndex = index)
+        // CRITICAL: stop the countdown immediately so a late timeout cannot
+        // overwrite a correct answer via confirmAnswerResult(false).
+        stopTimer()
+        val options = _quizState.value.currentQuestion?.options.orEmpty()
+        val answerText = options.getOrNull(index)
+        _quizState.value = _quizState.value.copy(
+            selectedAnswerIndex = index,
+            timedOut = false
+        )
+        if (answerText != null) {
+            _uiState.update { it.copy(selectedAnswer = answerText) }
+        }
+    }
+
+    /** WCAG 2.2.1 — one +15s extension per question. */
+    fun requestExtraTime(seconds: Int = 15) {
+        val state = _quizState.value
+        if (state.extraTimeUsedThisQuestion || !state.isTimerRunning || state.showAnswer) return
+        _quizState.update {
+            it.copy(
+                questionTimeLeftSeconds = it.questionTimeLeftSeconds + seconds,
+                extraTimeUsedThisQuestion = true
+            )
+        }
     }
 
     fun revealAnswer() {
@@ -608,7 +639,14 @@ class QuizViewModel @Inject constructor(
         val isOpenEnded = question?.type == com.aipoweredgita.app.data.QuestionType.ESSAY ||
                 question?.type == com.aipoweredgita.app.data.QuestionType.APPLICATION
         val timeLimit = if (isOpenEnded) 60 else 30
-        _quizState.update { it.copy(questionTimeLeftSeconds = timeLimit, isTimerRunning = true) }
+        _quizState.update {
+            it.copy(
+                questionTimeLeftSeconds = timeLimit,
+                isTimerRunning = true,
+                extraTimeUsedThisQuestion = false,
+                timedOut = false
+            )
+        }
         timerJob = viewModelScope.launch {
             while (isActive && _quizState.value.questionTimeLeftSeconds > 0) {
                 kotlinx.coroutines.delay(1000)
@@ -622,10 +660,24 @@ class QuizViewModel @Inject constructor(
                     }
                 }
             }
-            // Trigger timeout if they hit 0 and it wasn't cancelled
-            if (isActive && !_quizState.value.showAnswer && _uiState.value.selectedAnswer == null) {
-                _sideEffect.send(QuizSideEffect.ShowError("Time's up!"))
+            // Timeout only when the user never picked an answer (index or text).
+            val state = _quizState.value
+            val unanswered = state.selectedAnswerIndex == null &&
+                _uiState.value.selectedAnswer == null &&
+                !state.showAnswer
+            if (isActive && unanswered) {
+                stopTimer()
+                _quizState.update {
+                    it.copy(
+                        showAnswer = true,
+                        showCorrectAnswer = false,
+                        timedOut = true,
+                        isTimerRunning = false
+                    )
+                }
                 confirmAnswerResult(false)
+                _sideEffect.send(QuizSideEffect.TimeUp)
+                _sideEffect.send(QuizSideEffect.ShowToast("Time's up!"))
             }
         }
     }

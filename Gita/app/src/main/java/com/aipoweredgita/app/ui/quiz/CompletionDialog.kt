@@ -48,7 +48,7 @@ fun CompletionDialog(
     val avgSeconds = if (total > 0) totalTimeSeconds / total else 0L
     val avgText = "${avgSeconds}s"
 
-    Dialog(onDismissRequest = { }) {
+    Dialog(onDismissRequest = onExit) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = MaterialTheme.shapes.extraLarge,

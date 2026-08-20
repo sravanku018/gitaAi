@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,11 +22,14 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.ui.theme.*
+import com.aipoweredgita.app.utils.DeviceTier
+import com.aipoweredgita.app.utils.DeviceTierDetector
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -33,8 +37,37 @@ private val SineEasing = Easing { fraction ->
     (1f - cos(fraction * Math.PI.toFloat())) / 2f
 }
 
+/** Continuous Canvas animations are expensive — skip on low tiers. */
+@Composable
+fun rememberAllowAmbientAnimation(): Boolean {
+    val context = LocalContext.current
+    val tier = remember(context) { DeviceTierDetector.detect(context) }
+    return tier != DeviceTier.LOW && tier != DeviceTier.LOW_MID
+}
+
 @Composable
 fun AmbientOrbs(modifier: Modifier = Modifier) {
+    // Skip continuous animation on low-end devices (battery / jank).
+    val animate = rememberAllowAmbientAnimation()
+
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+
+    if (!animate) {
+        AmbientOrbsCanvas(
+            modifier = modifier,
+            primary = primary,
+            secondary = secondary,
+            tertiary = tertiary,
+            drift1X = 0f,
+            drift1Y = 0f,
+            drift2X = 0f,
+            drift2Y = 0f,
+        )
+        return
+    }
+
     val transition = rememberInfiniteTransition(label = "ambient_orbs")
     val drift1X by transition.animateFloat(
         initialValue = -30f,
@@ -61,35 +94,54 @@ fun AmbientOrbs(modifier: Modifier = Modifier) {
         label = "drift2Y"
     )
 
+    AmbientOrbsCanvas(
+        modifier = modifier,
+        primary = primary,
+        secondary = secondary,
+        tertiary = tertiary,
+        drift1X = drift1X,
+        drift1Y = drift1Y,
+        drift2X = drift2X,
+        drift2Y = drift2Y,
+    )
+}
+
+@Composable
+private fun AmbientOrbsCanvas(
+    modifier: Modifier,
+    primary: Color,
+    secondary: Color,
+    tertiary: Color,
+    drift1X: Float,
+    drift1Y: Float,
+    drift2X: Float,
+    drift2Y: Float,
+) {
     Canvas(modifier = modifier.fillMaxSize()) {
-        // Orb 1: Saffron
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFFF6400).copy(alpha = 0.22f), Color.Transparent),
+                colors = listOf(primary.copy(alpha = 0.22f), Color.Transparent),
                 center = Offset(size.width * 0.25f + drift1X.dp.toPx(), -20.dp.toPx() + drift1Y.dp.toPx()),
                 radius = 180.dp.toPx()
             )
         )
-        // Orb 2: Warm Amber
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFC88200).copy(alpha = 0.18f), Color.Transparent),
+                colors = listOf(secondary.copy(alpha = 0.18f), Color.Transparent),
                 center = Offset(size.width + drift2X.dp.toPx(), 220.dp.toPx() + drift2Y.dp.toPx()),
                 radius = 160.dp.toPx()
             )
         )
-        // Orb 3: Red
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFFF3C00).copy(alpha = 0.13f), Color.Transparent),
+                colors = listOf(tertiary.copy(alpha = 0.13f), Color.Transparent),
                 center = Offset(drift2X.dp.toPx(), size.height - 180.dp.toPx() + drift1Y.dp.toPx()),
                 radius = 140.dp.toPx()
             )
         )
-        // Orb 4: Pale Saffron
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFDCA900).copy(alpha = 0.10f), Color.Transparent),
+                colors = listOf(secondary.copy(alpha = 0.10f), Color.Transparent),
                 center = Offset(size.width - 40.dp.toPx() + drift1X.dp.toPx(), size.height - 300.dp.toPx() + drift2Y.dp.toPx()),
                 radius = 120.dp.toPx()
             )
@@ -146,6 +198,15 @@ fun GlassCard(
 
 @Composable
 fun QuizCardBg(modifier: Modifier = Modifier) {
+    val animate = rememberAllowAmbientAnimation()
+    if (!animate) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(listOf(QuizGreenStart, QuizGreenEnd)))
+        )
+        return
+    }
     val transition = rememberInfiniteTransition(label = "quiz_bg")
     val rotation by transition.animateFloat(
         initialValue = 0f,
@@ -220,6 +281,15 @@ fun QuizCardBg(modifier: Modifier = Modifier) {
 
 @Composable
 fun VoiceCardBg(modifier: Modifier = Modifier) {
+    val animate = rememberAllowAmbientAnimation()
+    if (!animate) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(listOf(VoiceRedStart, VoiceRedEnd)))
+        )
+        return
+    }
     val transition = rememberInfiniteTransition(label = "voice_bg")
     val pulseProgress by transition.animateFloat(
         initialValue = 0f,
@@ -321,6 +391,11 @@ fun VoiceCardBg(modifier: Modifier = Modifier) {
 
 @Composable
 fun SlokaCardBg(modifier: Modifier = Modifier) {
+    val animate = rememberAllowAmbientAnimation()
+    if (!animate) {
+        SlokaCardBgCanvas(modifier = modifier, rotation = 0f, twinkleAnim = 0.6f)
+        return
+    }
     val transition = rememberInfiniteTransition(label = "sloka_bg")
     val rotation by transition.animateFloat(
         initialValue = 0f,
@@ -334,7 +409,15 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(1500, easing = SineEasing), RepeatMode.Reverse),
         label = "twinkle"
     )
+    SlokaCardBgCanvas(modifier = modifier, rotation = rotation, twinkleAnim = twinkleAnim)
+}
 
+@Composable
+private fun SlokaCardBgCanvas(
+    modifier: Modifier,
+    rotation: Float,
+    twinkleAnim: Float,
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -343,7 +426,6 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
 
-            // Outer spinning mandala (12 ellipses rotated by i * 30)
             val outerRadius = 70.dp.toPx()
             val outerRotation = rotation
             for (i in 0 until 12) {
@@ -357,7 +439,6 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
                 }
             }
 
-            // Middle concentric circles
             listOf(18.dp, 32.dp, 48.dp, 62.dp).forEach { r ->
                 drawCircle(
                     color = Color(0xFFFFD080).copy(alpha = 0.15f),
@@ -367,7 +448,6 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
                 )
             }
 
-            // Inner counter-spinning spokes (8 spokes and inner circle)
             val innerRotation = -rotation * 0.6f
             for (i in 0 until 8) {
                 rotate(innerRotation + i * 45f, pivot = center) {
@@ -386,7 +466,6 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
                 style = Stroke(width = 1.dp.toPx())
             )
 
-            // Twinkling stars
             for (i in 0 until 8) {
                 val phase = i * 0.4f
                 val opacity = (sin(twinkleAnim * 2f * Math.PI.toFloat() + phase) * 0.4f + 0.6f).coerceIn(0.2f, 1f)
@@ -404,6 +483,15 @@ fun SlokaCardBg(modifier: Modifier = Modifier) {
 
 @Composable
 fun ReadCardBg(modifier: Modifier = Modifier) {
+    val animate = rememberAllowAmbientAnimation()
+    if (!animate) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(listOf(ReadBlueStart, ReadBlueEnd)))
+        )
+        return
+    }
     val transition = rememberInfiniteTransition(label = "read_bg")
     val scrollOffset by transition.animateFloat(
         initialValue = 0f,

@@ -24,7 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.coin.DailyRewardsTracker
-import com.aipoweredgita.app.ui.theme.GoldSpark
+import com.aipoweredgita.app.ui.theme.GitaLearningTheme
+import com.aipoweredgita.app.ui.theme.rememberGitaColors
 
 private val springSnap = spring<Float>(dampingRatio = 0.5f, stiffness = 600f)
 private val springBounce = spring<Float>(dampingRatio = 0.3f, stiffness = 400f)
@@ -34,10 +35,12 @@ private val springColor = spring<Color>(dampingRatio = 0.7f, stiffness = 500f)
 fun DailyRewardsStrip(
     tracker: DailyRewardsTracker,
     context: android.content.Context,
-    isDark: Boolean,
     coinBalance: Int,
     onEarnCoins: (amount: Int, description: String) -> Unit = { _, _ -> },
-    onNavigateToShare: () -> Unit = {}
+    onNavigateToShare: () -> Unit = {},
+    onMessage: (String) -> Unit = {},
+    /** @deprecated Prefer theme tokens via [rememberGitaColors]; kept for call-site compatibility. */
+    isDark: Boolean = false,
 ) {
     // Read every recomposition so re-login gets the new user id (not a frozen remember)
     val authUserId = com.aipoweredgita.app.utils.AuthPreferences.getInstance(context).userId
@@ -90,10 +93,12 @@ fun DailyRewardsStrip(
 
     val todaySlot = (claimedCount + 1).coerceIn(1, 7)
 
-    val tc = if (isDark) Color.White else Color.Black
-    val dim = if (isDark) Color.White.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.4f)
-    val bg = if (isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f)
-    val bd = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.08f)
+    val colors = rememberGitaColors()
+    val tc = colors.textPrimary
+    val dim = colors.textDim
+    val bg = colors.subtleBg.copy(alpha = if (colors.isDark) 0.04f else 0.03f)
+    val bd = colors.subtleBorder.copy(alpha = if (colors.isDark) 0.1f else 0.08f)
+    val accent = colors.accentSoft
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
@@ -101,8 +106,8 @@ fun DailyRewardsStrip(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Daily Check-in Rewards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = tc)
             if (dailyState.hasProtection) {
-                Box(Modifier.clip(MaterialTheme.shapes.small).background(Color(0xFFFF9800).copy(alpha = 0.15f)).border(0.5.dp, Color(0xFFFF9800).copy(alpha = 0.3f), MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                    Text("Protected", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF9800))
+                Box(Modifier.clip(MaterialTheme.shapes.small).background(colors.chipBg).border(0.5.dp, colors.chipBorder, MaterialTheme.shapes.small).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                    Text("Protected", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.chipText)
                 }
             }
         }
@@ -114,16 +119,16 @@ fun DailyRewardsStrip(
             wasJustClaimed = { d -> claimedDayIndex == d },
             onDayClick = { d ->
                 if (!com.aipoweredgita.app.utils.NetworkUtils.isNetworkAvailable(context)) {
-                    android.widget.Toast.makeText(context, "Internet connection required to claim daily streak!", android.widget.Toast.LENGTH_SHORT).show()
+                    onMessage("Internet connection required to claim daily streak!")
                     return@StreakStrip
                 }
                 val isAlreadyClaimed = d <= claimedCount
                 val isTodaySlot = !claimedDay && d == todaySlot
                 val isFutureSlot = d > todaySlot
                 when {
-                    isAlreadyClaimed -> android.widget.Toast.makeText(context, "Day $d already claimed ✓", android.widget.Toast.LENGTH_SHORT).show()
-                    isFutureSlot -> android.widget.Toast.makeText(context, "Complete previous days first!", android.widget.Toast.LENGTH_SHORT).show()
-                    claimedDay -> android.widget.Toast.makeText(context, "Already claimed today — come back tomorrow!", android.widget.Toast.LENGTH_SHORT).show()
+                    isAlreadyClaimed -> onMessage("Day $d already claimed ✓")
+                    isFutureSlot -> onMessage("Complete previous days first!")
+                    claimedDay -> onMessage("Already claimed today — come back tomorrow!")
                     isTodaySlot -> {
                         val coins = tracker.claimDaily()
                         claimedDayIndex = d
@@ -150,7 +155,7 @@ fun DailyRewardsStrip(
                     }
                 }
             },
-            activeColor = GoldSpark,
+            activeColor = accent,
             dimColor = dim,
             bgColor = bg,
             bdColor = bd
@@ -164,12 +169,12 @@ fun DailyRewardsStrip(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(bg)) {
                 Box(Modifier.fillMaxWidth(animProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp))
-                    .background(if (claimedCount >= 7) Color(0xFF4CAF50) else GoldSpark))
+                    .background(if (claimedCount >= 7) Color(0xFF4CAF50) else accent))
             }
             Text("$claimedCount/7", fontSize = 10.sp, color = dim)
         }
 
-        dayBonusMessage?.let { Text(it, fontSize = 12.sp, color = GoldSpark, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+        dayBonusMessage?.let { Text(it, fontSize = 12.sp, color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
 
         // ─── Weekly Bonus — auto-claimed with day 7 ────────────────────
         val weekBg by animateColorAsState(

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,10 +54,14 @@ fun QuizContent(
     var hasProceeded by remember(options) { mutableStateOf(false) }
     val dialogScroll = rememberScrollState()
     val contentScroll = rememberScrollState()
+    // Decode once for the screen lifetime (not per question recomposition)
+    val krishnaPainter = painterResource(id = R.drawable.krishna)
 
     // Reset local state when question changes (new question = new options list)
     LaunchedEffect(options) {
         showResultDialog = false
+        hasProceeded = false
+        userAnswer = ""
     }
 
     // Timer state from ViewModel
@@ -64,15 +72,21 @@ fun QuizContent(
     val questionType = quizState?.value?.currentQuestion?.type ?: com.aipoweredgita.app.data.QuestionType.MCQ
     val isOpenEnded = questionType == com.aipoweredgita.app.data.QuestionType.ESSAY || questionType == com.aipoweredgita.app.data.QuestionType.APPLICATION
     val maxTime = if (isOpenEnded) 60 else 30
+    val timedOut = quizState?.value?.timedOut == true
+    val vmShowAnswer = quizState?.value?.showAnswer == true
+    val extraTimeUsed = quizState?.value?.extraTimeUsedThisQuestion == true
+    val questionNumber = quizState?.value?.totalQuestions ?: 0
 
-    // Removed LaunchedEffect for delay to prevent double layout
+    // Timeout / VM-driven reveal must open the result dialog (fixes visual stall)
+    LaunchedEffect(vmShowAnswer, timedOut) {
+        if (vmShowAnswer) showResultDialog = true
+    }
 
     Box(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)) {
-        // Ambient background image
         Image(
-            painter = painterResource(id = R.drawable.krishna), // Using Krishna as background
+            painter = krishnaPainter,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
@@ -92,10 +106,12 @@ fun QuizContent(
                 timeLeft = timeLeft,
                 maxTime = maxTime,
                 isTimerRunning = isTimerRunning,
-                questionNumber = quizState?.value?.totalQuestions ?: 0,
+                questionNumber = questionNumber,
                 totalQuestions = quizState?.value?.maxQuestions ?: 0,
                 score = quizState?.value?.score ?: 0,
-                language = language
+                language = language,
+                canRequestExtraTime = isTimerRunning && !extraTimeUsed && !showResultDialog,
+                onRequestExtraTime = { vm?.requestExtraTime(15) }
             )
 
             // Ornamental separator
@@ -175,7 +191,9 @@ fun QuizContent(
             Spacer(Modifier.size(24.dp))
         }
 
-        val isCorrect = if (isOpenEnded) {
+        val isCorrect = if (timedOut) {
+            false
+        } else if (isOpenEnded) {
             quizState?.value?.showCorrectAnswer == true
         } else {
             selectedIndex == correctIndex
@@ -189,7 +207,7 @@ fun QuizContent(
         }
 
         if (showResultDialog && isCorrect) {
-            com.aipoweredgita.app.ui.ConfettiBurst(playId = 1)
+            com.aipoweredgita.app.ui.ConfettiBurst(playId = questionNumber.coerceAtLeast(1))
         }
 
         if (showResultDialog) {
@@ -211,31 +229,49 @@ fun QuizContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Icon/Visual feedback
+                        val feedbackColor = if (isCorrect) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                         Box(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .background(if (isCorrect) Forest.copy(0.2f) else CrimsonDeep.copy(0.2f)),
+                                .background(feedbackColor.copy(0.2f))
+                                .semantics {
+                                    contentDescription = if (isCorrect) "Correct" else if (timedOut) "Time expired" else "Incorrect"
+                                },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = if (isCorrect) "✓" else "✕",
-                                color = if (isCorrect) MaterialTheme.colorScheme.secondary else Color.Red,
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                imageVector = if (isCorrect) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                                contentDescription = null,
+                                tint = feedbackColor,
+                                modifier = Modifier.size(36.dp)
                             )
                         }
 
                         Text(
-                            text = translateUiText(if (isCorrect) "Excellent!" else if (isOpenEnded) "Insight Shared" else "Keep Learning", language),
+                            text = translateUiText(
+                                when {
+                                    timedOut -> "Time's Up"
+                                    isCorrect -> "Excellent!"
+                                    isOpenEnded -> "Insight Shared"
+                                    else -> "Keep Learning"
+                                },
+                                language
+                            ),
                             style = MaterialTheme.typography.titleLarge,
                             color = if (isCorrect) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
-                            text = translateUiText(if (isCorrect) "You have grasped the wisdom correctly." else "Every step is a progress toward mastery.", language),
+                            text = translateUiText(
+                                when {
+                                    timedOut -> "The timer ran out. Review the answer and continue."
+                                    isCorrect -> "You have grasped the wisdom correctly."
+                                    else -> "Every step is a progress toward mastery."
+                                },
+                                language
+                            ),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -295,7 +331,9 @@ private fun QuizTimerHeader(
     questionNumber: Int,
     totalQuestions: Int,
     score: Int,
-    language: String
+    language: String,
+    canRequestExtraTime: Boolean = false,
+    onRequestExtraTime: () -> Unit = {},
 ) {
     val progress = if (maxTime > 0) timeLeft.toFloat() / maxTime else 0f
     val animatedProgress by animateFloatAsState(
@@ -305,8 +343,8 @@ private fun QuizTimerHeader(
     )
 
     val timerColor = when {
-        timeLeft > 15 -> Forest
-        timeLeft > 5 -> Saffron
+        timeLeft > 15 -> MaterialTheme.colorScheme.tertiary
+        timeLeft > 5 -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.error
     }
     val animatedTimerColor by animateColorAsState(
@@ -379,6 +417,20 @@ private fun QuizTimerHeader(
                     )
                 }
             }
+            // WCAG 2.2.1 timer accommodation — one +15s per question
+            if (canRequestExtraTime) {
+                TextButton(
+                    onClick = onRequestExtraTime,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(end = 8.dp, bottom = 4.dp)
+                        .heightIn(min = 48.dp)
+                ) {
+                    Icon(Icons.Filled.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(translateUiText("+15 seconds", language))
+                }
+            }
         }
     }
 }
@@ -388,6 +440,9 @@ fun translateUiText(text: String, language: String): String {
     return when (text) {
         "Type your answer here..." -> "మీ సమాధానాన్ని ఇక్కడ నమోదు చేయండి..."
         "Submit Answer" -> "సమాధానాన్ని సమర్పించండి"
+        "+15 seconds" -> "+15 సెకన్లు"
+        "Time's Up" -> "సమయం ముగిసింది"
+        "The timer ran out. Review the answer and continue." -> "సమయం ముగిసింది. సమాధానాన్ని చూసి కొనసాగండి."
         "PROGRESS" -> "పురోగతి"
         "SCORE" -> "స్కోరు"
         "Excellent!" -> "అద్భుతం!"

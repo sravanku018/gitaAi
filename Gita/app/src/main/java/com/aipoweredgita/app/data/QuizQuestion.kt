@@ -34,6 +34,10 @@ data class QuizState(
     val difficultyLevel: Int = 5,
     val questionTimeLeftSeconds: Int = 30,
     val isTimerRunning: Boolean = false,
+    /** True after user used the +15s timer accommodation this question. */
+    val extraTimeUsedThisQuestion: Boolean = false,
+    /** True when this question ended because the timer hit zero. */
+    val timedOut: Boolean = false,
     val language: String = "en",
     val coinsEarned: Int = 0,
     val coinBreakdown: String = "",

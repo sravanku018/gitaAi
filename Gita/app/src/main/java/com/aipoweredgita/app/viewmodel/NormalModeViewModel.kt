@@ -385,6 +385,42 @@ class NormalModeViewModel @Inject constructor(
     fun goToChapter(chapter: Int) {
         if (chapter in 1..GitaConstants.MAX_CHAPTERS) {
             loadVerse(chapter, 1)
+            // Prefetch chapter list for swipe/scroll modes
+            loadChapterVerses(chapter)
+        }
+    }
+
+    /**
+     * Prefetch every verse in [chapter] for swipe/scroll sloka navigation.
+     * Does not change the currently displayed verse.
+     */
+    fun loadChapterVerses(chapter: Int) {
+        if (chapter !in 1..GitaConstants.MAX_CHAPTERS) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update {
+                it.copy(isChapterVersesLoading = true, chapterVerses = emptyList())
+            }
+            val max = chapterVerseCounts[chapter] ?: 47
+            val lang = _uiState.value.selectedLanguage.ifBlank { language }
+            val engManager = com.aipoweredgita.app.util.EnglishTranslationAssetManager.getInstance(application)
+            val loaded = (1..max).mapNotNull { v ->
+                try {
+                    val base = offlineCacheRepository.getVerse(chapter, v)
+                        ?: runCatching { gitaRepository.getVerse(lang, chapter, v) }.getOrNull()
+                    base?.let {
+                        if (lang == "EN") engManager.enrichVerseWithEnglish(it) else it
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed chapter $chapter verse $v: ${e.message}")
+                    null
+                }
+            }
+            _uiState.update {
+                it.copy(
+                    chapterVerses = loaded,
+                    isChapterVersesLoading = false
+                )
+            }
         }
     }
 

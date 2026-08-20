@@ -37,6 +37,20 @@ fun QuizScreen(
         }
     }
 
+    LaunchedEffect(viewModel.sideEffect) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is com.aipoweredgita.app.domain.model.QuizSideEffect.ShowToast ->
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                is com.aipoweredgita.app.domain.model.QuizSideEffect.ShowError ->
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                is com.aipoweredgita.app.domain.model.QuizSideEffect.TimeUp ->
+                    Toast.makeText(context, "Time's up!", Toast.LENGTH_SHORT).show()
+                else -> Unit
+            }
+        }
+    }
+
     LaunchedEffect(quizState.currentQuestion, quizState.isLoading, quizState.error) {
         if (quizState.currentQuestion == null && !quizState.isLoading && quizState.error == null) {
             viewModel.loadNextQuestion()

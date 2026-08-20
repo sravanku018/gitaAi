@@ -73,7 +73,9 @@ fun BottomActionBar(
     onShare         : () -> Unit,
     onBattleQuiz    : () -> Unit,
     onPrev          : () -> Unit,
-    onNext          : () -> Unit
+    onNext          : () -> Unit,
+    /** When false (swipe/scroll modes), Prev/Next row is hidden — verses navigate another way. */
+    showNavButtons  : Boolean = true,
 ) {
     val isDark = rememberThemeIsDark()
     val barBg = if (isDark) Color(0xFF1A1A1A).copy(alpha = 0.94f) else Color.White.copy(alpha = 0.96f)
@@ -213,26 +215,28 @@ fun BottomActionBar(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            if (showNavButtons) {
+                Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                NavArrowButton(
-                    label = "Prev",
-                    enabled = canGoPrev,
-                    isForward = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = onPrev
-                )
-                NavArrowButton(
-                    label = "Next",
-                    enabled = canGoNext,
-                    isForward = true,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNext
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    NavArrowButton(
+                        label = "Prev",
+                        enabled = canGoPrev,
+                        isForward = false,
+                        modifier = Modifier.weight(1f),
+                        onClick = onPrev
+                    )
+                    NavArrowButton(
+                        label = "Next",
+                        enabled = canGoNext,
+                        isForward = true,
+                        modifier = Modifier.weight(1f),
+                        onClick = onNext
+                    )
+                }
             }
         }
     }

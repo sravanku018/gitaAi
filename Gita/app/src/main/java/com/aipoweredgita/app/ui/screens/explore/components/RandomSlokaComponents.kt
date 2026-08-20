@@ -1,126 +1,233 @@
 package com.aipoweredgita.app.ui.screens.explore.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aipoweredgita.app.R
 import com.aipoweredgita.app.database.CachedVerse
+import com.aipoweredgita.app.ui.components.GlassCard
 import com.aipoweredgita.app.ui.components.PremiumDashboardCard
-import com.aipoweredgita.app.ui.theme.GoldSpark
-import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.ui.theme.rememberGitaColors
 
 @Composable
 fun RandomSlokaCard(
     verse: CachedVerse,
-    isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = rememberGitaColors()
+    var meaningOpen by remember(verse.chapterNo, verse.verseNo) { mutableStateOf(false) }
+    val hasMeaning = verse.meaning.isNotBlank() || verse.explanation.isNotBlank()
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         modifier = modifier
     ) {
         PremiumDashboardCard(
-            title = "Chapter ${verse.chapterNo}",
-            description = "Verse ${verse.verseNo}",
-            icon = { Text("ॐ", fontSize = 32.sp) }, // Om symbol
-            gradient = listOf(Color(0xFFF59E0B), Color(0xFFD97706)),
-            onClick = {}, // No action on card click itself
+            title = stringResource(R.string.random_sloka_chapter_verse, verse.chapterNo, verse.verseNo),
+            description = verse.chapterName.ifBlank { "Sloka" },
+            icon = {
+                // Decorative Om — hide from TalkBack
+                Text(
+                    "ॐ",
+                    fontSize = 32.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.clearAndSetSemantics { }
+                )
+            },
+            gradient = listOf(colors.accent, colors.accentSoft),
+            onClick = {},
             modifier = Modifier.fillMaxWidth()
         )
 
-        val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        val cardBorder = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-        val textPrimary = MaterialTheme.colorScheme.onBackground
-        val shadowColor = if (isDark) Color.Black else Color(0x35546E7A)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(cardBg)
-                .border(1.dp, cardBorder, MaterialTheme.shapes.extraLarge)
-                .shadow(
-                    elevation = 6.dp,
-                    shape = MaterialTheme.shapes.extraLarge,
-                    ambientColor = shadowColor,
-                    spotColor = shadowColor
-                )
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            tint = colors.cardTint.copy(alpha = if (colors.isDark) 0.08f else 0.55f),
+            border = colors.cardBorder,
+            cornerRadius = 28.dp,
+            elevation = 6.dp,
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = verse.verse,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 26.sp,
+                        lineHeight = 36.sp,
+                    ),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold,
-                    color = if (isDark) GoldSpark else Saffron
+                    color = colors.accent,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                HorizontalDivider(color = cardBorder)
+                HorizontalDivider(color = colors.divider)
                 Text(
                     text = verse.translation,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = textPrimary
+                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 26.sp),
+                    textAlign = TextAlign.Start,
+                    color = colors.textPrimary,
+                    modifier = Modifier.fillMaxWidth()
                 )
+
+                if (hasMeaning) {
+                    TextButton(
+                        onClick = { meaningOpen = !meaningOpen },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            imageVector = if (meaningOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            tint = colors.accent
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(
+                                if (meaningOpen) R.string.random_sloka_hide_meaning
+                                else R.string.random_sloka_show_meaning
+                            ),
+                            color = colors.accent
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = meaningOpen,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (verse.meaning.isNotBlank()) {
+                                Text(
+                                    text = stringResource(R.string.random_sloka_meaning),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accentSoft
+                                )
+                                Text(
+                                    text = verse.meaning,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Start,
+                                    color = colors.textSecondary
+                                )
+                            }
+                            if (verse.explanation.isNotBlank()) {
+                                Text(
+                                    text = stringResource(R.string.random_sloka_purport),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accentSoft
+                                )
+                                Text(
+                                    text = verse.explanation,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Start,
+                                    color = colors.textSecondary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RandomSlokaActions(
     isSpeaking: Boolean,
+    isSharing: Boolean,
     onListenClick: () -> Unit,
     onShareClick: () -> Unit,
-    goldColor: Color,
+    onShareImageClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
+    val colors = rememberGitaColors()
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         OutlinedButton(
             onClick = onListenClick,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = goldColor),
-            border = androidx.compose.foundation.BorderStroke(1.dp, goldColor.copy(alpha = 0.5f))
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent),
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f))
         ) {
             Icon(
                 if (isSpeaking) Icons.Default.Stop else Icons.Default.PlayArrow,
-                contentDescription = "Listen",
-                tint = goldColor
+                contentDescription = null, // visible label carries the name
+                tint = colors.accent,
+                modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(8.dp))
-            Text(if (isSpeaking) "Stop Audio" else "Listen in Telugu")
+            Text(
+                if (isSpeaking) stringResource(R.string.random_sloka_stop)
+                else stringResource(R.string.random_sloka_listen)
+            )
         }
-
-        Spacer(Modifier.width(12.dp))
 
         OutlinedButton(
             onClick = onShareClick,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = goldColor),
-            border = androidx.compose.foundation.BorderStroke(1.dp, goldColor.copy(alpha = 0.5f))
+            enabled = !isSharing,
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent),
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f))
         ) {
-            Icon(Icons.Default.Share, contentDescription = null, tint = goldColor)
+            Icon(Icons.Default.Share, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Share")
+            Text(stringResource(R.string.random_sloka_share))
+        }
+
+        OutlinedButton(
+            onClick = onShareImageClick,
+            enabled = !isSharing,
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent),
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f))
+        ) {
+            Icon(Icons.Default.Share, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.random_sloka_share_image))
         }
     }
 }

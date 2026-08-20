@@ -1,5 +1,6 @@
 package com.aipoweredgita.app.ui
 
+import com.aipoweredgita.app.ui.LocalUiConfig
 import com.aipoweredgita.app.ui.components.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.*
@@ -54,24 +55,19 @@ fun ProtectedQuizConfigScreen(
     language: String = "tel"
 ) {
     val uiCfg = LocalUiConfig.current
-    if (uiCfg.isLandscape) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            SacredQuizConfigScreen(
-                modifier = Modifier.weight(1f),
-                onStartQuiz = { count: Int -> onStartQuiz(count, language) },
-                language = language
-            )
-            Spacer(Modifier.weight(1f))
-        }
-    } else {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(if (uiCfg.isLandscape) 16.dp else 0.dp),
+        contentAlignment = Alignment.Center
+    ) {
         SacredQuizConfigScreen(
-            modifier = Modifier.fillMaxSize(),
+            modifier = if (uiCfg.isLandscape) {
+                Modifier.fillMaxHeight().widthIn(max = 520.dp)
+            } else {
+                Modifier.fillMaxSize()
+            },
             onStartQuiz = { count: Int -> onStartQuiz(count, language) },
             language = language
         )

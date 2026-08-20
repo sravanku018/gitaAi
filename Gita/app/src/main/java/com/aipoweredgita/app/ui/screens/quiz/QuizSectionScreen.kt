@@ -30,11 +30,8 @@ import com.aipoweredgita.app.ui.components.GlassCard
 import com.aipoweredgita.app.ui.QuizLanguageDialog
 import com.aipoweredgita.app.ui.screens.quiz.components.QuizStartLanding
 import com.aipoweredgita.app.ui.screens.quiz.components.translateLandingText
-import com.aipoweredgita.app.ui.theme.GoldSpark
-import com.aipoweredgita.app.ui.theme.Saffron
+import com.aipoweredgita.app.ui.theme.rememberGitaColors
 import com.aipoweredgita.app.viewmodel.QuizViewModel
-
-import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 
 @Composable
 fun QuizSectionScreen(
@@ -67,12 +64,13 @@ fun QuizSectionScreen(
         }
     }
 
-    val isDark = rememberThemeIsDark()
+    val colors = rememberGitaColors()
+    val isDark = colors.isDark
     val appBg = MaterialTheme.colorScheme.background
-    val textPrimary = MaterialTheme.colorScheme.onBackground
-    val headerTitleColor = if (isDark) Color(0xFFFFB74D) else textPrimary
-    val cardBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    val cardBorder = if (isDark) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val textPrimary = colors.textPrimary
+    val headerTitleColor = colors.accentSoft
+    val cardBg = colors.cardTint
+    val cardBorder = colors.cardBorder
 
     Box(
         modifier = modifier
@@ -127,8 +125,8 @@ fun QuizSectionScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(28.dp),
-                color = if (isDark) Color(0xFF1E1E1E) else Color.White,
-                border = BorderStroke(1.dp, if (isDark) Color(0xFF333333) else Color(0xFFE0E0E0)),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, colors.cardBorder),
                 shadowElevation = if (isDark) 4.dp else 0.dp
             ) {
                 Row(
@@ -140,21 +138,9 @@ fun QuizSectionScreen(
                 ) {
                     tabs.forEachIndexed { index, title ->
                         val isSelected = selectedTab == index
-                        val pillBg = if (isSelected) {
-                            if (isDark) Color(0xFFFF9800).copy(alpha = 0.25f) else Color(0xFFFFE082)
-                        } else {
-                            Color.Transparent
-                        }
-                        val pillBorder = if (isSelected) {
-                            if (isDark) Color(0xFFFFB74D) else Color(0xFFFFB300)
-                        } else {
-                            Color.Transparent
-                        }
-                        val contentColor = if (isSelected) {
-                            if (isDark) Color(0xFFFFD54F) else Color(0xFFC62828)
-                        } else {
-                            if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF424242)
-                        }
+                        val pillBg = if (isSelected) colors.pillBg else Color.Transparent
+                        val pillBorder = if (isSelected) colors.chipBorder else Color.Transparent
+                        val contentColor = if (isSelected) colors.chipText else colors.textSecondary
 
                         Box(
                             modifier = Modifier

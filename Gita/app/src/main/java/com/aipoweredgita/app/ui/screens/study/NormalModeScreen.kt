@@ -21,6 +21,8 @@ import com.aipoweredgita.app.ui.screens.study.components.*
 import com.aipoweredgita.app.ui.theme.MotionTokens
 import com.aipoweredgita.app.ui.theme.rememberThemeIsDark
 import com.aipoweredgita.app.util.TextUtils.sanitizeText
+import com.aipoweredgita.app.utils.SlokaNavMode
+import com.aipoweredgita.app.utils.ThemePreferences
 import com.aipoweredgita.app.viewmodel.NormalModeViewModel
 import com.aipoweredgita.app.viewmodel.ScreenConfigViewModel
 
@@ -36,6 +38,10 @@ fun NormalModeScreen(
     var showChapterDialog by remember { mutableStateOf(false) }
     var showVerseDialog   by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val themePreferences = remember { ThemePreferences(context) }
+    val slokaNavMode by themePreferences.slokaNavMode.collectAsStateWithLifecycle(
+        initialValue = SlokaNavMode.BUTTONS
+    )
 
     val voiceManager = remember(context) { com.aipoweredgita.app.utils.VoiceManager(context) }
     var isSpeaking by remember { mutableStateOf(false) }
@@ -49,6 +55,13 @@ fun NormalModeScreen(
     LaunchedEffect(state.currentChapter, state.currentVerse) {
         voiceManager.stopSpeaking()
         isSpeaking = false
+    }
+
+    // Prefetch chapter verses for swipe/scroll (verses only — not chapters)
+    LaunchedEffect(state.currentChapter, state.selectedLanguage, slokaNavMode) {
+        if (slokaNavMode == SlokaNavMode.SWIPE || slokaNavMode == SlokaNavMode.SCROLL) {
+            viewModel.loadChapterVerses(state.currentChapter)
+        }
     }
 
     fun toggleTts(verse: com.aipoweredgita.app.data.GitaVerse) {
@@ -129,8 +142,8 @@ fun NormalModeScreen(
 
             val currentVerse = state.verse
             when {
-                state.isLoading       -> GitaLoadingScreen()
-                state.error != null   -> GitaErrorScreen(
+                state.isLoading && currentVerse == null -> GitaLoadingScreen()
+                state.error != null && currentVerse == null -> GitaErrorScreen(
                     message = state.error ?: "",
                     onRetry = { viewModel.onEvent(NormalModeEvent.LoadVerse(state.currentChapter, state.currentVerse)) }
                 )
@@ -142,60 +155,95 @@ fun NormalModeScreen(
                         animationSpec = MotionTokens.springExpressive<Float>(),
                         label = "verse_enter"
                     )
-                    val verseScrollState = rememberScrollState()
-                    LaunchedEffect(verse.chapterNo, verse.verseNo) {
-                        verseScrollState.scrollTo(0)
-                    }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(verseScrollState)
-                            .padding(horizontal = 18.dp)
-                            .graphicsLayer {
-                                alpha = verseAnim
-                                translationY = (1f - verseAnim) * 20f
+
+                    val maxInChapter = com.aipoweredgita.app.util.GitaConstants.CHAPTER_VERSE_COUNTS[verse.chapterNo] ?: 47
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        when (slokaNavMode) {
+                            SlokaNavMode.SWIPE -> {
+                                SlokaSwipeReader(
+                                    chapter = verse.chapterNo,
+                                    currentVerseNo = verse.verseNo,
+                                    chapterVerses = state.chapterVerses,
+                                    isLoadingChapter = state.isChapterVersesLoading,
+                                    selectedLanguage = state.selectedLanguage,
+                                    isSpeaking = isSpeaking,
+                                    separatedNote = state.separatedVerseNote,
+                                    combinedNos = state.combinedVerseNos,
+                                    verseAnim = verseAnim,
+                                    onVerseSettled = { v ->
+                                        viewModel.onEvent(NormalModeEvent.LoadVerse(verse.chapterNo, v))
+                                    },
+                                    onLanguageToggle = { lang ->
+                                        voiceManager.stopSpeaking()
+                                        isSpeaking = false
+                                        viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang))
+                                    },
+                                    onTtsToggle = { toggleTts(it) },
+                                    onChapterTap = { showChapterDialog = true },
+                                    onVerseTap = { showVerseDialog = true },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
                             }
-                    ) {
-                        Spacer(Modifier.height(16.dp))
-
-                        ChapterVerseHeroCard(
-                            chapter          = verse.chapterNo,
-                            verse            = verse.verseNo,
-                            combinedNos      = state.combinedVerseNos,
-                            selectedLanguage = state.selectedLanguage,
-                            isSpeaking       = isSpeaking,
-                            onLanguageToggle = { lang ->
-                                voiceManager.stopSpeaking()
-                                isSpeaking = false
-                                viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang))
-                            },
-                            onTtsToggle      = { toggleTts(verse) },
-                            onChapterTap     = { showChapterDialog = true },
-                            onVerseTap       = { showVerseDialog = true }
-                        )
-
-                        Spacer(Modifier.height(20.dp))
-
-                        IlluminatedVerseCard(text = sanitizeText(verse.verse))
-
-                        val meaning = sanitizeText(verse.meaning)
-                        if (meaning.isNotBlank()) {
-                            Spacer(Modifier.height(14.dp))
-                            MeaningCard(text = meaning)
+                            SlokaNavMode.SCROLL -> {
+                                SlokaScrollReader(
+                                    chapter = verse.chapterNo,
+                                    currentVerseNo = verse.verseNo,
+                                    chapterVerses = state.chapterVerses,
+                                    isLoadingChapter = state.isChapterVersesLoading,
+                                    selectedLanguage = state.selectedLanguage,
+                                    isSpeaking = isSpeaking,
+                                    separatedNote = state.separatedVerseNote,
+                                    combinedNos = state.combinedVerseNos,
+                                    onVerseVisible = { v ->
+                                        viewModel.onEvent(NormalModeEvent.LoadVerse(verse.chapterNo, v))
+                                    },
+                                    onLanguageToggle = { lang ->
+                                        voiceManager.stopSpeaking()
+                                        isSpeaking = false
+                                        viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang))
+                                    },
+                                    onTtsToggle = { toggleTts(it) },
+                                    onChapterTap = { showChapterDialog = true },
+                                    onVerseTap = { showVerseDialog = true },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            SlokaNavMode.BUTTONS -> {
+                                val verseScrollState = rememberScrollState()
+                                LaunchedEffect(verse.chapterNo, verse.verseNo) {
+                                    verseScrollState.scrollTo(0)
+                                }
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(verseScrollState)
+                                        .padding(horizontal = 18.dp)
+                                        .graphicsLayer {
+                                            alpha = verseAnim
+                                            translationY = (1f - verseAnim) * 20f
+                                        }
+                                ) {
+                                    Spacer(Modifier.height(16.dp))
+                                    SlokaVerseBody(
+                                        verse = verse,
+                                        combinedNos = state.combinedVerseNos,
+                                        selectedLanguage = state.selectedLanguage,
+                                        isSpeaking = isSpeaking,
+                                        separatedNote = state.separatedVerseNote,
+                                        onLanguageToggle = { lang ->
+                                            voiceManager.stopSpeaking()
+                                            isSpeaking = false
+                                            viewModel.onEvent(NormalModeEvent.ToggleLanguage(lang))
+                                        },
+                                        onTtsToggle = { toggleTts(verse) },
+                                        onChapterTap = { showChapterDialog = true },
+                                        onVerseTap = { showVerseDialog = true },
+                                    )
+                                    Spacer(Modifier.height(24.dp))
+                                }
+                            }
                         }
-
-                        val explanation = sanitizeText(verse.explanation)
-                        if (explanation.isNotBlank()) {
-                            Spacer(Modifier.height(14.dp))
-                            ExplanationCard(text = explanation)
-                        }
-
-                        state.separatedVerseNote?.let { note ->
-                            Spacer(Modifier.height(14.dp))
-                            VerseNoteCard(note = note)
-                        }
-
-                        Spacer(Modifier.height(24.dp))
                     }
 
                     BottomActionBar(
@@ -206,8 +254,21 @@ fun NormalModeScreen(
                         onFavoriteToggle  = { viewModel.onEvent(NormalModeEvent.ToggleFavorite) },
                         onShare           = { shareVerse(verse) },
                         onBattleQuiz      = onNavigateToQuizBattle,
-                        onPrev            = { viewModel.onEvent(NormalModeEvent.PreviousVerse) },
-                        onNext            = { viewModel.onEvent(NormalModeEvent.NextVerse) }
+                        onPrev            = {
+                            if (slokaNavMode == SlokaNavMode.BUTTONS) {
+                                viewModel.onEvent(NormalModeEvent.PreviousVerse)
+                            } else if (verse.verseNo > 1) {
+                                viewModel.onEvent(NormalModeEvent.LoadVerse(verse.chapterNo, verse.verseNo - 1))
+                            }
+                        },
+                        onNext            = {
+                            if (slokaNavMode == SlokaNavMode.BUTTONS) {
+                                viewModel.onEvent(NormalModeEvent.NextVerse)
+                            } else if (verse.verseNo < maxInChapter) {
+                                viewModel.onEvent(NormalModeEvent.LoadVerse(verse.chapterNo, verse.verseNo + 1))
+                            }
+                        },
+                        showNavButtons    = slokaNavMode == SlokaNavMode.BUTTONS,
                     )
                 }
             }

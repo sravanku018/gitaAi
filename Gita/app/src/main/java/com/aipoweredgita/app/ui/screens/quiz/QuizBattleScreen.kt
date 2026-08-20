@@ -1,134 +1,86 @@
 package com.aipoweredgita.app.ui.screens.quiz
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.aipoweredgita.app.data.QuizQuestion
-import com.aipoweredgita.app.ui.screens.quiz.components.*
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aipoweredgita.app.ui.screens.quiz.components.BattleAnswerOptions
+import com.aipoweredgita.app.ui.screens.quiz.components.BattleGameOverView
+import com.aipoweredgita.app.ui.screens.quiz.components.BattleQuestionCard
+import com.aipoweredgita.app.ui.screens.quiz.components.BattleStatsBar
+import com.aipoweredgita.app.ui.screens.quiz.components.ComboIndicator
+import com.aipoweredgita.app.viewmodel.BattleSideEffect
 import com.aipoweredgita.app.viewmodel.QuizBattleViewModel
-import kotlinx.coroutines.delay
-
-data class BattleState(
-    val score: Int = 0,
-    val lives: Int = 3,
-    val combo: Int = 0,
-    val maxCombo: Int = 0,
-    val timeLeft: Int = 60,
-    val isGameOver: Boolean = false,
-    val currentQuestion: QuizQuestion? = null,
-    val selectedAnswer: String? = null,
-    val isAnswerRevealed: Boolean = false,
-    val questionsAnswered: Int = 0,
-    val correctAt3Hearts: Int = 0,
-    val correctAt2Hearts: Int = 0,
-    val correctAt1Heart: Int = 0
-) {
-    val battleCoins: Int
-        get() {
-            val correctAnswers = correctAt3Hearts + correctAt2Hearts + correctAt1Heart
-            if (correctAnswers <= 0) return 0
-            var a = 1
-            var b = 1
-            for (i in 3..correctAnswers) {
-                val temp = a + b
-                a = b
-                b = temp
-            }
-            return if (correctAnswers == 1) a else b
-        }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizBattleScreen(
     onBack: () -> Unit = {},
-    onGameOver: (score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int, language: String) -> Unit = { _, _, _, _, _ -> }
+    onGameOver: (score: Int, maxCombo: Int, questionsAnswered: Int, battleCoins: Int, language: String) -> Unit = { _, _, _, _, _ -> },
+    viewModel: QuizBattleViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    var battleState by remember { mutableStateOf(BattleState()) }
-    var isTimerRunning by remember { mutableStateOf(false) }
-    var hasTriggeredGameOver by remember { mutableStateOf(false) }
-    val quizViewModel: QuizBattleViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-
-    val systemLang = if (java.util.Locale.getDefault().language.startsWith("te")) "telugu" else "english"
-    var selectedLanguage by remember { mutableStateOf(systemLang) }
+    val battleState by viewModel.battleState.collectAsState()
 
     LaunchedEffect(Unit) {
-        quizViewModel.setQuizLimit(999)  // Battle = unlimited questions
-        quizViewModel.setQuizLanguage(selectedLanguage)
+        viewModel.setQuizLimit(999)
     }
 
-    // Timer
-    LaunchedEffect(isTimerRunning) {
-        if (isTimerRunning) {
-            while (battleState.timeLeft > 0 && isTimerRunning) {
-                delay(1000)
-                if (!isTimerRunning) break
-                battleState = battleState.copy(timeLeft = battleState.timeLeft - 1)
+    LaunchedEffect(viewModel.sideEffect) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is BattleSideEffect.GameOver -> onGameOver(
+                    effect.correctAnswers,
+                    effect.maxCombo,
+                    effect.questionsAnswered,
+                    effect.battleCoins,
+                    effect.language
+                )
             }
-             if (battleState.timeLeft <= 0 && isTimerRunning && !battleState.isGameOver && !hasTriggeredGameOver) {
-                isTimerRunning = false
-                hasTriggeredGameOver = true
-                battleState = battleState.copy(isGameOver = true)
-                val correctAnswers = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
-                onGameOver(correctAnswers, battleState.maxCombo, battleState.questionsAnswered, battleState.battleCoins, selectedLanguage)
-            }
-        }
-    }
-
-    // Load question - triggers on start and after each answer
-    LaunchedEffect(isTimerRunning, battleState.questionsAnswered) {
-        if (isTimerRunning && !battleState.isGameOver && battleState.lives > 0) {
-            quizViewModel.loadNextQuestion()
-        }
-    }
-
-    val quizState by quizViewModel.quizState.collectAsState()
-
-    LaunchedEffect(quizState.currentQuestion) {
-        quizState.currentQuestion?.let { q ->
-            battleState = battleState.copy(
-                currentQuestion = q,
-                selectedAnswer = null,
-                isAnswerRevealed = false
-            )
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("⚔️ Battle Mode") },
+                title = { Text("Battle Mode", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    TextButton(onClick = {
-                        val nextLang = when (selectedLanguage) {
-                            "english" -> "telugu"
-                            "telugu" -> "both"
-                            else -> "english"
-                        }
-                        selectedLanguage = nextLang
-                        quizViewModel.setQuizLanguage(nextLang)
-                        quizViewModel.loadNextQuestion()
-                    }) {
+                    TextButton(onClick = { viewModel.cycleLanguage() }) {
                         Text(
-                            text = when (selectedLanguage) {
+                            text = when (battleState.language) {
                                 "telugu" -> "తెలుగు"
                                 "both" -> "EN + TE"
                                 else -> "English"
@@ -147,12 +99,7 @@ fun QuizBattleScreen(
         if (battleState.isGameOver) {
             BattleGameOverView(
                 battleState = battleState,
-                onPlayAgain = {
-                    hasTriggeredGameOver = false
-                    battleState = BattleState()
-                    isTimerRunning = true
-                    quizViewModel.restartQuiz()
-                }
+                onPlayAgain = { viewModel.playAgain() }
             )
         } else {
             Column(
@@ -163,14 +110,12 @@ fun QuizBattleScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Stats Bar
                 BattleStatsBar(
                     lives = battleState.lives,
                     timeLeft = battleState.timeLeft,
                     score = battleState.score
                 )
 
-                // Combo indicator
                 if (battleState.combo > 1) {
                     Spacer(Modifier.height(8.dp))
                     ComboIndicator(combo = battleState.combo)
@@ -178,75 +123,59 @@ fun QuizBattleScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Question
-                battleState.currentQuestion?.let { question ->
-                    BattleQuestionCard(question = question)
-                    Spacer(Modifier.height(20.dp))
-                    BattleAnswerOptions(
-                        question = question,
-                        selectedAnswer = battleState.selectedAnswer,
-                        isAnswerRevealed = battleState.isAnswerRevealed,
-                        onAnswerSelected = { isCorrect, option ->
-                            var nextState = battleState.copy(selectedAnswer = option, isAnswerRevealed = true)
-
-                            if (isCorrect) {
-                                val comboMultiplier = (nextState.combo + 1).coerceAtMost(5)
-                                val points = 10 * comboMultiplier
-                                nextState = nextState.copy(
-                                    score = nextState.score + points,
-                                    combo = nextState.combo + 1,
-                                    maxCombo = maxOf(nextState.maxCombo, nextState.combo + 1),
-                                    questionsAnswered = nextState.questionsAnswered + 1,
-                                    correctAt3Hearts = if (nextState.lives == 3) nextState.correctAt3Hearts + 1 else nextState.correctAt3Hearts,
-                                    correctAt2Hearts = if (nextState.lives == 2) nextState.correctAt2Hearts + 1 else nextState.correctAt2Hearts,
-                                    correctAt1Heart = if (nextState.lives == 1) nextState.correctAt1Heart + 1 else nextState.correctAt1Heart
-                                )
-                            } else {
-                                nextState = nextState.copy(
-                                    lives = nextState.lives - 1,
-                                    combo = 0,
-                                    questionsAnswered = nextState.questionsAnswered + 1
-                                )
-                                if (nextState.lives <= 0) {
-                                    isTimerRunning = false
-                                    nextState = nextState.copy(isGameOver = true)
-                                    if (!battleState.isGameOver && !hasTriggeredGameOver) {
-                                        hasTriggeredGameOver = true
-                                        val correctAnswers = nextState.correctAt3Hearts + nextState.correctAt2Hearts + nextState.correctAt1Heart
-                                        onGameOver(correctAnswers, nextState.maxCombo, nextState.questionsAnswered, nextState.battleCoins, selectedLanguage)
-                                    }
-                                }
+                when {
+                    battleState.currentQuestion != null -> {
+                        val question = battleState.currentQuestion!!
+                        BattleQuestionCard(question = question)
+                        Spacer(Modifier.height(20.dp))
+                        BattleAnswerOptions(
+                            question = question,
+                            selectedAnswer = battleState.selectedAnswer,
+                            isAnswerRevealed = battleState.isAnswerRevealed,
+                            onAnswerSelected = { isCorrect, option ->
+                                viewModel.onAnswerSelected(isCorrect, option)
                             }
-                            battleState = nextState
-                        }
-                    )
-                } ?: if (isTimerRunning) {
-                    Spacer(Modifier.height(48.dp))
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(16.dp))
-                    Text("Loading question...")
-                } else {
-                    Spacer(Modifier.height(48.dp))
+                        )
+                    }
+                    battleState.isTimerRunning || battleState.isLoadingQuestion -> {
+                        Spacer(Modifier.height(48.dp))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            battleState.error ?: "Loading question...",
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    else -> Spacer(Modifier.height(48.dp))
+                }
+
+                if (!battleState.error.isNullOrBlank() && battleState.currentQuestion == null) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(battleState.error!!, color = MaterialTheme.colorScheme.error)
+                    Button(onClick = { viewModel.loadNextQuestion() }) {
+                        Text("Retry")
+                    }
                 }
 
                 Spacer(Modifier.height(24.dp))
 
-                // Start Button
-                if (!isTimerRunning && battleState.questionsAnswered == 0) {
+                if (!battleState.isTimerRunning && battleState.questionsAnswered == 0 && !battleState.isGameOver) {
                     Button(
-                        onClick = { isTimerRunning = true },
+                        onClick = { viewModel.startBattle() },
                         modifier = Modifier
                             .widthIn(min = 140.dp, max = 200.dp)
-                            .height(44.dp),
+                            .height(48.dp),
                         shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
                     ) {
                         Text(
-                            "⚔️ FIGHT!",
+                            "FIGHT!",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = Color.White
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onError
                         )
                     }
                 }

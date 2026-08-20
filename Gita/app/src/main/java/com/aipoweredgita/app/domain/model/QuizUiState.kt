@@ -41,4 +41,6 @@ sealed class QuizSideEffect {
     data class ShowError(val message: String) : QuizSideEffect()
     data class QuizCompleted(val score: Int, val total: Int, val coinsEarned: Int) : QuizSideEffect()
     data object NavigateToStats : QuizSideEffect()
+    /** Fired when the question timer hits zero with no answer selected. */
+    data object TimeUp : QuizSideEffect()
 }

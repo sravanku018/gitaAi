@@ -235,6 +235,45 @@ fun SettingsScreen(
                             }
                         }
                     }
+
+                    HorizontalDivider(color = cardBorder, modifier = Modifier.padding(vertical = 12.dp))
+
+                    // Sloka (verse) navigation — does NOT change chapter picking
+                    val slokaNavMode by themePreferences.slokaNavMode.collectAsStateWithLifecycle(
+                        initialValue = com.aipoweredgita.app.utils.SlokaNavMode.BUTTONS
+                    )
+                    Column {
+                        Text(
+                            "Sloka navigation",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textPrimary.copy(alpha = 0.9f)
+                        )
+                        Text(
+                            "How you move between verses inside a chapter. Chapter picker is unchanged.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textSecondary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(
+                                com.aipoweredgita.app.utils.SlokaNavMode.SWIPE to "Swipe",
+                                com.aipoweredgita.app.utils.SlokaNavMode.SCROLL to "Scroll",
+                                com.aipoweredgita.app.utils.SlokaNavMode.BUTTONS to "Next btn",
+                            ).forEach { (mode, label) ->
+                                FilterChip(
+                                    selected = slokaNavMode == mode,
+                                    onClick = { scope.launch { themePreferences.setSlokaNavMode(mode) } },
+                                    label = { Text(label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = gold,
+                                        selectedLabelColor = Color.Black,
+                                        labelColor = textSecondary,
+                                        containerColor = cardBg
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

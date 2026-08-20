@@ -46,4 +46,27 @@
     <string name="model_missing_voice">Gemma 4 2B is required for voice features. Download it from Settings &gt; Manage AI Models.</string>
     <string name="model_missing_quiz">No AI model available. Download Qwen3 0.6B for smart quiz questions.</string>
     <string name="model_missing_generic">AI model not available. Download from Settings &gt; Manage AI Models.</string>
+
+    <!-- Random Sloka / share -->
+    <string name="random_sloka_title">Random Sloka</string>
+    <string name="random_sloka_refresh">Refresh</string>
+    <string name="random_sloka_listen">Listen in Telugu</string>
+    <string name="random_sloka_stop">Stop Audio</string>
+    <string name="random_sloka_share">Share</string>
+    <string name="random_sloka_share_image">Share card</string>
+    <string name="random_sloka_meaning">Meaning</string>
+    <string name="random_sloka_purport">Purport</string>
+    <string name="random_sloka_show_meaning">Show meaning &amp; purport</string>
+    <string name="random_sloka_hide_meaning">Hide meaning &amp; purport</string>
+    <string name="random_sloka_loading">Loading sloka…</string>
+    <string name="random_sloka_error">Couldn\'t load a sloka. Check your connection or offline cache.</string>
+    <string name="random_sloka_telugu_tts_missing">Telugu voice data is not installed. Install it in Settings → Text-to-speech.</string>
+    <string name="random_sloka_share_failed">Failed to share</string>
+    <string name="random_sloka_shared_ok">Shared successfully!</string>
+    <string name="random_sloka_shared_ok_coins">Shared successfully! Earned %1$d coins</string>
+    <string name="random_sloka_share_chooser">Share Sloka</string>
+    <string name="random_sloka_chapter_verse">Chapter %1$d · Verse %2$d</string>
+    <string name="share_progress">Share Progress</string>
+    <string name="share_progress_chooser">Share your progress</string>
+    <string name="cd_back">Back</string>
 </resources>

@@ -2,53 +2,82 @@ package com.aipoweredgita.app.ui.screens.quiz.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.aipoweredgita.app.data.QuizQuestion
-import com.aipoweredgita.app.ui.screens.quiz.BattleState
+import com.aipoweredgita.app.viewmodel.BattleUiState
 
 @Composable
 fun BattleGameOverView(
-    battleState: BattleState,
+    battleState: BattleUiState,
     onPlayAgain: () -> Unit
 ) {
-    Column(
+    androidx.compose.foundation.layout.Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("⚔️", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(16.dp))
         Text("Battle Over!", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
-        Text("Score: ${battleState.score}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "Score: ${battleState.score}",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
         Text("Max Combo: ${battleState.maxCombo}x", style = MaterialTheme.typography.titleLarge)
         Text("Questions: ${battleState.questionsAnswered}", style = MaterialTheme.typography.titleMedium)
-        
-        val correct = battleState.correctAt3Hearts + battleState.correctAt2Hearts + battleState.correctAt1Heart
-        val accuracy = if (battleState.questionsAnswered > 0) ((correct.toFloat() / battleState.questionsAnswered) * 100).toInt() else 0
-        Text("Accuracy: $accuracy%", style = MaterialTheme.typography.titleMedium, color = if (accuracy >= 80) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface)
+
+        val correct = battleState.correctAnswers
+        val accuracy = if (battleState.questionsAnswered > 0) {
+            ((correct.toFloat() / battleState.questionsAnswered) * 100).toInt()
+        } else 0
+        Text(
+            "Accuracy: $accuracy%",
+            style = MaterialTheme.typography.titleMedium,
+            color = if (accuracy >= 80) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
+        )
 
         if (battleState.battleCoins > 0) {
             Spacer(Modifier.height(8.dp))
-            Text("🪙 +${battleState.battleCoins} coins", style = MaterialTheme.typography.titleLarge, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
+            Text(
+                "+${battleState.battleCoins} coins",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Bold
+            )
         }
         Spacer(Modifier.height(32.dp))
-        Button(onClick = onPlayAgain) {
+        Button(onClick = onPlayAgain, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Play Again")
         }
     }
@@ -70,27 +99,28 @@ fun BattleStatsBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Lives
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.semantics { contentDescription = "$lives lives remaining" }
+            ) {
                 repeat(3) { i ->
                     Icon(
                         if (i < lives) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = null,
-                        tint = if (i < lives) Color.Red else Color.Gray,
+                        tint = if (i < lives) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
-            // Timer
             Text(
                 "${timeLeft}s",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (timeLeft <= 10) Color.Red else MaterialTheme.colorScheme.onSurface
+                color = if (timeLeft <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { contentDescription = "$timeLeft seconds remaining" }
             )
 
-            // Score
             Text(
                 "$score pts",
                 style = MaterialTheme.typography.titleMedium,
@@ -104,14 +134,14 @@ fun BattleStatsBar(
 @Composable
 fun ComboIndicator(combo: Int) {
     val comboScale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(dampingRatio = 0.3f),
-        label = "combo"
+        targetValue = 1f + (combo.coerceAtMost(5) * 0.06f),
+        animationSpec = spring(dampingRatio = 0.35f, stiffness = 400f),
+        label = "combo_$combo"
     )
     Text(
-        "🔥 ${combo}x COMBO!",
+        "${combo}x COMBO!",
         style = MaterialTheme.typography.titleMedium,
-        color = Color(0xFFFFD700),
+        color = MaterialTheme.colorScheme.secondary,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.scale(comboScale)
     )
@@ -141,45 +171,74 @@ fun BattleAnswerOptions(
     isAnswerRevealed: Boolean,
     onAnswerSelected: (Boolean, String) -> Unit
 ) {
-    question.options?.forEachIndexed { index, option ->
+    if (question.options.isEmpty()) {
+        Text(
+            "No options for this question — loading next…",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        return
+    }
+
+    question.options.forEachIndexed { index, option ->
         val isSelected = selectedAnswer == option
         val isCorrect = index == question.correctAnswerIndex
         val showResult = isAnswerRevealed
 
         val containerColor = when {
-            showResult && isCorrect -> Color(0xFF2E7D32)
-            showResult && isSelected && !isCorrect -> Color(0xFFC62828)
+            showResult && isCorrect -> MaterialTheme.colorScheme.tertiary
+            showResult && isSelected && !isCorrect -> MaterialTheme.colorScheme.error
             isSelected -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.surfaceVariant
         }
 
         val textColor = when {
-            showResult && isCorrect -> Color.White
-            showResult && isSelected && !isCorrect -> Color.White
+            showResult && isCorrect -> MaterialTheme.colorScheme.onTertiary
+            showResult && isSelected && !isCorrect -> MaterialTheme.colorScheme.onError
             isSelected -> MaterialTheme.colorScheme.onPrimary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
+        val statusLabel = when {
+            showResult && isCorrect -> "Correct"
+            showResult && isSelected && !isCorrect -> "Incorrect"
+            else -> null
+        }
+
         Button(
             onClick = {
-                if (!isAnswerRevealed) {
-                    onAnswerSelected(isCorrect, option)
-                }
+                if (!isAnswerRevealed) onAnswerSelected(isCorrect, option)
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(vertical = 4.dp)
+                .heightIn(min = 48.dp)
+                .then(
+                    if (statusLabel != null) Modifier.semantics { contentDescription = "$option, $statusLabel" }
+                    else Modifier
+                ),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = containerColor),
             enabled = !isAnswerRevealed
         ) {
-            Text(
-                option,
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = textColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    option,
+                    modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                    color = textColor,
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (showResult && isCorrect) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = "Correct", tint = textColor)
+                } else if (showResult && isSelected && !isCorrect) {
+                    Icon(Icons.Filled.Cancel, contentDescription = "Incorrect", tint = textColor)
+                }
+            }
         }
     }
 }
