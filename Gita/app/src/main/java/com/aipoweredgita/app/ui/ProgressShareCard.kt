@@ -118,57 +118,101 @@ object ProgressShareCard {
         verseNo: Int,
     ): Bitmap {
         val width = 1080
-        val height = 1920
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-
-        val bgPaint = Paint().apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, height.toFloat(),
-                0xFF1a0a2e.toInt(), 0xFF2a1500.toInt(),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+        val maxWidth = width - 160f
+        val centerX = width / 2f
 
         val goldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFFFD700.toInt()
-            textSize = 44f
+            textSize = 48f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
         val versePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFFFF3E0.toInt()
-            textSize = 42f
+            color = 0xFFFFF8E7.toInt()
+            textSize = 44f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFFFFFFF.toInt()
-            textSize = 36f
-            textAlign = Paint.Align.CENTER
-        }
-        val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xEEFFFFFF.toInt()
-            textSize = 28f
+        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xCCFFD700.toInt()
+            textSize = 30f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
 
-        val centerX = width / 2f
-        val maxWidth = width - 140f
-        var y = 220f
-        y = drawWrappedText(canvas, "Bhagavad Gita $chapter:$verseNo", centerX, y, goldPaint, maxWidth, 56f)
-        y += 48f
-        y = drawWrappedText(canvas, verseText.replace('\n', ' '), centerX, y, versePaint, maxWidth, 56f)
-        y += 40f
-        y = drawWrappedText(canvas, translation.replace('\n', ' '), centerX, y, bodyPaint, maxWidth, 48f)
-        y = (y + 80f).coerceAtMost(height - 120f)
-        drawWrappedText(canvas, "AI Powered Gita", centerX, y, dimPaint, maxWidth, 36f)
+        val slokaLines = mutableListOf<String>()
+        verseText.split("\n").forEach { rawLine ->
+            val cleanLine = rawLine.trim()
+            if (cleanLine.isNotEmpty()) {
+                slokaLines.addAll(wrapLineToMaxWidth(cleanLine, versePaint, maxWidth))
+            }
+        }
+
+        val headerHeight = 60f
+        val verseLineHeight = 64f
+        val slokaTotalHeight = (slokaLines.size * verseLineHeight).coerceAtLeast(64f)
+        val footerHeight = 40f
+        val topPadding = 70f
+        val bottomPadding = 70f
+        val gap1 = 40f
+        val gap2 = 50f
+
+        val totalHeight = (topPadding + headerHeight + gap1 + slokaTotalHeight + gap2 + footerHeight + bottomPadding).toInt()
+
+        val bitmap = Bitmap.createBitmap(width, totalHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val bgPaint = Paint().apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, totalHeight.toFloat(),
+                0xFF1A0E26.toInt(), 0xFF2D1600.toInt(),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), totalHeight.toFloat(), bgPaint)
+
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x44FFD700.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        }
+        canvas.drawRoundRect(20f, 20f, width - 20f, totalHeight - 20f, 28f, 28f, borderPaint)
+
+        var y = topPadding + 40f
+        canvas.drawText("Bhagavad Gita  •  Chapter $chapter, Verse $verseNo", centerX, y, goldPaint)
+
+        y += gap1 + 44f
+        slokaLines.forEach { line ->
+            canvas.drawText(line, centerX, y, versePaint)
+            y += verseLineHeight
+        }
+
+        y = totalHeight - bottomPadding
+        canvas.drawText("AI Powered Gita", centerX, y, footerPaint)
+
         return bitmap
     }
 
-    /**
-     * Draws [text] wrapped to [maxWidth]; returns the y after the last line.
-     */
+    private fun wrapLineToMaxWidth(text: String, paint: Paint, maxWidth: Float): List<String> {
+        if (text.isBlank()) return emptyList()
+        val words = text.split(Regex("\\s+"))
+        val lines = mutableListOf<String>()
+        var current = StringBuilder()
+        val bounds = Rect()
+        for (word in words) {
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            paint.getTextBounds(candidate, 0, candidate.length, bounds)
+            if (bounds.width() > maxWidth && current.isNotEmpty()) {
+                lines += current.toString()
+                current = StringBuilder(word)
+            } else {
+                current = StringBuilder(candidate)
+            }
+        }
+        if (current.isNotEmpty()) lines += current.toString()
+        return lines
+    }
+
     private fun drawWrappedText(
         canvas: Canvas,
         text: String,
@@ -179,22 +223,7 @@ object ProgressShareCard {
         lineHeight: Float,
     ): Float {
         if (text.isBlank()) return startY
-        val words = text.split(Regex("\\s+"))
-        val lines = mutableListOf<String>()
-        var current = StringBuilder()
-        val bounds = Rect()
-        for (word in words) {
-            val candidate = if (current.isEmpty()) word else "${current} $word"
-            paint.getTextBounds(candidate, 0, candidate.length, bounds)
-            if (bounds.width() > maxWidth && current.isNotEmpty()) {
-                lines += current.toString()
-                current = StringBuilder(word)
-            } else {
-                current = StringBuilder(candidate)
-            }
-        }
-        if (current.isNotEmpty()) lines += current.toString()
-
+        val lines = wrapLineToMaxWidth(text, paint, maxWidth)
         var y = startY
         lines.forEach { line ->
             canvas.drawText(line, centerX, y, paint)
