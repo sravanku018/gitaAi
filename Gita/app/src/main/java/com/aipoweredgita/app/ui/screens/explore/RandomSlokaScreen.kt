@@ -88,12 +88,11 @@ fun RandomSlokaScreen(
 
     val shareLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    ) { _ ->
         val verse = pendingShareVerse
         pendingShareVerse = null
         isSharing = false
-        // Award only when the user picked a target (RESULT_OK). Dismiss = no coins.
-        if (result.resultCode == Activity.RESULT_OK && verse != null) {
+        if (verse != null) {
             viewModel.onShareCompleted(verse.chapterNo, verse.verseNo) { key ->
                 val msg = when {
                     key.startsWith("shared_ok_coins:") -> {
