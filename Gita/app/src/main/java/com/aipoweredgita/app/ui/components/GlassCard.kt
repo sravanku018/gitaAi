@@ -418,10 +418,21 @@ private fun SlokaCardBgCanvas(
     rotation: Float,
     twinkleAnim: Float,
 ) {
+    val isDark = com.aipoweredgita.app.ui.theme.rememberThemeIsDark()
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val bgBrush = if (isDark) {
+        Brush.linearGradient(listOf(SlokaGoldStart, SlokaGoldEnd))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFFFFFDF5), Color(0xFFFFF5E0)))
+    }
+    val geomColor = if (isDark) Color(0xFFFFD080) else primaryColor.copy(alpha = 0.6f)
+    val accentLineColor = if (isDark) Color(0xFFFFB830) else primaryColor.copy(alpha = 0.7f)
+    val starColor = if (isDark) Color(255, 220, 120) else Color(210, 150, 40)
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(SlokaGoldStart, SlokaGoldEnd)))
+            .background(bgBrush)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
@@ -431,7 +442,7 @@ private fun SlokaCardBgCanvas(
             for (i in 0 until 12) {
                 rotate(outerRotation + i * 30f, pivot = center) {
                     drawOval(
-                        color = Color(0xFFFFD080).copy(alpha = 0.20f),
+                        color = geomColor.copy(alpha = if (isDark) 0.20f else 0.15f),
                         topLeft = Offset(center.x - 7.dp.toPx(), center.y - outerRadius + 22.dp.toPx()),
                         size = Size(14.dp.toPx(), 52.dp.toPx()),
                         style = Stroke(width = 0.9.dp.toPx())
@@ -441,7 +452,7 @@ private fun SlokaCardBgCanvas(
 
             listOf(18.dp, 32.dp, 48.dp, 62.dp).forEach { r ->
                 drawCircle(
-                    color = Color(0xFFFFD080).copy(alpha = 0.15f),
+                    color = geomColor.copy(alpha = if (isDark) 0.15f else 0.12f),
                     radius = r.toPx(),
                     center = center,
                     style = Stroke(width = 0.7.dp.toPx())
@@ -452,7 +463,7 @@ private fun SlokaCardBgCanvas(
             for (i in 0 until 8) {
                 rotate(innerRotation + i * 45f, pivot = center) {
                     drawLine(
-                        color = Color(0xFFFFB830).copy(alpha = 0.32f),
+                        color = accentLineColor.copy(alpha = if (isDark) 0.32f else 0.25f),
                         start = Offset(center.x, center.y - 8.dp.toPx()),
                         end = Offset(center.x, center.y - 35.dp.toPx()),
                         strokeWidth = 1.dp.toPx()
@@ -460,7 +471,7 @@ private fun SlokaCardBgCanvas(
                 }
             }
             drawCircle(
-                color = Color(0xFFFFB830).copy(alpha = 0.32f),
+                color = accentLineColor.copy(alpha = if (isDark) 0.32f else 0.25f),
                 radius = 8.dp.toPx(),
                 center = center,
                 style = Stroke(width = 1.dp.toPx())
@@ -472,7 +483,7 @@ private fun SlokaCardBgCanvas(
                 val starX = size.width * (0.1f + (i * 0.13f) % 0.8f)
                 val starY = size.height * (0.1f + (i * 0.17f) % 0.8f)
                 drawCircle(
-                    color = Color(255, 220, 120, (opacity * 255).toInt()),
+                    color = starColor.copy(alpha = opacity * (if (isDark) 1f else 0.7f)),
                     radius = 1.5.dp.toPx(),
                     center = Offset(starX, starY)
                 )
