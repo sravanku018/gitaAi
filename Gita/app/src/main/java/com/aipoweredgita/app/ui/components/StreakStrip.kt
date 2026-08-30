@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.shape.CircleShape
+
 private val springSnap = spring<Float>(dampingRatio = 0.5f, stiffness = 600f)
 private val springBounce = spring<Float>(dampingRatio = 0.3f, stiffness = 400f)
 private val springColor = spring<Color>(dampingRatio = 0.7f, stiffness = 500f)
@@ -39,14 +41,14 @@ fun StreakStrip(
     bdColor: Color,
     animateEntry: Boolean = false
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         for (d in 1..days) {
             val claimed = isClaimed(d)
             val today = isToday(d)
             val justClaimed = wasJustClaimed(d)
 
             val boxScale by animateFloatAsState(
-                targetValue = if (justClaimed) 1.15f else 1f,
+                targetValue = if (justClaimed) 1.18f else 1f,
                 animationSpec = springBounce, label = "box_scale_$d"
             )
             val checkAlpha by animateFloatAsState(
@@ -56,15 +58,15 @@ fun StreakStrip(
             
             val currentBgColor by animateColorAsState(
                 targetValue = when {
-                    claimed -> completedColor.copy(alpha = 0.2f)
-                    today -> activeColor.copy(alpha = 0.12f)
+                    claimed -> completedColor.copy(alpha = 0.22f)
+                    today -> activeColor.copy(alpha = 0.18f)
                     else -> bgColor
                 },
                 animationSpec = springColor, label = "bg_color_$d"
             )
             val currentBdColor by animateColorAsState(
                 targetValue = when {
-                    claimed -> completedColor.copy(alpha = 0.5f)
+                    claimed -> completedColor.copy(alpha = 0.6f)
                     today -> activeColor
                     else -> bdColor
                 },
@@ -80,7 +82,7 @@ fun StreakStrip(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .aspectRatio(1f)
                     .then(
                         if (animateEntry) {
                             Modifier.graphicsLayer {
@@ -91,17 +93,17 @@ fun StreakStrip(
                             Modifier.scale(boxScale)
                         }
                     )
-                    .clip(MaterialTheme.shapes.small)
+                    .clip(CircleShape)
                     .background(currentBgColor)
-                    .border(if (today) 1.5.dp else 0.5.dp, currentBdColor, MaterialTheme.shapes.small)
+                    .border(if (today) 1.8.dp else 0.8.dp, currentBdColor, CircleShape)
                     .clickable { onDayClick(d) },
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     if (claimed) {
                         Text(
                             text = "✓", 
-                            fontSize = 15.sp, 
+                            fontSize = 14.sp, 
                             color = completedColor, 
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.graphicsLayer { alpha = checkAlpha }
@@ -109,7 +111,7 @@ fun StreakStrip(
                     } else {
                         Text(
                             text = "+$d", 
-                            fontSize = 14.sp, 
+                            fontSize = 12.sp, 
                             fontWeight = FontWeight.Bold, 
                             color = if (today) activeColor else dimColor
                         )
