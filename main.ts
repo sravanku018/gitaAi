@@ -6,7 +6,7 @@ const { Pool } = pg;
 
 const databaseUrl = Deno.env.get("DATABASE_URL");
 if (!databaseUrl) {
-  console.error("FATAL: set DATABASE_URL (postgres://user:pass@host:5432/coin_db)");
+  console.error("FATAL: DATABASE_URL environment variable is not set!");
 }
 const pool = new Pool({
   connectionString: databaseUrl ?? "",
