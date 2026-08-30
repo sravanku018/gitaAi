@@ -140,7 +140,7 @@
 </head>
 <body>
 
-  <!-- ADMIN LOCK — secrets verified on Deno API (not in this page) -->
+  <!-- ADMIN LOCK — secrets verified on VPS admin API (not in this page) -->
   <div class="lock-screen" id="lock-screen">
     <div class="lock-card glass">
       <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
@@ -174,7 +174,7 @@
       <div style="font-size: 13px; font-weight: 800; color: #fbbf24; width:100%; text-align:left; margin-bottom: 6px;">
         Step 2 — Then unlock
       </div>
-      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match Deno env ADMIN_SECRET_KEY exactly)</label>
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match VPS ADMIN_SECRET_KEY exactly)</label>
       <input type="password" id="admin-secret-key" class="pin-input" placeholder="Paste full key — not the TOTP secret" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
       <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); width:100%; margin-top:4px; cursor:pointer;">
         <input type="checkbox" id="show-admin-key" onchange="document.getElementById('admin-secret-key').type=this.checked?'text':'password'">
@@ -187,7 +187,7 @@
       </button>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
       <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-        API: lofty-crocodile-6332.sravanku018.deno.net
+        API: gita-admin.162.35.96.65.sslip.io
       </p>
     </div>
   </div>
@@ -570,7 +570,7 @@
               </span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-              <strong>Order matters:</strong> ① put the same secret in Deno <code>TOTP_SECRET</code>
+              <strong>Order matters:</strong> ① put the same secret in VPS <code>TOTP_SECRET</code>
               → ② register it in Google Authenticator (scan QR or manual key)
               → ③ only then can you unlock with the 6-digit code.
             </p>
@@ -585,7 +585,7 @@
 
               <div style="display: flex; flex-direction: column; gap: 12px; max-width: 380px;">
                 <div class="form-group">
-                  <label>Step 1 — 2FA Secret (must match Deno TOTP_SECRET)</label>
+                  <label>Step 1 — 2FA Secret (must match VPS TOTP_SECRET)</label>
                   <div style="display: flex; gap: 8px;">
                     <input type="text" id="totp-secret-input" class="form-input"
                            value="TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB" readonly
@@ -595,7 +595,7 @@
                     </button>
                   </div>
                   <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                    Deno Deploy → Environment: <code>TOTP_SECRET=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+                    VPS <code>/opt/gita-admin/.env</code>: <code>TOTP_SECRET=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
                   </p>
                 </div>
 
@@ -779,8 +779,8 @@
   </div>
 
   <script>
-    // ── Secure Admin API (Deno → VPS Postgres; secrets on Deno only) ──
-    const ADMIN_API = "https://lofty-crocodile-6332.sravanku018.deno.net";
+    // ── Secure Admin API (VPS HTTPS → localhost Postgres; secrets on server only) ──
+    const ADMIN_API = "https://gita-admin.162.35.96.65.sslip.io";
 
     function getAdminKey() {
       return sessionStorage.getItem("gita_admin_key") || "";
@@ -794,7 +794,7 @@
       const input = document.getElementById("totp-secret-input");
       if (input && input.value) {
         navigator.clipboard.writeText(input.value);
-        alert("Secret copied. 1) Confirm same value is TOTP_SECRET on Deno. 2) Add to Google Authenticator. 3) Then unlock with 6-digit code.");
+        alert("Secret copied. 1) Confirm same value is TOTP_SECRET on the VPS. 2) Add to Google Authenticator. 3) Then unlock with 6-digit code.");
       }
     }
 
@@ -848,7 +848,7 @@
       const adminKey = (document.getElementById("admin-secret-key")?.value || getAdminKey() || "").trim();
       const totp = document.getElementById("admin-pin").value.trim();
       if (!adminKey) {
-        errEl.textContent = "Enter ADMIN_SECRET_KEY (from Deno env / password manager).";
+        errEl.textContent = "Enter ADMIN_SECRET_KEY (from VPS /opt/gita-admin/.env).";
         errEl.style.display = "block";
         return;
       }
@@ -870,7 +870,7 @@
           const hint = data.hint ? "<br><small>" + data.hint + "</small>" : "";
           // "Unauthorized" always meant wrong admin key (TOTP has its own message)
           errEl.innerHTML = msg.includes("Unauthorized") || msg.includes("Admin Secret")
-            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from Deno env. TOTP is only checked after the key matches.</small>"
+            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from VPS <code>/opt/gita-admin/.env</code>. TOTP is only checked after the key matches.</small>"
             : ("❌ " + msg + hint);
           errEl.style.display = "block";
           return;
@@ -883,8 +883,8 @@
       } catch (e) {
         errEl.innerHTML =
           "Cannot reach Admin API: " + (e.message || e) +
-          "<br><small>Usually CORS. On Deno set env <code>ALLOWED_ORIGINS</code> value to only " +
-          "<code>https://sravanku018.github.io</code> (not ALLOWED_ORIGINS=...).</small>";
+          "<br><small>Usually CORS. VPS gita-admin ALLOWED_ORIGINS must include " +
+          "<code>https://sravanku018.github.io</code>.</small>";
         errEl.style.display = "block";
       }
     }
@@ -1466,7 +1466,7 @@
         console.error("fetchAllUsers:", err);
         const msg = String(err.message || err);
         const hint = msg.includes("404") || msg.includes("SERVER_ERROR")
-          ? "\n\nDatabase config on Deno is wrong/missing.\nSet DATABASE_URL=postgres://…@VPS:5432/coin_db on lofty-crocodile (same as flaky-kestrel), then redeploy."
+          ? "\n\nAdmin API cannot reach coin_db. Check gita-admin on the VPS (localhost Postgres, 5432 is not public)."
           : "";
         alert(`Failed to load users: ${msg}${hint}`);
       }

@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Pull verse notes from the coin API (VPS Postgres via flaky-kestrel).
+ * Pull verse notes from the coin API (VPS HTTPS → localhost Postgres).
  * Requires a valid Bearer token — GET /notes is behind requireAuth.
  */
 object NotesServerSync {
