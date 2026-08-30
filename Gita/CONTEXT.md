@@ -5,7 +5,7 @@
 - **Key Decisions**:
   - Coin API: https://gita.162.35.96.65.sslip.io/ (not flaky-kestrel).
   - Admin API: https://gita-admin.162.35.96.65.sslip.io/ (not lofty-crocodile).
-  - Voice proxy stays on Deno: noisy-sheep-76.
+  - Voice proxy: https://gita-voice.162.35.96.65.sslip.io/ (NVIDIA Nemotron 120B, Groq Qwen fallback).
   - Postgres 5432 is localhost-only.
 
 - **Next Steps**:

@@ -19,14 +19,14 @@ android {
         applicationId = "com.aipoweredgita.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 52
-        versionName = "2.19.1"
+        versionCode = 53
+        versionName = "2.19.2"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "COIN_API_BASE_URL", "\"https://gita.162.35.96.65.sslip.io/\"")
-        buildConfigField("String", "VOICE_PROXY_URL", "\"https://noisy-sheep-76.sravanku018.deno.net/\"")
+        buildConfigField("String", "VOICE_PROXY_URL", "\"https://gita-voice.162.35.96.65.sslip.io/\"")
 
         javaCompileOptions {
             annotationProcessorOptions {
