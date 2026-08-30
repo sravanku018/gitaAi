@@ -140,7 +140,7 @@
 </head>
 <body>
 
-  <!-- ADMIN LOCK — secrets verified on Deno API (not in this page) -->
+  <!-- ADMIN LOCK — secrets verified on VPS admin API (not in this page) -->
   <div class="lock-screen" id="lock-screen">
     <div class="lock-card glass">
       <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
@@ -174,7 +174,7 @@
       <div style="font-size: 13px; font-weight: 800; color: #fbbf24; width:100%; text-align:left; margin-bottom: 6px;">
         Step 2 — Then unlock
       </div>
-      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match Deno env ADMIN_SECRET_KEY exactly)</label>
+      <label style="font-size: 11px; color: var(--text-muted); text-align: left; width: 100%;">Admin Secret Key (must match VPS ADMIN_SECRET_KEY exactly)</label>
       <input type="password" id="admin-secret-key" class="pin-input" placeholder="Paste full key — not the TOTP secret" autocomplete="off" style="letter-spacing: 1px; font-size: 13px;">
       <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); width:100%; margin-top:4px; cursor:pointer;">
         <input type="checkbox" id="show-admin-key" onchange="document.getElementById('admin-secret-key').type=this.checked?'text':'password'">
@@ -187,7 +187,7 @@
       </button>
       <p id="pin-error" style="color: #ef4444; font-size: 12px; display: none;"></p>
       <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-        API: lofty-crocodile-6332.sravanku018.deno.net
+        API: gita-admin.162.35.96.65.sslip.io
       </p>
     </div>
   </div>
@@ -279,23 +279,24 @@
       <!-- VIEW 1: MASTER USER ROSTER -->
       <div class="view-section active" id="view-roster">
         <div class="section-card glass">
+          <div class="active-filter-row" style="margin-bottom:16px; padding:12px; background:rgba(0,0,0,0.2); border-radius:10px;">
+            <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
+            <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
+            <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
+            <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
+            <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
+            <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
+            <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
+              <i class="fa-solid fa-bolt"></i> Smart Refresh
+            </button>
+            <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
+          </div>
+
           <div class="section-header">
             <div class="section-title">
               <i class="fa-solid fa-users" style="color: var(--primary);"></i>
               <span>All Seekers & User Profiles</span>
               <span class="badge badge-active" id="active-count-badge" style="margin-left:8px;">0 Active</span>
-            </div>
-            <div class="active-filter-row">
-              <input type="text" id="roster-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:4px 8px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="searchRoster(this.value)">
-              <span class="filter-chip active-chip" id="chip-all" onclick="filterRoster('all', this)">All</span>
-              <span class="filter-chip" id="chip-active" onclick="filterRoster('active', this)">🟢 Active</span>
-              <span class="filter-chip" id="chip-edited" onclick="filterRoster('edited', this)">✏️ Edited</span>
-              <span class="filter-chip" id="chip-new" onclick="filterRoster('new', this)">🔵 New Login</span>
-              <span class="badge badge-success" id="user-count-badge" style="margin-left:4px;">Loading...</span>
-              <button class="refresh-btn" id="refresh-roster-btn" onclick="smartRefresh(this)" title="Re-fetches only edited & new-login profiles">
-                <i class="fa-solid fa-bolt"></i> Smart Refresh
-              </button>
-              <span class="smart-refresh-info" id="smart-refresh-info">No pending updates</span>
             </div>
           </div>
 
@@ -372,6 +373,24 @@
               <span class="badge badge-success">Auto-Logged to Turso DB</span>
             </div>
           </div>
+          <div class="active-filter-row" style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+            <input type="text" id="coin-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="filterCoinHistory()">
+            <span class="filter-chip active-chip" id="coin-chip-all" onclick="filterCoinType('all', this)">All</span>
+            <span class="filter-chip" id="coin-chip-earn" onclick="filterCoinType('EARN', this)">🟢 EARN</span>
+            <span class="filter-chip" id="coin-chip-spend" onclick="filterCoinType('SPEND', this)">🔴 SPEND</span>
+            <select id="coin-source-filter" class="form-input" style="width:150px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" onchange="filterCoinHistory()">
+              <option value="">All Sources</option>
+              <option value="signup">Signup</option>
+              <option value="quiz_completion">Quiz</option>
+              <option value="battle_quiz">Battle Quiz</option>
+              <option value="meditation">Meditation</option>
+              <option value="voice_chat">Voice Chat</option>
+              <option value="checkin_day">Check-in</option>
+              <option value="share_sloka">Share Sloka</option>
+              <option value="admin_adjustment">Admin</option>
+            </select>
+            <span class="badge badge-success" id="coin-count-badge">0 Txns</span>
+          </div>
 
           <div class="table-responsive">
             <table>
@@ -405,6 +424,17 @@
             </div>
             <span class="badge badge-warning">Rule: 5m=10c | 10m=20c | 15m=30c | 20m=40c</span>
           </div>
+          <div class="active-filter-row" style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+            <input type="text" id="meditation-search-input" class="form-input" placeholder="🔍 Search user_id..." style="width:160px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="filterMeditation()">
+            <select id="meditation-duration-filter" class="form-input" style="width:150px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" onchange="filterMeditation()">
+              <option value="">All Durations</option>
+              <option value="5">5 mins</option>
+              <option value="10">10 mins</option>
+              <option value="15">15 mins</option>
+              <option value="20">20+ mins</option>
+            </select>
+            <span class="badge badge-success" id="meditation-count-badge">0 Sessions</span>
+          </div>
 
           <div class="table-responsive">
             <table>
@@ -435,6 +465,14 @@
               <span>Feedback & Complaints Box</span>
             </div>
             <span class="badge badge-warning" id="feedback-count-badge">0 Items</span>
+          </div>
+          <div class="active-filter-row" style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+            <input type="text" id="feedback-search-input" class="form-input" placeholder="🔍 Search user_id or message..." style="width:200px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="filterFeedback()">
+            <span class="filter-chip active-chip" id="fb-chip-all" onclick="filterFeedbackType('all', this)">All</span>
+            <span class="filter-chip" id="fb-chip-feedback" onclick="filterFeedbackType('feedback', this)">💬 Feedback</span>
+            <span class="filter-chip" id="fb-chip-complaint" onclick="filterFeedbackType('complaint', this)">⚠️ Complaint</span>
+            <span class="filter-chip" id="fb-chip-bug" onclick="filterFeedbackType('bug', this)">🐛 Bug</span>
+            <span class="badge badge-success" id="feedback-filtered-count">0 Items</span>
           </div>
 
           <div class="table-responsive">
@@ -467,6 +505,13 @@
               <span>Saved Seeker Verse Notes</span>
             </div>
             <span class="badge badge-success">Limit: 200 Chars Max</span>
+          </div>
+          <div class="active-filter-row" style="margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+            <input type="text" id="notes-search-input" class="form-input" placeholder="🔍 Search user_id or note content..." style="width:200px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" oninput="filterNotes()">
+            <select id="notes-chapter-filter" class="form-input" style="width:130px; padding:6px 10px; font-size:12px; background:rgba(0,0,0,0.4);" onchange="filterNotes()">
+              <option value="">All Chapters</option>
+            </select>
+            <span class="badge badge-success" id="notes-count-badge">0 Notes</span>
           </div>
 
           <div class="table-responsive">
@@ -525,7 +570,7 @@
               </span>
             </div>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-              <strong>Order matters:</strong> ① put the same secret in Deno <code>TOTP_SECRET</code>
+              <strong>Order matters:</strong> ① put the same secret in VPS <code>TOTP_SECRET</code>
               → ② register it in Google Authenticator (scan QR or manual key)
               → ③ only then can you unlock with the 6-digit code.
             </p>
@@ -540,7 +585,7 @@
 
               <div style="display: flex; flex-direction: column; gap: 12px; max-width: 380px;">
                 <div class="form-group">
-                  <label>Step 1 — 2FA Secret (must match Deno TOTP_SECRET)</label>
+                  <label>Step 1 — 2FA Secret (must match VPS TOTP_SECRET)</label>
                   <div style="display: flex; gap: 8px;">
                     <input type="text" id="totp-secret-input" class="form-input"
                            value="TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB" readonly
@@ -550,7 +595,7 @@
                     </button>
                   </div>
                   <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                    Deno Deploy → Environment: <code>TOTP_SECRET=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
+                    VPS <code>/opt/gita-admin/.env</code>: <code>TOTP_SECRET=TU37F2ZMTFD4D33LECDNX3R6RMOQS4MB</code>
                   </p>
                 </div>
 
@@ -734,8 +779,8 @@
   </div>
 
   <script>
-    // ── Secure Admin API (Deno → VPS Postgres; secrets on Deno only) ──
-    const ADMIN_API = "https://lofty-crocodile-6332.sravanku018.deno.net";
+    // ── Secure Admin API (VPS HTTPS → localhost Postgres; secrets on server only) ──
+    const ADMIN_API = "https://gita-admin.162.35.96.65.sslip.io";
 
     function getAdminKey() {
       return sessionStorage.getItem("gita_admin_key") || "";
@@ -749,7 +794,7 @@
       const input = document.getElementById("totp-secret-input");
       if (input && input.value) {
         navigator.clipboard.writeText(input.value);
-        alert("Secret copied. 1) Confirm same value is TOTP_SECRET on Deno. 2) Add to Google Authenticator. 3) Then unlock with 6-digit code.");
+        alert("Secret copied. 1) Confirm same value is TOTP_SECRET on the VPS. 2) Add to Google Authenticator. 3) Then unlock with 6-digit code.");
       }
     }
 
@@ -803,7 +848,7 @@
       const adminKey = (document.getElementById("admin-secret-key")?.value || getAdminKey() || "").trim();
       const totp = document.getElementById("admin-pin").value.trim();
       if (!adminKey) {
-        errEl.textContent = "Enter ADMIN_SECRET_KEY (from Deno env / password manager).";
+        errEl.textContent = "Enter ADMIN_SECRET_KEY (from VPS /opt/gita-admin/.env).";
         errEl.style.display = "block";
         return;
       }
@@ -825,7 +870,7 @@
           const hint = data.hint ? "<br><small>" + data.hint + "</small>" : "";
           // "Unauthorized" always meant wrong admin key (TOTP has its own message)
           errEl.innerHTML = msg.includes("Unauthorized") || msg.includes("Admin Secret")
-            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from Deno env. TOTP is only checked after the key matches.</small>"
+            ? "❌ Wrong <b>Admin Secret Key</b> (not the TOTP code).<br><small>Paste the full <code>ADMIN_SECRET_KEY</code> from VPS <code>/opt/gita-admin/.env</code>. TOTP is only checked after the key matches.</small>"
             : ("❌ " + msg + hint);
           errEl.style.display = "block";
           return;
@@ -838,8 +883,8 @@
       } catch (e) {
         errEl.innerHTML =
           "Cannot reach Admin API: " + (e.message || e) +
-          "<br><small>Usually CORS. On Deno set env <code>ALLOWED_ORIGINS</code> value to only " +
-          "<code>https://sravanku018.github.io</code> (not ALLOWED_ORIGINS=...).</small>";
+          "<br><small>Usually CORS. VPS gita-admin ALLOWED_ORIGINS must include " +
+          "<code>https://sravanku018.github.io</code>.</small>";
         errEl.style.display = "block";
       }
     }
@@ -957,6 +1002,18 @@
       return Array.from({length: 5}, (_, i) =>
         `<div class="activity-dot ${i < acts ? 'filled' : ''}"></div>`
       ).join('');
+    }
+
+    // Convert UTC timestamp to IST (UTC+5:30)
+    function toIST(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\//g, '-') + ' IST';
+      } catch (e) {
+        return dateStr;
+      }
     }
 
     function formatLastSeen(dateStr) {
@@ -1081,6 +1138,200 @@
         return;
       }
       body.innerHTML = filtered.map(renderRosterRow).join('');
+    }
+
+    // ── Coin History Filters ──
+    let coinTypeFilter = 'all';
+    let allCoinLogs = [];
+
+    function filterCoinType(type, chip) {
+      coinTypeFilter = type;
+      document.querySelectorAll('#view-history .filter-chip').forEach(c => c.classList.remove('active-chip'));
+      chip.classList.add('active-chip');
+      filterCoinHistory();
+    }
+
+    function filterCoinHistory() {
+      const searchQ = (document.getElementById('coin-search-input')?.value || '').trim().toLowerCase();
+      const sourceFilter = document.getElementById('coin-source-filter')?.value || '';
+      let filtered = allCoinLogs;
+
+      // Filter by type
+      if (coinTypeFilter !== 'all') {
+        filtered = filtered.filter(tx => tx.type === coinTypeFilter);
+      }
+
+      // Filter by source
+      if (sourceFilter) {
+        filtered = filtered.filter(tx => (tx.source || '').toLowerCase().includes(sourceFilter.toLowerCase()));
+      }
+
+      // Filter by search query
+      if (searchQ) {
+        filtered = filtered.filter(tx => 
+          (tx.user_id && tx.user_id.toLowerCase().includes(searchQ)) ||
+          (tx.description && tx.description.toLowerCase().includes(searchQ))
+        );
+      }
+
+      const body = document.getElementById('coin-history-body');
+      const countBadge = document.getElementById('coin-count-badge');
+      if (countBadge) countBadge.textContent = `${filtered.length} Txns`;
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No transactions match filters.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(tx => `
+        <tr>
+          <td><strong>#${tx.id}</strong></td>
+          <td><div class="user-pill"><div class="avatar">${(tx.user_id || 'U').charAt(0).toUpperCase()}</div>${escHtml(tx.user_id || 'N/A')}</div></td>
+          <td>${tx.type === 'EARN' ? '<span class="badge badge-success">EARN 🟢</span>' : '<span class="badge badge-danger">SPEND 🔴</span>'}</td>
+          <td style="font-weight:700;">${tx.amount} 🪙</td>
+          <td><span class="badge badge-guest">${escHtml(tx.source || 'N/A')}</span></td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${escHtml(tx.description || '')}</td>
+          <td>${toIST(tx.created_at)}</td>
+          <td>
+            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="openEditCoinModal(${JSON.stringify(tx).replace(/"/g, '&quot;')})">Edit</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Meditation Filters ──
+    let allMeditationLogs = [];
+
+    function filterMeditation() {
+      const searchQ = (document.getElementById('meditation-search-input')?.value || '').trim().toLowerCase();
+      const durationFilter = document.getElementById('meditation-duration-filter')?.value || '';
+      let filtered = allMeditationLogs;
+
+      // Filter by duration
+      if (durationFilter) {
+        const dur = parseInt(durationFilter);
+        if (dur === 20) {
+          filtered = filtered.filter(m => (m.duration_mins || 0) >= 20);
+        } else {
+          filtered = filtered.filter(m => (m.duration_mins || 0) >= dur && (m.duration_mins || 0) < dur + 5);
+        }
+      }
+
+      // Filter by search query
+      if (searchQ) {
+        filtered = filtered.filter(m => 
+          (m.user_id && m.user_id.toLowerCase().includes(searchQ))
+        );
+      }
+
+      const body = document.getElementById('meditation-body');
+      const countBadge = document.getElementById('meditation-count-badge');
+      if (countBadge) countBadge.textContent = `${filtered.length} Sessions`;
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">No meditation sessions match filters.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(m => `
+        <tr>
+          <td><strong>#${m.id}</strong></td>
+          <td><div class="user-pill"><div class="avatar">${(m.user_id || 'U').charAt(0).toUpperCase()}</div>${escHtml(m.user_id || 'N/A')}</div></td>
+          <td>${m.duration_mins} mins</td>
+          <td style="font-weight:700;">${m.coins_earned} 🪙</td>
+          <td>${escHtml(m.session_date || 'N/A')}</td>
+          <td>${toIST(m.logged_at)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Feedback Filters ──
+    let feedbackTypeFilter = 'all';
+    let allFeedbackLogs = [];
+
+    function filterFeedbackType(type, chip) {
+      feedbackTypeFilter = type;
+      document.querySelectorAll('#view-feedback .filter-chip').forEach(c => c.classList.remove('active-chip'));
+      chip.classList.add('active-chip');
+      filterFeedback();
+    }
+
+    function filterFeedback() {
+      const searchQ = (document.getElementById('feedback-search-input')?.value || '').trim().toLowerCase();
+      let filtered = allFeedbackLogs;
+
+      // Filter by type
+      if (feedbackTypeFilter !== 'all') {
+        filtered = filtered.filter(f => (f.type || '').toLowerCase().includes(feedbackTypeFilter));
+      }
+
+      // Filter by search query
+      if (searchQ) {
+        filtered = filtered.filter(f => 
+          (f.user_id && f.user_id.toLowerCase().includes(searchQ)) ||
+          (f.message && f.message.toLowerCase().includes(searchQ)) ||
+          (f.subject && f.subject.toLowerCase().includes(searchQ))
+        );
+      }
+
+      const body = document.getElementById('feedback-body');
+      const countBadge = document.getElementById('feedback-filtered-count');
+      if (countBadge) countBadge.textContent = `${filtered.length} Items`;
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">No feedback matches filters.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(f => `
+        <tr>
+          <td><strong>#${f.id}</strong></td>
+          <td><div class="user-pill"><div class="avatar">${(f.user_id || 'U').charAt(0).toUpperCase()}</div>${escHtml(f.user_id || 'N/A')}</div></td>
+          <td><span class="badge badge-guest">${escHtml(f.type || 'feedback')}</span></td>
+          <td>${escHtml(f.subject || 'N/A')}</td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;">${escHtml(f.message || '')}</td>
+          <td>${escHtml(f.status || 'pending')}</td>
+          <td>${toIST(f.created_at)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Notes Filters ──
+    let allNotesLogs = [];
+
+    function filterNotes() {
+      const searchQ = (document.getElementById('notes-search-input')?.value || '').trim().toLowerCase();
+      const chapterFilter = document.getElementById('notes-chapter-filter')?.value || '';
+      let filtered = allNotesLogs;
+
+      // Filter by chapter
+      if (chapterFilter) {
+        filtered = filtered.filter(n => String(n.chapter_no || n.chapter) === chapterFilter);
+      }
+
+      // Filter by search query
+      if (searchQ) {
+        filtered = filtered.filter(n => 
+          (n.user_id && n.user_id.toLowerCase().includes(searchQ)) ||
+          ((n.note || n.note_content || '').toLowerCase().includes(searchQ))
+        );
+      }
+
+      const body = document.getElementById('notes-body');
+      const countBadge = document.getElementById('notes-count-badge');
+      if (countBadge) countBadge.textContent = `${filtered.length} Notes`;
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">No notes match filters.</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(n => `
+        <tr>
+          <td><strong>#${n.id}</strong></td>
+          <td><div class="user-pill"><div class="avatar">${(n.user_id || 'U').charAt(0).toUpperCase()}</div>${escHtml(n.user_id || 'N/A')}</div></td>
+          <td>${n.chapter_no || n.chapter}</td>
+          <td>${n.verse_no || n.verse}</td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;">${escHtml(n.note || n.note_content || '')}</td>
+          <td>${toIST(n.created_at || n.saved_at)}</td>
+        </tr>
+      `).join('');
     }
 
     // ── Smart Refresh: only re-fetches dirty + new user rows, zero full scan ──
@@ -1215,7 +1466,7 @@
         console.error("fetchAllUsers:", err);
         const msg = String(err.message || err);
         const hint = msg.includes("404") || msg.includes("SERVER_ERROR")
-          ? "\n\nDatabase config on Deno is wrong/missing.\nSet DATABASE_URL=postgres://…@VPS:5432/coin_db on lofty-crocodile (same as flaky-kestrel), then redeploy."
+          ? "\n\nAdmin API cannot reach coin_db. Check gita-admin on the VPS (localhost Postgres, 5432 is not public)."
           : "";
         alert(`Failed to load users: ${msg}${hint}`);
       }
@@ -1256,27 +1507,9 @@
     async function fetchFeedbackList() {
       const list = await queryTurso(`SELECT * FROM user_feedback ORDER BY id DESC LIMIT 50`);
       isFeedbackLoaded = true;
-      const body = document.getElementById("feedback-body");
-      document.getElementById("feedback-count-badge").innerText = `${list ? list.length : 0} Items`;
-
-      if (list && list.length > 0) {
-        body.innerHTML = list.map(f => {
-          const isComplaint = (f.type || '').toLowerCase() === 'complaint';
-          return `
-            <tr>
-              <td>#${f.id}</td>
-              <td><strong>${f.user_id}</strong></td>
-              <td><span class="badge ${isComplaint ? 'badge-danger' : 'badge-warning'}">${f.type || 'Feedback'}</span></td>
-              <td><strong>${f.subject || 'General'}</strong></td>
-              <td><span style="${isComplaint ? 'color:#f87171;' : ''}">${f.message}</span></td>
-              <td><span class="badge badge-success">${f.status || 'Open'}</span></td>
-              <td>${f.created_at}</td>
-            </tr>
-          `;
-        }).join("");
-      } else {
-        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No feedback or complaints submitted yet.</td></tr>`;
-      }
+      allFeedbackLogs = Array.isArray(list) ? list : [];
+      document.getElementById('feedback-count-badge').innerText = `${allFeedbackLogs.length} Items`;
+      filterFeedback();
     }
 
     async function openDossierFor(userId) {
@@ -1346,7 +1579,7 @@
               <td><strong>${escHtml(c.amount)} 🪙</strong></td>
               <td><code>${escHtml(c.source)}</code></td>
               <td>${escHtml(c.description || '')}</td>
-              <td>${escHtml(c.created_at || '')}</td>
+              <td>${escHtml(toIST(c.created_at) || '')}</td>
               <td>
                 <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(c.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
                   <i class="fa-solid fa-pen"></i> Edit
@@ -1368,13 +1601,13 @@
       else if (tabName === 'feedback') {
         const feedback = await queryTurso(`SELECT id, type, subject, message, status, created_at FROM user_feedback WHERE user_id = '${userId}' ORDER BY id DESC LIMIT 50`);
         document.getElementById("user-feedback-body").innerHTML = (feedback && feedback.length > 0) ? feedback.map(f => `
-          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${f.created_at}</td></tr>
+          <tr><td>#${f.id}</td><td><span class="badge ${(f.type||'').toLowerCase()==='complaint'?'badge-danger':'badge-warning'}">${f.type||'Feedback'}</span></td><td>${f.subject||''}</td><td>${f.message}</td><td><span class="badge badge-success">${f.status||'Open'}</span></td><td>${toIST(f.created_at)}</td></tr>
         `).join("") : `<tr><td colspan="6" style="text-align:center; padding:20px;">No complaints or feedback from this user.</td></tr>`;
       }
       else if (tabName === 'notes') {
         const notes = await queryTurso(`SELECT id, chapter_no, verse_no, note, created_at FROM verse_notes WHERE user_id = '${userId}' ORDER BY chapter_no, verse_no LIMIT 50`);
         document.getElementById("user-notes-body").innerHTML = (notes && notes.length > 0) ? notes.map(n => `
-          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
+          <tr><td>#${n.id}</td><td>Ch ${n.chapter_no}</td><td>V ${n.verse_no}</td><td>${n.note}</td><td>${toIST(n.created_at)||''}</td></tr>
         `).join("") : `<tr><td colspan="5" style="text-align:center; padding:20px;">No verse notes saved by this user.</td></tr>`;
       }
     }
@@ -1385,28 +1618,10 @@
       body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;"><div class="spinner"></div> Loading Coin History...</td></tr>`;
       try {
         const logs = await queryTurso(`SELECT id, user_id, amount, type, source, description, created_at FROM coin_transactions ORDER BY id DESC LIMIT 100`);
-        currentCoinLogs = Array.isArray(logs) ? logs : [];
+        allCoinLogs = Array.isArray(logs) ? logs : [];
+        currentCoinLogs = allCoinLogs;
         isCoinHistoryLoaded = true;
-        if (currentCoinLogs.length > 0) {
-          body.innerHTML = currentCoinLogs.map(l => `
-            <tr>
-              <td>#${escHtml(l.id)}</td>
-              <td><strong>${escHtml(l.user_id)}</strong></td>
-              <td><span class="badge ${String(l.type).toUpperCase()==='EARN'?'badge-success':'badge-danger'}">${escHtml(l.type)}</span></td>
-              <td><strong>${escHtml(l.amount)} 🪙</strong></td>
-              <td><code>${escHtml(l.source)}</code></td>
-              <td>${escHtml(l.description || '')}</td>
-              <td>${escHtml(l.created_at || '')}</td>
-              <td>
-                <button type="button" class="btn btn-secondary btn-sm" data-coin-id="${escHtml(l.id)}" onclick="openEditCoinModal(this.dataset.coinId)" style="padding: 3px 8px; font-size: 11px;">
-                  <i class="fa-solid fa-pen"></i> Edit
-                </button>
-              </td>
-            </tr>
-          `).join("");
-        } else {
-          body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;">No coin history found.</td></tr>`;
-        }
+        filterCoinHistory();
       } catch (err) {
         console.error("fetchCoinHistoryLog:", err);
         isCoinHistoryLoaded = false;
@@ -1417,26 +1632,26 @@
     async function fetchMeditationLogs() {
       const logs = await queryTurso(`SELECT * FROM meditation_sessions ORDER BY id DESC LIMIT 50`);
       isMeditationLoaded = true;
-      const body = document.getElementById("meditation-body");
+      allMeditationLogs = Array.isArray(logs) ? logs : [];
       let totalMins = 0;
-      if (logs && logs.length > 0) {
-        logs.forEach(l => totalMins += Number(l.minutes || 0));
-        document.getElementById("kpi-meditation-mins").innerText = `${totalMins} Mins`;
-        body.innerHTML = logs.map(l => `
-          <tr><td>#${l.id}</td><td><strong>${l.user_id}</strong></td><td><span class="badge badge-success">${l.minutes} Mins</span></td><td>+${l.coins_earned} 🪙</td><td>${l.session_date}</td><td>${l.created_at}</td></tr>
-        `).join("");
-      }
+      allMeditationLogs.forEach(l => totalMins += Number(l.minutes || l.duration_mins || 0));
+      document.getElementById('kpi-meditation-mins').innerText = `${totalMins} Mins`;
+      filterMeditation();
     }
 
     async function fetchVerseNotes() {
       const notes = await queryTurso(`SELECT * FROM verse_notes ORDER BY id DESC LIMIT 50`);
       isNotesLoaded = true;
-      const body = document.getElementById("notes-body");
-      if (notes && notes.length > 0) {
-        body.innerHTML = notes.map(n => `
-          <tr><td>#${n.id}</td><td><strong>${n.user_id}</strong></td><td>Chapter ${n.chapter_no}</td><td>Verse ${n.verse_no}</td><td>${n.note}</td><td>${n.created_at||''}</td></tr>
-        `).join("");
+      allNotesLogs = Array.isArray(notes) ? notes : [];
+      // Populate chapter filter dropdown
+      const chapterSelect = document.getElementById('notes-chapter-filter');
+      if (chapterSelect) {
+        const chapters = [...new Set(allNotesLogs.map(n => n.chapter_no || n.chapter).filter(Boolean))].sort((a,b) => a - b);
+        const currentVal = chapterSelect.value;
+        chapterSelect.innerHTML = '<option value="">All Chapters</option>' + 
+          chapters.map(c => `<option value="${c}" ${c == currentVal ? 'selected' : ''}>Chapter ${c}</option>`).join('');
       }
+      filterNotes();
     }
 
     async function saveUserProfile() {
