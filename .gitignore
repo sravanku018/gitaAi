@@ -3,6 +3,8 @@
 !.gitignore
 !index.html
 !PRIVACY_POLICY.md
+!main.ts
+!vps-postrage-deno.ts
 !.github/
 !.github/**
 
