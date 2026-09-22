@@ -64,7 +64,7 @@ object CoinRewardEngine {
         val coinsBeforeYoga: Int = 0,
     )
 
-    /** Same accuracy tiers as server /coins/award quiz_completion. */
+    /** Accuracy bonus scaled to actual performance tiers. */
     fun accuracyBonus(accuracy: Float): Int {
         val a = accuracy.coerceIn(0f, 1f)
         return when {
@@ -73,7 +73,8 @@ object CoinRewardEngine {
             a >= 0.7f -> 4
             a >= 0.6f -> 3
             a >= 0.5f -> 2
-            else -> 1
+            a >= 0.3f -> 1
+            else -> 0
         }
     }
 
@@ -107,7 +108,10 @@ object CoinRewardEngine {
             (safe.score.toFloat() / safe.totalQuestions).coerceIn(0f, 1f)
         } else 0f
 
-        val base = QUIZ_BASE
+        val base = if (safe.score > 0 && safe.totalQuestions > 0) {
+            (safe.score * QUIZ_BASE / safe.totalQuestions).coerceIn(1, QUIZ_BASE)
+        } else 0
+
         val accuracyBonus = accuracyBonus(accuracy)
         val beforeYoga = (base + accuracyBonus).coerceAtMost(QUIZ_MAX_BEFORE_YOGA)
         val total = applyYogaMultiplier(beforeYoga, safe.yogaMultiplier)
