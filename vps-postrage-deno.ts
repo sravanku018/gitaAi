@@ -1556,9 +1556,12 @@ app.post("/coins/award", requireAuth, async (c) => {
 
   if (source === "quiz_completion" && metadata?.accuracy != null) {
     const accuracy      = Math.max(0, Math.min(1, metadata.accuracy));
-    // Tiered: <50%→1, 50%→2, 60%→3, 70%→4, 80%→5, 90/100%→6
-    const accuracyBonus = accuracy >= 0.9 ? 6 : accuracy >= 0.8 ? 5 : accuracy >= 0.7 ? 4 : accuracy >= 0.6 ? 3 : accuracy >= 0.5 ? 2 : 1;
-    coins = coins + accuracyBonus;
+    const accuracyBonus = accuracy >= 0.9 ? 6 : accuracy >= 0.8 ? 5 : accuracy >= 0.7 ? 4 : accuracy >= 0.6 ? 3 : accuracy >= 0.5 ? 2 : accuracy >= 0.3 ? 1 : 0;
+    const totalQ = Math.max(0, Math.floor(Number(metadata?.totalQuestions ?? 0)));
+    const scoreQ = Math.max(0, Math.floor(Number(metadata?.score ?? 0)));
+    const QUIZ_BASE = 5;
+    const base = (scoreQ > 0 && totalQ > 0) ? Math.min(QUIZ_BASE, Math.max(1, Math.floor((scoreQ * QUIZ_BASE) / totalQ))) : 0;
+    coins = base + accuracyBonus;
     if (maxCoins != null) coins = Math.min(coins, maxCoins);
   }
 
